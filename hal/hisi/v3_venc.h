@@ -55,15 +55,19 @@ typedef enum {
 typedef enum {
     V3_VENC_RATEMODE_H264CBR = 1,
     V3_VENC_RATEMODE_H264VBR,
-    V3_VENC_RATEMODE_H264ABR,
-    V3_VENC_RATEMODE_H264QP,
     V3_VENC_RATEMODE_H264AVBR,
+    V3_VENC_RATEMODE_H264QVBR,
+    V3_VENC_RATEMODE_H264QP,
+    V3_VENC_RATEMODE_H264QPMAP,
     V3_VENC_RATEMODE_MJPGCBR,
+    V3_VENC_RATEMODE_MJPGVBR,
     V3_VENC_RATEMODE_MJPGQP,
     V3_VENC_RATEMODE_H265CBR,
     V3_VENC_RATEMODE_H265VBR,
-    V3_VENC_RATEMODE_H265QP,
     V3_VENC_RATEMODE_H265AVBR,
+    V3_VENC_RATEMODE_H265QVBR,
+    V3_VENC_RATEMODE_H265QP,
+    V3_VENC_RATEMODE_H265QPMAP,
     V3_VENC_RATEMODE_END
 } v3_venc_ratemode;
 
@@ -109,8 +113,8 @@ typedef struct {
 typedef struct {
     unsigned int gop;
     unsigned int statTime;
-    unsigned int fpsNum;
-    unsigned int fpsDen;
+    unsigned int srcFps;
+    unsigned int dstFps;
     unsigned int bitrate;
     unsigned int avgLvl;
 } v3_venc_rate_h26xcbr;
@@ -118,39 +122,62 @@ typedef struct {
 typedef struct {
     unsigned int gop;
     unsigned int statTime;
-    unsigned int fpsNum;
-    unsigned int fpsDen;
+    unsigned int srcFps;
+    unsigned int dstFps;
     unsigned int maxBitrate;
     unsigned int maxQual;
     unsigned int minQual;
+    unsigned int minIQual;
 } v3_venc_rate_h26xvbr;
 
 typedef struct {
     unsigned int gop;
-    unsigned int fpsNum;
-    unsigned int fpsDen;
+    unsigned int statTime;
+    unsigned int srcFps;
+    unsigned int dstFps;
+    unsigned int bitrate;
+} v3_venc_rate_h26xxvbr;
+
+typedef struct {
+    unsigned int gop;
+    unsigned int srcFps;
+    unsigned int dstFps;
     unsigned int interQual;
     unsigned int predQual;
+    unsigned int bipredQual;
 } v3_venc_rate_h26xqp;
 
 typedef struct {
     unsigned int gop;
     unsigned int statTime;
-    unsigned int fpsNum;
-    unsigned int fpsDen;
-    unsigned int avgBitrate;
-    unsigned int maxBitrate;
-} v3_venc_rate_h26xabr;
+    unsigned int srcFps;
+    unsigned int dstFps;
+    // Accepts values from 0-2 (mean QP, min QP, max QP)
+    unsigned int qpMapMode;
+    unsigned int predQual;
+    unsigned int bipredQual;
+} v3_venc_rate_h26xqpmap;
 
 typedef struct {
+    unsigned int statTime;
+    unsigned int srcFps;
+    unsigned int dstFps;
     unsigned int bitrate;
-    unsigned int fpsNum;
-    unsigned int fpsDen;
+    unsigned int avgLvl;
 } v3_venc_rate_mjpgcbr;
 
 typedef struct {
-    unsigned int fpsNum;
-    unsigned int fpsDen;
+    unsigned int statTime;
+    unsigned int srcFps;
+    unsigned int dstFps;
+    unsigned int maxBitrate;
+    unsigned int maxQual;
+    unsigned int minQual;
+} v3_venc_rate_mjpgvbr;
+
+typedef struct {
+    unsigned int srcFps;
+    unsigned int dstFps;
     unsigned int quality;
 } v3_venc_rate_mjpgqp;
 
@@ -159,15 +186,19 @@ typedef struct {
     union {
         v3_venc_rate_h26xcbr h264Cbr;
         v3_venc_rate_h26xvbr h264Vbr;
+        v3_venc_rate_h26xxvbr h264Avbr;
+        v3_venc_rate_h26xxvbr h264Qvbr;
         v3_venc_rate_h26xqp h264Qp;
-        v3_venc_rate_h26xabr h264Abr;
-        v3_venc_rate_h26xvbr h264Avbr;
+        v3_venc_rate_h26xqpmap h264QpMap;
         v3_venc_rate_mjpgcbr mjpgCbr;
+        v3_venc_rate_mjpgvbr mjpgVbr;
         v3_venc_rate_mjpgqp mjpgQp;
         v3_venc_rate_h26xcbr h265Cbr;
         v3_venc_rate_h26xvbr h265Vbr;
+        v3_venc_rate_h26xxvbr h265Avbr;
+        v3_venc_rate_h26xxvbr h265Qvbr;
         v3_venc_rate_h26xqp h265Qp;
-        v3_venc_rate_h26xvbr h265Avbr;
+        v3_venc_rate_h26xqpmap h265QpMap;
     };
     void *extend;
 } v3_venc_rate;

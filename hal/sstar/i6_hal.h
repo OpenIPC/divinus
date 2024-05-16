@@ -7,11 +7,13 @@ i6_venc_impl i6_venc;
 i6_vif_impl i6_vif;
 i6_vpe_impl i6_vpe;
 
+hal_chnstate i6_state[I6_VENC_CHN_NUM] = {0};
+
 i6_snr_pad snr_pad;
 i6_snr_plane snr_plane;
 char snr_framerate, snr_hdr, snr_index, snr_profile;
 
-int venc_fd[I6_VENC_CHN_NUM] = {0};
+
 char venc_port = 0;
 char vif_chn = 0;
 char vif_dev = 0;
@@ -166,8 +168,8 @@ int i6_encoder_create(char index, hal_vidconfig config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = I6_VENC_RATEMODE_H265VBR;
                 channel.rate.h265Vbr = { .gop = config.gop, .statTime = 0,
-                    .fpsNum = config.framerate, .fpsDen = 1,
-                    .maxBitrate = (unsigned int)(config.bitrate << 10),
+                    .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
+                    (unsigned int)(MAX(config.bitrate, config.maxBitrate) << 10),
                     .maxQual = config.maxQual, .minQual = config.minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = I6_VENC_RATEMODE_H265QP;
@@ -179,8 +181,8 @@ int i6_encoder_create(char index, hal_vidconfig config)
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = I6_VENC_RATEMODE_H265AVBR;
                 channel.rate.h265Avbr = { .gop = config.gop, .statTime = 0,
-                    .fpsNum = config.framerate, .fpsDen = 1,
-                    .maxBitrate = (unsigned int)(config.bitrate << 10),
+                    .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
+                    (unsigned int)(MAX(config.bitrate, config.maxBitrate) << 10),
                     .maxQual = config.maxQual, .minQual = config.minQual }; break;
             default:
                 I6_ERROR("H.265 encoder does not support this mode!");
@@ -196,8 +198,8 @@ int i6_encoder_create(char index, hal_vidconfig config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = I6_VENC_RATEMODE_H264VBR;
                 channel.rate.h264Vbr = { .gop = config.gop, .statTime = 0,
-                    .fpsNum = config.framerate, .fpsDen = 1,
-                    .maxBitrate = (unsigned int)(config.bitrate << 10),
+                    .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
+                    (unsigned int)(MAX(config.bitrate, config.maxBitrate) << 10),
                     .maxQual = config.maxQual, .minQual = config.minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = I6_VENC_RATEMODE_H264QP;

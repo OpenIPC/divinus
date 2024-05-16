@@ -1,5 +1,12 @@
 #include "v3_common.h"
 
+typedef struct {
+    void* handle;
+    int (*fnRegister)(void);
+    int (*fnUnregister)(void);
+} v3_drv_impl;
+
+v3_drv_impl v3_drv;
 v3_isp_impl v3_isp;
 v3_sys_impl v3_sys;
 v3_vb_impl v3_vb;
@@ -7,9 +14,10 @@ v3_venc_impl v3_venc;
 v3_vi_impl v3_vi;
 v3_vpss_impl v3_vpss;
 
+hal_chnstate v3_state[V3_VENC_CHN_NUM] = {0};
+
 char isp_dev = 0;
 char venc_dev = 0;
-int venc_fd[V3_VENC_CHN_NUM] = {0};
 char vi_chn = 0;
 char vi_dev = 0;
 
@@ -122,7 +130,120 @@ int v3_channel_unbind(char index)
 
 int v3_encoder_create(char index, hal_vidconfig config)
 {
-    
+    int ret;
+    v3_venc_chn channel;
+    v3_venc_attr_h26x *attrib;
+
+    if (config.codec == HAL_VIDCODEC_JPG) {
+        channel.attrib.codec = V3_VENC_CODEC_JPEGE;
+        channel.attrib.jpg.maxWidth = ALIGN_BACK(config.width, 16);
+        channel.attrib.jpg.maxHeight = ALIGN_BACK(config.height, 16);
+        channel.attrib.jpg.bufSize = 
+            ALIGN_BACK(config.height, 16) * ALIGN_BACK(config.width, 16);
+        channel.attrib.jpg.byFrame = 1;
+        channel.attrib.jpg.width = config.width;
+        channel.attrib.jpg.height = config.height;
+        channel.attrib.jpg.dcfThumbs = 0;
+    } else if (config.codec == HAL_VIDCODEC_MJPG) {
+        channel.attrib.codec = V3_VENC_CODEC_MJPG;
+        channel.attrib.mjpg.maxWidth = ALIGN_BACK(config.width, 16);
+        channel.attrib.mjpg.maxHeight = ALIGN_BACK(config.height, 16);
+        channel.attrib.mjpg.bufSize = 
+            ALIGN_BACK(config.height, 16) * ALIGN_BACK(config.width, 16);
+        channel.attrib.mjpg.byFrame = 1;
+        channel.attrib.mjpg.width = config.width;
+        channel.attrib.mjpg.height = config.height;
+        switch (config.mode) {
+            case HAL_VIDMODE_CBR:
+                channel.rate.mode = V3_VENC_RATEMODE_MJPGCBR;
+                channel.rate.mjpgCbr = { .statTime = 1, .srcFps = config.framerate,
+                    .dstFps = config.framerate, .bitrate = config.bitrate, .avgLvl = 0 }; break;
+            case HAL_VIDMODE_VBR:
+                channel.rate.mode = V3_VENC_RATEMODE_MJPGVBR;
+                channel.rate.mjpgVbr = { .statTime = 1, .srcFps = config.framerate,
+                    .dstFps = config.framerate , .maxBitrate = MAX(config.bitrate, config.maxBitrate), 
+                    .maxQual = config.maxQual, .minQual = config.maxQual }; break;
+            case HAL_VIDMODE_QP:
+                channel.rate.mode = V3_VENC_RATEMODE_MJPGQP;
+                channel.rate.mjpgQp = { .srcFps = config.framerate, .dstFps = config.framerate,
+                    .quality = config.maxQual }; break;
+            default:
+                V3_ERROR("MJPEG encoder can only support CBR, VBR or fixed QP modes!");
+        }
+        goto attach;
+    } else if (config.codec == HAL_VIDCODEC_H265) {
+        channel.attrib.codec = V3_VENC_CODEC_H265;
+        attrib = &channel.attrib.h265;
+        switch (config.mode) {
+            case HAL_VIDMODE_CBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H265CBR;
+                channel.rate.h265Cbr = { .gop = config.gop, .statTime = 1, 
+                    .srcFps = config.framerate, .dstFps = config.framerate,
+                    .bitrate = config.bitrate, .avgLvl = 1 }; break;
+            case HAL_VIDMODE_VBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H265VBR;
+                channel.rate.h265Vbr = { .gop = config.gop, .statTime = 1,
+                    .srcFps = config.framerate, .dstFps = config.framerate, 
+                    .maxBitrate = MAX(config.bitrate, config.maxBitrate), .maxQual = config.maxQual,
+                    .minQual = config.minQual, .minIQual = config.minQual }; break;
+            case HAL_VIDMODE_QP:
+                channel.rate.mode = V3_VENC_RATEMODE_H265QP;
+                channel.rate.h265Qp = { .gop = config.gop, .srcFps = config.framerate,
+                    .dstFps = config.framerate, .interQual = config.maxQual, 
+                    .predQual = config.minQual, .bipredQual = config.minQual }; break;
+            case HAL_VIDMODE_AVBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H265AVBR;
+                channel.rate.h265Avbr = { .gop = config.gop, .statTime = 1,
+                    .srcFps = config.framerate, .dstFps = config.framerate,
+                    .bitrate = config.bitrate }; break;
+            default:
+                V3_ERROR("H.265 encoder does not support this mode!");
+        }
+    } else if (config.codec == HAL_VIDCODEC_H264) {
+        channel.attrib.codec = V3_VENC_CODEC_H264;
+        attrib = &channel.attrib.h264;
+        switch (config.mode) {
+            case HAL_VIDMODE_CBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H264CBR;
+                channel.rate.h264Cbr = { .gop = config.gop, .statTime = 1, 
+                    .srcFps = config.framerate, .dstFps = config.framerate,
+                    .bitrate = config.bitrate, .avgLvl = 1 }; break;
+            case HAL_VIDMODE_VBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H264VBR;
+                channel.rate.h264Vbr = { .gop = config.gop, .statTime = 1,
+                    .srcFps = config.framerate, .dstFps = config.framerate, 
+                    .maxBitrate = MAX(config.bitrate, config.maxBitrate), .maxQual = config.maxQual,
+                    .minQual = config.minQual, .minIQual = config.minQual }; break;
+            case HAL_VIDMODE_QP:
+                channel.rate.mode = V3_VENC_RATEMODE_H264QP;
+                channel.rate.h264Qp = { .gop = config.gop, .srcFps = config.framerate,
+                    .dstFps = config.framerate, .interQual = config.maxQual, 
+                    .predQual = config.minQual, .bipredQual = config.minQual }; break;
+            case HAL_VIDMODE_AVBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H264AVBR;
+                channel.rate.h264Avbr = { .gop = config.gop, .statTime = 1,
+                    .srcFps = config.framerate, .dstFps = config.framerate,
+                    .bitrate = config.bitrate }; break;
+            default:
+                V3_ERROR("H.264 encoder does not support this mode!");
+        }
+    } else V3_ERROR("This codec is not supported by the hardware!");
+    attrib->maxWidth = ALIGN_BACK(config.width, 16);
+    attrib->maxHeight = ALIGN_BACK(config.height, 16);
+    attrib->bufSize = ALIGN_BACK(config.height, 16) * ALIGN_BACK(config.width, 16);
+    attrib->profile = config.profile;
+    attrib->byFrame = 1;
+    attrib->width = config.width;
+    attrib->height = config.height;
+attach:
+    if (ret = v3_venc.fnCreateChannel(index, &channel))
+        return ret;
+
+    if (config.codec != HAL_VIDCODEC_JPG && 
+        (ret = v3_venc.fnStartReceiving(index)))
+        return ret;
+
+    return EXIT_SUCCESS;
 }
 
 int v3_encoder_destroy(char index)
@@ -188,17 +309,54 @@ int v3_pipeline_create(void)
 
 }
 
+void v3_sensor_deinit(void)
+{
+    dlclose(v3_drv.handle);
+    v3_drv.handle = NULL;
+}
+
+int v3_sensor_init(char *name)
+{
+    char* path;
+    char* dirs[] = {"%s", "./%s", "/usr/lib/%s"};
+    char **dir = dirs;
+
+    while (dir) {
+        asprintf(&path, *dir, name);
+        if (v3_drv.handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL))
+            dir = NULL;
+        free(path);
+    } if (!v3_drv.handle)
+        V3_ERROR("Failed to load the sensor driver");
+    
+    v3_drv.fnRegister = 
+        (int(*)(void))dlsym(v3_drv.handle, "sensor_register_callback");
+    v3_drv.fnUnregister =
+        (int(*)(void))dlsym(v3_drv.handle, "sensor_unregister_callback");
+
+    return EXIT_SUCCESS;
+}
+
 void v3_system_deinit(void)
 {
     v3_sys.fnExit();
-    
     v3_vb.fnExit();
+
+    v3_isp.fnUnregisterAF(isp_dev, &(v3_isp_alg){.libName = "hisi_af_lib"});
+    v3_isp.fnUnregisterAWB(isp_dev, &(v3_isp_alg){.libName = "hisi_awb_lib"});
+    v3_isp.fnUnregisterAE(isp_dev, &(v3_isp_alg){.libName = "hisi_ae_lib"});
+
+    v3_drv.fnUnregister();
 }
 
 void v3_system_init(void)
 {
-    v3_sys_ver version;
-    v3_sys.fnGetVersion(&version);
-    printf("App built with headers v%s\n", V3_SYS_API);
-    printf("MPP version: %s\n", version.version);
+    int ret;
+
+    {
+        v3_sys_ver version;
+        v3_sys.fnGetVersion(&version);
+        printf("App built with headers v%s\n", V3_SYS_API);
+        printf("MPP version: %s\n", version.version);
+    }
 }

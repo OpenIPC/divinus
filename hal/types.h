@@ -33,6 +33,7 @@ typedef enum {
 } hal_vidprofile;
 
 typedef struct {
+    int fileDesc;
     char enable;
     char mainLoop;
 } hal_chnstate;

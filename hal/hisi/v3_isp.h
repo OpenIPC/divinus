@@ -3,6 +3,11 @@
 #include "v3_common.h"
 
 typedef struct {
+    int id;
+    char libName[20];
+} v3_isp_alg;
+
+typedef struct {
     v3_common_rect capt;
     float framerate;
     v3_common_bayer bayer;
@@ -18,6 +23,13 @@ typedef struct {
 
     int (*fnSetDeviceConfig)(int device, v3_isp_dev *config);
     int (*fnSetWDRMode)(int device, v3_common_wdr *mode);
+
+    int (*fnRegisterAE)(int device, v3_isp_alg *library);
+    int (*fnRegisterAF)(int device, v3_isp_alg *library);
+    int (*fnRegisterAWB)(int device, v3_isp_alg *library);
+    int (*fnUnregisterAE)(int device, v3_isp_alg *library);
+    int (*fnUnregisterAF)(int device, v3_isp_alg *library);
+    int (*fnUnregisterAWB)(int device, v3_isp_alg *library);
 } v3_isp_impl;
 
 int v3_isp_load(v3_isp_impl *isp_lib) {
@@ -59,6 +71,42 @@ int v3_isp_load(v3_isp_impl *isp_lib) {
     if (!(isp_lib->fnSetWDRMode = (int(*)(int device, v3_common_wdr *mode))
         dlsym(isp_lib->handle, "HI_MPI_ISP_SetWDRMode"))) {
         fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_ISP_SetWDRMode!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->fnRegisterAE = (int(*)(int device, v3_isp_alg *library))
+        dlsym(isp_lib->handle, "HI_MPI_AE_Register"))) {
+        fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_AE_Register!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->fnRegisterAF = (int(*)(int device, v3_isp_alg *library))
+        dlsym(isp_lib->handle, "HI_MPI_AF_Register"))) {
+        fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_AF_Register!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->fnRegisterAWB = (int(*)(int device, v3_isp_alg *library))
+        dlsym(isp_lib->handle, "HI_MPI_AWB_Register"))) {
+        fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_AWB_Register!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->fnRegisterAE = (int(*)(int device, v3_isp_alg *library))
+        dlsym(isp_lib->handle, "HI_MPI_AE_UnRegister"))) {
+        fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_AE_UnRegister!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->fnRegisterAE = (int(*)(int device, v3_isp_alg *library))
+        dlsym(isp_lib->handle, "HI_MPI_AF_UnRegister"))) {
+        fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_AF_UnRegister!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->fnRegisterAE = (int(*)(int device, v3_isp_alg *library))
+        dlsym(isp_lib->handle, "HI_MPI_AWB_UnRegister"))) {
+        fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_AWB_UnRegister!\n");
         return EXIT_FAILURE;
     }
 }
