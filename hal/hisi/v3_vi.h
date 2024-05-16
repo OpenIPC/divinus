@@ -40,17 +40,17 @@ typedef enum {
 } v3_vi_work;
 
 typedef struct {
-    unsigned int hsyncFront;
-    unsigned int hsyncWidth;
-    unsigned int hsyncBack;
-    unsigned int vsyncFront;
-    unsigned int vsyncWidth;
-    unsigned int vsyncBack;
+    int hsyncFront;
+    int hsyncWidth;
+    int hsyncBack;
+    int vsyncFront;
+    int vsyncWidth;
+    int vsyncBack;
     // Next three are valid on interlace mode
     // and define even-frame timings
-    unsigned int vsyncIntrlFront;
-    unsigned int vsyncIntrlWidth;
-    unsigned int vsyncIntrlBack;
+    int vsyncIntrlFront;
+    int vsyncIntrlWidth;
+    int vsyncIntrlBack;
 } v3_vi_timing;
 
 typedef struct {
@@ -79,16 +79,21 @@ typedef struct {
 typedef struct {
     v3_vi_intf intf;
     v3_vi_work work;
+    int separateOn;
+    int doubleCompOn;
+    int clkDownOn;
     unsigned int cmpntMask[2];
     int progressiveOn;
     int adChn[4];
     v3_vi_input input;
     v3_vi_sync sync;
+    int codeZeroOn;
+    int polarNstdOn;
     // Accepts values between 0-2
     // (0: bypass ISP, 1: enable ISP, 2: raw)
-    int path;
+    int dataPath;
     int rgbModeOn;
-    int bitswap;
+    int dataRev;
     v3_common_rect capt;
     v3_vi_rephase hsyncBayerReph;
     v3_vi_rephase vsyncBayerReph;

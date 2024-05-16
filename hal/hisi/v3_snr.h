@@ -76,30 +76,26 @@ typedef struct
     v3_common_dim capt;
     v3_common_prec prec;
     v3_snr_lwdr wdr;
-
     int syncSavOn;
     v3_snr_lvsynct vsync;
     v3_snr_lfid fid;
-
     int dataBeOn;
     int syncBeOn;
     // Value -1 signifies a lane is disabled
-    short laneId[V3_SNR_LVDS_LANE_NUM];
-
+    int laneId[8];
+    int laneNum;
+    int wdrVcNum;
+    int syncCodeNum;
     /* Each virtual channel on each lane has four parameters
        If syncSavOn is true: valid SAV, EAV then invalid SAV, EAV
        If syncSavOn is false: SOL, EOL, SOF, EOF */
-    unsigned short sync_code
-        [V3_SNR_LVDS_LANE_NUM][V3_SNR_WDR_VC_NUM][4];
+    int syncCode[8][16];
 } v3_snr_lvds;
 
 typedef struct {
     v3_common_prec prec;
-    v3_snr_mwdr wdr;
     // Value -1 signifies a lane is disabled
-    short laneId[V3_SNR_MIPI_LANE_NUM];
-    // Serves when SNR_MWDR_DT is set
-    short type[V3_SNR_WDR_VC_NUM];
+    int laneId[8];
 } v3_snr_mipi;
 
 typedef struct {

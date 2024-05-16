@@ -1,4 +1,5 @@
 #include "v3_common.h"
+#include "v3_config.h"
 
 #include <fcntl.h>
 
@@ -8,6 +9,7 @@ typedef struct {
     int (*fnUnregister)(void);
 } v3_drv_impl;
 
+v3_config_impl v3_config;
 v3_drv_impl v3_drv;
 v3_isp_impl v3_isp;
 v3_sys_impl v3_sys;
@@ -551,7 +553,7 @@ void v3_system_deinit(void)
 }
 
 int v3_system_init(unsigned int alignWidth, unsigned int blockCnt, 
-    unsigned int poolCnt)
+    unsigned int poolCnt, char *snrConfig)
 {
     int ret;
 
@@ -561,6 +563,9 @@ int v3_system_init(unsigned int alignWidth, unsigned int blockCnt,
         printf("App built with headers v%s\n", V3_SYS_API);
         printf("MPP version: %s\n", version.version);
     }
+
+    if (parse_sensor_config(snrConfig, &v3_config) != CONFIG_OK)
+        V3_ERROR("Can't load sensor config\n");
 
     {
         v3_vb_pool pool = {

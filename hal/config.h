@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -172,12 +173,11 @@ enum ConfigError parse_bool(
         ini, section, param_name, (void *)&val, possible_values, count, 0);
     if (err != CONFIG_OK)
         return err;
-    if (val == 0 || val == 2 || val == 4 || val == 6) {
-        *bool_value = false;
-        return CONFIG_OK;
-    }
-    if (val == 1 || val == 3 || val == 5 || val == 7) {
+    if (val % 2) {
         *bool_value = true;
+        return CONFIG_OK;
+    } else {
+        *bool_value = false;
         return CONFIG_OK;
     }
     *bool_value = false;
@@ -307,5 +307,33 @@ enum ConfigError parse_uint32(
     if (err != CONFIG_OK)
         return err;
     *value = val;
+    return CONFIG_OK;
+}
+
+enum ConfigError read_sensor_from_proc_cmdline(char *sensor_type) {
+    FILE *file = fopen("/proc/cmdline", "r");
+    if (!file)
+        return CONFIG_CANT_OPEN_PROC_CMDLINE;
+    char cmdline[5 * 1024];
+    fread(cmdline, 1, 5 * 1024, file);
+    fclose(file);
+
+    regex_t regex;
+    if (compile_regex(
+            &regex, "[[:space:]]*sensor=([[:alnum:]_]+)[[:space:]]*") < 0) {
+        printf("compile_regex error\n");
+        return CONFIG_REGEX_ERROR;
+    };
+    size_t n_matches = 2; // We have 1 capturing group + the whole match group
+    regmatch_t m[n_matches];
+    int match = regexec(&regex, cmdline, n_matches, m, 0);
+    if (match != 0) {
+        regfree(&regex);
+        printf("Can't parse sensor=xxxx from cmdline: \n'%s'\n", cmdline);
+        return CONFIG_REGEX_ERROR;
+    }
+    sprintf(
+        sensor_type, "%.*s", (int)(m[1].rm_eo - m[1].rm_so),
+        cmdline + m[1].rm_so);
     return CONFIG_OK;
 }

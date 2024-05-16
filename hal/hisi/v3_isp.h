@@ -9,7 +9,7 @@ typedef struct {
 
 typedef struct {
     v3_common_rect capt;
-    float framerate;
+    int framerate;
     v3_common_bayer bayer;
 } v3_isp_dev;
 
