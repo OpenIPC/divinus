@@ -1,6 +1,6 @@
 #pragma once
 
-#include "config.h"
+#include "hal/config.h"
 
 struct AppConfig {
     // [system]
@@ -43,7 +43,7 @@ struct AppConfig {
     bool osd_enable;
     bool motion_detect_enable;
 
-    unsigned int web_port;
+    unsigned short web_port;
     bool web_enable_static;
 
     unsigned int isp_thread_stack_size;

@@ -21,6 +21,8 @@ struct Mp4State {
     uint32_t nals_count;
 };
 
+void set_mp4_config(short width, short height, char framerate);
+
 enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
     const enum NalUnitType unit_type);
 void set_sps(const char *nal_data, const uint32_t nal_len);

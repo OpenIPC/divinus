@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "config/app_config.h"
-#include "config/sensor_config.h"
 #include "mp4.h"
 
 uint32_t default_sample_size = 40000;
 
 enum BufError create_header();
+
+short vid_width = 1920, vid_height = 1080;
+char vid_framerate = 30;
 
 char buf_pps[128];
 uint16_t buf_pps_len = 0;
@@ -17,6 +18,13 @@ uint16_t buf_sps_len = 0;
 struct BitBuf buf_header;
 struct BitBuf buf_mdat;
 struct BitBuf buf_moof;
+
+void set_mp4_config(short width, short height, char framerate)
+{
+    vid_width = width;
+    vid_height = height;
+    vid_framerate = framerate;
+}
 
 enum BufError create_header() {
     if (buf_header.offset > 0)
@@ -30,13 +38,13 @@ enum BufError create_header() {
     memset(&moov_info, 0, sizeof(struct MoovInfo));
     moov_info.profile_idc = 100;
     moov_info.level_idc = 41;
-    moov_info.width = sensor_config.isp.isp_w;
-    moov_info.height = sensor_config.isp.isp_h;
+    moov_info.width = vid_width;
+    moov_info.height = vid_height;
     moov_info.horizontal_resolution = 0x00480000; // 72 dpi
     moov_info.vertical_resolution = 0x00480000;   // 72 dpi
     moov_info.creation_time = 0;
     moov_info.timescale =
-        default_sample_size * app_config.mp4_fps;
+        default_sample_size * vid_framerate;
     moov_info.sps = buf_sps;
     moov_info.sps_length = buf_sps_len;
     moov_info.pps = buf_pps;

@@ -8,7 +8,6 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include "config/app_config.h"
 #include "error.h"
 #include "http_post.h"
 #include "jpeg.h"
@@ -187,7 +186,8 @@ int start_sdk() {
         case HAL_PLATFORM_I6: ret = i6_system_init(); break;
         case HAL_PLATFORM_I6C: ret = i6c_system_init(); break;
         case HAL_PLATFORM_I6F: ret = i6f_system_init(); break;
-        case HAL_PLATFORM_V3: ret = v3_system_init(); break;
+        case HAL_PLATFORM_V3: ret = v3_system_init(app_config.align_width,
+            app_config.blk_cnt, app_config.max_pool_cnt); break;
         default: return EXIT_FAILURE;        
     }
     if (ret) {
@@ -203,7 +203,8 @@ int start_sdk() {
             app_config.mp4_height, app_config.mp4_fps, 0); break;
         case HAL_PLATFORM_I6F: ret = i6f_pipeline_create(0, app_config.mp4_width,
             app_config.mp4_height, app_config.mp4_fps, 0); break;
-        case HAL_PLATFORM_V3: ret = v3_pipeline_create(); break;
+        case HAL_PLATFORM_V3: ret = v3_pipeline_create(app_config.mirror,
+            app_config.flip); break;
         default: return EXIT_FAILURE;        
     }
     if (ret) {

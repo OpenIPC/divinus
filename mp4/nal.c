@@ -43,7 +43,7 @@ void nal_parse_header(struct NAL *nal, const char first_byte) {
     nal->unit_type = (first_byte & 0b00011111) >> 0;
 }
 
-bool nal_chk4(const char *buf, const uint32_t offset) {
+bool nal_chk4(const char *buf, const unsigned int offset) {
     if (buf[offset] == 0x00 && buf[offset + 1] == 0x00 &&
         buf[offset + 2] == 0x01) {
         return true;
@@ -55,7 +55,7 @@ bool nal_chk4(const char *buf, const uint32_t offset) {
     return false;
 }
 
-bool nal_chk3(const char *buf, const uint32_t offset) {
+bool nal_chk3(const char *buf, const unsigned int offset) {
     if (buf[offset] == 0x00 && buf[offset + 1] == 0x00 &&
         buf[offset + 2] == 0x01) {
         return true;

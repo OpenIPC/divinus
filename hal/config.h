@@ -1,12 +1,34 @@
-#include "config.h"
-
+#pragma once
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "../tools.h"
+#include "tools.h"
+
+#define MAX_SECTIONS 16
+struct IniConfig {
+    char path[256];
+    char *str;
+    struct Section {
+        char name[64];
+        int pos;
+    } sections[MAX_SECTIONS];
+};
+
+enum ConfigError {
+    CONFIG_OK = 0,
+    CONFIG_SECTION_NOT_FOUND,
+    CONFIG_PARAM_NOT_FOUND,
+    CONFIG_PARAM_ISNT_NUMBER,
+    CONFIG_PARAM_ISNT_IN_RANGE,
+    CONFIG_ENUM_INCORRECT_STRING,
+    CONFIG_REGEX_ERROR,
+    CONFIG_CANT_OPEN_PROC_CMDLINE,
+    CONFIG_SENSOR_ISNOT_SUPPORT,
+    CONFIG_SENSOR_NOT_FOUND,
+};
 
 enum ConfigError find_sections(struct IniConfig *ini) {
     for (unsigned int i = 0; i < MAX_SECTIONS; ++i)
@@ -46,7 +68,7 @@ enum ConfigError section_pos(
     struct IniConfig *ini, const char *section, int *start_pos, int *end_pos) {
     for (unsigned int i = 0; i < MAX_SECTIONS; ++i) {
         if (ini->sections[i].pos > 0 &&
-            strcmp(ini->sections[i].name, section) == 0) {
+            strcasecmp(ini->sections[i].name, section) == 0) {
             *start_pos = ini->sections[i].pos;
             if (i + 1 < MAX_SECTIONS && ini->sections[i + i].pos > 0)
                 *end_pos = ini->sections[i + 1].pos;
@@ -124,7 +146,7 @@ enum ConfigError parse_enum(
 
     // try to find value in possible values
     for (unsigned int i = 0; i < possible_values_count; ++i)
-        if (strcmp(param_value, possible_values[i]) == 0) {
+        if (strcasecmp(param_value, possible_values[i]) == 0) {
             *(int *)enum_value = possible_values_offset + i;
             return CONFIG_OK;
         }
@@ -188,19 +210,11 @@ enum ConfigError parse_int(
         *int_value = (int)res;
         return CONFIG_OK;
     }
-    if (strcmp(param_value, "true") == 0) {
+    if (strcasecmp(param_value, "true") == 0) {
         *int_value = 1;
         return CONFIG_OK;
     }
-    if (strcmp(param_value, "TRUE") == 0) {
-        *int_value = 1;
-        return CONFIG_OK;
-    }
-    if (strcmp(param_value, "false") == 0) {
-        *int_value = 0;
-        return CONFIG_OK;
-    }
-    if (strcmp(param_value, "FALSE") == 0) {
+    if (strcasecmp(param_value, "false") == 0) {
         *int_value = 0;
         return CONFIG_OK;
     }
@@ -267,19 +281,11 @@ enum ConfigError parse_uint64(
         *int_value = (uint64_t)res;
         return CONFIG_OK;
     }
-    if (strcmp(param_value, "true") == 0) {
+    if (strcasecmp(param_value, "true") == 0) {
         *int_value = 1;
         return CONFIG_OK;
     }
-    if (strcmp(param_value, "TRUE") == 0) {
-        *int_value = 1;
-        return CONFIG_OK;
-    }
-    if (strcmp(param_value, "false") == 0) {
-        *int_value = 0;
-        return CONFIG_OK;
-    }
-    if (strcmp(param_value, "FALSE") == 0) {
+    if (strcasecmp(param_value, "false") == 0) {
         *int_value = 0;
         return CONFIG_OK;
     }

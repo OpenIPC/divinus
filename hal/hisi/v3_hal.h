@@ -1,5 +1,4 @@
 #include "v3_common.h"
-#include "../config/app_config.h"
 
 #include <fcntl.h>
 
@@ -416,7 +415,7 @@ void v3_pipeline_destroy(void)
     v3_isp.fnExit(isp_dev);
 }
 
-int v3_pipeline_create(void)
+int v3_pipeline_create(char mirror, char flip)
 {
     int ret;
 
@@ -433,8 +432,8 @@ int v3_pipeline_create(void)
     if (ret = v3_vi.fnEnableDevice(isp_dev))
         return ret;
     {
-        v3_vi_chn channel = { .mirror = app_config.mirror, 
-            .flip = app_config.flip, .srcFps = -1, .dstFps = -1 };
+        v3_vi_chn channel = { .mirror = mirror,  .flip = flip,
+            .srcFps = -1, .dstFps = -1 };
         if (ret = v3_vi.fnSetChannelConfig(isp_chn, &channel))
             return ret;
     }
@@ -457,8 +456,10 @@ int v3_pipeline_create(void)
     {
         v3_sys_bind source = { .module = V3_SYS_MOD_VIU, 
             .device = vi_dev, .channel = vi_chn };
-        v3_sys_bind source = { .module = V3_SYS_MOD_VPSS, 
+        v3_sys_bind dest = { .module = V3_SYS_MOD_VPSS, 
             .device = vpss_grp, .channel = 0 };
+        if (ret = v3_sys.fnBind(&source, &dest))
+            return ret;
     }
 
 
@@ -516,16 +517,17 @@ int v3_sensor_init(char *name)
     return EXIT_SUCCESS;
 }
 
-int v3_system_calculate_block(short width, short height, v3_common_pixfmt pixFmt)
+int v3_system_calculate_block(short width, short height, v3_common_pixfmt pixFmt,
+    unsigned int alignWidth)
 {
-    if (app_config.align_width & 0b1110000) {
+    if (alignWidth & 0b1110000) {
         fprintf(stderr, "[v3_sys] Alignment width (%d) "
-            "is invalid!\n", app_config.align_width);
+            "is invalid!\n", alignWidth);
         return -1;
     }
 
-    unsigned int bufSize = CEILING_2_POWER(width, app_config.align_width) *
-        CEILING_2_POWER(height, app_config.align_width) *
+    unsigned int bufSize = CEILING_2_POWER(width, alignWidth) *
+        CEILING_2_POWER(height, alignWidth) *
         (pixFmt == V3_PIXFMT_YUV422SP ? 2 : 1.5);
     unsigned int headSize;
     if (pixFmt == V3_PIXFMT_YUV422SP || pixFmt >= V3_PIXFMT_RGB_BAYER_8BPP)
@@ -548,7 +550,8 @@ void v3_system_deinit(void)
     v3_drv.fnUnregister();
 }
 
-int v3_system_init(void)
+int v3_system_init(unsigned int alignWidth, unsigned int blockCnt, 
+    unsigned int poolCnt)
 {
     int ret;
 
@@ -561,12 +564,12 @@ int v3_system_init(void)
 
     {
         v3_vb_pool pool = {
-            .count = app_config.max_pool_cnt,
+            .count = poolCnt,
             .comm =
             {
                 {
-                    .blockSize = v3_system_calculate_block(0, 0, 0),
-                    .blockCnt = app_config.blk_cnt
+                    .blockSize = v3_system_calculate_block(0, 0, 0, alignWidth),
+                    .blockCnt = blockCnt
                 }
             }
         };
@@ -582,7 +585,7 @@ int v3_system_init(void)
         return ret;
 
     {
-        if (ret = v3_sys.fnSetAlignment(&app_config.align_width))
+        if (ret = v3_sys.fnSetAlignment(&alignWidth))
             return ret;
     }
     if (ret = v3_sys.fnInit())
