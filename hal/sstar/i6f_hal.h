@@ -120,7 +120,7 @@ int i6f_config_load(int index, char *path)
     return i6f_isp.fnLoadChannelConfig(isp_dev, index, path, 1234);
 }
 
-int i6c_encoder_create(char index, hal_vidconfig config)
+int i6f_encoder_create(char index, hal_vidconfig config)
 {
     int ret;
     char device = I6F_VENC_DEV_H26X_0;
@@ -271,6 +271,107 @@ int i6f_encoder_destroy(char index, char jpeg)
         return ret;
     
     return EXIT_SUCCESS;
+}
+
+void *i6f_encoder_thread(void)
+{
+    int ret;
+    int maxFd = 0;
+
+    for (int i = 0; i < I6F_VENC_CHN_NUM; i++) {
+        if (!i6f_state[i].enable) continue;
+        if (!i6f_state[i].mainLoop) continue;
+        char device = 
+            (i6f_state[i].payload == HAL_VIDCODEC_JPG ||
+             i6f_state[i].payload == HAL_VIDCODEC_MJPG) ? 
+             I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0;
+
+        ret = i6f_venc.fnGetDescriptor(device, i);
+        if (ret < 0) return ret;
+        i6f_state[i].fileDesc = ret;
+
+        if (maxFd <= i6f_state[i].fileDesc)
+            maxFd = i6f_state[i].fileDesc;
+    }
+
+    i6f_venc_stat stat;
+    i6f_venc_strm stream;
+    struct timeval timeout;
+    fd_set readFds;
+
+    while (keepRunning) {
+        FD_ZERO(&readFds);
+        for(int i = 0; i < I6F_VENC_CHN_NUM; i++) {
+            if (!i6f_state[i].enable) continue;
+            if (!i6f_state[i].mainLoop) continue;
+            FD_SET(i6f_state[i].fileDesc, &readFds);
+        }
+
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 0;
+        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
+        if (ret < 0) {
+            fprintf(stderr, "[i6f_venc] Select operation failed!\n");
+            break;
+        } else if (ret == 0) {
+            fprintf(stderr, "[i6f_venc] Main stream loop timed out!\n");
+            continue;
+        } else {
+            for (int i = 0; i < I6F_VENC_CHN_NUM; i++) {
+                if (!i6f_state[i].enable) continue;
+                if (!i6f_state[i].mainLoop) continue;
+                if (FD_ISSET(i6f_state[i].fileDesc, &readFds)) {
+                    char device = 
+                        (i6f_state[i].payload == HAL_VIDCODEC_JPG ||
+                         i6f_state[i].payload == HAL_VIDCODEC_MJPG) ? 
+                         I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0;
+
+                    memset(&stream, 0, sizeof(stream));
+                    
+                    if (ret = i6f_venc.fnQuery(device, i, &stat)) {
+                        fprintf(stderr, "[i6f_venc] Querying the encoder channel "
+                            "%d failed with %#x!\n", i, ret);
+                        break;
+                    }
+
+                    if (!stat.curPacks) {
+                        fprintf(stderr, "[i6f_venc] Current frame is empty, skipping it!\n");
+                        continue;
+                    }
+
+                    stream.packet = (i6f_venc_pack*)malloc(
+                        sizeof(i6f_venc_pack) * stat.curPacks);
+                    if (!stream.packet) {
+                        fprintf(stderr, "[i6f_venc] Memory allocation on channel %d failed!\n", i);
+                        break;
+                    }
+                    stream.count = stat.curPacks;
+
+                    if (ret = i6f_venc.fnGetStream(device, i, &stream, stat.curPacks)) {
+                        fprintf(stderr, "[i6f_venc] Getting the stream on "
+                            "channel %d failed with %#x!\n", i, ret);
+                        break;
+                    }
+
+                    if (venc_callback) {
+                        hal_vidstream out;
+                        out.count = stream.count;
+                        out.pack = stream.packet;
+                        out.seq = stream.sequence;
+                        (*venc_callback)(i, &out);
+                    }
+
+                    if (ret = i6f_venc.fnFreeStream(device, i, &stream)) {
+                        fprintf(stderr, "[i6f_venc] Releasing the stream on "
+                            "channel %d failed with %#x!\n", i, ret);
+                    }
+                    free(stream.packet);
+                    stream.packet = NULL;
+                }
+            }
+        }
+    }
+    fprintf(stderr, "[i6f_venc] Shutting down encoding thread...\n");
 }
 
 int i6f_pipeline_create(char sensor, short width, short height, char framerate, char hdr)

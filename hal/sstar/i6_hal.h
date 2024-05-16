@@ -273,6 +273,98 @@ int i6_encoder_destroy(char index)
     return EXIT_SUCCESS;
 }
 
+void *i6_encoder_thread(void)
+{
+    int ret;
+    int maxFd = 0;
+
+    for (int i = 0; i < I6_VENC_CHN_NUM; i++) {
+        if (!i6_state[i].enable) continue;
+        if (!i6_state[i].mainLoop) continue;
+
+        ret = i6_venc.fnGetDescriptor(i);
+        if (ret < 0) return ret;
+        i6_state[i].fileDesc = ret;
+
+        if (maxFd <= i6_state[i].fileDesc)
+            maxFd = i6_state[i].fileDesc;
+    }
+
+    i6_venc_stat stat;
+    i6_venc_strm stream;
+    struct timeval timeout;
+    fd_set readFds;
+
+    while (keepRunning) {
+        FD_ZERO(&readFds);
+        for(int i = 0; i < I6_VENC_CHN_NUM; i++) {
+            if (!i6_state[i].enable) continue;
+            if (!i6_state[i].mainLoop) continue;
+            FD_SET(i6_state[i].fileDesc, &readFds);
+        }
+
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 0;
+        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
+        if (ret < 0) {
+            fprintf(stderr, "[i6_venc] Select operation failed!\n");
+            break;
+        } else if (ret == 0) {
+            fprintf(stderr, "[i6_venc] Main stream loop timed out!\n");
+            continue;
+        } else {
+            for (int i = 0; i < I6_VENC_CHN_NUM; i++) {
+                if (!i6_state[i].enable) continue;
+                if (!i6_state[i].mainLoop) continue;
+                if (FD_ISSET(i6_state[i].fileDesc, &readFds)) {
+                    memset(&stream, 0, sizeof(stream));
+                    
+                    if (ret = i6_venc.fnQuery(i, &stat)) {
+                        fprintf(stderr, "[i6_venc] Querying the encoder channel "
+                            "%d failed with %#x!\n", i, ret);
+                        break;
+                    }
+
+                    if (!stat.curPacks) {
+                        fprintf(stderr, "[i6_venc] Current frame is empty, skipping it!\n");
+                        continue;
+                    }
+
+                    stream.packet = (i6_venc_pack*)malloc(
+                        sizeof(i6_venc_pack) * stat.curPacks);
+                    if (!stream.packet) {
+                        fprintf(stderr, "[i6_venc] Memory allocation on channel %d failed!\n", i);
+                        break;
+                    }
+                    stream.count = stat.curPacks;
+
+                    if (ret = i6_venc.fnGetStream(i, &stream, stat.curPacks)) {
+                        fprintf(stderr, "[i6_venc] Getting the stream on "
+                            "channel %d failed with %#x!\n", i, ret);
+                        break;
+                    }
+
+                    if (venc_callback) {
+                        hal_vidstream out;
+                        out.count = stream.count;
+                        out.pack = stream.packet;
+                        out.seq = stream.sequence;
+                        (*venc_callback)(i, &out);
+                    }
+
+                    if (ret = i6_venc.fnFreeStream(i, &stream)) {
+                        fprintf(stderr, "[i6_venc] Releasing the stream on "
+                            "channel %d failed with %#x!\n", i, ret);
+                    }
+                    free(stream.packet);
+                    stream.packet = NULL;
+                }
+            }
+        }
+    }
+    fprintf(stderr, "[i6_venc] Shutting down encoding thread...\n");
+}
+
 int i6_pipeline_create(char sensor, short width, short height, char framerate, char hdr)
 {
     int ret;

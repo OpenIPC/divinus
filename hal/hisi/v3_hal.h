@@ -15,7 +15,9 @@ v3_vi_impl v3_vi;
 v3_vpss_impl v3_vpss;
 
 hal_chnstate v3_state[V3_VENC_CHN_NUM] = {0};
+extern bool keepRunning;
 
+int (*venc_callback)(char, hal_vidstream*);
 char isp_dev = 0;
 char venc_dev = 0;
 char vi_chn = 0;
@@ -277,10 +279,102 @@ int v3_encoder_destroy(char index)
     return EXIT_SUCCESS;
 }
 
+void *v3_encoder_thread(void)
+{
+    int ret;
+    int maxFd = 0;
+
+    for (int i = 0; i < V3_VENC_CHN_NUM; i++) {
+        if (!v3_state[i].enable) continue;
+        if (!v3_state[i].mainLoop) continue;
+
+        ret = v3_venc.fnGetDescriptor(i);
+        if (ret < 0) return ret;
+        v3_state[i].fileDesc = ret;
+
+        if (maxFd <= v3_state[i].fileDesc)
+            maxFd = v3_state[i].fileDesc;
+    }
+
+    v3_venc_stat stat;
+    v3_venc_strm stream;
+    struct timeval timeout;
+    fd_set readFds;
+
+    while (keepRunning) {
+        FD_ZERO(&readFds);
+        for(int i = 0; i < V3_VENC_CHN_NUM; i++) {
+            if (!v3_state[i].enable) continue;
+            if (!v3_state[i].mainLoop) continue;
+            FD_SET(v3_state[i].fileDesc, &readFds);
+        }
+
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 0;
+        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
+        if (ret < 0) {
+            fprintf(stderr, "[v3_venc] Select operation failed!\n");
+            break;
+        } else if (ret == 0) {
+            fprintf(stderr, "[v3_venc] Main stream loop timed out!\n");
+            continue;
+        } else {
+            for (int i = 0; i < V3_VENC_CHN_NUM; i++) {
+                if (!v3_state[i].enable) continue;
+                if (!v3_state[i].mainLoop) continue;
+                if (FD_ISSET(v3_state[i].fileDesc, &readFds)) {
+                    memset(&stream, 0, sizeof(stream));
+                    
+                    if (ret = v3_venc.fnQuery(i, &stat)) {
+                        fprintf(stderr, "[v3_venc] Querying the encoder channel "
+                            "%d failed with %#x!\n", i, ret);
+                        break;
+                    }
+
+                    if (!stat.curPacks) {
+                        fprintf(stderr, "[v3_venc] Current frame is empty, skipping it!\n");
+                        continue;
+                    }
+
+                    stream.packet = (v3_venc_pack*)malloc(
+                        sizeof(v3_venc_pack) * stat.curPacks);
+                    if (!stream.packet) {
+                        fprintf(stderr, "[v3_venc] Memory allocation on channel %d failed!\n", i);
+                        break;
+                    }
+                    stream.count = stat.curPacks;
+
+                    if (ret = v3_venc.fnGetStream(i, &stream, stat.curPacks)) {
+                        fprintf(stderr, "[v3_venc] Getting the stream on "
+                            "channel %d failed with %#x!\n", i, ret);
+                        break;
+                    }
+
+                    if (venc_callback) {
+                        hal_vidstream out;
+                        out.count = stream.count;
+                        out.pack = stream.packet;
+                        out.seq = stream.sequence;
+                        (*venc_callback)(i, &out);
+                    }
+
+                    if (ret = v3_venc.fnFreeStream(i, &stream)) {
+                        fprintf(stderr, "[v3_venc] Releasing the stream on "
+                            "channel %d failed with %#x!\n", i, ret);
+                    }
+                    free(stream.packet);
+                    stream.packet = NULL;
+                }
+            }
+        }
+    }
+    fprintf(stderr, "[v3_venc] Shutting down encoding thread...\n");
+}
+
 void *v3_image_thread(void)
 {
     if (v3_isp.fnRun(isp_dev))
-        printf("[v3_isp] Shutting down ISP thread...\n");
+        fprintf(stderr, "[v3_isp] Shutting down ISP thread...\n");
 }
 
 void v3_pipeline_destroy(void)

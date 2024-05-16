@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
+void *encthread = NULL;
 hal_chnstate **chnstate = NULL;
 hal_platform plat = HAL_PLATFORM_UNK;
 
@@ -68,15 +69,18 @@ void hal_identify(void) {
             case 0xF1: // Pudding (6E)
             case 0xF2: // Ispahan (6B0)
                 plat = HAL_PLATFORM_I6;
-                chnstate = i6_state; 
+                chnstate = i6_state;
+                encthread = i6_encoder_thread;
                 return;
             case 0xF9:
                 plat = HAL_PLATFORM_I6C;
                 chnstate = i6c_state;
+                encthread = i6c_encoder_thread;
                 return;
             case 0xFB:
                 plat = HAL_PLATFORM_I6F;
                 chnstate = i6f_state;
+                encthread = i6f_encoder_thread;
                 return;
         }
 
