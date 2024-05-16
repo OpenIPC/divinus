@@ -544,15 +544,16 @@ int v3_system_calculate_block(short width, short height, v3_common_pixfmt pixFmt
 
 void v3_system_deinit(void)
 {
-
-    v3_sys.fnExit();
-    v3_vb.fnExit();
-
     v3_isp.fnUnregisterAF(isp_dev, &(v3_isp_alg){.libName = "hisi_af_lib"});
     v3_isp.fnUnregisterAWB(isp_dev, &(v3_isp_alg){.libName = "hisi_awb_lib"});
     v3_isp.fnUnregisterAE(isp_dev, &(v3_isp_alg){.libName = "hisi_ae_lib"});
 
     v3_drv.fnUnregister();
+
+    v3_sys.fnExit();
+    v3_vb.fnExit();
+
+    v3_sensor_deinit();
 }
 
 int v3_system_init(unsigned int alignWidth, unsigned int blockCnt, 
