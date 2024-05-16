@@ -114,131 +114,131 @@ int i6_channel_unbind(char index)
     return EXIT_SUCCESS; 
 }
 
-int i6_config_load(char index, char *path)
+int i6_config_load(char *path)
 {
-    return i6_isp.fnLoadChannelConfig(index, path, 1234);
+    return i6_isp.fnLoadChannelConfig(isp_chn, path, 1234);
 }
 
-int i6_encoder_create(char index, hal_vidconfig config)
+int i6_encoder_create(char index, hal_vidconfig *config)
 {
     int ret;
     i6_venc_chn channel;
     i6_venc_attr_h26x *attrib;
     
-    if (config.codec == HAL_VIDCODEC_JPG || config.codec == HAL_VIDCODEC_MJPG) {
+    if (config->codec == HAL_VIDCODEC_JPG || config->codec == HAL_VIDCODEC_MJPG) {
         channel.attrib.codec = I6_VENC_CODEC_MJPG;
-        switch (config.mode) {
+        switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = I6_VENC_RATEMODE_MJPGCBR;
-                channel.rate.mjpgCbr.bitrate = config.bitrate << 10;
+                channel.rate.mjpgCbr.bitrate = config->bitrate << 10;
                 channel.rate.mjpgCbr.fpsNum = 
-                    config.codec == HAL_VIDCODEC_JPG ? 1 : config.framerate;
+                    config->codec == HAL_VIDCODEC_JPG ? 1 : config->framerate;
                 channel.rate.mjpgCbr.fpsDen = 1;
                 break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = I6_VENC_RATEMODE_MJPGQP;
-                channel.rate.mjpgQp.fpsNum = config.framerate;
+                channel.rate.mjpgQp.fpsNum = config->framerate;
                 channel.rate.mjpgQp.fpsDen = 
-                    config.codec == HAL_VIDCODEC_JPG ? 1 : config.framerate;
-                channel.rate.mjpgQp.quality = MAX(config.minQual, config.maxQual);
+                    config->codec == HAL_VIDCODEC_JPG ? 1 : config->framerate;
+                channel.rate.mjpgQp.quality = MAX(config->minQual, config->maxQual);
                 break;
             default:
                 I6_ERROR("MJPEG encoder can only support CBR or fixed QP modes!");
         }
 
-        channel.attrib.mjpg.maxHeight = ALIGN_BACK(config.height, 16);
-        channel.attrib.mjpg.maxWidth = ALIGN_BACK(config.width, 16);
-        channel.attrib.mjpg.bufSize = config.width * config.height;
+        channel.attrib.mjpg.maxHeight = ALIGN_BACK(config->height, 16);
+        channel.attrib.mjpg.maxWidth = ALIGN_BACK(config->width, 16);
+        channel.attrib.mjpg.bufSize = config->width * config->height;
         channel.attrib.mjpg.byFrame = 1;
-        channel.attrib.mjpg.height = ALIGN_BACK(config.height, 16);
-        channel.attrib.mjpg.width = ALIGN_BACK(config.width, 16);
+        channel.attrib.mjpg.height = ALIGN_BACK(config->height, 16);
+        channel.attrib.mjpg.width = ALIGN_BACK(config->width, 16);
         channel.attrib.mjpg.dcfThumbs = 0;
         channel.attrib.mjpg.markPerRow = 0;
 
         goto attach;
-    } else if (config.codec == HAL_VIDCODEC_H265) {
+    } else if (config->codec == HAL_VIDCODEC_H265) {
         attrib = &channel.attrib.h265;
-        switch (config.mode) {
+        switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = I6_VENC_RATEMODE_H265CBR;
-                channel.rate.h265Cbr = (i6_venc_rate_h26xcbr){ .gop = config.gop,
-                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1, .bitrate = 
-                    (unsigned int)(config.bitrate << 10), .avgLvl = 0 }; break;
+                channel.rate.h265Cbr = (i6_venc_rate_h26xcbr){ .gop = config->gop,
+                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
+                    (unsigned int)(config->bitrate << 10), .avgLvl = 0 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = I6_VENC_RATEMODE_H265VBR;
-                channel.rate.h265Vbr = (i6_venc_rate_h26xvbr){ .gop = config.gop,
-                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
-                    (unsigned int)(MAX(config.bitrate, config.maxBitrate) << 10),
-                    .maxQual = config.maxQual, .minQual = config.minQual }; break;
+                channel.rate.h265Vbr = (i6_venc_rate_h26xvbr){ .gop = config->gop,
+                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    (unsigned int)(MAX(config->bitrate, config->maxBitrate) << 10),
+                    .maxQual = config->maxQual, .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = I6_VENC_RATEMODE_H265QP;
-                channel.rate.h265Qp = (i6_venc_rate_h26xqp){ .gop = config.gop,
-                    .fpsNum = config.framerate, .fpsDen = 1, .interQual = config.maxQual,
-                    .predQual = config.minQual }; break;
+                channel.rate.h265Qp = (i6_venc_rate_h26xqp){ .gop = config->gop,
+                    .fpsNum = config->framerate, .fpsDen = 1, .interQual = config->maxQual,
+                    .predQual = config->minQual }; break;
             case HAL_VIDMODE_ABR:
                 I6_ERROR("H.265 encoder does not support ABR mode!");
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = I6_VENC_RATEMODE_H265AVBR;
-                channel.rate.h265Avbr = (i6_venc_rate_h26xvbr){ .gop = config.gop,
-                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
-                    (unsigned int)(MAX(config.bitrate, config.maxBitrate) << 10),
-                    .maxQual = config.maxQual, .minQual = config.minQual }; break;
+                channel.rate.h265Avbr = (i6_venc_rate_h26xvbr){ .gop = config->gop,
+                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    (unsigned int)(MAX(config->bitrate, config->maxBitrate) << 10),
+                    .maxQual = config->maxQual, .minQual = config->minQual }; break;
             default:
                 I6_ERROR("H.265 encoder does not support this mode!");
         }  
-    } else if (config.codec == HAL_VIDCODEC_H264) {
+    } else if (config->codec == HAL_VIDCODEC_H264) {
         attrib = &channel.attrib.h264;
-        switch (config.mode) {
+        switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = I6_VENC_RATEMODE_H264CBR;
-                channel.rate.h264Cbr = (i6_venc_rate_h26xcbr){ .gop = config.gop,
-                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1, .bitrate = 
-                    (unsigned int)(config.bitrate << 10), .avgLvl = 0 }; break;
+                channel.rate.h264Cbr = (i6_venc_rate_h26xcbr){ .gop = config->gop,
+                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
+                    (unsigned int)(config->bitrate << 10), .avgLvl = 0 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = I6_VENC_RATEMODE_H264VBR;
-                channel.rate.h264Vbr = (i6_venc_rate_h26xvbr){ .gop = config.gop,
-                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
-                    (unsigned int)(MAX(config.bitrate, config.maxBitrate) << 10),
-                    .maxQual = config.maxQual, .minQual = config.minQual }; break;
+                channel.rate.h264Vbr = (i6_venc_rate_h26xvbr){ .gop = config->gop,
+                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    (unsigned int)(MAX(config->bitrate, config->maxBitrate) << 10),
+                    .maxQual = config->maxQual, .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = I6_VENC_RATEMODE_H264QP;
-                channel.rate.h264Qp = (i6_venc_rate_h26xqp){ .gop = config.gop,
-                    .fpsNum = config.framerate, .fpsDen = 1, .interQual = config.maxQual,
-                    .predQual = config.minQual }; break;
+                channel.rate.h264Qp = (i6_venc_rate_h26xqp){ .gop = config->gop,
+                    .fpsNum = config->framerate, .fpsDen = 1, .interQual = config->maxQual,
+                    .predQual = config->minQual }; break;
             case HAL_VIDMODE_ABR:
                 channel.rate.mode = I6_VENC_RATEMODE_H264ABR;
-                channel.rate.h264Abr = (i6_venc_rate_h26xabr){ .gop = config.gop,
-                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1,
-                    .avgBitrate = (unsigned int)(config.bitrate << 10),
-                    .maxBitrate = (unsigned int)(config.maxBitrate << 10) }; break;
+                channel.rate.h264Abr = (i6_venc_rate_h26xabr){ .gop = config->gop,
+                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1,
+                    .avgBitrate = (unsigned int)(config->bitrate << 10),
+                    .maxBitrate = (unsigned int)(config->maxBitrate << 10) }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = I6_VENC_RATEMODE_H264AVBR;
-                channel.rate.h264Avbr = (i6_venc_rate_h26xvbr){ .gop = config.gop, .statTime = 0,
-                    .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
-                    (unsigned int)(MAX(config.bitrate, config.maxBitrate) << 10),
-                    .maxQual = config.maxQual, .minQual = config.minQual }; break;
+                channel.rate.h264Avbr = (i6_venc_rate_h26xvbr){ .gop = config->gop, .statTime = 0,
+                    .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    (unsigned int)(MAX(config->bitrate, config->maxBitrate) << 10),
+                    .maxQual = config->maxQual, .minQual = config->minQual }; break;
             default:
                 I6_ERROR("H.264 encoder does not support this mode!");
         }
     } else I6_ERROR("This codec is not supported by the hardware!");
-    attrib->maxHeight = ALIGN_BACK(config.height, 16);
-    attrib->maxWidth = ALIGN_BACK(config.width, 16);
-    attrib->bufSize = config.height * config.width;
-    attrib->profile = config.profile;
+    attrib->maxHeight = ALIGN_BACK(config->height, 16);
+    attrib->maxWidth = ALIGN_BACK(config->width, 16);
+    attrib->bufSize = config->height * config->width;
+    attrib->profile = config->profile;
     attrib->byFrame = 1;
-    attrib->height = ALIGN_BACK(config.height, 16);
-    attrib->width = ALIGN_BACK(config.width, 16);
+    attrib->height = ALIGN_BACK(config->height, 16);
+    attrib->width = ALIGN_BACK(config->width, 16);
     attrib->bFrameNum = 0;
     attrib->refNum = 1;
 attach:
     if (ret = i6_venc.fnCreateChannel(index, &channel))
         return ret;
 
-    if (config.codec != HAL_VIDCODEC_JPG && 
+    if (config->codec != HAL_VIDCODEC_JPG && 
         (ret = i6_venc.fnStartReceiving(index)))
         return ret;
 
-    i6_state[index].payload = config.codec;
+    i6_state[index].payload = config->codec;
 
     return EXIT_SUCCESS;
 }

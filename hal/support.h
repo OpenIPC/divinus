@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 
 void *encthread = NULL;
+void *ispthread = NULL;
 hal_chnstate **chnstate = NULL;
 hal_platform plat = HAL_PLATFORM_UNK;
 

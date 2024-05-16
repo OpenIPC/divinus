@@ -4,6 +4,9 @@
 #ifndef ALIGN_UP
 #define ALIGN_UP(x, a) ((((x) + ((a)-1)) / a) * a)
 #endif
+#ifndef CEILING_2_POWER
+#define CEILING_2_POWER(x, a) (((x) + ((a)-1)) & (~((a) - 1)))
+#endif
 #ifndef MIN
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif
