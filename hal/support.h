@@ -1,20 +1,15 @@
 #include "types.h"
-#include "hisi/v3_common.h"
-#include "sstar/i6_common.h"
-#include "sstar/i6c_common.h"
-#include "sstar/i6f_common.h"
+#include "hisi/v3_hal.h"
+#include "sstar/i6_hal.h"
+#include "sstar/i6c_hal.h"
+#include "sstar/i6f_hal.h"
 
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 
-hal_platform plat;
-
-typedef enum {
-    OP_READ = 0b1,
-    OP_WRITE = 0b10,
-    OP_MODIFY = 0b11
-} hal_register_op;
+hal_chnstate **chnstate = NULL;
+hal_platform plat = HAL_PLATFORM_UNK;
 
 bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
     static int mem_fd;
@@ -72,9 +67,17 @@ void hal_identify(void) {
             case 0xEF: // Macaron (6)
             case 0xF1: // Pudding (6E)
             case 0xF2: // Ispahan (6B0)
-                plat = HAL_PLATFORM_I6; return;
-            case 0xF9: plat = HAL_PLATFORM_I6C; return;
-            case 0xFB: plat = HAL_PLATFORM_I6F; return;
+                plat = HAL_PLATFORM_I6;
+                chnstate = i6_state; 
+                return;
+            case 0xF9:
+                plat = HAL_PLATFORM_I6C;
+                chnstate = i6c_state;
+                return;
+            case 0xFB:
+                plat = HAL_PLATFORM_I6F;
+                chnstate = i6f_state;
+                return;
         }
 
     if (file = fopen("/proc/iomem", "r"))
@@ -83,7 +86,4 @@ void hal_identify(void) {
                 strtol(line, line + 8, 16);
                 break;
             }
-    
-    plat = HAL_PLATFORM_UNK;
-    return;
 }

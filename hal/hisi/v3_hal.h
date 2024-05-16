@@ -156,17 +156,17 @@ int v3_encoder_create(char index, hal_vidconfig config)
         switch (config.mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = V3_VENC_RATEMODE_MJPGCBR;
-                channel.rate.mjpgCbr = { .statTime = 1, .srcFps = config.framerate,
+                channel.rate.mjpgCbr = (v3_venc_rate_mjpgcbr){ .statTime = 1, .srcFps = config.framerate,
                     .dstFps = config.framerate, .bitrate = config.bitrate, .avgLvl = 0 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V3_VENC_RATEMODE_MJPGVBR;
-                channel.rate.mjpgVbr = { .statTime = 1, .srcFps = config.framerate,
+                channel.rate.mjpgVbr = (v3_venc_rate_mjpgvbr){ .statTime = 1, .srcFps = config.framerate,
                     .dstFps = config.framerate , .maxBitrate = MAX(config.bitrate, config.maxBitrate), 
                     .maxQual = config.maxQual, .minQual = config.maxQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V3_VENC_RATEMODE_MJPGQP;
-                channel.rate.mjpgQp = { .srcFps = config.framerate, .dstFps = config.framerate,
-                    .quality = config.maxQual }; break;
+                channel.rate.mjpgQp = (v3_venc_rate_mjpgqp){ .srcFps = config.framerate,
+                    .dstFps = config.framerate, .quality = config.maxQual }; break;
             default:
                 V3_ERROR("MJPEG encoder can only support CBR, VBR or fixed QP modes!");
         }
@@ -177,24 +177,24 @@ int v3_encoder_create(char index, hal_vidconfig config)
         switch (config.mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = V3_VENC_RATEMODE_H265CBR;
-                channel.rate.h265Cbr = { .gop = config.gop, .statTime = 1, 
-                    .srcFps = config.framerate, .dstFps = config.framerate,
+                channel.rate.h265Cbr = (v3_venc_rate_h26xcbr){ .gop = config.gop,
+                    .statTime = 1, .srcFps = config.framerate, .dstFps = config.framerate,
                     .bitrate = config.bitrate, .avgLvl = 1 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V3_VENC_RATEMODE_H265VBR;
-                channel.rate.h265Vbr = { .gop = config.gop, .statTime = 1,
-                    .srcFps = config.framerate, .dstFps = config.framerate, 
+                channel.rate.h265Vbr = (v3_venc_rate_h26xvbr){ .gop = config.gop,
+                    .statTime = 1, .srcFps = config.framerate, .dstFps = config.framerate, 
                     .maxBitrate = MAX(config.bitrate, config.maxBitrate), .maxQual = config.maxQual,
                     .minQual = config.minQual, .minIQual = config.minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V3_VENC_RATEMODE_H265QP;
-                channel.rate.h265Qp = { .gop = config.gop, .srcFps = config.framerate,
-                    .dstFps = config.framerate, .interQual = config.maxQual, 
+                channel.rate.h265Qp = (v3_venc_rate_h26xqp){ .gop = config.gop,
+                    .srcFps = config.framerate, .dstFps = config.framerate, .interQual = config.maxQual, 
                     .predQual = config.minQual, .bipredQual = config.minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V3_VENC_RATEMODE_H265AVBR;
-                channel.rate.h265Avbr = { .gop = config.gop, .statTime = 1,
-                    .srcFps = config.framerate, .dstFps = config.framerate,
+                channel.rate.h265Avbr = (v3_venc_rate_h26xxvbr){ .gop = config.gop,
+                    .statTime = 1, .srcFps = config.framerate, .dstFps = config.framerate,
                     .bitrate = config.bitrate }; break;
             default:
                 V3_ERROR("H.265 encoder does not support this mode!");
@@ -205,24 +205,24 @@ int v3_encoder_create(char index, hal_vidconfig config)
         switch (config.mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = V3_VENC_RATEMODE_H264CBR;
-                channel.rate.h264Cbr = { .gop = config.gop, .statTime = 1, 
-                    .srcFps = config.framerate, .dstFps = config.framerate,
+                channel.rate.h264Cbr = (v3_venc_rate_h26xcbr){ .gop = config.gop,
+                    .statTime = 1, .srcFps = config.framerate, .dstFps = config.framerate,
                     .bitrate = config.bitrate, .avgLvl = 1 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V3_VENC_RATEMODE_H264VBR;
-                channel.rate.h264Vbr = { .gop = config.gop, .statTime = 1,
-                    .srcFps = config.framerate, .dstFps = config.framerate, 
+                channel.rate.h264Vbr = (v3_venc_rate_h26xvbr){ .gop = config.gop,
+                    .statTime = 1, .srcFps = config.framerate, .dstFps = config.framerate, 
                     .maxBitrate = MAX(config.bitrate, config.maxBitrate), .maxQual = config.maxQual,
                     .minQual = config.minQual, .minIQual = config.minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V3_VENC_RATEMODE_H264QP;
-                channel.rate.h264Qp = { .gop = config.gop, .srcFps = config.framerate,
-                    .dstFps = config.framerate, .interQual = config.maxQual, 
+                channel.rate.h264Qp = (v3_venc_rate_h26xqp){ .gop = config.gop,
+                    .srcFps = config.framerate, .dstFps = config.framerate, .interQual = config.maxQual, 
                     .predQual = config.minQual, .bipredQual = config.minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V3_VENC_RATEMODE_H264AVBR;
-                channel.rate.h264Avbr = { .gop = config.gop, .statTime = 1,
-                    .srcFps = config.framerate, .dstFps = config.framerate,
+                channel.rate.h264Avbr = (v3_venc_rate_h26xxvbr){ .gop = config.gop,
+                    .statTime = 1, .srcFps = config.framerate, .dstFps = config.framerate,
                     .bitrate = config.bitrate }; break;
             default:
                 V3_ERROR("H.264 encoder does not support this mode!");
@@ -242,6 +242,8 @@ attach:
     if (config.codec != HAL_VIDCODEC_JPG && 
         (ret = v3_venc.fnStartReceiving(index)))
         return ret;
+    
+    v3_state[index].payload = config.codec;
 
     return EXIT_SUCCESS;
 }
@@ -251,6 +253,8 @@ int v3_encoder_destroy(char index)
     int ret;
     int vpss_grp = index / V3_VPSS_CHN_NUM;
     int vpss_chn = index - vpss_grp * V3_VPSS_CHN_NUM;
+
+    v3_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
     if (ret = v3_venc.fnStopReceiving(index))
         return ret;

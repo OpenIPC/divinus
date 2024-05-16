@@ -163,26 +163,26 @@ int i6c_encoder_create(char index, hal_vidconfig config)
         switch (config.mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H265CBR;
-                channel.rate.h265Cbr = { .gop = config.gop, .statTime = 0,
-                    .fpsNum = config.framerate, .fpsDen = 1, .bitrate = 
+                channel.rate.h265Cbr = (i6f_venc_rate_h26xcbr){ .gop = config.gop,
+                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1, .bitrate = 
                     (unsigned int)(config.bitrate << 10), .avgLvl = 0 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H265VBR;
-                channel.rate.h265Vbr = { .gop = config.gop, .statTime = 0,
-                    .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
+                channel.rate.h265Vbr = (i6f_venc_rate_h26xvbr){ .gop = config.gop,
+                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
                     (unsigned int)(MAX(config.bitrate, config.maxBitrate) << 10),
                     .maxQual = config.maxQual, .minQual = config.minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = I6F_VENC_RATEMODE_H265QP;
-                channel.rate.h265Qp = { .gop = config.gop, .fpsNum = 
-                    config.framerate, .fpsDen = 1, .interQual = config.maxQual,
+                channel.rate.h265Qp = (i6f_venc_rate_h26xqp){ .gop = config.gop,
+                    .fpsNum =  config.framerate, .fpsDen = 1, .interQual = config.maxQual,
                     .predQual = config.minQual }; break;
             case HAL_VIDMODE_ABR:
                 I6F_ERROR("H.265 encoder does not support ABR mode!");
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H265AVBR;
-                channel.rate.h265Avbr = { .gop = config.gop, .statTime = 0,
-                    .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
+                channel.rate.h265Avbr = (i6f_venc_rate_h26xvbr){ .gop = config.gop,
+                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
                     (unsigned int)(MAX(config.bitrate, config.maxBitrate) << 10),
                     .maxQual = config.maxQual, .minQual = config.minQual }; break;
             default:
@@ -193,30 +193,30 @@ int i6c_encoder_create(char index, hal_vidconfig config)
         switch (config.mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H264CBR;
-                channel.rate.h264Cbr = { .gop = config.gop, .statTime = 0,
-                    .fpsNum = config.framerate, .fpsDen = 1, .bitrate = 
+                channel.rate.h264Cbr = (i6f_venc_rate_h26xcbr){ .gop = config.gop,
+                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1, .bitrate = 
                     (unsigned int)(config.bitrate << 10), .avgLvl = 0 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H264VBR;
-                channel.rate.h264Vbr = { .gop = config.gop, .statTime = 0,
-                    .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
+                channel.rate.h264Vbr = (i6f_venc_rate_h26xvbr){ .gop = config.gop,
+                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
                     (unsigned int)(MAX(config.bitrate, config.maxBitrate) << 10),
                     .maxQual = config.maxQual, .minQual = config.minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = I6F_VENC_RATEMODE_H264QP;
-                channel.rate.h264Qp = { .gop = config.gop, .fpsNum = 
-                    config.framerate, .fpsDen = 1, .interQual = config.maxQual,
+                channel.rate.h264Qp = (i6f_venc_rate_h26xqp){ .gop = config.gop,
+                    .fpsNum = config.framerate, .fpsDen = 1, .interQual = config.maxQual,
                     .predQual = config.minQual }; break;
             case HAL_VIDMODE_ABR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H264ABR;
-                channel.rate.h264Abr = { .gop = config.gop, .statTime = 0,
-                    .fpsNum = config.framerate, .fpsDen = 1,
+                channel.rate.h264Abr = (i6f_venc_rate_h26xabr){ .gop = config.gop,
+                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1,
                     .avgBitrate = (unsigned int)(config.bitrate << 10),
                     .maxBitrate = (unsigned int)(config.maxBitrate << 10) }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H265AVBR;
-                channel.rate.h265Avbr = { .gop = config.gop, .statTime = 0,
-                    .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
+                channel.rate.h265Avbr = (i6f_venc_rate_h26xvbr){ .gop = config.gop,
+                    .statTime = 0, .fpsNum = config.framerate, .fpsDen = 1, .maxBitrate = 
                     (unsigned int)(MAX(config.bitrate, config.maxBitrate) << 10),
                     .maxQual = config.maxQual, .minQual = config.minQual }; break;
             default:
@@ -240,6 +240,8 @@ attach:
         (ret = i6f_venc.fnStartReceiving(device, index)))
         return ret;
 
+    i6f_state[index].payload = config.codec;
+
     return EXIT_SUCCESS;
 }
 
@@ -247,6 +249,8 @@ int i6f_encoder_destroy(char index, char jpeg)
 {
     int ret;
     char device = jpeg ? I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0;
+
+    i6f_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
     if (ret = i6f_venc.fnStopReceiving(device, index))
         return ret;

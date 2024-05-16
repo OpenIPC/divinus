@@ -20,6 +20,13 @@ typedef enum {
 } hal_platform;
 
 typedef enum {
+    OP_READ = 0b1,
+    OP_WRITE = 0b10,
+    OP_MODIFY = 0b11
+} hal_register_op;
+
+typedef enum {
+    HAL_VIDCODEC_UNSPEC,
     HAL_VIDCODEC_H264,
     HAL_VIDCODEC_H265,
     HAL_VIDCODEC_MJPG,
@@ -44,6 +51,7 @@ typedef struct {
     int fileDesc;
     char enable;
     char mainLoop;
+    hal_vidcodec payload;
 } hal_chnstate;
 
 typedef struct {
