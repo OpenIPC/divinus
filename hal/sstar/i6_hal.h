@@ -273,6 +273,16 @@ int i6_encoder_destroy(char index)
     return EXIT_SUCCESS;
 }
 
+int i6_encoder_destroy_all(void)
+{
+    int ret;
+
+    for (char i = 0; i < I6_VENC_CHN_NUM; i++)
+        if (i6_state[i].enable)
+            if (ret = i6_encoder_destroy(i))
+                return ret;
+}
+
 void *i6_encoder_thread(void)
 {
     int ret;
@@ -512,12 +522,20 @@ void i6_system_deinit(void)
     i6_sys.fnExit();
 }
 
-void i6_system_init(void)
+int i6_system_init(void)
 {
-    i6_sys.fnInit();
+    int ret;
 
-    i6_sys_ver version;
-    i6_sys.fnGetVersion(&version);
-    printf("App built with headers v%s\n", I6_SYS_API);
-    printf("mi_sys version: %s\n", version.version);
+    if (ret = i6_sys.fnInit())
+        return ret;
+
+    {
+        i6_sys_ver version;
+        if (ret = i6_sys.fnGetVersion(&version))
+            return ret;
+        printf("App built with headers v%s\n", I6_SYS_API);
+        printf("mi_sys version: %s\n", version.version);
+    }
+
+    return EXIT_SUCCESS;
 }

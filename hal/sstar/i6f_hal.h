@@ -273,6 +273,18 @@ int i6f_encoder_destroy(char index, char jpeg)
     return EXIT_SUCCESS;
 }
 
+int i6f_encoder_destroy_all(void)
+{
+    int ret;
+
+    for (char i = 0; i < I6F_VENC_CHN_NUM; i++)
+        if (i6f_state[i].enable)
+            if (ret = i6f_encoder_destroy(i, 
+                i6f_state[i].payload == HAL_VIDCODEC_JPG || 
+                i6f_state[i].payload == HAL_VIDCODEC_MJPG))
+                return ret;
+}
+
 void *i6f_encoder_thread(void)
 {
     int ret;
@@ -566,12 +578,20 @@ void i6f_system_deinit(void)
     i6f_sys.fnExit(0);
 }
 
-void i6f_system_init(void)
+int i6d_system_init(void)
 {
-    i6f_sys.fnInit(0);
+    int ret;
 
-    i6f_sys_ver version;
-    i6f_sys.fnGetVersion(&version);
-    printf("App built with headers v%s\n", I6F_SYS_API);
-    printf("mi_sys version: %s\n", version.version);
+    if (ret = i6f_sys.fnInit(0))
+        return ret;
+
+    {
+        i6f_sys_ver version;
+        if (ret = i6f_sys.fnGetVersion(&version))
+            return ret;
+        printf("App built with headers v%s\n", I6F_SYS_API);
+        printf("mi_sys version: %s\n", version.version);
+    }
+
+    return EXIT_SUCCESS;
 }

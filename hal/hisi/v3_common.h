@@ -8,15 +8,16 @@
 
 #include "../types.h"
 #include "v3_isp.h"
+#include "v3_snr.h"
 #include "v3_sys.h"
 #include "v3_vb.h"
 #include "v3_venc.h"
 #include "v3_vi.h"
 #include "v3_vpss.h"
 
-#define V3_ERROR(x) \
+#define V3_ERROR(x, ...) \
     do { \
-        fprintf(stderr, "%s \033[31m%s\033[0m\n", "[v3_hal] (x)"); \
+        fprintf(stderr, "%s \033[31m%s\033[0m\n", "[v3_hal] (x)", ##__VA_ARGS__); \
         return EXIT_FAILURE; \
     } while (0)
 

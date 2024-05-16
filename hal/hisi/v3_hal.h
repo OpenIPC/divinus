@@ -1,6 +1,8 @@
 #include "v3_common.h"
 #include "../config/app_config.h"
 
+#include <fcntl.h>
+
 typedef struct {
     void* handle;
     int (*fnRegister)(void);
@@ -23,6 +25,7 @@ char isp_dev = 0;
 char venc_dev = 0;
 char vi_chn = 0;
 char vi_dev = 0;
+char vpss_grp = 0;
 
 int v3_hal_init()
 {
@@ -279,6 +282,16 @@ int v3_encoder_destroy(char index)
 
     return EXIT_SUCCESS;
 }
+    
+int v3_encoder_destroy_all(void)
+{
+    int ret;
+
+    for (char i = 0; i < V3_VENC_CHN_NUM; i++)
+        if (v3_state[i].enable)
+            if (ret = v3_encoder_destroy(i))
+                return ret;
+}
 
 void *v3_encoder_thread(void)
 {
@@ -405,7 +418,74 @@ void v3_pipeline_destroy(void)
 
 int v3_pipeline_create(void)
 {
+    int ret;
 
+    {
+        v3_vi_dev device = { .adChn = {-1, -1, -1, -1} };
+        if (ret = v3_vi.fnSetDeviceConfig(isp_dev, &device))
+            return ret;
+    }
+    {
+        v3_vi_wdr wdr = { .mode = V3_WDR_NONE, .comprOn = 0 };
+        if (ret = v3_vi.fnSetWDRMode(isp_dev, &wdr))
+            return ret;
+    }
+    if (ret = v3_vi.fnEnableDevice(isp_dev))
+        return ret;
+    {
+        v3_vi_chn channel = { .mirror = app_config.mirror, 
+            .flip = app_config.flip, .srcFps = -1, .dstFps = -1 };
+        if (ret = v3_vi.fnSetChannelConfig(isp_chn, &channel))
+            return ret;
+    }
+    if (ret = v3_vi.fnEnableChannel(isp_chn))
+        return ret;
+
+    {
+        v3_vpss_grp group;
+        group.imgEnhOn = 0;
+        group.dciOn = 0;
+        group.noiseRedOn = 0;
+        group.histOn = 0;
+        group.deintMode = 1;
+        if (ret = v3_vpss.fnCreateGroup(vpss_grp, &group))
+            return ret;
+    }
+    if (ret = v3_vpss.fnStartGroup(vpss_grp))
+        return ret;
+
+    {
+        v3_sys_bind source = { .module = V3_SYS_MOD_VIU, 
+            .device = vi_dev, .channel = vi_chn };
+        v3_sys_bind source = { .module = V3_SYS_MOD_VPSS, 
+            .device = vpss_grp, .channel = 0 };
+    }
+
+
+    return EXIT_SUCCESS;
+}
+
+int v3_sensor_config(void) {
+    v3_snr_dev config;
+
+    int fd = open(V3_SNR_ENDPOINT, O_RDWR);
+    if (fd < 0)
+        V3_ERROR("Opening imaging device has failed!\n");
+
+    ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_RST_INTF, unsigned int), &config.device);
+    ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_RST_SENS, unsigned int), &config.device);
+
+    if (ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_CONF_DEV, v3_snr_dev), &config) && close(fd))
+        V3_ERROR("Configuring imaging device has failed!\n");
+
+    usleep(10000);
+
+    ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_UNRST_INTF, unsigned int), &config.device);
+    ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_UNRST_INTF, unsigned int), &config.device);
+
+    close(fd);
+
+    return EXIT_SUCCESS;
 }
 
 void v3_sensor_deinit(void)
@@ -457,6 +537,7 @@ int v3_system_calculate_block(short width, short height, v3_common_pixfmt pixFmt
 
 void v3_system_deinit(void)
 {
+
     v3_sys.fnExit();
     v3_vb.fnExit();
 
@@ -477,7 +558,21 @@ int v3_system_init(void)
         printf("App built with headers v%s\n", V3_SYS_API);
         printf("MPP version: %s\n", version.version);
     }
-    
+
+    {
+        v3_vb_pool pool = {
+            .count = app_config.max_pool_cnt,
+            .comm =
+            {
+                {
+                    .blockSize = v3_system_calculate_block(0, 0, 0),
+                    .blockCnt = app_config.blk_cnt
+                }
+            }
+        };
+        if (ret = v3_vb.fnConfigPool(&pool))
+            return ret;
+    }
     {
         v3_vb_supl supl = V3_VB_USERINFO_MASK;
         if (ret = v3_vb.fnConfigSupplement(&supl))
@@ -487,11 +582,13 @@ int v3_system_init(void)
         return ret;
 
     {
-        unsigned int width = 64;
-        if (ret = v3_sys.fnSetAlignment(&width))
+        if (ret = v3_sys.fnSetAlignment(&app_config.align_width))
             return ret;
     }
     if (ret = v3_sys.fnInit())
+        return ret;
+
+    if (ret = v3_sensor_config())
         return ret;
 
     if (ret = v3_drv.fnRegister())
@@ -504,5 +601,17 @@ int v3_system_init(void)
     if (ret = v3_isp.fnRegisterAF(isp_dev, &(v3_isp_alg){.libName = "hisi_af_lib"}))
         return ret;
     if (ret = v3_isp.fnMemInit(isp_dev))
+        return ret;
+    {
+        v3_common_wdr mode;
+        if (ret = v3_isp.fnSetWDRMode(isp_dev, &mode))
+            return ret;
+    }
+    {
+        v3_isp_dev device;
+        if (ret = v3_isp.fnSetDeviceConfig(isp_dev, &device))
+            return ret;
+    }
+    if (ret = v3_isp.fnInit(isp_dev))
         return ret;
 }

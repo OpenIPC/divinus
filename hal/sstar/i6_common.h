@@ -14,12 +14,11 @@
 #include "i6_vif.h"
 #include "i6_vpe.h"
 
-#define I6_ERROR(x) \
+#define I6_ERROR(x, ...) \
     do { \
-        fprintf(stderr, "%s \033[31m%s\033[0m\n", "[i6_hal] (x)"); \
+        fprintf(stderr, "%s \033[31m%s\033[0m\n", "[i6_hal] (x)", ##__VA_ARGS__); \
         return EXIT_FAILURE; \
     } while (0)
-
 
 typedef enum {
     I6_BAYER_RG,

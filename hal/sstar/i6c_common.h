@@ -14,9 +14,9 @@
 #include "i6c_venc.h"
 #include "i6c_vif.h"
 
-#define I6C_ERROR(x) \
+#define I6C_ERROR(x, ...) \
     do { \
-        fprintf(stderr, "%s \033[31m%s\033[0m\n", "[i6c_hal] (x)"); \
+        fprintf(stderr, "%s \033[31m%s\033[0m\n", "[i6c_hal] (x)", ##__VA_ARGS__); \
         return EXIT_FAILURE; \
     } while (0)
 
