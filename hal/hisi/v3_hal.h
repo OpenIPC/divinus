@@ -349,7 +349,7 @@ void v3_system_deinit(void)
     v3_drv.fnUnregister();
 }
 
-void v3_system_init(void)
+int v3_system_init(void)
 {
     int ret;
 
@@ -359,4 +359,30 @@ void v3_system_init(void)
         printf("App built with headers v%s\n", V3_SYS_API);
         printf("MPP version: %s\n", version.version);
     }
+
+    if (ret = v3_sys.fnInit())
+        return ret;
+
+    if (ret = v3_drv.fnRegister())
+        return ret;
+
+    v3_sys.fnExit();
+    v3_vb.fnExit();
+
+    {
+        v3_vb_supl supl = V3_VB_USERINFO_MASK;
+        if (ret = v3_vb.fnConfigSupplement(&supl))
+            return ret;
+    }
+    if (ret = v3_vb.fnInit())
+        return ret;
+
+    if (ret = v3_isp.fnRegisterAE(isp_dev, &(v3_isp_alg){.libName = "hisi_ae_lib"}))
+        return ret;
+    if (ret = v3_isp.fnRegisterAWB(isp_dev, &(v3_isp_alg){.libName = "hisi_awb_lib"}))
+        return ret;
+    if (ret = v3_isp.fnRegisterAF(isp_dev, &(v3_isp_alg){.libName = "hisi_af_lib"}))
+        return ret;
+    if (ret = v3_isp.fnMemInit(isp_dev))
+        return ret;
 }
