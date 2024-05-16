@@ -422,7 +422,7 @@ int v3_pipeline_create(char mirror, char flip)
     int ret;
 
     {
-        v3_vi_dev device = { .adChn = {-1, -1, -1, -1} };
+        v3_vi_dev device = v3_config.videv;
         if (ret = v3_vi.fnSetDeviceConfig(isp_dev, &device))
             return ret;
     }
@@ -434,8 +434,7 @@ int v3_pipeline_create(char mirror, char flip)
     if (ret = v3_vi.fnEnableDevice(isp_dev))
         return ret;
     {
-        v3_vi_chn channel = { .mirror = mirror,  .flip = flip,
-            .srcFps = -1, .dstFps = -1 };
+        v3_vi_chn channel = v3_config.vichn;
         if (ret = v3_vi.fnSetChannelConfig(isp_chn, &channel))
             return ret;
     }
@@ -470,6 +469,10 @@ int v3_pipeline_create(char mirror, char flip)
 
 int v3_sensor_config(void) {
     v3_snr_dev config;
+    config.device = 0;
+    config.input = v3_config.input_mode;
+    config.lvds = v3_config.lvds;
+    config.mipi = v3_config.mipi;
 
     int fd = open(V3_SNR_ENDPOINT, O_RDWR);
     if (fd < 0)
@@ -611,12 +614,12 @@ int v3_system_init(unsigned int alignWidth, unsigned int blockCnt,
     if (ret = v3_isp.fnMemInit(isp_dev))
         return ret;
     {
-        v3_common_wdr mode;
+        v3_common_wdr mode = v3_config.mode;
         if (ret = v3_isp.fnSetWDRMode(isp_dev, &mode))
             return ret;
     }
     {
-        v3_isp_dev device;
+        v3_isp_dev device = v3_config.isp;
         if (ret = v3_isp.fnSetDeviceConfig(isp_dev, &device))
             return ret;
     }
