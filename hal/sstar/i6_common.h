@@ -8,6 +8,7 @@
 
 #include "../types.h"
 #include "i6_isp.h"
+#include "i6_rgn.h"
 #include "i6_snr.h"
 #include "i6_sys.h"
 #include "i6_venc.h"

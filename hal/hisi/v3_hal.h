@@ -294,6 +294,106 @@ int v3_encoder_destroy_all(void)
                 return ret;
 }
 
+int v3_encoder_snapshot_grab(char index, short width, short height, char quality, char grayscale, hal_vidstream *stream)
+{
+    int ret;
+
+    if (ret = v3_channel_bind(index)) {
+        fprintf(stderr, "[v3_venc] Binding the encoder channel "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+    return ret;
+
+    v3_venc_jpg param;
+    memset(&param, 0, sizeof(param));
+    if (ret = v3_venc.fnGetJpegParam(index, &param)) {
+        fprintf(stderr, "[v3_venc] Reading the JPEG settings "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+    return ret;
+        return ret;
+    param.quality = quality;
+    if (ret = v3_venc.fnSetJpegParam(index, &param)) {
+        fprintf(stderr, "[v3_venc] Writing the JPEG settings "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+
+    v3_channel_grayscale(index, grayscale);
+
+    unsigned int count = 1;
+    if (v3_venc.fnStartReceivingEx(index, &count)) {
+        fprintf(stderr, "[v3_venc] Requesting one frame "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+
+    int fd = v3_venc.fnGetDescriptor(index);
+
+    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+    fd_set readFds;
+    FD_ZERO(&readFds);
+    FD_SET(fd, &readFds);
+    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
+    if (ret < 0) {
+        fprintf(stderr, "[v3_venc] Select operation failed!\n");
+        goto abort;
+    } else if (ret == 0) {
+        fprintf(stderr, "[v3_venc] Capture stream timed out!\n");
+        goto abort;
+    }
+
+    if (FD_ISSET(fd, &readFds)) {
+        v3_venc_stat stat;
+        if (v3_venc.fnQuery(index, &stat)) {
+            fprintf(stderr, "[v3_venc] Querying the encoder channel "
+                "%d failed with %#x!\n", index, ret);
+            goto abort;
+        }
+
+        if (!stat.curPacks) {
+            fprintf(stderr, "[v3_venc] Current frame is empty, skipping it!\n");
+            goto abort;
+        }
+
+        v3_venc_strm strm;
+        memset(&strm, 0, sizeof(strm));
+        strm.packet = (v3_venc_pack*)malloc(sizeof(v3_venc_pack) * stat.curPacks);
+        if (!strm.packet) {
+            fprintf(stderr, "[v3_venc] Memory allocation on channel %d failed!\n", index);
+            goto abort;
+        }
+        strm.count = stat.curPacks;
+
+        if (ret = v3_venc.fnGetStream(index, &stream, stat.curPacks)) {
+            fprintf(stderr, "[v3_venc] Getting the stream on "
+                "channel %d failed with %#x!\n", index, ret);
+            free(strm.packet);
+            strm.packet = NULL;
+            goto abort;
+        }
+
+        stream->count = stat.curPacks;
+        stream->pack = strm.packet;
+abort:
+        if (ret = v3_venc.fnFreeStream(index, &stream)) {
+            fprintf(stderr, "[v3_venc] Releasing the stream on "
+                "channel %d failed with %#x!\n", index, ret);
+        }
+    }
+
+    if (v3_venc.fnFreeDescriptor(index)) {
+        fprintf(stderr, "[v3_venc] Releasing the stream on "
+            "channel %d failed with %#x!\n", index, ret);
+    }
+
+    v3_venc.fnStopReceiving(index);
+
+    v3_channel_unbind(index);    
+}
+
 void *v3_encoder_thread(void)
 {
     int ret;

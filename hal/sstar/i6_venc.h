@@ -165,6 +165,13 @@ typedef struct {
     i6_venc_rate rate;
 } i6_venc_chn;
 
+typedef struct {
+    unsigned int quality;
+    unsigned char qtLuma[64];
+    unsigned char qtChroma[64];
+    unsigned int mcuPerEcs;
+} i6_venc_jpg;
+
 typedef union {
     i6_venc_nalu_h264 h264Nalu;
     i6_venc_nalu_mjpg mjpgNalu;
@@ -266,6 +273,9 @@ typedef struct {
     int (*fnFreeDescriptor)(int channel);
     int (*fnGetDescriptor)(int channel);
 
+    int (*fnGetJpegParam)(int channel, i6_venc_jpg *param);
+    int (*fnSetJpegParam)(int channel, i6_venc_jpg *param);
+
     int (*fnFreeStream)(int channel, i6_venc_strm *stream);
     int (*fnGetStream)(int channel, i6_venc_strm *stream, unsigned int timeout);
 
@@ -328,6 +338,18 @@ int i6_venc_load(i6_venc_impl *venc_lib) {
 
     if (!(venc_lib->fnGetDescriptor = (int(*)(int channel))
         dlsym(venc_lib->handle, "MI_VENC_GetFd"))) {
+        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_GetFd!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(venc_lib->fnGetJpegParam = (int(*)(int channel, i6_venc_jpg *param))
+        dlsym(venc_lib->handle, "MI_VENC_GetJpegParam"))) {
+        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_CloseFd!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(venc_lib->fnSetJpegParam = (int(*)(int channel, i6_venc_jpg *param))
+        dlsym(venc_lib->handle, "MI_VENC_SetJpegParam"))) {
         fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_GetFd!\n");
         return EXIT_FAILURE;
     }

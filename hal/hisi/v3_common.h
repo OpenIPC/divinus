@@ -8,6 +8,7 @@
 
 #include "../types.h"
 #include "v3_isp.h"
+#include "v3_rgn.h"
 #include "v3_snr.h"
 #include "v3_sys.h"
 #include "v3_vb.h"
@@ -154,6 +155,11 @@ typedef struct {
     unsigned int width;
     unsigned int height;
 } v3_common_dim;
+
+typedef struct {
+    int x;
+    int y;
+} v3_common_pnt;
 
 typedef struct {
     int x;

@@ -285,6 +285,110 @@ int i6f_encoder_destroy_all(void)
                 return ret;
 }
 
+int i6f_encoder_snapshot_grab(char index, short width, short height, char quality, char grayscale, hal_vidstream *stream)
+{
+    int ret;
+    char device = 
+        (i6f_state[index].payload == HAL_VIDCODEC_JPG ||
+         i6f_state[index].payload == HAL_VIDCODEC_MJPG) ? 
+         I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0;
+
+    if (ret = i6f_channel_bind(index, 1, 1)) {
+        fprintf(stderr, "[i6f_venc] Binding the encoder channel "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+    return ret;
+
+    i6f_venc_jpg param;
+    memset(&param, 0, sizeof(param));
+    if (ret = i6f_venc.fnGetJpegParam(device, index, &param)) {
+        fprintf(stderr, "[i6f_venc] Reading the JPEG settings "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+    return ret;
+        return ret;
+    param.quality = quality;
+    if (ret = i6f_venc.fnSetJpegParam(device, index, &param)) {
+        fprintf(stderr, "[i6f_venc] Writing the JPEG settings "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+
+    i6f_channel_grayscale(index, grayscale);
+
+    unsigned int count = 1;
+    if (i6f_venc.fnStartReceivingEx(device, index, &count)) {
+        fprintf(stderr, "[i6f_venc] Requesting one frame "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+
+    int fd = i6f_venc.fnGetDescriptor(device, index);
+
+    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+    fd_set readFds;
+    FD_ZERO(&readFds);
+    FD_SET(fd, &readFds);
+    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
+    if (ret < 0) {
+        fprintf(stderr, "[i6f_venc] Select operation failed!\n");
+        goto abort;
+    } else if (ret == 0) {
+        fprintf(stderr, "[i6f_venc] Capture stream timed out!\n");
+        goto abort;
+    }
+
+    if (FD_ISSET(fd, &readFds)) {
+        i6f_venc_stat stat;
+        if (i6f_venc.fnQuery(device, index, &stat)) {
+            fprintf(stderr, "[i6f_venc] Querying the encoder channel "
+                "%d failed with %#x!\n", index, ret);
+            goto abort;
+        }
+
+        if (!stat.curPacks) {
+            fprintf(stderr, "[i6f_venc] Current frame is empty, skipping it!\n");
+            goto abort;
+        }
+
+        i6f_venc_strm strm;
+        memset(&strm, 0, sizeof(strm));
+        strm.packet = (i6f_venc_pack*)malloc(sizeof(i6f_venc_pack) * stat.curPacks);
+        if (!strm.packet) {
+            fprintf(stderr, "[i6f_venc] Memory allocation on channel %d failed!\n", index);
+            goto abort;
+        }
+        strm.count = stat.curPacks;
+
+        if (ret = i6f_venc.fnGetStream(device, index, &stream, stat.curPacks)) {
+            fprintf(stderr, "[i6f_venc] Getting the stream on "
+                "channel %d failed with %#x!\n", index, ret);
+            free(strm.packet);
+            strm.packet = NULL;
+            goto abort;
+        }
+
+        stream->count = stat.curPacks;
+        stream->pack = strm.packet;
+abort:
+        if (ret = i6f_venc.fnFreeStream(device, index, &stream)) {
+            fprintf(stderr, "[i6f_venc] Releasing the stream on "
+                "channel %d failed with %#x!\n", index, ret);
+        }
+    }
+
+    if (i6f_venc.fnFreeDescriptor(device, index)) {
+        fprintf(stderr, "[i6f_venc] Releasing the stream on "
+            "channel %d failed with %#x!\n", index, ret);
+    }
+
+    i6f_venc.fnStopReceiving(device, index);
+
+    i6f_channel_unbind(device, index);    
+}
+
 void *i6f_encoder_thread(void)
 {
     int ret;

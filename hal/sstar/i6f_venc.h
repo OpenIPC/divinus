@@ -175,6 +175,13 @@ typedef struct {
     unsigned int maxHeight;
 } i6f_venc_init;
 
+typedef struct {
+    unsigned int quality;
+    unsigned char qtLuma[64];
+    unsigned char qtChroma[64];
+    unsigned int mcuPerEcs;
+} i6f_venc_jpg;
+
 typedef union {
     i6f_venc_nalu_h264 h264Nalu;
     i6f_venc_nalu_mjpg mjpgNalu;
@@ -284,6 +291,9 @@ typedef struct {
     int (*fnFreeDescriptor)(unsigned int device, unsigned int channel);
     int (*fnGetDescriptor)(unsigned int device, unsigned int channel);
 
+    int (*fnGetJpegParam)(unsigned int device, unsigned int channel, i6f_venc_jpg *param);
+    int (*fnSetJpegParam)(unsigned int device, unsigned int channel, i6f_venc_jpg *param);
+
     int (*fnFreeStream)(unsigned int device, unsigned int channel, i6f_venc_strm *stream);
     int (*fnGetStream)(unsigned int device, unsigned int channel, i6f_venc_strm *stream, unsigned int timeout);
 
@@ -345,7 +355,7 @@ int i6f_venc_load(i6f_venc_impl *venc_lib) {
     }
 
     if (!(venc_lib->fnFreeDescriptor = (int(*)(unsigned int device, unsigned int channel))
-        dlsym(venc_lib->handle, "MI_VENC_ReleaseStream"))) {
+        dlsym(venc_lib->handle, "MI_VENC_CloseFd"))) {
         fprintf(stderr, "[i6f_venc] Failed to acquire symbol MI_VENC_CloseFd!\n");
         return EXIT_FAILURE;
     }
@@ -356,8 +366,20 @@ int i6f_venc_load(i6f_venc_impl *venc_lib) {
         return EXIT_FAILURE;
     }
 
+    if (!(venc_lib->fnGetJpegParam = (int(*)(unsigned int device, unsigned int channel, i6f_venc_jpg *param))
+        dlsym(venc_lib->handle, "MI_VENC_GetJpegParam"))) {
+        fprintf(stderr, "[i6f_venc] Failed to acquire symbol MI_VENC_CloseFd!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(venc_lib->fnSetJpegParam = (int(*)(unsigned int device, unsigned int channel, i6f_venc_jpg *param))
+        dlsym(venc_lib->handle, "MI_VENC_SetJpegParam"))) {
+        fprintf(stderr, "[i6f_venc] Failed to acquire symbol MI_VENC_GetFd!\n");
+        return EXIT_FAILURE;
+    }
+
     if (!(venc_lib->fnFreeStream = (int(*)(unsigned int device, unsigned int channel, i6f_venc_strm *stream))
-        dlsym(venc_lib->handle, "MI_VENC_CloseFd"))) {
+        dlsym(venc_lib->handle, "MI_VENC_ReleaseStream"))) {
         fprintf(stderr, "[i6f_venc] Failed to acquire symbol MI_VENC_ReleaseStream!\n");
         return EXIT_FAILURE;
     }

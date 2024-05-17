@@ -241,6 +241,14 @@ typedef struct {
     v3_venc_gop gop;
 } v3_venc_chn;
 
+typedef struct {
+    unsigned int quality;
+    unsigned char qtLuma[64];
+    unsigned char qtChromaBlue[64];
+    unsigned char qtChromaRed[64];
+    unsigned int mcuPerEcs;
+} v3_venc_jpg;
+
 typedef union {
     v3_venc_nalu_h264 h264Nalu;
     v3_venc_nalu_mjpg mjpgNalu;
@@ -364,6 +372,9 @@ typedef struct {
     int (*fnFreeDescriptor)(int channel);
     int (*fnGetDescriptor)(int channel);
 
+    int (*fnGetJpegParam)(int channel, v3_venc_jpg *param);
+    int (*fnSetJpegParam)(int channel, v3_venc_jpg *param);
+
     int (*fnFreeStream)(int channel, v3_venc_strm *stream);
     int (*fnGetStream)(int channel, v3_venc_strm *stream, unsigned int timeout);
 
@@ -425,6 +436,18 @@ int v3_venc_load(v3_venc_impl *venc_lib) {
     if (!(venc_lib->fnGetDescriptor = (int(*)(int channel))
         dlsym(venc_lib->handle, "HI_MPI_VENC_GetFd"))) {
         fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_GetFd!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(venc_lib->fnGetJpegParam = (int(*)(int channel, v3_venc_jpg *param))
+        dlsym(venc_lib->handle, "HI_MPI_VENC_GetJpegParam"))) {
+        fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_GetJpegParam!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(venc_lib->fnSetJpegParam = (int(*)(int channel, v3_venc_jpg *param))
+        dlsym(venc_lib->handle, "HI_MPI_VENC_SetJpegParam"))) {
+        fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_SetJpegParam!\n");
         return EXIT_FAILURE;
     }
 

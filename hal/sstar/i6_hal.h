@@ -283,6 +283,106 @@ int i6_encoder_destroy_all(void)
                 return ret;
 }
 
+int i6_encoder_snapshot_grab(char index, short width, short height, char quality, char grayscale, hal_vidstream *stream)
+{
+    int ret;
+
+    if (ret = i6_channel_bind(index, 1, 1)) {
+        fprintf(stderr, "[i6_venc] Binding the encoder channel "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+    return ret;
+
+    i6_venc_jpg param;
+    memset(&param, 0, sizeof(param));
+    if (ret = i6_venc.fnGetJpegParam(index, &param)) {
+        fprintf(stderr, "[i6_venc] Reading the JPEG settings "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+    return ret;
+        return ret;
+    param.quality = quality;
+    if (ret = i6_venc.fnSetJpegParam(index, &param)) {
+        fprintf(stderr, "[i6_venc] Writing the JPEG settings "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+
+    i6_channel_grayscale(index, grayscale);
+
+    unsigned int count = 1;
+    if (i6_venc.fnStartReceivingEx(index, &count)) {
+        fprintf(stderr, "[i6_venc] Requesting one frame "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+
+    int fd = i6_venc.fnGetDescriptor(index);
+
+    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+    fd_set readFds;
+    FD_ZERO(&readFds);
+    FD_SET(fd, &readFds);
+    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
+    if (ret < 0) {
+        fprintf(stderr, "[i6_venc] Select operation failed!\n");
+        goto abort;
+    } else if (ret == 0) {
+        fprintf(stderr, "[i6_venc] Capture stream timed out!\n");
+        goto abort;
+    }
+
+    if (FD_ISSET(fd, &readFds)) {
+        i6_venc_stat stat;
+        if (i6_venc.fnQuery(index, &stat)) {
+            fprintf(stderr, "[i6_venc] Querying the encoder channel "
+                "%d failed with %#x!\n", index, ret);
+            goto abort;
+        }
+
+        if (!stat.curPacks) {
+            fprintf(stderr, "[i6_venc] Current frame is empty, skipping it!\n");
+            goto abort;
+        }
+
+        i6_venc_strm strm;
+        memset(&strm, 0, sizeof(strm));
+        strm.packet = (i6_venc_pack*)malloc(sizeof(i6_venc_pack) * stat.curPacks);
+        if (!strm.packet) {
+            fprintf(stderr, "[i6_venc] Memory allocation on channel %d failed!\n", index);
+            goto abort;
+        }
+        strm.count = stat.curPacks;
+
+        if (ret = i6_venc.fnGetStream(index, &stream, stat.curPacks)) {
+            fprintf(stderr, "[i6_venc] Getting the stream on "
+                "channel %d failed with %#x!\n", index, ret);
+            free(strm.packet);
+            strm.packet = NULL;
+            goto abort;
+        }
+
+        stream->count = stat.curPacks;
+        stream->pack = strm.packet;
+abort:
+        if (ret = i6_venc.fnFreeStream(index, &stream)) {
+            fprintf(stderr, "[i6_venc] Releasing the stream on "
+                "channel %d failed with %#x!\n", index, ret);
+        }
+    }
+
+    if (i6_venc.fnFreeDescriptor(index)) {
+        fprintf(stderr, "[i6_venc] Releasing the stream on "
+            "channel %d failed with %#x!\n", index, ret);
+    }
+
+    i6_venc.fnStopReceiving(index);
+
+    i6_channel_unbind(index);    
+}
+
 void *i6_encoder_thread(void)
 {
     int ret;
