@@ -109,6 +109,8 @@ int v3_isp_load(v3_isp_impl *isp_lib) {
         fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_AWB_UnRegister!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void v3_isp_unload(v3_isp_impl *isp_lib) {

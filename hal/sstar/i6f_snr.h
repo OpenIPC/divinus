@@ -29,7 +29,7 @@ typedef struct {
     int pixclkInv;
     unsigned int vsyncDelay;
     unsigned int hsyncDelay;
-    unsigned int pixclkInv;
+    unsigned int pixclkDelay;
 } i6f_snr_sync;
 
 typedef struct {
@@ -163,6 +163,8 @@ int i6f_snr_load(i6f_snr_impl *snr_lib) {
         fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_SetRes!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void i6f_snr_unload(i6f_snr_impl *snr_lib) {

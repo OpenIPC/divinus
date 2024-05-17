@@ -353,9 +353,9 @@ typedef struct {
         v3_venc_strminfo_h265 h265Info;
     };
     union {
-        v3_venc_strmadvinfo_h26x h264Info;
-        v3_venc_strmadvinfo_mjpg mjpgInfo;
-        v3_venc_strmadvinfo_h26x h265Info;
+        v3_venc_strmadvinfo_h26x h264aInfo;
+        v3_venc_strmadvinfo_mjpg mjpgaInfo;
+        v3_venc_strmadvinfo_h26x h265aInfo;
     };
 } v3_venc_strm;
 
@@ -486,6 +486,8 @@ int v3_venc_load(v3_venc_impl *venc_lib) {
         fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_StopRecvPic!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void v3_venc_unload(v3_venc_impl *venc_lib) {

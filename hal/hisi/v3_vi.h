@@ -166,6 +166,8 @@ int v3_vi_load(v3_vi_impl *vi_lib) {
         fprintf(stderr, "[v3_vi] Failed to acquire symbol HI_MPI_VI_SetChnAttr!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void v3_vi_unload(v3_vi_impl *vi_lib) {

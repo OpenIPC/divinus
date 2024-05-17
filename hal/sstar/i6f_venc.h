@@ -419,6 +419,8 @@ int i6f_venc_load(i6f_venc_impl *venc_lib) {
         fprintf(stderr, "[i6f_venc] Failed to acquire symbol MI_VENC_StopRecvPic!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void i6f_venc_unload(i6f_venc_impl *venc_lib) {

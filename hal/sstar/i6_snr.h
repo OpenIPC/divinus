@@ -154,6 +154,8 @@ int i6_snr_load(i6_snr_impl *snr_lib) {
         fprintf(stderr, "[i6_snr] Failed to acquire symbol MI_SNR_SetRes!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void i6_snr_unload(i6_snr_impl *snr_lib) {

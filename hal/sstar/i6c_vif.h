@@ -110,6 +110,8 @@ int i6c_vif_load(i6c_vif_impl *vif_lib) {
         fprintf(stderr, "[i6c_vif] Failed to acquire symbol MI_VIF_SetOutputPortAttr!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void i6c_vif_unload(i6c_vif_impl *vif_lib) {

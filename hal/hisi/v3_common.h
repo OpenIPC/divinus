@@ -7,14 +7,6 @@
 #include <sys/select.h>
 
 #include "../types.h"
-#include "v3_isp.h"
-#include "v3_rgn.h"
-#include "v3_snr.h"
-#include "v3_sys.h"
-#include "v3_vb.h"
-#include "v3_venc.h"
-#include "v3_vi.h"
-#include "v3_vpss.h"
 
 #define V3_ERROR(x, ...) \
     do { \

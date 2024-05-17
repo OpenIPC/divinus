@@ -1,6 +1,7 @@
 #pragma once
 
 #include "v3_common.h"
+#include "v3_sys.h"
 
 typedef enum {
     V3_RGN_BLK_8,
@@ -163,6 +164,8 @@ int v3_rgn_load(v3_rgn_impl *rgn_lib) {
         fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_SetBitMap!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void v3_rgn_unload(v3_rgn_impl *rgn_lib) {

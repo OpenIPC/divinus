@@ -126,6 +126,8 @@ int i6f_isp_load(i6f_isp_impl *isp_lib) {
         fprintf(stderr, "[i6f_isp] Failed to acquire symbol MI_ISP_IQ_SetColorToGray!\n");
         return EXIT_FAILURE;
     }
+    
+    return EXIT_SUCCESS;
 }
 
 void i6f_isp_unload(i6f_isp_impl *isp_lib) {

@@ -136,6 +136,8 @@ int v3_vpss_load(v3_vpss_impl *vpss_lib) {
         fprintf(stderr, "[v3_vpss] Failed to acquire symbol HI_MPI_VPSS_SetChnMode!\n");
         return EXIT_FAILURE;
     }
+    
+    return EXIT_SUCCESS;
 }
 
 void v3_vpss_unload(v3_vpss_impl *vpss_lib) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "i6f_common.h"
+#include "i6f_sys.h"
 
 typedef enum {
     I6F_RGN_PIXFMT_ARGB1555,
@@ -154,6 +155,8 @@ int i6f_rgn_load(i6f_rgn_impl *rgn_lib) {
         fprintf(stderr, "[i6f_rgn] Failed to acquire symbol MI_RGN_SetBitMap!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void i6f_rgn_unload(i6f_rgn_impl *rgn_lib) {

@@ -7,13 +7,6 @@
 #include <sys/select.h>
 
 #include "../types.h"
-#include "i6_isp.h"
-#include "i6_rgn.h"
-#include "i6_snr.h"
-#include "i6_sys.h"
-#include "i6_venc.h"
-#include "i6_vif.h"
-#include "i6_vpe.h"
 
 #define I6_ERROR(x, ...) \
     do { \
@@ -83,6 +76,15 @@ typedef enum {
 } i6_common_intf;
 
 typedef enum {
+    I6_PREC_8BPP,
+    I6_PREC_10BPP,
+    I6_PREC_12BPP,
+    I6_PREC_14BPP,
+    I6_PREC_16BPP,
+    I6_PREC_END
+} i6_common_prec;
+
+typedef enum {
     I6_PIXFMT_YUV422_YUYV,
     I6_PIXFMT_ARGB8888,
     I6_PIXFMT_ABGR8888,
@@ -114,15 +116,6 @@ typedef enum {
     I6_PIXFMT_END
 } i6_common_pixfmt;
 
-typedef enum {
-    I6_PREC_8BPP,
-    I6_PREC_10BPP,
-    I6_PREC_12BPP,
-    I6_PREC_14BPP,
-    I6_PREC_16BPP,
-    I6_PREC_END
-} i6_common_prec;
-
 typedef struct {
     unsigned short width;
     unsigned short height;
@@ -141,5 +134,5 @@ typedef struct {
     int pixclkInv;
     unsigned int vsyncDelay;
     unsigned int hsyncDelay;
-    unsigned int pixclkInv;
+    unsigned int pixclkDelay;
 } i6_common_sync;

@@ -106,6 +106,8 @@ int i6c_scl_load(i6c_scl_impl *scl_lib) {
         fprintf(stderr, "[i6c_scl] Failed to acquire symbol MI_SCL_SetOutputPortParam!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void i6c_scl_unload(i6c_scl_impl *scl_lib) {

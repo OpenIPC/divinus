@@ -1,4 +1,11 @@
 #include "i6f_common.h"
+#include "i6f_isp.h"
+#include "i6f_rgn.h"
+#include "i6f_scl.h"
+#include "i6f_snr.h"
+#include "i6f_sys.h"
+#include "i6f_venc.h"
+#include "i6f_vif.h"
 
 i6f_isp_impl  i6f_isp;
 i6f_scl_impl  i6f_scl;
@@ -9,20 +16,20 @@ i6f_vif_impl  i6f_vif;
 
 hal_chnstate i6f_state[I6F_VENC_CHN_NUM] = {0};
 
-i6f_snr_pad snr_pad;
-i6f_snr_plane snr_plane;
+i6f_snr_pad _i6f_snr_pad;
+i6f_snr_plane _i6f_snr_plane;
 char snr_framerate, snr_hdr, snr_index, snr_profile;
 
-char isp_chn = 0;
-char isp_dev = 0;
-char isp_port = 0;
-char scl_chn = 0;
-char scl_dev = 0;
-char venc_chn = 0;
-char venc_port = 0;
-char vif_chn = 0;
-char vif_dev = 0;
-char vif_grp = 0;
+char _i6f_isp_chn = 0;
+char _i6f_isp_dev = 0;
+char _i6f_isp_port = 0;
+char _i6f_scl_chn = 0;
+char _i6f_scl_dev = 0;
+char _i6f_venc_chn = 0;
+char _i6f_venc_port = 0;
+char _i6f_vif_chn = 0;
+char _i6f_vif_dev = 0;
+char _i6f_vif_grp = 0;
 
 int i6f_hal_init()
 {
@@ -58,14 +65,14 @@ int i6f_channel_bind(char index, char framerate, char jpeg)
 {
     int ret;
 
-    if (ret = i6f_scl.fnEnablePort(scl_dev, scl_chn, index))
+    if (ret = i6f_scl.fnEnablePort(_i6f_scl_dev, _i6f_scl_chn, index))
         return ret;
 
     {
         i6f_sys_bind source = { .module = I6F_SYS_MOD_SCL, 
-            .device = scl_dev, .channel = scl_chn, .port = index };
+            .device = _i6f_scl_dev, .channel = _i6f_scl_chn, .port = index };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_VENC,
-            .device = jpeg ? 8 : 0, .channel = venc_chn, .port = venc_port };
+            .device = jpeg ? 8 : 0, .channel = _i6f_venc_chn, .port = _i6f_venc_port };
         if (ret = i6f_sys.fnBindExt(0, &source, &dest, framerate, framerate,
             jpeg ? I6F_SYS_LINK_REALTIME : I6F_SYS_LINK_RING, 0))
             return ret;
@@ -88,26 +95,26 @@ int i6f_channel_create(char index, short width, short height, char jpeg)
     port.compress = I6F_COMPR_NONE;
     port.pixFmt = jpeg ? I6F_PIXFMT_YUV422_YUYV : I6F_PIXFMT_YUV420SP;
 
-    return i6f_scl.fnSetPortConfig(scl_dev, scl_chn, index, &port);
+    return i6f_scl.fnSetPortConfig(_i6f_scl_dev, _i6f_scl_chn, index, &port);
 }
 
 int i6f_channel_grayscale(int index, char enable)
 {
-    return i6f_isp.fnSetColorToGray(isp_dev, index, &enable);
+    return i6f_isp.fnSetColorToGray(_i6f_isp_dev, index, &enable);
 }
 
 int i6f_channel_unbind(char index, char jpeg)
 {
     int ret;
 
-    if (ret = i6f_scl.fnDisablePort(scl_dev, scl_chn, index))
+    if (ret = i6f_scl.fnDisablePort(_i6f_scl_dev, _i6f_scl_chn, index))
         return ret;
 
     {
         i6f_sys_bind source = { .module = I6F_SYS_MOD_SCL, 
-            .device = scl_dev, .channel = scl_chn, .port = index };
+            .device = _i6f_scl_dev, .channel = _i6f_scl_chn, .port = index };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_VENC,
-            .device = jpeg ? 8 : 0, .channel = venc_chn, .port = venc_port };
+            .device = jpeg ? 8 : 0, .channel = _i6f_venc_chn, .port = _i6f_venc_port };
         if (ret = i6f_sys.fnUnbind(0, &source, &dest))
             return ret;
     }
@@ -117,7 +124,7 @@ int i6f_channel_unbind(char index, char jpeg)
 
 int i6f_config_load(char *path)
 {
-    return i6f_isp.fnLoadChannelConfig(isp_dev, isp_chn, path, 1234);
+    return i6f_isp.fnLoadChannelConfig(_i6f_isp_dev, _i6f_isp_chn, path, 1234);
 }
 
 int i6f_encoder_create(char index, hal_vidconfig *config)
@@ -257,9 +264,9 @@ int i6f_encoder_destroy(char index, char jpeg)
 
     {
         i6f_sys_bind source = { .module = I6F_SYS_MOD_SCL, 
-            .device = scl_dev, .channel = scl_chn, .port = index };
+            .device = _i6f_scl_dev, .channel = _i6f_scl_chn, .port = index };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_VENC,
-            .device = device, .channel = index, .port = venc_port };
+            .device = device, .channel = index, .port = _i6f_venc_port };
         if (ret = i6f_sys.fnUnbind(0, &source, &dest))
             return ret;
     }
@@ -267,7 +274,7 @@ int i6f_encoder_destroy(char index, char jpeg)
     if (ret = i6f_venc.fnDestroyChannel(device, index))
         return ret;
     
-    if (ret = i6f_scl.fnDisablePort(scl_dev, scl_chn, index))
+    if (ret = i6f_scl.fnDisablePort(_i6f_scl_dev, _i6f_scl_chn, index))
         return ret;
     
     return EXIT_SUCCESS;
@@ -283,6 +290,8 @@ int i6f_encoder_destroy_all(void)
                 i6f_state[i].payload == HAL_VIDCODEC_JPG || 
                 i6f_state[i].payload == HAL_VIDCODEC_MJPG))
                 return ret;
+    
+    return EXIT_SUCCESS;
 }
 
 int i6f_encoder_snapshot_grab(char index, short width, short height, char quality, char grayscale, hal_vidstream *stream)
@@ -386,7 +395,9 @@ abort:
 
     i6f_venc.fnStopReceiving(device, index);
 
-    i6f_channel_unbind(device, index);    
+    i6f_channel_unbind(device, index);
+
+    return EXIT_SUCCESS;    
 }
 
 void *i6f_encoder_thread(void)
@@ -530,98 +541,98 @@ int i6f_pipeline_create(char sensor, short width, short height, char framerate, 
             return ret;
     }
 
-    if (ret = i6f_snr.fnGetPadInfo(snr_index, &snr_pad))
+    if (ret = i6f_snr.fnGetPadInfo(snr_index, &_i6f_snr_pad))
         return ret;
-    if (ret = i6f_snr.fnGetPlaneInfo(snr_index, hdr & 1, &snr_plane))
+    if (ret = i6f_snr.fnGetPlaneInfo(snr_index, hdr & 1, &_i6f_snr_plane))
         return ret;
 
     {
         i6f_vif_grp group;
-        group.intf = snr_pad.intf;
+        group.intf = _i6f_snr_pad.intf;
         group.work = I6F_VIF_WORK_1MULTIPLEX;
         group.hdr = I6F_HDR_OFF;
         group.edge = group.intf == I6F_INTF_BT656 ?
-            snr_pad.intfAttr.bt656.edge : I6F_EDGE_DOUBLE;
+            _i6f_snr_pad.intfAttr.bt656.edge : I6F_EDGE_DOUBLE;
         group.interlaceOn = 0;
-        group.grpStitch = (1 << vif_grp);
-        if (ret = i6f_vif.fnCreateGroup(vif_grp, &group))
+        group.grpStitch = (1 << _i6f_vif_grp);
+        if (ret = i6f_vif.fnCreateGroup(_i6f_vif_grp, &group))
             return ret;
     }
     
     {
         i6f_vif_dev device;
-        device.pixFmt = (i6f_common_pixfmt)(snr_plane.bayer > I6F_BAYER_END ? 
-            snr_plane.pixFmt : (I6F_PIXFMT_RGB_BAYER + snr_plane.precision * I6F_BAYER_END + snr_plane.bayer));
-        device.crop = snr_plane.capt;
+        device.pixFmt = (i6f_common_pixfmt)(_i6f_snr_plane.bayer > I6F_BAYER_END ? 
+            _i6f_snr_plane.pixFmt : (I6F_PIXFMT_RGB_BAYER + _i6f_snr_plane.precision * I6F_BAYER_END + _i6f_snr_plane.bayer));
+        device.crop = _i6f_snr_plane.capt;
         device.field = 0;
         device.halfHScan = 0;
-        if (ret = i6f_vif.fnSetDeviceConfig(vif_dev, &device))
+        if (ret = i6f_vif.fnSetDeviceConfig(_i6f_vif_dev, &device))
             return ret;
     }
-    if (ret = i6f_vif.fnEnableDevice(vif_dev))
+    if (ret = i6f_vif.fnEnableDevice(_i6f_vif_dev))
         return ret;
 
     {
         unsigned int combo = 0;
-        if (ret = i6f_isp.fnCreateDevice(isp_dev, &combo))
+        if (ret = i6f_isp.fnCreateDevice(_i6f_isp_dev, &combo))
             return ret;
     }
 
     {
         i6f_isp_chn channel;
-        memset(&isp_chn, 0, sizeof(isp_chn));
+        memset(&_i6f_isp_chn, 0, sizeof(_i6f_isp_chn));
         channel.sensorId = snr_index;
-        if (ret = i6f_isp.fnCreateChannel(isp_dev, isp_chn, &channel))
+        if (ret = i6f_isp.fnCreateChannel(_i6f_isp_dev, _i6f_isp_chn, &channel))
             return ret;
     }
 
     {
         i6f_isp_para param;
-        param.hdr = snr_pad.hdr;
+        param.hdr = _i6f_snr_pad.hdr;
         param.level3DNR = 0;
         param.mirror = 0;
         param.flip = 0;
         param.rotate = 0;
-        if (ret = i6f_isp.fnSetChannelParam(isp_dev, isp_chn, &param))
+        if (ret = i6f_isp.fnSetChannelParam(_i6f_isp_dev, _i6f_isp_chn, &param))
             return ret;
     }
-    if (ret = i6f_isp.fnStartChannel(isp_dev, isp_chn))
+    if (ret = i6f_isp.fnStartChannel(_i6f_isp_dev, _i6f_isp_chn))
         return ret;
 
     {
         i6f_isp_port port;
         memset(&port, 0, sizeof(port));
         port.pixFmt = I6F_PIXFMT_YUV422_YUYV;
-        if (ret = i6f_isp.fnSetPortConfig(isp_dev, isp_chn, isp_port, &port))
+        if (ret = i6f_isp.fnSetPortConfig(_i6f_isp_dev, _i6f_isp_chn, _i6f_isp_port, &port))
             return ret;
     }
-    if (ret = i6f_isp.fnEnablePort(isp_dev, isp_chn, isp_port))
+    if (ret = i6f_isp.fnEnablePort(_i6f_isp_dev, _i6f_isp_chn, _i6f_isp_port))
         return ret;
 
     {
         unsigned int binds = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3);
-        if (ret = i6f_scl.fnCreateDevice(scl_dev, &binds))
+        if (ret = i6f_scl.fnCreateDevice(_i6f_scl_dev, &binds))
             return ret;
     }
 
     {
         unsigned int reserved = 0;
-        if (ret = i6f_scl.fnCreateChannel(scl_dev, scl_chn, &reserved))
+        if (ret = i6f_scl.fnCreateChannel(_i6f_scl_dev, _i6f_scl_chn, &reserved))
             return ret;
     }
     {
         int rotate = 0;
-        if (ret = i6f_scl.fnAdjustChannelRotation(scl_dev, scl_chn, &rotate))
+        if (ret = i6f_scl.fnAdjustChannelRotation(_i6f_scl_dev, _i6f_scl_chn, &rotate))
             return ret;
     }
-    if (ret = i6f_scl.fnStartChannel(scl_dev, scl_chn))
+    if (ret = i6f_scl.fnStartChannel(_i6f_scl_dev, _i6f_scl_chn))
         return ret;
 
     {
         i6f_sys_bind source = { .module = I6F_SYS_MOD_VIF, 
-            .device = vif_dev, .channel = vif_chn, .port = 0 };
+            .device = _i6f_vif_dev, .channel = _i6f_vif_chn, .port = 0 };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_ISP,
-            .device = isp_dev, .channel = isp_chn, .port = isp_port };
+            .device = _i6f_isp_dev, .channel = _i6f_isp_chn, .port = _i6f_isp_port };
         if (ret = i6f_sys.fnBindExt(0, &source, &dest, snr_framerate, snr_framerate,
             I6F_SYS_LINK_REALTIME, 0))
             return ret;
@@ -629,9 +640,9 @@ int i6f_pipeline_create(char sensor, short width, short height, char framerate, 
 
     {
         i6f_sys_bind source = { .module = I6F_SYS_MOD_ISP, 
-            .device = isp_dev, .channel = isp_chn, .port = isp_port };
+            .device = _i6f_isp_dev, .channel = _i6f_isp_chn, .port = _i6f_isp_port };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_SCL,
-            .device = scl_dev, .channel = scl_chn, .port = 0 };
+            .device = _i6f_scl_dev, .channel = _i6f_scl_chn, .port = 0 };
         return i6f_sys.fnBindExt(0, &source, &dest, snr_framerate, snr_framerate,
             I6F_SYS_LINK_REALTIME, 0);
     }
@@ -642,37 +653,37 @@ int i6f_pipeline_create(char sensor, short width, short height, char framerate, 
 void i6f_pipeline_destroy(void)
 {
     for (char i = 0; i < 4; i++)
-        i6f_scl.fnDisablePort(scl_dev, scl_chn, i);
+        i6f_scl.fnDisablePort(_i6f_scl_dev, _i6f_scl_chn, i);
 
     {
         i6f_sys_bind source = { .module = I6F_SYS_MOD_ISP, 
-            .device = isp_dev, .channel = isp_chn, .port = isp_port };
+            .device = _i6f_isp_dev, .channel = _i6f_isp_chn, .port = _i6f_isp_port };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_SCL,
-            .device = scl_dev, .channel = scl_chn, .port = 0 };
+            .device = _i6f_scl_dev, .channel = _i6f_scl_chn, .port = 0 };
         i6f_sys.fnUnbind(0, &source, &dest);
     }
 
-    i6f_scl.fnStopChannel(scl_dev, scl_chn);
-    i6f_scl.fnDestroyChannel(scl_dev, scl_chn);
+    i6f_scl.fnStopChannel(_i6f_scl_dev, _i6f_scl_chn);
+    i6f_scl.fnDestroyChannel(_i6f_scl_dev, _i6f_scl_chn);
 
-    i6f_scl.fnDestroyDevice(scl_dev);
+    i6f_scl.fnDestroyDevice(_i6f_scl_dev);
 
-    i6f_isp.fnStopChannel(isp_dev, isp_chn);
-    i6f_isp.fnDestroyChannel(isp_dev, isp_chn);
+    i6f_isp.fnStopChannel(_i6f_isp_dev, _i6f_isp_chn);
+    i6f_isp.fnDestroyChannel(_i6f_isp_dev, _i6f_isp_chn);
 
-    i6f_isp.fnDestroyDevice(isp_dev);
+    i6f_isp.fnDestroyDevice(_i6f_isp_dev);
 
     {   
         i6f_sys_bind source = { .module = I6F_SYS_MOD_VIF, 
-            .device = vif_dev, .channel = vif_chn, .port = 0 };
+            .device = _i6f_vif_dev, .channel = _i6f_vif_chn, .port = 0 };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_ISP,
-            .device = isp_dev, .channel = isp_chn, .port = isp_port };
+            .device = _i6f_isp_dev, .channel = _i6f_isp_chn, .port = _i6f_isp_port };
         i6f_sys.fnUnbind(0, &source, &dest);
     }
 
-    i6f_vif.fnDisablePort(vif_dev, 0);
+    i6f_vif.fnDisablePort(_i6f_vif_dev, 0);
 
-    i6f_vif.fnDisableDevice(vif_dev);
+    i6f_vif.fnDisableDevice(_i6f_vif_dev);
 
     i6f_snr.fnDisable(snr_index);
 }

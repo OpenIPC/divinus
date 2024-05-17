@@ -125,6 +125,8 @@ int i6_sys_load(i6_sys_impl *sys_lib) {
         fprintf(stderr, "[i6_sys] Failed to acquire symbol MI_SYS_UnBindChnPort!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void i6_sys_unload(i6_sys_impl *sys_lib) {

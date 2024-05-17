@@ -70,7 +70,7 @@ int jpeg_init() {
     return EXIT_SUCCESS;
 }
 
-int jpeg_deinit() {
+void jpeg_deinit() {
     pthread_mutex_lock(&jpeg_mutex);
     disable_venc_chn(jpeg_index, 1);
     jpeg_module_init = false;
@@ -107,7 +107,7 @@ int jpeg_get(short width, short height, char quality, char grayscale,
 
     {
         jpeg->jpeg_size = 0;
-        for (unsigned int i = 0; i < stream.pack; i++) {
+        for (unsigned int i = 0; i < stream.count; i++) {
             hal_vidpack *pack = &stream.pack[i];
             unsigned int pack_len = pack->length - pack->offset;
             unsigned char *pack_data = pack->addr + pack->offset;

@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef ALIGN_BACK
 #define ALIGN_BACK(x, a) (((x) / (a)) * (a))
 #endif

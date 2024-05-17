@@ -7,13 +7,6 @@
 #include <sys/select.h>
 
 #include "../types.h"
-#include "i6c_isp.h"
-#include "i6c_rgn.h"
-#include "i6c_scl.h"
-#include "i6c_snr.h"
-#include "i6c_sys.h"
-#include "i6c_venc.h"
-#include "i6c_vif.h"
 
 #define I6C_ERROR(x, ...) \
     do { \
@@ -78,6 +71,15 @@ typedef enum {
 } i6c_common_intf;
 
 typedef enum {
+    I6C_PREC_8BPP,
+    I6C_PREC_10BPP,
+    I6C_PREC_12BPP,
+    I6C_PREC_14BPP,
+    I6C_PREC_16BPP,
+    I6C_PREC_END
+} i6c_common_prec;
+
+typedef enum {
     I6C_PIXFMT_YUV422_YUYV,
     I6C_PIXFMT_ARGB8888,
     I6C_PIXFMT_ABGR8888,
@@ -108,15 +110,6 @@ typedef enum {
     I6C_PIXFMT_RGB888P,
     I6C_PIXFMT_END
 } i6c_common_pixfmt;
-
-typedef enum {
-    I6C_PREC_8BPP,
-    I6C_PREC_10BPP,
-    I6C_PREC_12BPP,
-    I6C_PREC_14BPP,
-    I6C_PREC_16BPP,
-    I6C_PREC_END
-} i6c_common_prec;
 
 typedef struct {
     unsigned short width;

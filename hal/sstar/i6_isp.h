@@ -25,7 +25,9 @@ int i6_isp_load(i6_isp_impl *isp_lib) {
         dlsym(isp_lib->handle, "MI_ISP_IQ_SetColorToGray"))) {
             fprintf(stderr, "[i6_isp] Failed to acquire symbol MI_ISP_IQ_SetColorToGray!\n");
             return EXIT_FAILURE;
-        }
+    }
+
+    return EXIT_SUCCESS;
 }
 
 void i6_isp_unload(i6_isp_impl *isp_lib) {

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "v3_common.h"
 
 #include <limits.h>
@@ -53,7 +55,7 @@ enum ConfigError v3_parse_config_lvds(
             "HI_WDR_MODE_DOL_4F"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "wdr_mode", (void *)&lvds->wdr, possible_values,
+            ini, section, "wdr_mode", (void*)&lvds->wdr, possible_values,
             count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -63,7 +65,7 @@ enum ConfigError v3_parse_config_lvds(
             "LVDS_SYNC_MODE_SOL", "LVDS_SYNC_MODE_SAV"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "sync_mode", (void *)&lvds->syncSavOn,
+            ini, section, "sync_mode", (void*)&lvds->syncSavOn,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -74,7 +76,7 @@ enum ConfigError v3_parse_config_lvds(
             "RAW_DATA_14BIT"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "raw_data_type", (void *)&lvds->prec,
+            ini, section, "raw_data_type", (void*)&lvds->prec,
             possible_values, count, 1);
         if (err != CONFIG_OK)
             return err;
@@ -84,12 +86,12 @@ enum ConfigError v3_parse_config_lvds(
             "LVDS_ENDIAN_LITTLE", "LVDS_ENDIAN_BIG"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "data_endian", (void *)&lvds->dataBeOn,
+            ini, section, "data_endian", (void*)&lvds->dataBeOn,
             possible_values, count, 1);
         if (err != CONFIG_OK)
             return err;
         err = parse_enum(
-            ini, section, "sync_code_endian", (void *)&lvds->syncBeOn,
+            ini, section, "sync_code_endian", (void*)&lvds->syncBeOn,
             possible_values, count, 1);
         if (err != CONFIG_OK)
             return err;
@@ -130,7 +132,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_INPUT_MODE_HISPI"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "input_mod", (void *)&device->intf,
+            ini, section, "input_mod", (void*)&device->intf,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -141,7 +143,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_WORK_MODE_4Multiplex"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "work_mod", (void *)&device->work, possible_values,
+            ini, section, "work_mod", (void*)&device->work, possible_values,
             count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -151,7 +153,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_COMBINE_COMPOSITE", "VI_COMBINE_SEPARATE"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "combine_mode", (void *)&device->separateOn,
+            ini, section, "combine_mode", (void*)&device->separateOn,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -161,7 +163,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_COMP_MODE_SINGLE", "VI_COMP_MODE_DOUBLE"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "comp_mode", (void *)&device->doubleCompOn,
+            ini, section, "comp_mode", (void*)&device->doubleCompOn,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -172,7 +174,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_CLK_EDGE_DOUBLE"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "clock_edge", (void *)&device->clkDownOn,
+            ini, section, "clock_edge", (void*)&device->clkDownOn,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -194,7 +196,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_SCAN_INTERLACED", "VI_SCAN_PROGRESSIVE"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "scan_mode", (void *)&device->progressiveOn,
+            ini, section, "scan_mode", (void*)&device->progressiveOn,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -204,7 +206,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_INPUT_DATA_VUVU", "VI_INPUT_DATA_UVUV"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "Data_seq", (void *)&device->input, possible_values,
+            ini, section, "Data_seq", (void*)&device->input, possible_values,
             count, 0);
         if (err != CONFIG_OK) {
             const char *possible_values[] = {
@@ -212,7 +214,7 @@ enum ConfigError v3_parse_config_videv(
                 "VI_INPUT_DATA_YUYV", "VI_INPUT_DATA_YVYU"};
             const int count = sizeof(possible_values) / sizeof(const char *);
             err = parse_enum(
-                ini, section, "Data_seq", (void *)&device->input,
+                ini, section, "Data_seq", (void*)&device->input,
                 possible_values, count, 0);
             if (err != CONFIG_OK)
                 return err;
@@ -222,7 +224,7 @@ enum ConfigError v3_parse_config_videv(
         const char *possible_values[] = {"VI_VSYNC_FIELD", "VI_VSYNC_PULSE"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "vsync", (void *)&device->sync.vsyncPulse, possible_values,
+            ini, section, "vsync", (void*)&device->sync.vsyncPulse, possible_values,
             count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -232,7 +234,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_VSYNC_NEG_HIGH", "VI_VSYNC_NEG_LOW"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "vsyncneg", (void *)&device->sync.vsyncInv,
+            ini, section, "vsyncneg", (void*)&device->sync.vsyncInv,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -242,7 +244,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_HSYNC_VALID_SINGNAL", "VI_HSYNC_PULSE"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "hsync", (void *)&device->sync.hsyncPulse, possible_values,
+            ini, section, "hsync", (void*)&device->sync.hsyncPulse, possible_values,
             count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -252,7 +254,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_HSYNC_NEG_HIGH", "VI_HSYNC_NEG_LOW"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "hsyncneg", (void *)&device->sync.hsyncInv,
+            ini, section, "hsyncneg", (void*)&device->sync.hsyncInv,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -262,7 +264,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_VSYNC_NORM_PULSE", "VI_VSYNC_VALID_SINGAL"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "vsyncvalid", (void *)&device->sync.vsyncValid,
+            ini, section, "vsyncvalid", (void*)&device->sync.vsyncValid,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -272,7 +274,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_VSYNC_VALID_NEG_HIGH", "VI_VSYNC_VALID_NEG_LOW"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "vsyncvalidneg", (void *)&device->sync.vsyncValidInv,
+            ini, section, "vsyncvalidneg", (void*)&device->sync.vsyncValidInv,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -326,7 +328,7 @@ enum ConfigError v3_parse_config_videv(
         const char *possible_values[] = {"BT656_FIXCODE_1", "BT656_FIXCODE_0"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "fixcode", (void *)&device->codeZeroOn, possible_values,
+            ini, section, "fixcode", (void*)&device->codeZeroOn, possible_values,
             count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -336,7 +338,7 @@ enum ConfigError v3_parse_config_videv(
             "BT656_FIELD_POLAR_STD", "BT656_FIELD_POLAR_NSTD"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "fieldpolar", (void *)&device->polarNstdOn,
+            ini, section, "fieldpolar", (void*)&device->polarNstdOn,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -346,7 +348,7 @@ enum ConfigError v3_parse_config_videv(
             "VI_PATH_BYPASS", "VI_PATH_ISP", "VI_PATH_RAW"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "datapath", (void *)&device->dataPath,
+            ini, section, "datapath", (void*)&device->dataPath,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -409,7 +411,7 @@ enum ConfigError v3_parse_config_vichn(
             "VI_CAPSEL_TOP", "VI_CAPSEL_BOTTOM", "VI_CAPSEL_BOTH"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "capsel", (void *)&channel->field, possible_values,
+            ini, section, "capsel", (void*)&channel->field, possible_values,
             count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -448,7 +450,7 @@ enum ConfigError v3_parse_config_vichn(
             "PIXEL_FORMAT_YUV_400"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "pixformat", (void *)&channel->pixFmt,
+            ini, section, "pixformat", (void*)&channel->pixFmt,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -459,7 +461,7 @@ enum ConfigError v3_parse_config_vichn(
             "COMPRESS_MODE_LINE", "COMPRESS_MODE_FRAME"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "compressmode", (void *)&channel->compress,
+            ini, section, "compressmode", (void*)&channel->compress,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -499,7 +501,7 @@ enum ConfigError v3_parse_config_isp(
             "BAYER_RGGB", "BAYER_GRBG", "BAYER_GBRG", "BAYER_BGGR"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, "isp_image", "isp_bayer", (void *)&isp->bayer,
+            ini, "isp_image", "isp_bayer", (void*)&isp->bayer,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -566,7 +568,7 @@ enum ConfigError v3_parse_sensor_config(char *path, v3_config_impl *config) {
             "WDR_MODE_4To1_FRAME_FULL_RATE"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            &ini, "sensor", "mode", (void *)&config->mode, possible_values,
+            &ini, "sensor", "mode", (void*)&config->mode, possible_values,
             count, 0);
         if (err != CONFIG_OK)
             goto RET_ERR;

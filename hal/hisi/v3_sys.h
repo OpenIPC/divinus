@@ -131,6 +131,8 @@ int v3_sys_load(v3_sys_impl *sys_lib) {
         fprintf(stderr, "[v3_sys] Failed to acquire symbol HI_MPI_SYS_UnBind!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void v3_sys_unload(v3_sys_impl *sys_lib) {

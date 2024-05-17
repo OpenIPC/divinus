@@ -58,6 +58,8 @@ int v3_vb_load(v3_vb_impl *vb_lib) {
         fprintf(stderr, "[v3_sys] Failed to acquire symbol HI_MPI_VB_Init!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void v3_vb_unload(v3_vb_impl *vb_lib) {

@@ -94,6 +94,8 @@ int i6_vif_load(i6_vif_impl *vif_lib) {
         fprintf(stderr, "[i6_vif] Failed to acquire symbol MI_VIF_SetChnPortAttr!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void i6_vif_unload(i6_vif_impl *vif_lib) {

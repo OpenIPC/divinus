@@ -138,6 +138,8 @@ int i6_vpe_load(i6_vpe_impl *vpe_lib) {
         fprintf(stderr, "[i6_vpe] Failed to acquire symbol MI_VPE_SetPortMode!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void i6_vpe_unload(i6_vpe_impl *vpe_lib) {

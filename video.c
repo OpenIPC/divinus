@@ -365,12 +365,10 @@ int start_sdk() {
 }
 
 int stop_sdk() {
-    int ret;
-
     pthread_join(vencPid, NULL);
 
     if (app_config.jpeg_enable)
-        ret = jpeg_deinit();
+        jpeg_deinit();
 
     switch (plat) {
         case HAL_PLATFORM_I6: i6_encoder_destroy_all(); break;

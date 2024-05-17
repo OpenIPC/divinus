@@ -189,6 +189,8 @@ int i6c_sys_load(i6c_sys_impl *sys_lib) {
         fprintf(stderr, "[i6c_sys] Failed to acquire symbol MI_SYS_ConfigPrivateMMAPool!\n");
         return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void i6c_sys_unload(i6c_sys_impl *sys_lib) {

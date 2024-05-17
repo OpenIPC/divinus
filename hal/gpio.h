@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <linux/gpio.h>
 #include <sys/ioctl.h>
 
@@ -29,7 +30,7 @@ int gpio_init(void) {
 
     struct gpiochip_info info;
     int ret = ioctl(fd_gpio, GPIO_GET_CHIPINFO_IOCTL, &info);
-    if (ret == MAP_FAILED) {
+    if (ret == -1) {
         GPIO_ERROR("Unable to enumerate the GPIO lines!\n");
         gpio_deinit();
         return EXIT_FAILURE;
@@ -43,14 +44,14 @@ int gpio_read(char pin, bool *value) {
         .flags = GPIOHANDLE_REQUEST_INPUT };
 
     int ret = ioctl(fd_gpio, GPIO_GET_LINEHANDLE_IOCTL, &req);
-    if (ret == MAP_FAILED) {
+    if (ret == -1) {
         GPIO_ERROR("Unable to request a read on GPIO pin %d!\n", pin);
         return EXIT_FAILURE;
     }
 
     struct gpiohandle_data data;
-    int ret = ioctl(fd_gpio, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data);
-    if (ret == MAP_FAILED) {
+    ret = ioctl(fd_gpio, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data);
+    if (ret == -1) {
         GPIO_ERROR("Unable to read the value of GPIO pin %d!\n", pin);
         close(req.fd);
         return EXIT_FAILURE;
@@ -66,14 +67,14 @@ int gpio_write(char pin, bool value) {
         .flags = GPIOHANDLE_REQUEST_OUTPUT };
 
     int ret = ioctl(fd_gpio, GPIO_GET_LINEHANDLE_IOCTL, &req);
-    if (ret == MAP_FAILED) {
+    if (ret == -1) {
         GPIO_ERROR("Unable to request a write on GPIO pin %d!\n", pin);
         return EXIT_FAILURE;
     }
 
     struct gpiohandle_data data = { .values = { value } };
-    int ret = ioctl(fd_gpio, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data);
-    if (ret == MAP_FAILED) {
+    ret = ioctl(fd_gpio, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data);
+    if (ret == -1) {
         GPIO_ERROR("Unable to write a value to GPIO pin %d!\n", pin);
         close(req.fd);
         return EXIT_FAILURE;

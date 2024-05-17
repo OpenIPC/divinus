@@ -1,5 +1,15 @@
+#pragma once
+
 #include "v3_common.h"
 #include "v3_config.h"
+#include "v3_isp.h"
+#include "v3_rgn.h"
+#include "v3_snr.h"
+#include "v3_sys.h"
+#include "v3_vb.h"
+#include "v3_venc.h"
+#include "v3_vi.h"
+#include "v3_vpss.h"
 
 #include <fcntl.h>
 
@@ -22,11 +32,12 @@ hal_chnstate v3_state[V3_VENC_CHN_NUM] = {0};
 extern bool keepRunning;
 
 int (*venc_callback)(char, hal_vidstream*);
-char isp_dev = 0;
-char venc_dev = 0;
-char vi_chn = 0;
-char vi_dev = 0;
-char vpss_grp = 0;
+char _v3_isp_chn = 0;
+char _v3_isp_dev = 0;
+char _v3_venc_dev = 0;
+char _v3_vi_chn = 0;
+char _v3_vi_dev = 0;
+char _v3_vpss_grp = 0;
 
 int v3_hal_init()
 {
@@ -61,17 +72,17 @@ void v3_hal_deinit()
 int v3_channel_bind(char index)
 {
     int ret;
-    int vpss_grp = index / V3_VPSS_CHN_NUM;
-    int vpss_chn = index - vpss_grp * V3_VPSS_CHN_NUM;
+    int _v3_vpss_grp = index / V3_VPSS_CHN_NUM;
+    int vpss_chn = index - _v3_vpss_grp * V3_VPSS_CHN_NUM;
 
-    if (ret = v3_vpss.fnEnableChannel(vpss_grp, vpss_chn))
+    if (ret = v3_vpss.fnEnableChannel(_v3_vpss_grp, vpss_chn))
         return ret;
 
     {
         v3_sys_bind source = { .module = V3_SYS_MOD_VPSS, 
-            .device = vpss_grp, .channel = vpss_chn };
+            .device = _v3_vpss_grp, .channel = vpss_chn };
         v3_sys_bind dest = { .module = V3_SYS_MOD_VENC,
-            .device = venc_dev, .channel = index };
+            .device = _v3_venc_dev, .channel = index };
         if (ret = v3_sys.fnBind(&source, &dest))
             return ret;
     }
@@ -82,15 +93,15 @@ int v3_channel_bind(char index)
 int v3_channel_create(char index, short width, short height, char framerate)
 {
     int ret;
-    int vpss_grp = index / V3_VPSS_CHN_NUM;
-    int vpss_chn = index - vpss_grp * V3_VPSS_CHN_NUM;
+    int _v3_vpss_grp = index / V3_VPSS_CHN_NUM;
+    int vpss_chn = index - _v3_vpss_grp * V3_VPSS_CHN_NUM;
 
     {
         v3_vpss_chn channel;
         memset(&channel, 0, sizeof(channel));
         channel.srcFps = framerate;
         channel.dstFps = framerate;
-        if (ret = v3_vpss.fnSetChannelConfig(vpss_grp, vpss_chn, &channel))
+        if (ret = v3_vpss.fnSetChannelConfig(_v3_vpss_grp, vpss_chn, &channel))
             return ret;
     }
 
@@ -102,7 +113,7 @@ int v3_channel_create(char index, short width, short height, char framerate)
         mode.twoFldFrm = 0;
         mode.pixFmt = V3_PIXFMT_YUV420SP;
         mode.compress = V3_COMPR_NONE;
-        if (ret = v3_vpss.fnSetChannelMode(vpss_grp, vpss_chn, &mode))
+        if (ret = v3_vpss.fnSetChannelMode(_v3_vpss_grp, vpss_chn, &mode))
             return ret;
     }
 
@@ -117,17 +128,17 @@ int v3_channel_grayscale(char index, int enable)
 int v3_channel_unbind(char index)
 {
     int ret;
-    int vpss_grp = index / V3_VPSS_CHN_NUM;
-    int vpss_chn = index - vpss_grp * V3_VPSS_CHN_NUM;
+    int _v3_vpss_grp = index / V3_VPSS_CHN_NUM;
+    int vpss_chn = index - _v3_vpss_grp * V3_VPSS_CHN_NUM;
 
-    if (ret = v3_vpss.fnDisableChannel(vpss_grp, vpss_chn))
+    if (ret = v3_vpss.fnDisableChannel(_v3_vpss_grp, vpss_chn))
         return ret;
 
     {
         v3_sys_bind source = { .module = V3_SYS_MOD_VPSS, 
-            .device = vpss_grp, .channel = vpss_chn };
+            .device = _v3_vpss_grp, .channel = vpss_chn };
         v3_sys_bind dest = { .module = V3_SYS_MOD_VENC,
-            .device = venc_dev, .channel = index };
+            .device = _v3_venc_dev, .channel = index };
         if (ret = v3_sys.fnUnbind(&source, &dest))
             return ret;
     }
@@ -258,8 +269,8 @@ attach:
 int v3_encoder_destroy(char index)
 {
     int ret;
-    int vpss_grp = index / V3_VPSS_CHN_NUM;
-    int vpss_chn = index - vpss_grp * V3_VPSS_CHN_NUM;
+    int _v3_vpss_grp = index / V3_VPSS_CHN_NUM;
+    int vpss_chn = index - _v3_vpss_grp * V3_VPSS_CHN_NUM;
 
     v3_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
@@ -268,9 +279,9 @@ int v3_encoder_destroy(char index)
 
     {
         v3_sys_bind source = { .module = V3_SYS_MOD_VPSS, 
-            .device = vpss_grp, .channel = vpss_chn };
+            .device = _v3_vpss_grp, .channel = vpss_chn };
         v3_sys_bind dest = { .module = V3_SYS_MOD_VENC,
-            .device = venc_dev, .channel = index };
+            .device = _v3_venc_dev, .channel = index };
         if (ret = v3_sys.fnUnbind(&source, &dest))
             return ret;
     }
@@ -278,7 +289,7 @@ int v3_encoder_destroy(char index)
     if (ret = v3_venc.fnDestroyChannel(index))
         return ret;
     
-    if (ret = v3_vpss.fnDisableChannel(vpss_grp, vpss_chn))
+    if (ret = v3_vpss.fnDisableChannel(_v3_vpss_grp, vpss_chn))
         return ret;
 
     return EXIT_SUCCESS;
@@ -292,6 +303,8 @@ int v3_encoder_destroy_all(void)
         if (v3_state[i].enable)
             if (ret = v3_encoder_destroy(i))
                 return ret;
+
+    return EXIT_SUCCESS;
 }
 
 int v3_encoder_snapshot_grab(char index, short width, short height, char quality, char grayscale, hal_vidstream *stream)
@@ -391,7 +404,9 @@ abort:
 
     v3_venc.fnStopReceiving(index);
 
-    v3_channel_unbind(index);    
+    v3_channel_unbind(index);
+
+    return EXIT_SUCCESS;
 }
 
 void *v3_encoder_thread(void)
@@ -488,7 +503,7 @@ void *v3_encoder_thread(void)
 
 void *v3_image_thread(void)
 {
-    if (v3_isp.fnRun(isp_dev))
+    if (v3_isp.fnRun(_v3_isp_dev))
         fprintf(stderr, "[v3_isp] Shutting down ISP thread...\n");
 }
 
@@ -501,7 +516,7 @@ void v3_pipeline_destroy(void)
 
         {
             v3_sys_bind source = { .module = V3_SYS_MOD_VIU, 
-                .device = vi_dev, .channel = vi_chn };
+                .device = _v3_vi_dev, .channel = _v3_vi_chn };
             v3_sys_bind dest = { .module = V3_SYS_MOD_VPSS,
                 .device = grp, .channel = 0 };
             v3_sys.fnUnbind(&source, &dest);
@@ -511,34 +526,29 @@ void v3_pipeline_destroy(void)
         v3_vpss.fnDestroyGroup(grp);
     }
 
-    v3_vi.fnDisableChannel(vi_chn);
-    v3_vi.fnDisableDevice(vi_dev);
+    v3_vi.fnDisableChannel(_v3_vi_chn);
+    v3_vi.fnDisableDevice(_v3_vi_dev);
 
-    v3_isp.fnExit(isp_dev);
+    v3_isp.fnExit(_v3_isp_dev);
 }
 
 int v3_pipeline_create(char mirror, char flip)
 {
     int ret;
 
-    {
-        v3_vi_dev device = v3_config.videv;
-        if (ret = v3_vi.fnSetDeviceConfig(isp_dev, &device))
-            return ret;
-    }
-    {
-        v3_vi_wdr wdr = { .mode = V3_WDR_NONE, .comprOn = 0 };
-        if (ret = v3_vi.fnSetWDRMode(isp_dev, &wdr))
-            return ret;
-    }
-    if (ret = v3_vi.fnEnableDevice(isp_dev))
+    if (ret = v3_vi.fnSetDeviceConfig(_v3_isp_dev, &v3_config.videv))
         return ret;
     {
-        v3_vi_chn channel = v3_config.vichn;
-        if (ret = v3_vi.fnSetChannelConfig(isp_chn, &channel))
+        v3_vi_wdr wdr = { .mode = V3_WDR_NONE, .comprOn = 0 };
+        if (ret = v3_vi.fnSetWDRMode(_v3_isp_dev, &wdr))
             return ret;
     }
-    if (ret = v3_vi.fnEnableChannel(isp_chn))
+    if (ret = v3_vi.fnEnableDevice(_v3_isp_dev))
+        return ret;
+
+    if (ret = v3_vi.fnSetChannelConfig(_v3_isp_chn, &v3_config.vichn))
+        return ret;
+    if (ret = v3_vi.fnEnableChannel(_v3_isp_chn))
         return ret;
 
     {
@@ -548,17 +558,17 @@ int v3_pipeline_create(char mirror, char flip)
         group.noiseRedOn = 0;
         group.histOn = 0;
         group.deintMode = 1;
-        if (ret = v3_vpss.fnCreateGroup(vpss_grp, &group))
+        if (ret = v3_vpss.fnCreateGroup(_v3_vpss_grp, &group))
             return ret;
     }
-    if (ret = v3_vpss.fnStartGroup(vpss_grp))
+    if (ret = v3_vpss.fnStartGroup(_v3_vpss_grp))
         return ret;
 
     {
         v3_sys_bind source = { .module = V3_SYS_MOD_VIU, 
-            .device = vi_dev, .channel = vi_chn };
+            .device = _v3_vi_dev, .channel = _v3_vi_chn };
         v3_sys_bind dest = { .module = V3_SYS_MOD_VPSS, 
-            .device = vpss_grp, .channel = 0 };
+            .device = _v3_vpss_grp, .channel = 0 };
         if (ret = v3_sys.fnBind(&source, &dest))
             return ret;
     }
@@ -571,8 +581,8 @@ int v3_sensor_config(void) {
     v3_snr_dev config;
     config.device = 0;
     config.input = v3_config.input_mode;
-    config.lvds = v3_config.lvds;
-    config.mipi = v3_config.mipi;
+    memcpy(&config.lvds, &v3_config.lvds, sizeof(v3_snr_lvds));
+    memcpy(&config.mipi, &v3_config.mipi, sizeof(v3_snr_mipi));
 
     int fd = open(V3_SNR_ENDPOINT, O_RDWR);
     if (fd < 0)
@@ -644,9 +654,9 @@ int v3_system_calculate_block(short width, short height, v3_common_pixfmt pixFmt
 
 void v3_system_deinit(void)
 {
-    v3_isp.fnUnregisterAF(isp_dev, &(v3_isp_alg){.libName = "hisi_af_lib"});
-    v3_isp.fnUnregisterAWB(isp_dev, &(v3_isp_alg){.libName = "hisi_awb_lib"});
-    v3_isp.fnUnregisterAE(isp_dev, &(v3_isp_alg){.libName = "hisi_ae_lib"});
+    v3_isp.fnUnregisterAF(_v3_isp_dev, &(v3_isp_alg){.libName = "hisi_af_lib"});
+    v3_isp.fnUnregisterAWB(_v3_isp_dev, &(v3_isp_alg){.libName = "hisi_awb_lib"});
+    v3_isp.fnUnregisterAE(_v3_isp_dev, &(v3_isp_alg){.libName = "hisi_ae_lib"});
 
     v3_drv.fnUnregister();
 
@@ -668,7 +678,7 @@ int v3_system_init(unsigned int alignWidth, unsigned int blockCnt,
         printf("MPP version: %s\n", version.version);
     }
 
-    if (parse_sensor_config(snrConfig, &v3_config) != CONFIG_OK)
+    if (v3_parse_sensor_config(snrConfig, &v3_config) != CONFIG_OK)
         V3_ERROR("Can't load sensor config\n");
 
     {
@@ -706,24 +716,20 @@ int v3_system_init(unsigned int alignWidth, unsigned int blockCnt,
     if (ret = v3_drv.fnRegister())
         return ret;
 
-    if (ret = v3_isp.fnRegisterAE(isp_dev, &(v3_isp_alg){.libName = "hisi_ae_lib"}))
+    if (ret = v3_isp.fnRegisterAE(_v3_isp_dev, &(v3_isp_alg){.libName = "hisi_ae_lib"}))
         return ret;
-    if (ret = v3_isp.fnRegisterAWB(isp_dev, &(v3_isp_alg){.libName = "hisi_awb_lib"}))
+    if (ret = v3_isp.fnRegisterAWB(_v3_isp_dev, &(v3_isp_alg){.libName = "hisi_awb_lib"}))
         return ret;
-    if (ret = v3_isp.fnRegisterAF(isp_dev, &(v3_isp_alg){.libName = "hisi_af_lib"}))
+    if (ret = v3_isp.fnRegisterAF(_v3_isp_dev, &(v3_isp_alg){.libName = "hisi_af_lib"}))
         return ret;
-    if (ret = v3_isp.fnMemInit(isp_dev))
+    if (ret = v3_isp.fnMemInit(_v3_isp_dev))
         return ret;
-    {
-        v3_common_wdr mode = v3_config.mode;
-        if (ret = v3_isp.fnSetWDRMode(isp_dev, &mode))
-            return ret;
-    }
-    {
-        v3_isp_dev device = v3_config.isp;
-        if (ret = v3_isp.fnSetDeviceConfig(isp_dev, &device))
-            return ret;
-    }
-    if (ret = v3_isp.fnInit(isp_dev))
+    if (ret = v3_isp.fnSetWDRMode(_v3_isp_dev, &v3_config.mode))
         return ret;
+    if (ret = v3_isp.fnSetDeviceConfig(_v3_isp_dev, &v3_config.isp))
+        return ret;
+    if (ret = v3_isp.fnInit(_v3_isp_dev))
+        return ret;
+
+    return EXIT_SUCCESS;
 }

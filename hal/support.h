@@ -64,24 +64,24 @@ void hal_identify(void) {
     FILE *file;
     char line[200] = {0};
 
-    if (!access("/proc/mi_modules", F_OK) && 
+    if (!access("/proc/mi_modules", 0) && 
         hal_registry(0x1F003C00, &val, OP_READ))
         switch (val) {
             case 0xEF: // Macaron (6)
             case 0xF1: // Pudding (6E)
             case 0xF2: // Ispahan (6B0)
                 plat = HAL_PLATFORM_I6;
-                chnstate = i6_state;
+                chnstate = &i6_state;
                 encthread = i6_encoder_thread;
                 return;
             case 0xF9:
                 plat = HAL_PLATFORM_I6C;
-                chnstate = i6c_state;
+                chnstate = &i6c_state;
                 encthread = i6c_encoder_thread;
                 return;
             case 0xFB:
                 plat = HAL_PLATFORM_I6F;
-                chnstate = i6f_state;
+                chnstate = &i6f_state;
                 encthread = i6f_encoder_thread;
                 return;
         }
@@ -89,7 +89,7 @@ void hal_identify(void) {
     if (file = fopen("/proc/iomem", "r"))
         while (fgets(line, 200, file))
             if (strstr(line, "uart")) {
-                strtol(line, line + 8, 16);
+                strtol(line, &line + 8, 16);
                 break;
             }
 }
