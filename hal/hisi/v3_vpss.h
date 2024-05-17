@@ -8,24 +8,6 @@
 #define V3_VPSS_GRP_NUM     32
 
 typedef struct {
-    int autoModeOn;
-    v3_common_dim capt;
-    v3_common_vidfmt vidFmt;
-    v3_common_pixfmt pixFmt;
-    v3_common_hdr hdr;
-    v3_common_compr compress;
-    int srcFps;
-    int dstFps;
-    int mirrorOn;
-    int flipOn;
-    // Accepts values from 0-2 (none, auto, manual)
-    int aspectMode;
-    unsigned int aspectBg;
-    v3_common_rect rect;
-    unsigned int depth;
-} v3_vpss_chn;
-
-typedef struct {
     int sharpenOn;
     int borderOn;
     int mirrorOn;

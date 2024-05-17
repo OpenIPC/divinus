@@ -1,6 +1,9 @@
 #pragma once
 
 #include "v3_common.h"
+#include "v3_isp.h"
+#include "v3_snr.h"
+#include "v3_vi.h"
 
 #include <limits.h>
 #include <stdio.h>

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "v3_common.h"
 
 #include <asm/ioctl.h>
