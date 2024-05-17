@@ -18,7 +18,7 @@ void gpio_deinit(void) {
 
 int gpio_init(void) {
     while (*path++) {
-        if (access(*path, F_OK)) continue;
+        if (access(*path, 0)) continue;
         fd_gpio = open(*path, O_RDWR);
         if (fd_gpio < 0) {
             GPIO_ERROR("Unable to open the GPIO device!\n");

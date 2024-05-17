@@ -20,7 +20,7 @@ hal_chnstate i6c_state[I6C_VENC_CHN_NUM] = {0};
 
 i6c_snr_pad _i6c_snr_pad;
 i6c_snr_plane _i6c_snr_plane;
-char snr_framerate, snr_hdr, snr_index, snr_profile;
+char _i6c_snr_framerate, _i6c_snr_hdr, _i6c_snr_index, _i6c_snr_profile;
 
 char _i6c_isp_chn = 0;
 char _i6c_isp_dev = 0;
@@ -520,20 +520,20 @@ int i6c_pipeline_create(char sensor, short width, short height, char framerate, 
 {
     int ret;
 
-    snr_index = sensor;
-    snr_profile = -1;
-    snr_hdr = hdr;
+    _i6c_snr_index = sensor;
+    _i6c_snr_profile = -1;
+    _i6c_snr_hdr = hdr;
 
     {
         unsigned int count;
         i6c_snr_res resolution;
-        if (ret = i6c_snr.fnSetHDR(snr_index, hdr))
+        if (ret = i6c_snr.fnSetHDR(_i6c_snr_index, hdr))
             return ret;
 
-        if (ret = i6c_snr.fnGetResolutionCount(snr_index, &count))
+        if (ret = i6c_snr.fnGetResolutionCount(_i6c_snr_index, &count))
             return ret;
         for (char i = 0; i < count; i++) {
-            if (ret = i6c_snr.fnGetResolution(snr_index, i, &resolution))
+            if (ret = i6c_snr.fnGetResolution(_i6c_snr_index, i, &resolution))
                 return ret;
 
             if (width > resolution.crop.width ||
@@ -541,24 +541,24 @@ int i6c_pipeline_create(char sensor, short width, short height, char framerate, 
                 framerate > resolution.maxFps)
                 continue;
         
-            snr_profile = i;
-            if (ret = i6c_snr.fnSetResolution(snr_index, snr_profile))
+            _i6c_snr_profile = i;
+            if (ret = i6c_snr.fnSetResolution(_i6c_snr_index, _i6c_snr_profile))
                 return ret;
-            snr_framerate = framerate;
-            if (ret = i6c_snr.fnSetFramerate(snr_index, snr_framerate))
+            _i6c_snr_framerate = framerate;
+            if (ret = i6c_snr.fnSetFramerate(_i6c_snr_index, _i6c_snr_framerate))
                 return ret;
             break;
         }
-        if (snr_profile < 0)
+        if (_i6c_snr_profile < 0)
             return EXIT_FAILURE;
 
-        if (ret = i6c_snr.fnEnable(snr_index))
+        if (ret = i6c_snr.fnEnable(_i6c_snr_index))
             return ret;
     }
 
-    if (ret = i6c_snr.fnGetPadInfo(snr_index, &_i6c_snr_pad))
+    if (ret = i6c_snr.fnGetPadInfo(_i6c_snr_index, &_i6c_snr_pad))
         return ret;
-    if (ret = i6c_snr.fnGetPlaneInfo(snr_index, hdr & 1, &_i6c_snr_plane))
+    if (ret = i6c_snr.fnGetPlaneInfo(_i6c_snr_index, hdr & 1, &_i6c_snr_plane))
         return ret;
 
     {
@@ -597,7 +597,7 @@ int i6c_pipeline_create(char sensor, short width, short height, char framerate, 
     {
         i6c_isp_chn channel;
         memset(&_i6c_isp_chn, 0, sizeof(_i6c_isp_chn));
-        channel.sensorId = snr_index;
+        channel.sensorId = _i6c_snr_index;
         if (ret = i6c_isp.fnCreateChannel(_i6c_isp_dev, _i6c_isp_chn, &channel))
             return ret;
     }
@@ -650,7 +650,7 @@ int i6c_pipeline_create(char sensor, short width, short height, char framerate, 
             .device = _i6c_vif_dev, .channel = _i6c_vif_chn, .port = 0 };
         i6c_sys_bind dest = { .module = I6C_SYS_MOD_ISP,
             .device = _i6c_isp_dev, .channel = _i6c_isp_chn, .port = _i6c_isp_port };
-        if (ret = i6c_sys.fnBindExt(0, &source, &dest, snr_framerate, snr_framerate,
+        if (ret = i6c_sys.fnBindExt(0, &source, &dest, _i6c_snr_framerate, _i6c_snr_framerate,
             I6C_SYS_LINK_REALTIME, 0))
             return ret;
     }
@@ -660,7 +660,7 @@ int i6c_pipeline_create(char sensor, short width, short height, char framerate, 
             .device = _i6c_isp_dev, .channel = _i6c_isp_chn, .port = _i6c_isp_port };
         i6c_sys_bind dest = { .module = I6C_SYS_MOD_SCL,
             .device = _i6c_scl_dev, .channel = _i6c_scl_chn, .port = 0 };
-        return i6c_sys.fnBindExt(0, &source, &dest, snr_framerate, snr_framerate,
+        return i6c_sys.fnBindExt(0, &source, &dest, _i6c_snr_framerate, _i6c_snr_framerate,
             I6C_SYS_LINK_REALTIME, 0);
     }
 
@@ -702,7 +702,7 @@ void i6c_pipeline_destroy(void)
 
     i6c_vif.fnDisableDevice(_i6c_vif_dev);
 
-    i6c_snr.fnDisable(snr_index);
+    i6c_snr.fnDisable(_i6c_snr_index);
 }
 
 void i6c_system_deinit(void)

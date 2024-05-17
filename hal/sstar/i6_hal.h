@@ -20,7 +20,7 @@ hal_chnstate i6_state[I6_VENC_CHN_NUM] = {0};
 
 i6_snr_pad _i6_snr_pad;
 i6_snr_plane _i6_snr_plane;
-char snr_framerate, snr_hdr, snr_index, snr_profile;
+char _i6_snr_framerate, _i6_snr_hdr, _i6_snr_index, _i6_snr_profile;
 
 char _i6_isp_chn = 0;
 char _i6_venc_port = 0;
@@ -493,20 +493,20 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
 {
     int ret;
 
-    snr_index = sensor;
-    snr_profile = -1;
-    snr_hdr = hdr;
+    _i6_snr_index = sensor;
+    _i6_snr_profile = -1;
+    _i6_snr_hdr = hdr;
 
     {
         unsigned int count;
         i6_snr_res resolution;
-        if (ret = i6_snr.fnSetHDR(snr_index, hdr))
+        if (ret = i6_snr.fnSetHDR(_i6_snr_index, hdr))
             return ret;
 
-        if (ret = i6_snr.fnGetResolutionCount(snr_index, &count))
+        if (ret = i6_snr.fnGetResolutionCount(_i6_snr_index, &count))
             return ret;
         for (char i = 0; i < count; i++) {
-            if (ret = i6_snr.fnGetResolution(snr_index, i, &resolution))
+            if (ret = i6_snr.fnGetResolution(_i6_snr_index, i, &resolution))
                 return ret;
 
             if (width > resolution.crop.width ||
@@ -514,24 +514,24 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
                 framerate > resolution.maxFps)
                 continue;
         
-            snr_profile = i;
-            if (ret = i6_snr.fnSetResolution(snr_index, snr_profile))
+            _i6_snr_profile = i;
+            if (ret = i6_snr.fnSetResolution(_i6_snr_index, _i6_snr_profile))
                 return ret;
-            snr_framerate = framerate;
-            if (ret = i6_snr.fnSetFramerate(snr_index, snr_framerate))
+            _i6_snr_framerate = framerate;
+            if (ret = i6_snr.fnSetFramerate(_i6_snr_index, _i6_snr_framerate))
                 return ret;
             break;
         }
-        if (snr_profile < 0)
+        if (_i6_snr_profile < 0)
             return EXIT_FAILURE;
 
-        if (ret = i6_snr.fnEnable(snr_index))
+        if (ret = i6_snr.fnEnable(_i6_snr_index))
             return ret;
     }
 
-    if (ret = i6_snr.fnGetPadInfo(snr_index, &_i6_snr_pad))
+    if (ret = i6_snr.fnGetPadInfo(_i6_snr_index, &_i6_snr_pad))
         return ret;
-    if (ret = i6_snr.fnGetPlaneInfo(snr_index, hdr & 1, &_i6_snr_plane))
+    if (ret = i6_snr.fnGetPlaneInfo(_i6_snr_index, hdr & 1, &_i6_snr_plane))
         return ret;
 
     {
@@ -578,7 +578,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
         channel.pixFmt = (i6_common_pixfmt)(_i6_snr_plane.bayer > I6_BAYER_END ? 
             _i6_snr_plane.pixFmt : (I6_PIXFMT_RGB_BAYER + _i6_snr_plane.precision * I6_BAYER_END + _i6_snr_plane.bayer));
         channel.hdr = _i6_snr_pad.hdr;
-        channel.sensor = (i6_vpe_sens)(snr_index + 1);
+        channel.sensor = (i6_vpe_sens)(_i6_snr_index + 1);
         channel.mode = I6_VPE_MODE_REALTIME;
         if (ret = i6_vpe.fnCreateChannel(_i6_vpe_chn, &channel))
             return ret;
@@ -602,7 +602,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
             .device = _i6_vif_dev, .channel = _i6_vif_chn, .port = _i6_vif_port };
         i6_sys_bind dest = { .module = I6_SYS_MOD_VPE,
             .device = _i6_vpe_dev, .channel = _i6_vpe_chn, .port = _i6_vpe_port };
-        return i6_sys.fnBindExt(&source, &dest, snr_framerate, snr_framerate,
+        return i6_sys.fnBindExt(&source, &dest, _i6_snr_framerate, _i6_snr_framerate,
             I6_SYS_LINK_REALTIME, 0);
     }
 
@@ -628,7 +628,7 @@ void i6_pipeline_destroy(void)
     i6_vif.fnDisablePort(_i6_vif_chn, 0);
     i6_vif.fnDisableDevice(_i6_vif_dev);
 
-    i6_snr.fnDisable(snr_index);
+    i6_snr.fnDisable(_i6_snr_index);
 }
 
 void i6_system_deinit(void)
