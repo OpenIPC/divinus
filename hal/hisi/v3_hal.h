@@ -506,7 +506,7 @@ int v3_sensor_init(char *name)
     char* dirs[] = {"%s", "./%s", "/usr/lib/%s"};
     char **dir = dirs;
 
-    while (dir) {
+    while (*dir++) {
         asprintf(&path, *dir, name);
         if (v3_drv.handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL))
             dir = NULL;

@@ -5,7 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "config/app_config.h"
+#include "common.h"
 #include "http_post.h"
 #include "night.h"
 #include "video.h"
@@ -67,6 +67,8 @@ int main(int argc, char *argv[]) {
     } else 
         while (keepRunning) sleep(1);
 
+    if (app_config.night_mode_enable)
+        stop_monitor_light_sensor();
     stop_sdk();
     stop_server();
 

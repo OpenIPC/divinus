@@ -1,3 +1,4 @@
+#include "gpio.h"
 #include "types.h"
 #include "hisi/v3_hal.h"
 #include "sstar/i6_hal.h"

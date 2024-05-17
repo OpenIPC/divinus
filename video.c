@@ -17,8 +17,8 @@
 #include "server.h"
 
 pthread_mutex_t mutex;
-pthread_t vencPid = 0;
 pthread_t ispPid = 0;
+pthread_t vencPid = 0;
 
 int save_stream(int index, hal_vidstream *stream) {
     int ret;
@@ -230,7 +230,7 @@ int start_sdk() {
             return EXIT_FAILURE;
         }
         if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-            fprintf(stderr, "Error:  Can't set stack size %zu!\n", stacksize);
+            fprintf(stderr, "Can't set stack size %zu!\n", stacksize);
         }
         pthread_attr_destroy(&thread_attr);
     }
@@ -338,7 +338,7 @@ int start_sdk() {
         pthread_attr_getstacksize(&thread_attr, &stacksize);
         size_t new_stacksize = app_config.venc_stream_thread_stack_size;
         if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-            fprintf(stderr, "Error:  Can't set stack size %zu\n", new_stacksize);
+            fprintf(stderr, "Can't set stack size %zu\n", new_stacksize);
         }
         if (pthread_create(
                      &vencPid, &thread_attr, (void *(*)(void *))encthread, NULL)) {
@@ -346,7 +346,7 @@ int start_sdk() {
             return EXIT_FAILURE;
         }
         if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-            fprintf(stderr, "Error:  Can't set stack size %zu\n", stacksize);
+            fprintf(stderr, "Can't set stack size %zu\n", stacksize);
         }
         pthread_attr_destroy(&thread_attr);
     }
