@@ -22,7 +22,7 @@ pthread_t vencPid = 0;
 int save_stream(int index, hal_vidstream *stream) {
     int ret;
 
-    switch (chnstate[index]->payload) {
+    switch (chnstate[index].payload) {
         case HAL_VIDCODEC_H264:
             if (app_config.mp4_enable) {
                 send_mp4_to_client(index, stream);
@@ -76,12 +76,12 @@ int save_stream(int index, hal_vidstream *stream) {
     return EXIT_SUCCESS;
 }
 
-unsigned int take_next_free_channel(bool mainLoop) {
+int take_next_free_channel(bool mainLoop) {
     pthread_mutex_lock(&mutex);
-    for (int i = 0; i < (sizeof(chnstate) / sizeof(chnstate[0])); i++) {
-        if (!chnstate[i]->enable) {
-            chnstate[i]->enable = true;
-            chnstate[i]->mainLoop = mainLoop;
+    for (int i = 0; i < chncount; i++) {
+        if (!chnstate[i].enable) {
+            chnstate[i].enable = true;
+            chnstate[i].mainLoop = mainLoop;
             pthread_mutex_unlock(&mutex);
             return i;
         }
@@ -92,43 +92,43 @@ unsigned int take_next_free_channel(bool mainLoop) {
 
 bool channel_is_enable(char index) {
     pthread_mutex_lock(&mutex);
-    bool enable = chnstate[index]->enable;
+    bool enable = chnstate[index].enable;
     pthread_mutex_unlock(&mutex);
     return enable;
 }
 
 bool channel_main_loop(char index) {
     pthread_mutex_lock(&mutex);
-    bool mainLoop = chnstate[index]->mainLoop;
+    bool mainLoop = chnstate[index].mainLoop;
     pthread_mutex_unlock(&mutex);
     return mainLoop;
 }
 
 void set_channel_disable(char index) {
     pthread_mutex_lock(&mutex);
-    chnstate[index]->enable = false;
+    chnstate[index].enable = false;
     pthread_mutex_unlock(&mutex);
 }
 
 void set_grayscale(bool active) {
     pthread_mutex_lock(&mutex);
-    for (int i = 0; i < (sizeof(chnstate) / sizeof(chnstate[0])); i++) {
-        if (!chnstate[i]->enable) continue;
-        switch (plat) {
-            case HAL_PLATFORM_I6: i6_channel_grayscale(i, active); break;
-            case HAL_PLATFORM_I6C: i6c_channel_grayscale(i, active); break;
-            case HAL_PLATFORM_I6F: i6f_channel_grayscale(i, active); break;
-            case HAL_PLATFORM_V3: v3_channel_grayscale(i, active); break;
-        }
+    switch (plat) {
+        case HAL_PLATFORM_I6: i6_channel_grayscale(active); break;
+        case HAL_PLATFORM_I6C: i6c_channel_grayscale(active); break;
+        case HAL_PLATFORM_I6F: i6f_channel_grayscale(active); break;
+        case HAL_PLATFORM_V3: v3_channel_grayscale(active); break;
     }
     pthread_mutex_unlock(&mutex);
 }
 
 int create_vpss_chn(char index, short width, short height, char framerate, char jpeg) {
     switch (plat) {
-        case HAL_PLATFORM_I6: return i6_channel_create(index, width, height, jpeg);
-        case HAL_PLATFORM_I6C: return i6c_channel_create(index, width, height, jpeg);
-        case HAL_PLATFORM_I6F: return i6f_channel_create(index, width, height, jpeg);
+        case HAL_PLATFORM_I6: return i6_channel_create(index, width, height,
+            app_config.mirror, app_config.flip, jpeg);
+        case HAL_PLATFORM_I6C: return i6c_channel_create(index, width, height,
+            app_config.mirror, app_config.flip, jpeg);
+        case HAL_PLATFORM_I6F: return i6f_channel_create(index, width, height,
+            app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_V3: return v3_channel_create(index, width, height, framerate);
         default: return EXIT_FAILURE;
     }
@@ -202,11 +202,11 @@ int start_sdk() {
 
     switch (plat) {
         case HAL_PLATFORM_I6: ret = i6_pipeline_create(0, width,
-            height, framerate, 0); break;
+            height, framerate); break;
         case HAL_PLATFORM_I6C: ret = i6c_pipeline_create(0, width,
-            height, framerate, 0); break;
+            height, framerate); break;
         case HAL_PLATFORM_I6F: ret = i6f_pipeline_create(0, width,
-            height, framerate, 0); break;
+            height, framerate); break;
         case HAL_PLATFORM_V3: ret = v3_pipeline_create(app_config.mirror,
             app_config.flip); break;
         default: return EXIT_FAILURE;        
@@ -262,11 +262,18 @@ int start_sdk() {
             config.bitrate = app_config.mp4_bitrate;
 
             switch (plat) {
-                case HAL_PLATFORM_I6: ret = i6_encoder_create(index, &config);
-                case HAL_PLATFORM_I6C: ret = i6c_encoder_create(index, &config);
-                case HAL_PLATFORM_I6F: ret = i6f_encoder_create(index, &config);
-                case HAL_PLATFORM_V3: ret = v3_encoder_create(index, &config);
+                case HAL_PLATFORM_I6: ret = i6_encoder_create(index, &config); break;
+                case HAL_PLATFORM_I6C: ret = i6c_encoder_create(index, &config); break;
+                case HAL_PLATFORM_I6F: ret = i6f_encoder_create(index, &config); break;
+                case HAL_PLATFORM_V3: ret = v3_encoder_create(index, &config); break;
                 default: return EXIT_FAILURE;      
+            }
+
+            if (ret) {
+                fprintf(stderr, 
+                    "Creating encoder %d failed with %#x!\n%s\n", 
+                    index, ret, errstr(ret));
+                return EXIT_FAILURE;
             }
         }
 
@@ -301,10 +308,10 @@ int start_sdk() {
             config.bitrate = app_config.mjpeg_bitrate;
 
             switch (plat) {
-                case HAL_PLATFORM_I6: ret = i6_encoder_create(index, &config);
-                case HAL_PLATFORM_I6C: ret = i6c_encoder_create(index, &config);
-                case HAL_PLATFORM_I6F: ret = i6f_encoder_create(index, &config);
-                case HAL_PLATFORM_V3: ret = v3_encoder_create(index, &config);
+                case HAL_PLATFORM_I6: ret = i6_encoder_create(index, &config); break;
+                case HAL_PLATFORM_I6C: ret = i6c_encoder_create(index, &config); break;
+                case HAL_PLATFORM_I6F: ret = i6f_encoder_create(index, &config); break;
+                case HAL_PLATFORM_V3: ret = v3_encoder_create(index, &config); break;
                 default: return EXIT_FAILURE;      
             }
 

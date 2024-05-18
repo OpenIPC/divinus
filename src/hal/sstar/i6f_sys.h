@@ -98,6 +98,7 @@ typedef struct {
 
 typedef struct {
     i6f_sys_pooltype type;
+    char create;
     union {
         i6f_sys_poolchn channel;
         i6f_sys_pooldev device;

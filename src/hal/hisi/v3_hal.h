@@ -12,6 +12,8 @@
 #include "v3_vpss.h"
 
 #include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 typedef struct {
     void* handle;
@@ -29,7 +31,11 @@ int v3_hal_init(void);
 
 int v3_channel_bind(char index);
 int v3_channel_create(char index, short width, short height, char framerate);
-int v3_channel_grayscale(char index, int enable);
+void v3_channel_disable(char index);
+int v3_channel_enabled(char index);
+int v3_channel_grayscale(int enable);
+int v3_channel_in_mainloop(char index);
+int v3_channel_next(char mainLoop);
 int v3_channel_unbind(char index);
 
 int v3_encoder_create(char index, hal_vidconfig *config);

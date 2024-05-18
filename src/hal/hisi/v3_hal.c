@@ -104,9 +104,10 @@ int v3_channel_create(char index, short width, short height, char framerate)
     return EXIT_SUCCESS;
 }
 
-int v3_channel_grayscale(char index, int enable)
+int v3_channel_grayscale(int enable)
 {
-    return v3_venc.fnSetColorToGray(index, &enable);
+    for (int i = 0; i < V3_VENC_CHN_NUM; i++)
+        if (v3_state[i].enable) v3_venc.fnSetColorToGray(i, &enable);
 }
 
 int v3_channel_unbind(char index)
@@ -319,7 +320,7 @@ int v3_encoder_snapshot_grab(char index, short width, short height,
         goto abort;
     }
 
-    v3_channel_grayscale(index, grayscale);
+    v3_channel_grayscale(grayscale);
 
     unsigned int count = 1;
     if (v3_venc.fnStartReceivingEx(index, &count)) {
@@ -365,7 +366,7 @@ int v3_encoder_snapshot_grab(char index, short width, short height,
         }
         strm.count = stat.curPacks;
 
-        if (ret = v3_venc.fnGetStream(index, &stream, stat.curPacks)) {
+        if (ret = v3_venc.fnGetStream(index, &strm, stat.curPacks)) {
             fprintf(stderr, "[v3_venc] Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
             free(strm.packet);
@@ -374,24 +375,18 @@ int v3_encoder_snapshot_grab(char index, short width, short height,
         }
 
         stream->count = stat.curPacks;
-        stream->pack = strm.packet;
+        memcpy((void*)stream->pack, (void*)strm.packet, sizeof(v3_venc_pack) * stat.curPacks);
 abort:
-        if (ret = v3_venc.fnFreeStream(index, &stream)) {
-            fprintf(stderr, "[v3_venc] Releasing the stream on "
-                "channel %d failed with %#x!\n", index, ret);
-        }
+        v3_venc.fnFreeStream(index, &strm);
     }
 
-    if (v3_venc.fnFreeDescriptor(index)) {
-        fprintf(stderr, "[v3_venc] Releasing the stream on "
-            "channel %d failed with %#x!\n", index, ret);
-    }
+    v3_venc.fnFreeDescriptor(index);
 
     v3_venc.fnStopReceiving(index);
 
     v3_channel_unbind(index);
 
-    return EXIT_SUCCESS;
+    return ret;
 }
 
 void *v3_encoder_thread(void)
@@ -404,7 +399,10 @@ void *v3_encoder_thread(void)
         if (!v3_state[i].mainLoop) continue;
 
         ret = v3_venc.fnGetDescriptor(i);
-        if (ret < 0) return ret;
+        if (ret < 0) {
+            fprintf(stderr, "[v3_venc] Getting the encoder descriptor failed with %#x!\n", ret);
+            return;
+        }
         v3_state[i].fileDesc = ret;
 
         if (maxFd <= v3_state[i].fileDesc)
@@ -424,7 +422,7 @@ void *v3_encoder_thread(void)
             FD_SET(v3_state[i].fileDesc, &readFds);
         }
 
-        timeout.tv_sec = 0;
+        timeout.tv_sec = 2;
         timeout.tv_usec = 0;
         ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
         if (ret < 0) {

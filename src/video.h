@@ -5,8 +5,8 @@
 int start_sdk();
 int stop_sdk();
 
-unsigned int take_next_free_channel(bool mainLoop);
-bool channel_is_enable(char index);
+int take_next_free_channel(bool mainLoop);
+bool channel_is_enabled(char index);
 bool channel_main_loop(char index);
 void set_channel_disable(char index);
 void set_grayscale(bool active);

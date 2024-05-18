@@ -7,10 +7,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
 extern void *encthread;
 extern void *ispthread;
-extern hal_chnstate **chnstate;
+extern char chncount;
+extern hal_chnstate *chnstate;
 extern hal_platform plat;
 
 extern void *v3_encoder_thread(void);

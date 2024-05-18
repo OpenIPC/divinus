@@ -45,10 +45,10 @@ int jpeg_init() {
         config.minQual = app_config.jpeg_qfactor;
 
         switch (plat) {
-            case HAL_PLATFORM_I6: ret = i6_encoder_create(jpeg_index, &config);
-            case HAL_PLATFORM_I6C: ret = i6c_encoder_create(jpeg_index, &config);
-            case HAL_PLATFORM_I6F: ret = i6f_encoder_create(jpeg_index, &config);
-            case HAL_PLATFORM_V3: ret = v3_encoder_create(jpeg_index, &config);
+            case HAL_PLATFORM_I6: ret = i6_encoder_create(jpeg_index, &config); break;
+            case HAL_PLATFORM_I6C: ret = i6c_encoder_create(jpeg_index, &config); break;
+            case HAL_PLATFORM_I6F: ret = i6f_encoder_create(jpeg_index, &config); break;
+            case HAL_PLATFORM_V3: ret = v3_encoder_create(jpeg_index, &config); break;
             default: 
                 pthread_mutex_unlock(&jpeg_mutex);
                 return EXIT_FAILURE;      
@@ -89,11 +89,11 @@ int jpeg_get(short width, short height, char quality, char grayscale,
 
     hal_vidstream stream;
     switch (plat) {
-        case HAL_PLATFORM_I6: i6_encoder_snapshot_grab(jpeg_index, width, height, 
+        case HAL_PLATFORM_I6: ret = i6_encoder_snapshot_grab(jpeg_index, width, height, 
             quality, grayscale, &stream); break;
-        case HAL_PLATFORM_I6C: i6c_encoder_snapshot_grab(jpeg_index, width, height, 
+        case HAL_PLATFORM_I6C: ret = i6c_encoder_snapshot_grab(jpeg_index, width, height, 
             quality, grayscale, &stream); break;
-        case HAL_PLATFORM_I6F: i6f_encoder_snapshot_grab(jpeg_index, width, height, 
+        case HAL_PLATFORM_I6F: ret = i6f_encoder_snapshot_grab(jpeg_index, width, height, 
             quality, grayscale, &stream); break;
     }
     if (ret) {

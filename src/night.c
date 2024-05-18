@@ -12,7 +12,7 @@
 static bool night_mode = false;
 pthread_t nightPid = 0;
 
-bool night_mode_is_enable() { return night_mode; }
+bool night_mode_is_enabled() { return night_mode; }
 
 void ircut_on() {
     gpio_write(app_config.ir_cut_pin1, false);
@@ -71,7 +71,7 @@ int start_monitor_light_sensor() {
     if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
         printf(tag "Error:  Can't set stack size %ld\n", new_stacksize);
     }
-    pthread_create(&nightPid, &thread_attr, night_thread, NULL);
+    pthread_create(&nightPid, &thread_attr, (void *(*)(void *))night_thread, NULL);
     if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
         printf(tag "Error:  Can't set stack size %ld\n", stacksize);
     }

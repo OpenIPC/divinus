@@ -2,7 +2,8 @@
 
 void *encthread = NULL;
 void *ispthread = NULL;
-hal_chnstate **chnstate = NULL;
+char chncount = 0;
+hal_chnstate *chnstate = NULL;
 hal_platform plat = HAL_PLATFORM_UNK;
 
 bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
@@ -62,17 +63,20 @@ void hal_identify(void) {
             case 0xF1: // Pudding (6E)
             case 0xF2: // Ispahan (6B0)
                 plat = HAL_PLATFORM_I6;
-                chnstate = &i6_state;
+                chncount = I6_VENC_CHN_NUM;
+                chnstate = (hal_chnstate*)i6_state;
                 encthread = i6_encoder_thread;
                 return;
             case 0xF9:
                 plat = HAL_PLATFORM_I6C;
-                chnstate = &i6c_state;
+                chncount = I6C_VENC_CHN_NUM;
+                chnstate = (hal_chnstate*)i6c_state;
                 encthread = i6c_encoder_thread;
                 return;
             case 0xFB:
                 plat = HAL_PLATFORM_I6F;
-                chnstate = &i6f_state;
+                chncount = I6F_VENC_CHN_NUM;
+                chnstate = (hal_chnstate*)i6f_state;
                 encthread = i6f_encoder_thread;
                 return;
         }
@@ -80,7 +84,7 @@ void hal_identify(void) {
     if (file = fopen("/proc/iomem", "r"))
         while (fgets(line, 200, file))
             if (strstr(line, "uart")) {
-                strtol(line, &line + 8, 16);
+                strtol(line, (char**)(&line + 8), 16);
                 break;
             }
 }

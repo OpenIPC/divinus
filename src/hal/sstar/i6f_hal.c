@@ -79,7 +79,7 @@ int i6f_channel_bind(char index, char framerate, char jpeg)
     return EXIT_SUCCESS;
 }
 
-int i6f_channel_create(char index, short width, short height, char jpeg)
+int i6f_channel_create(char index, short width, short height, char mirror, char flip, char jpeg)
 {
     i6f_scl_port port;
     port.crop.x = 0;
@@ -88,17 +88,17 @@ int i6f_channel_create(char index, short width, short height, char jpeg)
     port.crop.height = 0;
     port.output.width = width;
     port.output.height = height;
-    port.mirror = 0;
-    port.flip = 0;
+    port.mirror = mirror;
+    port.flip = flip;
     port.compress = I6F_COMPR_NONE;
     port.pixFmt = jpeg ? I6F_PIXFMT_YUV422_YUYV : I6F_PIXFMT_YUV420SP;
 
     return i6f_scl.fnSetPortConfig(_i6f_scl_dev, _i6f_scl_chn, index, &port);
 }
 
-int i6f_channel_grayscale(int index, char enable)
+int i6f_channel_grayscale(char enable)
 {
-    return i6f_isp.fnSetColorToGray(_i6f_isp_dev, index, &enable);
+    return i6f_isp.fnSetColorToGray(_i6f_isp_dev, 0, &enable);
 }
 
 int i6f_channel_unbind(char index, char jpeg)
@@ -164,18 +164,19 @@ int i6f_encoder_create(char index, hal_vidconfig *config)
 
         goto attach;
     } else if (config->codec == HAL_VIDCODEC_H265) {
+        channel.attrib.codec = I6F_VENC_CODEC_H265;
         attrib = &channel.attrib.h265;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H265CBR;
                 channel.rate.h265Cbr = (i6f_venc_rate_h26xcbr){ .gop = config->gop,
-                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
-                    (unsigned int)(config->bitrate << 10), .avgLvl = 0 }; break;
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
+                    (unsigned int)(config->bitrate) << 10, .avgLvl = 1 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H265VBR;
                 channel.rate.h265Vbr = (i6f_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
-                    (unsigned int)(MAX(config->bitrate, config->maxBitrate) << 10),
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = I6F_VENC_RATEMODE_H265QP;
@@ -187,25 +188,26 @@ int i6f_encoder_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H265AVBR;
                 channel.rate.h265Avbr = (i6f_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
-                    (unsigned int)(MAX(config->bitrate, config->maxBitrate) << 10),
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             default:
                 I6F_ERROR("H.265 encoder does not support this mode!");
         }  
     } else if (config->codec == HAL_VIDCODEC_H264) {
+        channel.attrib.codec = I6F_VENC_CODEC_H264;
         attrib = &channel.attrib.h264;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H264CBR;
                 channel.rate.h264Cbr = (i6f_venc_rate_h26xcbr){ .gop = config->gop,
-                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
-                    (unsigned int)(config->bitrate << 10), .avgLvl = 0 }; break;
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
+                    (unsigned int)(config->bitrate) << 10, .avgLvl = 1 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H264VBR;
                 channel.rate.h264Vbr = (i6f_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
-                    (unsigned int)(MAX(config->bitrate, config->maxBitrate) << 10),
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = I6F_VENC_RATEMODE_H264QP;
@@ -215,14 +217,14 @@ int i6f_encoder_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_ABR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H264ABR;
                 channel.rate.h264Abr = (i6f_venc_rate_h26xabr){ .gop = config->gop,
-                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1,
-                    .avgBitrate = (unsigned int)(config->bitrate << 10),
-                    .maxBitrate = (unsigned int)(config->maxBitrate << 10) }; break;
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1,
+                    .avgBitrate = (unsigned int)(config->bitrate) << 10,
+                    .maxBitrate = (unsigned int)(config->maxBitrate) << 10 }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = I6F_VENC_RATEMODE_H265AVBR;
                 channel.rate.h265Avbr = (i6f_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 0, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
-                    (unsigned int)(MAX(config->bitrate, config->maxBitrate) << 10),
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             default:
                 I6F_ERROR("H.264 encoder does not support this mode!");
@@ -324,7 +326,7 @@ int i6f_encoder_snapshot_grab(char index, short width, short height,
         goto abort;
     }
 
-    i6f_channel_grayscale(index, grayscale);
+    i6f_channel_grayscale(grayscale);
 
     unsigned int count = 1;
     if (i6f_venc.fnStartReceivingEx(device, index, &count)) {
@@ -379,24 +381,18 @@ int i6f_encoder_snapshot_grab(char index, short width, short height,
         }
 
         stream->count = stat.curPacks;
-        stream->pack = strm.packet;
+        memcpy((void*)stream->pack, (void*)strm.packet, sizeof(i6f_venc_pack) * stat.curPacks);
 abort:
-        if (ret = i6f_venc.fnFreeStream(device, index, &strm)) {
-            fprintf(stderr, "[i6f_venc] Releasing the stream on "
-                "channel %d failed with %#x!\n", index, ret);
-        }
+        i6f_venc.fnFreeStream(device, index, &strm);
     }
 
-    if (i6f_venc.fnFreeDescriptor(device, index)) {
-        fprintf(stderr, "[i6f_venc] Releasing the stream on "
-            "channel %d failed with %#x!\n", index, ret);
-    }
+    i6f_venc.fnFreeDescriptor(device, index);
 
     i6f_venc.fnStopReceiving(device, index);
 
     i6f_channel_unbind(device, index);
 
-    return EXIT_SUCCESS;    
+    return ret;    
 }
 
 void *i6f_encoder_thread(void)
@@ -413,7 +409,10 @@ void *i6f_encoder_thread(void)
              I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0;
 
         ret = i6f_venc.fnGetDescriptor(device, i);
-        if (ret < 0) return ret;
+        if (ret < 0) {
+            fprintf(stderr, "[i6f_venc] Getting the encoder descriptor failed with %#x!\n", ret);
+            return;
+        }
         i6f_state[i].fileDesc = ret;
 
         if (maxFd <= i6f_state[i].fileDesc)
@@ -433,7 +432,7 @@ void *i6f_encoder_thread(void)
             FD_SET(i6f_state[i].fileDesc, &readFds);
         }
 
-        timeout.tv_sec = 0;
+        timeout.tv_sec = 2;
         timeout.tv_usec = 0;
         ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
         if (ret < 0) {
@@ -500,18 +499,17 @@ void *i6f_encoder_thread(void)
     fprintf(stderr, "[i6f_venc] Shutting down encoding thread...\n");
 }
 
-int i6f_pipeline_create(char sensor, short width, short height, char framerate, char hdr)
+int i6f_pipeline_create(char sensor, short width, short height, char framerate)
 {
     int ret;
 
     _i6f_snr_index = sensor;
     _i6f_snr_profile = -1;
-    _i6f_snr_hdr = hdr;
 
     {
         unsigned int count;
         i6f_snr_res resolution;
-        if (ret = i6f_snr.fnSetPlaneMode(_i6f_snr_index, hdr))
+        if (ret = i6f_snr.fnSetPlaneMode(_i6f_snr_index, 0))
             return ret;
 
         if (ret = i6f_snr.fnGetResolutionCount(_i6f_snr_index, &count))
@@ -539,7 +537,7 @@ int i6f_pipeline_create(char sensor, short width, short height, char framerate, 
 
     if (ret = i6f_snr.fnGetPadInfo(_i6f_snr_index, &_i6f_snr_pad))
         return ret;
-    if (ret = i6f_snr.fnGetPlaneInfo(_i6f_snr_index, hdr & 1, &_i6f_snr_plane))
+    if (ret = i6f_snr.fnGetPlaneInfo(_i6f_snr_index, 0, &_i6f_snr_plane))
         return ret;
     if (ret = i6f_snr.fnEnable(_i6f_snr_index))
         return ret;
@@ -586,7 +584,7 @@ int i6f_pipeline_create(char sensor, short width, short height, char framerate, 
 
     {
         i6f_isp_para param;
-        param.hdr = _i6f_snr_pad.hdr;
+        param.hdr = I6F_HDR_OFF;
         param.level3DNR = 0;
         param.mirror = 0;
         param.flip = 0;

@@ -89,10 +89,12 @@ enum ConfigError parse_app_config(const char *path) {
         &ini, "system", "sensor_config", app_config.sensor_config);
     if (err != CONFIG_OK)
         goto RET_ERR;
+    int port;
     err =
-        parse_int(&ini, "system", "web_port", 1, INT_MAX, &app_config.web_port);
+        parse_int(&ini, "system", "web_port", 1, INT_MAX, &port);
     if (err != CONFIG_OK)
         goto RET_ERR;
+    app_config.web_port = (unsigned short)port;
     err = parse_bool(
         &ini, "system", "web_enable_static", &app_config.web_enable_static);
     if (err != CONFIG_OK)
