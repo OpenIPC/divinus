@@ -70,8 +70,8 @@ typedef struct {
 } i6c_vif_impl;
 
 static int i6c_vif_load(i6c_vif_impl *vif_lib) {
-    if (!(vif_lib->handle = dlopen("libmi_vif.so", RTLD_NOW))) {
-        fprintf(stderr, "[i6c_vif] Failed to load library!\n");
+    if (!(vif_lib->handle = dlopen("libmi_vif.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[i6c_vif] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 

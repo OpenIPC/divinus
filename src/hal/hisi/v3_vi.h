@@ -120,8 +120,8 @@ typedef struct {
 } v3_vi_impl;
 
 static int v3_vi_load(v3_vi_impl *vi_lib) {
-    if (!(vi_lib->handle = dlopen("libmpi.so", RTLD_NOW))) {
-        fprintf(stderr, "[v3_vi] Failed to load library!\n");
+    if (!(vi_lib->handle = dlopen("libmpi.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[v3_vi] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 

@@ -40,8 +40,8 @@ typedef struct {
 } i6f_scl_impl;
 
 static int i6f_scl_load(i6f_scl_impl *scl_lib) {
-    if (!(scl_lib->handle = dlopen("libmi_scl.so", RTLD_NOW))) {
-        fprintf(stderr, "[i6f_scl] Failed to load library!\n");
+    if (!(scl_lib->handle = dlopen("libmi_scl.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[i6f_scl] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 

@@ -307,8 +307,8 @@ typedef struct {
 } i6f_venc_impl;
 
 static int i6f_venc_load(i6f_venc_impl *venc_lib) {
-    if (!(venc_lib->handle = dlopen("libmi_venc.so", RTLD_NOW))) {
-        fprintf(stderr, "[i6f_venc] Failed to load library!\n");
+    if (!(venc_lib->handle = dlopen("libmi_venc.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[i6f_venc] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 

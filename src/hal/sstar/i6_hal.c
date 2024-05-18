@@ -28,20 +28,20 @@ void i6_hal_deinit(void)
     i6_vpe_unload(&i6_vpe);
     i6_vif_unload(&i6_vif);
     i6_venc_unload(&i6_venc);
-    i6_sys_unload(&i6_sys);
     i6_snr_unload(&i6_snr);
     i6_isp_unload(&i6_isp);
+    i6_sys_unload(&i6_sys);
 }
 
 int i6_hal_init(void)
 {
     int ret;
 
+    if (ret = i6_sys_load(&i6_sys))
+        return ret;
     if (ret = i6_isp_load(&i6_isp))
         return ret;
     if (ret = i6_snr_load(&i6_snr))
-        return ret;
-    if (ret = i6_sys_load(&i6_sys))
         return ret;
     if (ret = i6_venc_load(&i6_venc))
         return ret;
@@ -641,7 +641,7 @@ int i6_system_init(void)
         if (ret = i6_sys.fnGetVersion(&version))
             return ret;
         printf("App built with headers v%s\n", I6_SYS_API);
-        printf("mi_sys version: %s\n", version.version);
+        puts(version.version);
     }
 
     return EXIT_SUCCESS;

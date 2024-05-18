@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
 #include <unistd.h>
 
 #include "error.h"
@@ -197,13 +196,17 @@ int start_sdk() {
         return EXIT_FAILURE;
     }
 
+    short width = MAX(app_config.mp4_width, app_config.mjpeg_width);
+    short height = MAX(app_config.mp4_height, app_config.mjpeg_height);
+    short framerate = MAX(app_config.mp4_fps, app_config.mjpeg_fps);
+
     switch (plat) {
-        case HAL_PLATFORM_I6: ret = i6_pipeline_create(0, app_config.mp4_width,
-            app_config.mp4_height, app_config.mp4_fps, 0); break;
-        case HAL_PLATFORM_I6C: ret = i6c_pipeline_create(0, app_config.mp4_width,
-            app_config.mp4_height, app_config.mp4_fps, 0); break;
-        case HAL_PLATFORM_I6F: ret = i6f_pipeline_create(0, app_config.mp4_width,
-            app_config.mp4_height, app_config.mp4_fps, 0); break;
+        case HAL_PLATFORM_I6: ret = i6_pipeline_create(0, width,
+            height, framerate, 0); break;
+        case HAL_PLATFORM_I6C: ret = i6c_pipeline_create(0, width,
+            height, framerate, 0); break;
+        case HAL_PLATFORM_I6F: ret = i6f_pipeline_create(0, width,
+            height, framerate, 0); break;
         case HAL_PLATFORM_V3: ret = v3_pipeline_create(app_config.mirror,
             app_config.flip); break;
         default: return EXIT_FAILURE;        
@@ -237,12 +240,10 @@ int start_sdk() {
     usleep(1000);
 
     if (app_config.mp4_enable) {
-        unsigned int width = app_config.mp4_width;
-        unsigned int height = app_config.mp4_height;
-
         int index = take_next_free_channel(true);
 
-        if (ret = create_vpss_chn(index, width, height, app_config.mp4_fps, 0)) {
+        if (ret = create_vpss_chn(index, app_config.mp4_width, 
+            app_config.mp4_height, app_config.mp4_fps, 0)) {
             fprintf(stderr, 
                 "Creating channel %d failed with %#x!\n%s\n", 
                 index, ret, errstr(ret));

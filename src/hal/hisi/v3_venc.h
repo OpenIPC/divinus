@@ -386,8 +386,8 @@ typedef struct {
 } v3_venc_impl;
 
 static int v3_venc_load(v3_venc_impl *venc_lib) {
-    if (!(venc_lib->handle = dlopen("libmpi.so", RTLD_NOW))) {
-        fprintf(stderr, "[v3_venc] Failed to load library!\n");
+    if (!(venc_lib->handle = dlopen("libmpi.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[v3_venc] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 

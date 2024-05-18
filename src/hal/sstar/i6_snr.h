@@ -27,7 +27,7 @@ typedef struct {
     unsigned int multplxNum;
     i6_common_sync sync;
     i6_common_edge edge;
-    char bitswap;
+    int bitswap;
 } i6_snr_bt656;
 
 typedef struct {
@@ -90,8 +90,8 @@ typedef struct {
 } i6_snr_impl;
 
 static int i6_snr_load(i6_snr_impl *snr_lib) {
-    if (!(snr_lib->handle = dlopen("libmi_sensor.so", RTLD_NOW))) {
-        fprintf(stderr, "[i6_snr] Failed to load library!\n");
+    if (!(snr_lib->handle = dlopen("libmi_sensor.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[i6_snr] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 

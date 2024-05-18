@@ -69,7 +69,7 @@ typedef struct {
 } i6_sys_ver;
 
 typedef struct {
-    void *handle;
+    void *handle, *handleCamOsWrapper, *handleMdLinux;
     
     int (*fnExit)(void);
     int (*fnGetVersion)(i6_sys_ver *version);
@@ -83,8 +83,18 @@ typedef struct {
 } i6_sys_impl;
 
 static int i6_sys_load(i6_sys_impl *sys_lib) {
-    if (!(sys_lib->handle = dlopen("libmi_sys.so", RTLD_NOW))) {
-        fprintf(stderr, "[i6_sys] Failed to load library!\n");
+    if (!(sys_lib->handleCamOsWrapper = dlopen("libcam_os_wrapper.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[i6_sys] Failed to load dependency library!\nError: %s\n", dlerror());
+        return EXIT_FAILURE;
+    }
+
+    if (!(sys_lib->handle = dlopen("libmi_sys.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[i6_sys] Failed to load library!\nError: %s\n", dlerror());
+        return EXIT_FAILURE;
+    }
+
+    if (!(sys_lib->handleMdLinux = dlopen("libMD_LINUX.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[i6_sys] Failed to load dependency library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 
@@ -130,7 +140,11 @@ static int i6_sys_load(i6_sys_impl *sys_lib) {
 }
 
 static void i6_sys_unload(i6_sys_impl *sys_lib) {
+    if (sys_lib->handleMdLinux)
+        dlclose(sys_lib->handleMdLinux = NULL);
     if (sys_lib->handle)
         dlclose(sys_lib->handle = NULL);
+    if (sys_lib->handleCamOsWrapper)
+        dlclose(sys_lib->handleCamOsWrapper = NULL);
     memset(sys_lib, 0, sizeof(*sys_lib));
 }

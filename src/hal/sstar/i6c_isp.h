@@ -33,7 +33,7 @@ typedef struct {
 } i6c_isp_port;
 
 typedef struct {
-    void *handle;
+    void *handle, *handleCus3a, *handleIspAlgo;
 
     int (*fnCreateDevice)(int device, unsigned int *combo);
     int (*fnDestroyDevice)(int device);
@@ -53,8 +53,18 @@ typedef struct {
 } i6c_isp_impl;
 
 static int i6c_isp_load(i6c_isp_impl *isp_lib) {
-    if (!(isp_lib->handle = dlopen("libmi_isp.so", RTLD_NOW))) {
-        fprintf(stderr, "[i6c_isp] Failed to load library!\n");
+    if (!(isp_lib->handleIspAlgo = dlopen("libispalgo.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[i6c_isp] Failed to load dependency library!\nError: %s\n", dlerror());
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->handleCus3a = dlopen("libcus3a.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[i6c_isp] Failed to load dependency library!\nError: %s\n", dlerror());
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->handle = dlopen("libmi_isp.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[i6c_isp] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 
@@ -136,5 +146,9 @@ static int i6c_isp_load(i6c_isp_impl *isp_lib) {
 static void i6c_isp_unload(i6c_isp_impl *isp_lib) {
     if (isp_lib->handle)
         dlclose(isp_lib->handle = NULL);
+    if (isp_lib->handleCus3a)
+        dlclose(isp_lib->handleCus3a = NULL);
+    if (isp_lib->handleIspAlgo)
+        dlclose(isp_lib->handleIspAlgo = NULL);
     memset(isp_lib, 0, sizeof(*isp_lib));
 }

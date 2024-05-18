@@ -103,8 +103,8 @@ typedef struct {
 } i6c_rgn_impl;
 
 static int i6c_rgn_load(i6c_rgn_impl *rgn_lib) {
-    if (!(rgn_lib->handle = dlopen("libmi_rgn.so", RTLD_NOW))) {
-        fprintf(stderr, "[i6c_rgn] Failed to load library!\n");
+    if (!(rgn_lib->handle = dlopen("libmi_rgn.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[i6c_rgn] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 

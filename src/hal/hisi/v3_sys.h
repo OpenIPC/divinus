@@ -85,8 +85,8 @@ typedef struct {
 } v3_sys_impl;
 
 static int v3_sys_load(v3_sys_impl *sys_lib) {
-    if (!(sys_lib->handle = dlopen("libmpi.so", RTLD_NOW))) {
-        fprintf(stderr, "[v3_sys] Failed to load library!\n");
+    if (!(sys_lib->handle = dlopen("libmpi.so", RTLD_NOW | RTLD_GLOBAL))) {
+        fprintf(stderr, "[v3_sys] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 
