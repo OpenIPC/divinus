@@ -75,7 +75,7 @@ void send_h264_to_client(unsigned char index, const void *p) {
     for (unsigned int i = 0; i < stream->count; ++i) {
         hal_vidpack *pack = &stream->pack[i];
         unsigned int pack_len = pack->length - pack->offset;
-        unsigned char *pack_data = pack->addr + pack->offset;
+        unsigned char *pack_data = pack->data + pack->offset;
 
         ssize_t nal_start = 3;
         if (!nal_chk3(pack_data, 0)) {
@@ -127,7 +127,7 @@ void send_mp4_to_client(unsigned char index, const void *p) {
     for (unsigned int i = 0; i < stream->count; ++i) {
         hal_vidpack *pack = &stream->pack[i];
         unsigned int pack_len = pack->length - pack->offset;
-        unsigned char *pack_data = pack->addr + pack->offset;
+        unsigned char *pack_data = pack->data + pack->offset;
 
         ssize_t nal_start = 3;
         if (!nal_chk3(pack_data, 0)) {

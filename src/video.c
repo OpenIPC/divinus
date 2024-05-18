@@ -19,7 +19,7 @@ pthread_mutex_t mutex;
 pthread_t ispPid = 0;
 pthread_t vencPid = 0;
 
-int save_stream(int index, hal_vidstream *stream) {
+int save_stream(char index, hal_vidstream *stream) {
     int ret;
 
     switch (chnstate[index].payload) {
@@ -43,7 +43,7 @@ int save_stream(int index, hal_vidstream *stream) {
                         mjpeg_buf = realloc(mjpeg_buf, need_size);
                         mjpeg_buf_size = need_size;
                     }
-                    memcpy(mjpeg_buf + buf_size, data->addr + data->offset,
+                    memcpy(mjpeg_buf + buf_size, data->data + data->offset,
                         data->length - data->offset);
                     buf_size += data->length - data->offset;
                 }
@@ -62,7 +62,7 @@ int save_stream(int index, hal_vidstream *stream) {
                     jpeg_buf = realloc(jpeg_buf, need_size);
                     jpeg_buf_size = need_size;
                 }
-                memcpy(jpeg_buf + buf_size, data->addr + data->offset,
+                memcpy(jpeg_buf + buf_size, data->data + data->offset,
                     data->length - data->offset);
                 buf_size += data->length - data->offset;
             }
@@ -179,6 +179,14 @@ int start_sdk() {
         fprintf(stderr, "HAL initialization failed with %#x!\n%s\n",
             ret, errstr(ret));
         return EXIT_FAILURE;
+    }
+
+    switch (plat) {
+        case HAL_PLATFORM_I6: i6_venc_cb = save_stream; break;
+        case HAL_PLATFORM_I6C: i6c_venc_cb = save_stream; break;
+        case HAL_PLATFORM_I6F: i6f_venc_cb = save_stream; break;
+        case HAL_PLATFORM_V3: v3_venc_cb = save_stream; break;
+        default: return EXIT_FAILURE;        
     }
 
     switch (plat) {

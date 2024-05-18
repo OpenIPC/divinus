@@ -110,7 +110,7 @@ int jpeg_get(short width, short height, char quality, char grayscale,
         for (unsigned int i = 0; i < stream.count; i++) {
             hal_vidpack *pack = &stream.pack[i];
             unsigned int pack_len = pack->length - pack->offset;
-            unsigned char *pack_data = pack->addr + pack->offset;
+            unsigned char *pack_data = pack->data + pack->offset;
 
             ssize_t need_size = jpeg->jpeg_size + pack_len;
             if (need_size > jpeg->buf_size) {

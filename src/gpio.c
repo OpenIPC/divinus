@@ -1,15 +1,15 @@
 #include "gpio.h"
 
 const char *paths[] = {"/dev/gpiochip0", "/sys/class/gpio/gpiochip0"};
-char **path = paths;
-int fd_gpio = NULL;
+const char **path = paths;
+int fd_gpio = 0;
 
 char gpio_count = 0;
 
 void gpio_deinit(void) {
     if (!fd_gpio) return;
     close(fd_gpio);
-    fd_gpio = NULL;
+    fd_gpio = 0;
 }
 
 int gpio_init(void) {

@@ -465,11 +465,17 @@ void *i6_encoder_thread(void)
                     }
 
                     if (i6_venc_cb) {
-                        hal_vidstream out;
-                        out.count = stream.count;
-                        out.pack = stream.packet;
-                        out.seq = stream.sequence;
-                        (*i6_venc_cb)(i, &out);
+                        hal_vidstream outStrm;
+                        hal_vidpack outPack[stat.curPacks];
+                        outStrm.count = stream.count;
+                        outStrm.seq = stream.sequence;
+                        for (int j = 0; j < stat.curPacks; j++) {
+                            outPack[j].data = stream.packet[j].data;
+                            outPack[j].length = stream.packet[j].length;
+                            outPack[j].offset = stream.packet[j].offset;
+                        }
+                        outStrm.pack = outPack;
+                        (*i6_venc_cb)(i, &outStrm);
                     }
 
                     if (ret = i6_venc.fnFreeStream(i, &stream)) {

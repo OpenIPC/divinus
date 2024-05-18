@@ -69,14 +69,9 @@ typedef struct {
 } hal_vidconfig;
 
 typedef struct {
-	unsigned long long addr;
     unsigned char *data;
     unsigned int length;
-    unsigned long long timestamp;
-    char endFrame;
-    char naluType;
     unsigned int offset;
-    unsigned int packetNum;
 } hal_vidpack;
 
 typedef struct {
