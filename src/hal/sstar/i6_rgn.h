@@ -103,7 +103,7 @@ typedef struct {
 } i6_rgn_impl;
 
 static int i6_rgn_load(i6_rgn_impl *rgn_lib) {
-    if (!(rgn_lib->handle = dlopen("libmi_rgn.so", RTLD_NOW | RTLD_GLOBAL))) {
+    if (!(rgn_lib->handle = dlopen("libmi_rgn.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[i6_rgn] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
@@ -139,8 +139,8 @@ static int i6_rgn_load(i6_rgn_impl *rgn_lib) {
     }
 
     if (!(rgn_lib->fnDetachChannel = (int(*)(unsigned int handle, i6_sys_bind *dest))
-        dlsym(rgn_lib->handle, "MI_RGN_DetachToChn"))) {
-        fprintf(stderr, "[i6_rgn] Failed to acquire symbol MI_RGN_DetachToChn!\n");
+        dlsym(rgn_lib->handle, "MI_RGN_DetachFromChn"))) {
+        fprintf(stderr, "[i6_rgn] Failed to acquire symbol MI_RGN_DetachFromChn!\n");
         return EXIT_FAILURE;
     }
 

@@ -18,9 +18,16 @@
 
 int main(int argc, char *argv[]) {
     hal_identify();
-    if (plat == HAL_PLATFORM_UNK) {
-        fprintf(stderr, "Unsupported chip family! Quitting...\n");
-        return EXIT_FAILURE;
+    switch (plat) {
+        case HAL_PLATFORM_I6:
+            fprintf(stderr, "Divinus for infinity6[b0/e]\n"); break;
+        case HAL_PLATFORM_I6C:
+            fprintf(stderr, "Divinus for infinity6c\n"); break;
+        case HAL_PLATFORM_I6F:
+            fprintf(stderr, "Divinus for infinity6f\n"); break;
+        default:
+            fprintf(stderr, "Unsupported chip family! Quitting...\n");
+            return EXIT_FAILURE;
     }
 
     if (parse_app_config("./divinus.ini") != CONFIG_OK) {

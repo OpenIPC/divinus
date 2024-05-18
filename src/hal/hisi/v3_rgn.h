@@ -118,7 +118,7 @@ typedef struct {
 } v3_rgn_impl;
 
 static int v3_rgn_load(v3_rgn_impl *rgn_lib) {
-    if (!(rgn_lib->handle = dlopen("libmpi.so", RTLD_NOW | RTLD_GLOBAL))) {
+    if (!(rgn_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[v3_rgn] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }

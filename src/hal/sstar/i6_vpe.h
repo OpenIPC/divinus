@@ -80,7 +80,7 @@ typedef struct {
 } i6_vpe_impl;
 
 static int i6_vpe_load(i6_vpe_impl *vpe_lib) {
-    if (!(vpe_lib->handle = dlopen("libmi_vpe.so", RTLD_NOW | RTLD_GLOBAL))) {
+    if (!(vpe_lib->handle = dlopen("libmi_vpe.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[i6_vpe] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }

@@ -83,82 +83,82 @@ typedef struct {
 typedef struct {
     void *handle;
     
-    int (*fnDisable)(int sensor);
-    int (*fnEnable)(int sensor);
+    int (*fnDisable)(unsigned int sensor);
+    int (*fnEnable)(unsigned int sensor);
 
-    int (*fnSetFramerate)(int sensor, unsigned int framerate);
-    int (*fnSetHDR)(int sensor, char active);
+    int (*fnSetFramerate)(unsigned int sensor, unsigned int framerate);
 
-    int (*fnGetPadInfo)(int sensor, i6f_snr_pad *info);
-    int (*fnGetPlaneInfo)(int sensor, unsigned int index, i6f_snr_plane *info);
+    int (*fnGetPadInfo)(unsigned int sensor, i6f_snr_pad *info);
+    int (*fnGetPlaneInfo)(unsigned int sensor, unsigned int index, i6f_snr_plane *info);
+    int (*fnSetPlaneMode)(unsigned int sensor, unsigned char active);
 
-    int (*fnCurrentResolution)(int sensor, unsigned char *index, i6f_snr_res *resolution);
-    int (*fnGetResolution)(int sensor, unsigned char index, i6f_snr_res *resolution);
-    int (*fnGetResolutionCount)(int sensor, unsigned int *count);
-    int (*fnSetResolution)(int sensor, unsigned char index);
+    int (*fnCurrentResolution)(unsigned int sensor, unsigned char *index, i6f_snr_res *resolution);
+    int (*fnGetResolution)(unsigned int sensor, unsigned char index, i6f_snr_res *resolution);
+    int (*fnGetResolutionCount)(unsigned int sensor, unsigned int *count);
+    int (*fnSetResolution)(unsigned int sensor, unsigned char index);
 } i6f_snr_impl;
 
 static int i6f_snr_load(i6f_snr_impl *snr_lib) {
-    if (!(snr_lib->handle = dlopen("libmi_sensor.so", RTLD_NOW | RTLD_GLOBAL))) {
+    if (!(snr_lib->handle = dlopen("libmi_sensor.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[i6f_snr] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 
-    if (!(snr_lib->fnDisable = (int(*)(int sensor))
+    if (!(snr_lib->fnDisable = (int(*)(unsigned int sensor))
         dlsym(snr_lib->handle, "MI_SNR_Disable"))) {
         fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_Disable!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(snr_lib->fnEnable = (int(*)(int sensor))
+    if (!(snr_lib->fnEnable = (int(*)(unsigned int sensor))
         dlsym(snr_lib->handle, "MI_SNR_Enable"))) {
         fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_Enable!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(snr_lib->fnSetFramerate = (int(*)(int sensor, unsigned int framerate))
+    if (!(snr_lib->fnSetFramerate = (int(*)(unsigned int sensor, unsigned int framerate))
         dlsym(snr_lib->handle, "MI_SNR_SetFps"))) {
         fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_SetFps!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(snr_lib->fnSetHDR = (int(*)(int sensor, char active))
+    if (!(snr_lib->fnGetPadInfo = (int(*)(unsigned int sensor, i6f_snr_pad *info))
+        dlsym(snr_lib->handle, "MI_SNR_GetPadInfo"))) {
+        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_GetPadInfo!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(snr_lib->fnGetPlaneInfo = (int(*)(unsigned int sensor, unsigned int index, i6f_snr_plane *info))
+        dlsym(snr_lib->handle, "MI_SNR_GetPlaneInfo"))) {
+        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_GetPlaneInfo!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(snr_lib->fnSetPlaneMode = (int(*)(unsigned int sensor, unsigned char active))
         dlsym(snr_lib->handle, "MI_SNR_SetPlaneMode"))) {
         fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_SetPlaneMode!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(snr_lib->fnGetPadInfo = (int(*)(int sensor, i6f_snr_pad *info))
-        dlsym(snr_lib->handle, "MI_SNR_GetPadInfo"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_GetPadInfo!\n");
-        return EXIT_FAILURE;
-    }
-
-    if (!(snr_lib->fnGetPlaneInfo = (int(*)(int sensor, unsigned int index, i6f_snr_plane *info))
-        dlsym(snr_lib->handle, "MI_SNR_GetPadInfo"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_GetPadInfo!\n");
-        return EXIT_FAILURE;
-    }
-
-    if (!(snr_lib->fnCurrentResolution = (int(*)(int sensor, unsigned char *index, i6f_snr_res *resolution))
+    if (!(snr_lib->fnCurrentResolution = (int(*)(unsigned int sensor, unsigned char *index, i6f_snr_res *resolution))
         dlsym(snr_lib->handle, "MI_SNR_GetCurRes"))) {
         fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_GetCurRes!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(snr_lib->fnGetResolution = (int(*)(int sensor, unsigned char index, i6f_snr_res *resolution))
+    if (!(snr_lib->fnGetResolution = (int(*)(unsigned int sensor, unsigned char index, i6f_snr_res *resolution))
         dlsym(snr_lib->handle, "MI_SNR_GetRes"))) {
         fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_GetRes!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(snr_lib->fnGetResolutionCount = (int(*)(int sensor, unsigned int *count))
+    if (!(snr_lib->fnGetResolutionCount = (int(*)(unsigned int sensor, unsigned int *count))
         dlsym(snr_lib->handle, "MI_SNR_QueryResCount"))) {
         fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_QueryResCount!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(snr_lib->fnSetResolution = (int(*)(int sensor, unsigned char index))
+    if (!(snr_lib->fnSetResolution = (int(*)(unsigned int sensor, unsigned char index))
         dlsym(snr_lib->handle, "MI_SNR_SetRes"))) {
         fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_SetRes!\n");
         return EXIT_FAILURE;

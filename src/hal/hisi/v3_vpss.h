@@ -54,7 +54,7 @@ typedef struct {
 } v3_vpss_impl;
 
 static int v3_vpss_load(v3_vpss_impl *vpss_lib) {
-    if (!(vpss_lib->handle = dlopen("libmpi.so", RTLD_NOW | RTLD_GLOBAL))) {
+    if (!(vpss_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[v3_vpss] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }

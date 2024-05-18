@@ -50,17 +50,17 @@ typedef struct {
 } i6f_isp_impl;
 
 static int i6f_isp_load(i6f_isp_impl *isp_lib) {
-    if (!(isp_lib->handleIspAlgo = dlopen("libispalgo.so", RTLD_NOW | RTLD_GLOBAL))) {
+    if (!(isp_lib->handleIspAlgo = dlopen("libispalgo.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[i6f_isp] Failed to load dependency library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->handleCus3a = dlopen("libcus3a.so", RTLD_NOW | RTLD_GLOBAL))) {
+    if (!(isp_lib->handleCus3a = dlopen("libcus3a.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[i6f_isp] Failed to load dependency library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->handle = dlopen("libmi_isp.so", RTLD_NOW | RTLD_GLOBAL))) {
+    if (!(isp_lib->handle = dlopen("libmi_isp.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[i6f_isp] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }

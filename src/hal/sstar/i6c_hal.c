@@ -1,6 +1,7 @@
 #include "i6c_hal.h"
 
 i6c_isp_impl  i6c_isp;
+i6c_rgn_impl  i6c_rgn;
 i6c_scl_impl  i6c_scl;
 i6c_snr_impl  i6c_snr;
 i6c_sys_impl  i6c_sys;
@@ -31,6 +32,7 @@ void i6c_hal_deinit(void)
     i6c_venc_unload(&i6c_venc);
     i6c_snr_unload(&i6c_snr);
     i6c_scl_unload(&i6c_scl);
+    i6c_rgn_unload(&i6c_rgn);
     i6c_isp_unload(&i6c_isp);
     i6c_sys_unload(&i6c_sys);
 }
@@ -42,6 +44,8 @@ int i6c_hal_init(void)
     if (ret = i6c_sys_load(&i6c_sys))
         return ret;
     if (ret = i6c_isp_load(&i6c_isp))
+        return ret;
+    if (ret = i6c_rgn_load(&i6c_rgn))
         return ret;
     if (ret = i6c_scl_load(&i6c_scl))
         return ret;
@@ -379,7 +383,7 @@ int i6c_encoder_snapshot_grab(char index, short width, short height,
         }
         strm.count = stat.curPacks;
 
-        if (ret = i6c_venc.fnGetStream(device, index, &stream, stat.curPacks)) {
+        if (ret = i6c_venc.fnGetStream(device, index, &strm, stat.curPacks)) {
             fprintf(stderr, "[i6c_venc] Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
             free(strm.packet);
@@ -390,7 +394,7 @@ int i6c_encoder_snapshot_grab(char index, short width, short height,
         stream->count = stat.curPacks;
         stream->pack = strm.packet;
 abort:
-        if (ret = i6c_venc.fnFreeStream(device, index, &stream)) {
+        if (ret = i6c_venc.fnFreeStream(device, index, &strm)) {
             fprintf(stderr, "[i6c_venc] Releasing the stream on "
                 "channel %d failed with %#x!\n", index, ret);
         }
@@ -520,7 +524,7 @@ int i6c_pipeline_create(char sensor, short width, short height, char framerate, 
     {
         unsigned int count;
         i6c_snr_res resolution;
-        if (ret = i6c_snr.fnSetHDR(_i6c_snr_index, hdr))
+        if (ret = i6c_snr.fnSetPlaneMode(_i6c_snr_index, hdr))
             return ret;
 
         if (ret = i6c_snr.fnGetResolutionCount(_i6c_snr_index, &count))
@@ -544,14 +548,13 @@ int i6c_pipeline_create(char sensor, short width, short height, char framerate, 
         }
         if (_i6c_snr_profile < 0)
             return EXIT_FAILURE;
-
-        if (ret = i6c_snr.fnEnable(_i6c_snr_index))
-            return ret;
     }
 
     if (ret = i6c_snr.fnGetPadInfo(_i6c_snr_index, &_i6c_snr_pad))
         return ret;
     if (ret = i6c_snr.fnGetPlaneInfo(_i6c_snr_index, hdr & 1, &_i6c_snr_plane))
+        return ret;
+    if (ret = i6c_snr.fnEnable(_i6c_snr_index))
         return ret;
 
     {
@@ -707,16 +710,16 @@ int i6c_system_init(void)
 {
     int ret;
 
-    if (ret = i6c_sys.fnInit(0))
-        return ret;
-
     {
         i6c_sys_ver version;
-        if (ret = i6c_sys.fnGetVersion(&version))
-            return ret;
+        //if (ret = i6c_sys.fnGetVersion(&version))
+        //    return ret;
         printf("App built with headers v%s\n", I6C_SYS_API);
-        puts(version.version);
+        //puts(version.version);
     }
+
+    if (ret = i6c_sys.fnInit(0))
+        return ret;
 
     return EXIT_SUCCESS;
 }

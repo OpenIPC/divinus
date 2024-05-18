@@ -33,7 +33,7 @@ typedef struct {
 } v3_isp_impl;
 
 static int v3_isp_load(v3_isp_impl *isp_lib) {
-    if (!(isp_lib->handle = dlopen("libmpi.so", RTLD_NOW | RTLD_GLOBAL))) {
+    if (!(isp_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[v3_isp] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }

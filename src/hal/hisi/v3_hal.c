@@ -1,13 +1,14 @@
 #include "v3_hal.h"
 
 v3_config_impl v3_config;
-v3_drv_impl v3_drv;
-v3_isp_impl v3_isp;
-v3_sys_impl v3_sys;
-v3_vb_impl v3_vb;
-v3_venc_impl v3_venc;
-v3_vi_impl v3_vi;
-v3_vpss_impl v3_vpss;
+v3_drv_impl    v3_drv;
+v3_isp_impl    v3_isp;
+v3_rgn_impl    v3_rgn;
+v3_sys_impl    v3_sys;
+v3_vb_impl     v3_vb;
+v3_venc_impl   v3_venc;
+v3_vi_impl     v3_vi;
+v3_vpss_impl   v3_vpss;
 
 hal_chnstate v3_state[V3_VENC_CHN_NUM] = {0};
 int (*v3_venc_cb)(char, hal_vidstream*);
@@ -26,6 +27,7 @@ void v3_hal_deinit(void)
     v3_venc_unload(&v3_venc);
     v3_vb_unload(&v3_vb);
     v3_sys_unload(&v3_sys);
+    v3_rgn_unload(&v3_rgn);
     v3_isp_unload(&v3_isp);
 }
 
@@ -34,6 +36,8 @@ int v3_hal_init(void)
     int ret;
 
     if (ret = v3_isp_load(&v3_isp))
+        return ret;
+    if (ret = v3_rgn_load(&v3_rgn))
         return ret;
     if (ret = v3_sys_load(&v3_sys))
         return ret;
@@ -599,7 +603,7 @@ int v3_sensor_init(char *name)
 
     while (*dir++) {
         asprintf(&path, *dir, name);
-        if (v3_drv.handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL))
+        if (v3_drv.handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL))
             dir = NULL;
         free(path);
     } if (!v3_drv.handle)
