@@ -293,7 +293,7 @@ int v3_encoder_destroy_all(void)
 }
 
 int v3_encoder_snapshot_grab(char index, short width, short height, 
-    char quality, char grayscale, hal_vidstream *stream)
+    char quality, char grayscale, hal_jpegdata *jpeg)
 {
     int ret;
 
@@ -374,8 +374,24 @@ int v3_encoder_snapshot_grab(char index, short width, short height,
             goto abort;
         }
 
-        stream->count = stat.curPacks;
-        memcpy((void*)stream->pack, (void*)strm.packet, sizeof(v3_venc_pack) * stat.curPacks);
+        {
+            jpeg->jpegSize = 0;
+            for (unsigned int i = 0; i < strm.count; i++) {
+                v3_venc_pack *pack = &strm.packet[i];
+                unsigned int packLen = pack->length - pack->offset;
+                unsigned char *packData = pack->data + pack->offset;
+
+                unsigned int need = jpeg->jpegSize + packLen;
+                if (need > jpeg->length) {
+                    jpeg->data = realloc(jpeg->data, need);
+                    jpeg->length = need;
+                }
+                memcpy(
+                    jpeg->data + jpeg->jpegSize, packLen, packLen);
+                jpeg->jpegSize += packLen;
+            }
+        }
+
 abort:
         v3_venc.fnFreeStream(index, &strm);
     }

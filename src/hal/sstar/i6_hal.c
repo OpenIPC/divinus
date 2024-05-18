@@ -294,7 +294,7 @@ int i6_encoder_destroy_all(void)
 }
 
 int i6_encoder_snapshot_grab(char index, short width, short height, 
-    char quality, char grayscale, hal_vidstream *stream)
+    char quality, char grayscale, hal_jpegdata *jpeg)
 {
     int ret;
 
@@ -303,7 +303,6 @@ int i6_encoder_snapshot_grab(char index, short width, short height,
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
-    return ret;
 
     i6_venc_jpg param;
     memset(&param, 0, sizeof(param));
@@ -312,8 +311,7 @@ int i6_encoder_snapshot_grab(char index, short width, short height,
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
-    return ret;
-        return ret;
+
     param.quality = quality;
     if (ret = i6_venc.fnSetJpegParam(index, &param)) {
         fprintf(stderr, "[i6_venc] Writing the JPEG settings "
@@ -375,8 +373,23 @@ int i6_encoder_snapshot_grab(char index, short width, short height,
             goto abort;
         }
 
-        stream->count = stat.curPacks;
-        memcpy((void*)stream->pack, (void*)strm.packet, sizeof(i6_venc_pack) * stat.curPacks);
+        {
+            jpeg->jpegSize = 0;
+            for (unsigned int i = 0; i < strm.count; i++) {
+                i6_venc_pack *pack = &strm.packet[i];
+                unsigned int packLen = pack->length - pack->offset;
+                unsigned char *packData = pack->data + pack->offset;
+
+                unsigned int need = jpeg->jpegSize + packLen;
+                if (need > jpeg->length) {
+                    jpeg->data = realloc(jpeg->data, need);
+                    jpeg->length = need;
+                }
+                memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
+                jpeg->jpegSize += packLen;
+            }
+        }
+
 abort:
         i6_venc.fnFreeStream(index, &strm);
     }

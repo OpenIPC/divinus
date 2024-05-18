@@ -29,7 +29,7 @@ int i6f_encoder_create(char index, hal_vidconfig *config);
 int i6f_encoder_destroy(char index, char jpeg);
 int i6f_encoder_destroy_all(void);
 int i6f_encoder_snapshot_grab(char index, short width, short height,
-    char quality, char grayscale, hal_vidstream *stream);
+    char quality, char grayscale, hal_jpegdata *jpeg);
 void *i6f_encoder_thread(void);
 
 int i6f_pipeline_create(char sensor, short width, short height, char framerate);

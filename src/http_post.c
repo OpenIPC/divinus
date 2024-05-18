@@ -21,7 +21,7 @@
 
 #define tag "[http_post] "
 
-int post_send(struct jpegdata *jpeg) {
+int post_send(hal_jpegdata *jpeg) {
     char *host_addr = app_config.http_post_host;
 
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -58,7 +58,7 @@ int post_send(struct jpegdata *jpeg) {
                 "Accept: */*\r\n"
                 "Content-Type: image/jpeg\r\n"
                 "Content-Length: %u\r\n",
-                time_url, host_addr, jpeg->jpeg_size);
+                time_url, host_addr, jpeg->jpegSize);
             write(sockfd, header_buf, buf_len);
 
             if (strlen(app_config.http_post_login) > 0 &&
@@ -76,7 +76,7 @@ int post_send(struct jpegdata *jpeg) {
                 write(sockfd, header_buf, buf_len);
             }
             write(sockfd, "\r\n", 2);
-            write(sockfd, jpeg->buf, jpeg->jpeg_size);
+            write(sockfd, jpeg->data, jpeg->jpegSize);
 
             char replay[1024];
             int len = read(sockfd, replay, 1024);
@@ -90,11 +90,12 @@ int post_send(struct jpegdata *jpeg) {
 }
 
 void *send_thread(void *vargp) {
-    struct jpegdata jpeg = {0};
-    jpeg.buf = NULL;
-    jpeg.buf_size = 0;
-    jpeg.jpeg_size = 0;
+    hal_jpegdata jpeg = {0};
+    jpeg.data = NULL;
+    jpeg.length = 0;
+    jpeg.jpegSize = 0;
     sleep(3);
+
     while (keepRunning) {
         static time_t last_time = 0;
         time_t current_time = time(NULL);

@@ -42,7 +42,7 @@ int v3_encoder_create(char index, hal_vidconfig *config);
 int v3_encoder_destroy(char index);
 int v3_encoder_destroy_all(void);
 int v3_encoder_snapshot_grab(char index, short width, short height, 
-    char quality, char grayscale, hal_vidstream *stream);
+    char quality, char grayscale, hal_jpegdata *jpeg);
 void *v3_encoder_thread(void);
 
 void *v3_image_thread(void);

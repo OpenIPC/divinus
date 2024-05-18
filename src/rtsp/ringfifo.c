@@ -87,9 +87,9 @@ int put_h264_data_to_buffer(hal_vidstream *stream)
     if (slot < SLOTS) {
         for (int i = 0; i < stream->count; i++) {
             memcpy(ringFifo[writePos].buffer + off,
-                stream->pack[i].addr + stream->pack[i].offset,
+                stream->pack[i].data + stream->pack[i].offset,
                 stream->pack[i].length - stream->pack[i].offset);
-            pstr = stream->pack[i].addr + 
+            pstr = stream->pack[i].data + 
                 stream->pack[i].offset; // Address of valid data
             off += stream->pack[i].length - 
                 stream->pack[i].offset; // Next address of valid data

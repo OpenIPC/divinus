@@ -60,6 +60,12 @@ typedef struct {
 } hal_chnstate;
 
 typedef struct {
+    unsigned char *data;
+    unsigned int length;
+    unsigned int jpegSize;
+} hal_jpegdata;
+
+typedef struct {
     unsigned short width, height;
     hal_vidcodec codec;
     hal_vidmode mode;

@@ -277,7 +277,7 @@ struct jpegtask {
 };
 void *send_jpeg_thread(void *vargp) {
     struct jpegtask task = *((struct jpegtask *)vargp);
-    struct jpegdata jpeg = {0};
+    hal_jpegdata jpeg = {0};
     printf(
         "Requesting a JPEG snapshot (%ux%u, qfactor %u, color2Gray %d)...\n",
         task.width, task.height, task.qfactor, task.color2Gray);
@@ -300,13 +300,13 @@ void *send_jpeg_thread(void *vargp) {
         buf,
         "HTTP/1.1 200 OK\r\nContent-Type: image/jpeg\r\nContent-Length: "
         "%lu\r\nConnection: close\r\n\r\n",
-        jpeg.jpeg_size);
+        jpeg.jpegSize);
     send_to_fd(task.client_fd, buf, buf_len);
-    send_to_fd(task.client_fd, jpeg.buf, jpeg.jpeg_size);
+    send_to_fd(task.client_fd, jpeg.data, jpeg.jpegSize);
     send_to_fd(task.client_fd, "\r\n", 2);
     close_socket_fd(task.client_fd);
-    free(jpeg.buf);
-    printf("jpeg was send\n");
+    free(jpeg.data);
+    printf("JPEG snapshot has been sent!\n");
     return NULL;
 }
 

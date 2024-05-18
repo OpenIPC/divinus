@@ -295,7 +295,7 @@ int i6f_encoder_destroy_all(void)
 }
 
 int i6f_encoder_snapshot_grab(char index, short width, short height,
-    char quality, char grayscale, hal_vidstream *stream)
+    char quality, char grayscale, hal_jpegdata *jpeg)
 {
     int ret;
     char device = 
@@ -380,8 +380,24 @@ int i6f_encoder_snapshot_grab(char index, short width, short height,
             goto abort;
         }
 
-        stream->count = stat.curPacks;
-        memcpy((void*)stream->pack, (void*)strm.packet, sizeof(i6f_venc_pack) * stat.curPacks);
+        {
+            jpeg->jpegSize = 0;
+            for (unsigned int i = 0; i < strm.count; i++) {
+                i6f_venc_pack *pack = &strm.packet[i];
+                unsigned int packLen = pack->length - pack->offset;
+                unsigned char *packData = pack->data + pack->offset;
+
+                unsigned int need = jpeg->jpegSize + packLen;
+                if (need > jpeg->length) {
+                    jpeg->data = realloc(jpeg->data, need);
+                    jpeg->length = need;
+                }
+                memcpy(
+                    jpeg->data + jpeg->jpegSize, packLen, packLen);
+                jpeg->jpegSize += packLen;
+            }
+        }
+
 abort:
         i6f_venc.fnFreeStream(device, index, &strm);
     }

@@ -78,7 +78,7 @@ void jpeg_deinit() {
 }
 
 int jpeg_get(short width, short height, char quality, char grayscale, 
-    struct jpegdata *jpeg) {
+    hal_jpegdata *jpeg) {
     pthread_mutex_lock(&jpeg_mutex);
     if (!jpeg_module_init) {
         pthread_mutex_unlock(&jpeg_mutex);
@@ -87,40 +87,21 @@ int jpeg_get(short width, short height, char quality, char grayscale,
     }
     int ret;
 
-    hal_vidstream stream;
     switch (plat) {
         case HAL_PLATFORM_I6: ret = i6_encoder_snapshot_grab(jpeg_index, width, height, 
-            quality, grayscale, &stream); break;
+            quality, grayscale, jpeg); break;
         case HAL_PLATFORM_I6C: ret = i6c_encoder_snapshot_grab(jpeg_index, width, height, 
-            quality, grayscale, &stream); break;
+            quality, grayscale, jpeg); break;
         case HAL_PLATFORM_I6F: ret = i6f_encoder_snapshot_grab(jpeg_index, width, height, 
-            quality, grayscale, &stream); break;
+            quality, grayscale, jpeg); break;
     }
     if (ret) {
         printf(tag "Requesting a picture failed!\n");
-        if (!stream.pack) return EXIT_FAILURE;
+        if (!jpeg->data) return EXIT_FAILURE;
 
-        free(stream.pack);
-        stream.pack = NULL;
+        free(jpeg->data);
+        jpeg->data = NULL;
         return EXIT_FAILURE;
-    }
-
-    {
-        jpeg->jpeg_size = 0;
-        for (unsigned int i = 0; i < stream.count; i++) {
-            hal_vidpack *pack = &stream.pack[i];
-            unsigned int pack_len = pack->length - pack->offset;
-            unsigned char *pack_data = pack->data + pack->offset;
-
-            ssize_t need_size = jpeg->jpeg_size + pack_len;
-            if (need_size > jpeg->buf_size) {
-                jpeg->buf = realloc(jpeg->buf, need_size);
-                jpeg->buf_size = need_size;
-            }
-            memcpy(
-                jpeg->buf + jpeg->jpeg_size, pack_data, pack_len);
-            jpeg->jpeg_size += pack_len;
-        }
     }
 
     pthread_mutex_unlock(&jpeg_mutex);

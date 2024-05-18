@@ -3,14 +3,9 @@
 #include <stdint.h>
 
 #include "common.h"
-
-struct jpegdata {
-    char *buf;
-    ssize_t buf_size;
-    ssize_t jpeg_size;
-};
+#include "hal/types.h"
 
 void jpeg_deinit();
 int jpeg_init();
 int jpeg_get(short width, short height, char quality, 
-    char grayscale, struct jpegdata *jpeg);
+    char grayscale, hal_jpegdata *jpeg);
