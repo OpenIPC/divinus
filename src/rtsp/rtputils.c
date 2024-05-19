@@ -67,7 +67,6 @@ typedef struct _tagStRtpHandle {
     StFuIndicator *pFuInd;
     StFuHdr *pFuHdr;
     rtpPayload emPayload;
-
 } StRtpObj, *rtpHandle;
 
 unsigned int rtp_create(unsigned int ip, int port, rtpPayload payload) {
@@ -77,7 +76,7 @@ unsigned int rtp_create(unsigned int ip, int port, rtpPayload payload) {
     int s32Broadcast = 1;
 
     handle = (rtpHandle)calloc(1, sizeof(StRtpObj));
-    if (!hRtp) {
+    if (!handle) {
         printf("Failed to create RTP handle\n");
         goto cleanup;
     }
@@ -135,8 +134,8 @@ unsigned int rtp_create(unsigned int ip, int port, rtpPayload payload) {
 
 cleanup:
     if (handle) {
-        if (hRtp->s32Sock >= 0) {
-            close(hRtp->s32Sock);
+        if (handle->s32Sock >= 0) {
+            close(handle->s32Sock);
         }
 
         free(handle);
