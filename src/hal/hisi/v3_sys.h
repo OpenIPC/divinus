@@ -121,7 +121,9 @@ static int v3_sys_load(v3_sys_impl *sys_lib) {
     }
 
     if (!(sys_lib->fnSetAlignment = (int(*)(unsigned int *width))
-        dlsym(sys_lib->handle, "HI_MPI_SYS_SetConf"))) {
+        dlsym(sys_lib->handle, "HI_MPI_SYS_SetConf")) &&
+        !(sys_lib->fnGetVersion = (int(*)(v3_sys_ver *version))
+        dlsym(sys_lib->handle, "HI_MPI_SYS_SetConfig"))) {
         fprintf(stderr, "[v3_sys] Failed to acquire symbol HI_MPI_SYS_SetConf!\n");
         return EXIT_FAILURE;
     }

@@ -14,7 +14,8 @@ typedef struct {
 } v3_isp_dev;
 
 typedef struct {
-    void *handle;
+    void *handle, *handleGoke, *handleAe, *handleGokeAe, *handleAf, *handleGokeAf,
+        *handleAwb, *handleGokeAwb, *handleDehaze, *handleDrc, *handleIrAuto, *handleLdci;
 
     int (*fnExit)(int device);
     int (*fnInit)(int device);
