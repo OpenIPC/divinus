@@ -143,9 +143,9 @@ int i6_encoder_create(char index, hal_vidconfig *config)
                 break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = I6_VENC_RATEMODE_MJPGQP;
-                channel.rate.mjpgQp.fpsNum = config->framerate;
-                channel.rate.mjpgQp.fpsDen = 
+                channel.rate.mjpgQp.fpsNum = 
                     config->codec == HAL_VIDCODEC_JPG ? 1 : config->framerate;
+                channel.rate.mjpgCbr.fpsDen = 1;
                 channel.rate.mjpgQp.quality = MAX(config->minQual, config->maxQual);
                 break;
             default:
@@ -380,10 +380,10 @@ int i6_encoder_snapshot_grab(char index, short width, short height,
                 unsigned int packLen = pack->length - pack->offset;
                 unsigned char *packData = pack->data + pack->offset;
 
-                unsigned int need = jpeg->jpegSize + packLen;
-                if (need > jpeg->length) {
-                    jpeg->data = realloc(jpeg->data, need);
-                    jpeg->length = need;
+                unsigned int newLen = jpeg->jpegSize + packLen;
+                if (newLen > jpeg->length) {
+                    jpeg->data = realloc(jpeg->data, newLen);
+                    jpeg->length = newLen;
                 }
                 memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
                 jpeg->jpegSize += packLen;
@@ -415,7 +415,7 @@ void *i6_encoder_thread(void)
         ret = i6_venc.fnGetDescriptor(i);
         if (ret < 0) {
             fprintf(stderr, "[i6_venc] Getting the encoder descriptor failed with %#x!\n", ret);
-            return;
+            return NULL;
         }
         i6_state[i].fileDesc = ret;
 

@@ -15,7 +15,6 @@ int readPos = 0;
 int slot = 0;
 
 struct ringbuf ringFifo[SLOTS];
-extern int rtsp_update_sps_or_pps(unsigned char *data, int frame_type, int len);
 
 void ring_malloc(int size) {
     for (int i = 0; i < SLOTS; i++) {
@@ -35,9 +34,8 @@ void ring_reset() {
 }
 
 void ring_free() {
-    int i;
-    printf("begin free mem\n");
-    for (i = 0; i < SLOTS; i++) {
+    printf("Freeing the RTSP ring buffer!\n");
+    for (int i = 0; i < SLOTS; i++) {
         free(ringFifo[i].buffer);
         ringFifo[i].size = 0;
     }
@@ -77,9 +75,9 @@ In the same DESCRIBE step, SPS and PPS encoding will be sent to the client.
 */
 int put_h264_data_to_buffer(hal_vidstream *stream)
 {
-    int len = 0, off = 0, len2 = 2;
     unsigned char *pstr;
-    int iframe = 0;
+    int iframe = 0, len = 0, off = 0, len2 = 2;
+
     for (int i = 0; i < stream->count; i++)
         len += stream->pack[i].length - stream->pack[i].offset;
 

@@ -3,11 +3,13 @@
 #include <stdio.h>
 
 char *errstr(int error) {
+    int level;
     int module = (error >> 16) & 0xFF;
 
     switch (plat) {
         case HAL_PLATFORM_I6:
-            error &= 0xFF00FFFF;
+            level = (error >> 12) & 0xF;
+            error = error & 0xFF000FFF | (level > 0 ? (4 << 13) : 0);
             switch (module) {
                 case I6_SYS_MOD_SYS:
                     error |= (V3_SYS_MOD_SYS << 16); break;
@@ -31,10 +33,13 @@ char *errstr(int error) {
                     error |= (0x4D << 16); break;
                 case I6_SYS_MOD_IVE:
                     error |= (V3_SYS_MOD_IVE << 16); break;
+                default:
+                    error |= (module << 16); break;
             }
             break;
         case HAL_PLATFORM_I6C:
-            error &= 0xFF00FFFF;
+            level = (error >> 12) & 0xF;
+            error = error & 0xFF000FFF | (level > 0 ? (4 << 13) : 0);
             switch (module) {
                 case I6C_SYS_MOD_SYS:
                     error |= (V3_SYS_MOD_SYS << 16); break;
@@ -58,10 +63,13 @@ char *errstr(int error) {
                     error |= (0x4D << 16); break;
                 case I6C_SYS_MOD_IVE:
                     error |= (V3_SYS_MOD_IVE << 16); break;
+                default:
+                    error |= (module << 16); break;
             }
             break;
         case HAL_PLATFORM_I6F:
-            error &= 0xFF00FFFF;
+            level = (error >> 12) & 0xF;
+            error = error & 0xFF000FFF | (level > 0 ? (4 << 13) : 0);
             switch (module) {
                 case I6F_SYS_MOD_SYS:
                     error |= (V3_SYS_MOD_SYS << 16); break;
@@ -85,6 +93,8 @@ char *errstr(int error) {
                     error |= (0x4D << 16); break;
                 case I6F_SYS_MOD_IVE:
                     error |= (V3_SYS_MOD_IVE << 16); break;
+                default:
+                    error |= (module << 16); break;
             }
             break;
     }

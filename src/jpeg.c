@@ -96,10 +96,8 @@ int jpeg_get(short width, short height, char quality, char grayscale,
             quality, grayscale, jpeg); break;
     }
     if (ret) {
-        printf(tag "Requesting a picture failed!\n");
-        if (!jpeg->data) return EXIT_FAILURE;
-
-        free(jpeg->data);
+        if (jpeg->data)
+            free(jpeg->data);
         jpeg->data = NULL;
         return EXIT_FAILURE;
     }

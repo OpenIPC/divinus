@@ -399,13 +399,12 @@ int i6c_encoder_snapshot_grab(char index, short width, short height,
                 unsigned int packLen = pack->length - pack->offset;
                 unsigned char *packData = pack->data + pack->offset;
 
-                unsigned int need = jpeg->jpegSize + packLen;
-                if (need > jpeg->length) {
-                    jpeg->data = realloc(jpeg->data, need);
-                    jpeg->length = need;
+                unsigned int newLen = jpeg->jpegSize + packLen;
+                if (newLen > jpeg->length) {
+                    jpeg->data = realloc(jpeg->data, newLen);
+                    jpeg->length = newLen;
                 }
-                memcpy(
-                    jpeg->data + jpeg->jpegSize, packLen, packLen);
+                memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
                 jpeg->jpegSize += packLen;
             }
         }
@@ -439,7 +438,7 @@ void *i6c_encoder_thread(void)
         ret = i6c_venc.fnGetDescriptor(device, i);
         if (ret < 0) {
             fprintf(stderr, "[i6c_venc] Getting the encoder descriptor failed with %#x!\n", ret);
-            return;
+            return NULL;
         }
         i6c_state[i].fileDesc = ret;
 

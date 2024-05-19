@@ -57,3 +57,9 @@ enum {
     RTSP_ID_SET_PARAMETER,
     RTSP_ID_TEARDOWN
 };
+
+enum {
+    RTSP_STATE_INIT,
+    RTSP_STATE_READY,
+    RTSP_STATE_PLAY
+};

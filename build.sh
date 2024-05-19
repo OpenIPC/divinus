@@ -19,12 +19,18 @@ if [ -n $CC ] && [ ! -e toolchain/$CC ]; then
 	rm -f $CC.tgz
 fi
 
+if [ "$2" = "debug" ]; then
+	OPT="-gdwarf-3"
+else
+	OPT="-Os -s"
+fi
+
 if [ "$1" = "divinus-musl" ]; then
-	make -C src -B CC=$GCC $1
+	make -C src -B CC=$GCC OPT="$OPT" $1
 elif [ "$1" = "divinus-muslhf" ]; then
-	make -C src -B CC=$GCC $1
+	make -C src -B CC=$GCC OPT="$OPT" $1
 elif [ "$1" = "divinus-glibc" ]; then
-	make -C src -B CC=$GCC $1
+	make -C src -B CC=$GCC OPT="$OPT" $1
 else
 	echo "Usage: $0 [divinus-musl|divinus-muslhf|divinus-glibc]"
 	exit 1

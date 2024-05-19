@@ -26,20 +26,20 @@ void v3_hal_deinit(void)
     v3_vi_unload(&v3_vi);
     v3_venc_unload(&v3_venc);
     v3_vb_unload(&v3_vb);
-    v3_sys_unload(&v3_sys);
     v3_rgn_unload(&v3_rgn);
     v3_isp_unload(&v3_isp);
+    v3_sys_unload(&v3_sys);
 }
 
 int v3_hal_init(void)
 {
     int ret;
 
+    if (ret = v3_sys_load(&v3_sys))
+        return ret;
     if (ret = v3_isp_load(&v3_isp))
         return ret;
     if (ret = v3_rgn_load(&v3_rgn))
-        return ret;
-    if (ret = v3_sys_load(&v3_sys))
         return ret;
     if (ret = v3_vb_load(&v3_vb))
         return ret;
@@ -381,13 +381,12 @@ int v3_encoder_snapshot_grab(char index, short width, short height,
                 unsigned int packLen = pack->length - pack->offset;
                 unsigned char *packData = pack->data + pack->offset;
 
-                unsigned int need = jpeg->jpegSize + packLen;
-                if (need > jpeg->length) {
-                    jpeg->data = realloc(jpeg->data, need);
-                    jpeg->length = need;
+                unsigned int newLen = jpeg->jpegSize + packLen;
+                if (newLen > jpeg->length) {
+                    jpeg->data = realloc(jpeg->data, newLen);
+                    jpeg->length = newLen;
                 }
-                memcpy(
-                    jpeg->data + jpeg->jpegSize, packLen, packLen);
+                memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
                 jpeg->jpegSize += packLen;
             }
         }
@@ -417,7 +416,7 @@ void *v3_encoder_thread(void)
         ret = v3_venc.fnGetDescriptor(i);
         if (ret < 0) {
             fprintf(stderr, "[v3_venc] Getting the encoder descriptor failed with %#x!\n", ret);
-            return;
+            return NULL;
         }
         v3_state[i].fileDesc = ret;
 

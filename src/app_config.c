@@ -28,7 +28,7 @@ enum ConfigError parse_app_config(const char *path) {
 
     app_config.isp_thread_stack_size = 16 * 1024;
     app_config.venc_stream_thread_stack_size = 16 * 1024;
-    app_config.web_server_thread_stack_size = 16 * 1024;
+    app_config.web_server_thread_stack_size = 32 * 1024;
 
     app_config.align_width = 64;
     app_config.blk_cnt = 4;

@@ -22,7 +22,7 @@ pthread_t vencPid = 0;
 int save_stream(char index, hal_vidstream *stream) {
     int ret;
 
-    switch (chnstate[index].payload) {
+    switch (chnState[index].payload) {
         case HAL_VIDCODEC_H264:
             if (app_config.mp4_enable) {
                 send_mp4_to_client(index, stream);
@@ -78,10 +78,10 @@ int save_stream(char index, hal_vidstream *stream) {
 
 int take_next_free_channel(bool mainLoop) {
     pthread_mutex_lock(&mutex);
-    for (int i = 0; i < chncount; i++) {
-        if (!chnstate[i].enable) {
-            chnstate[i].enable = true;
-            chnstate[i].mainLoop = mainLoop;
+    for (int i = 0; i < chnCount; i++) {
+        if (!chnState[i].enable) {
+            chnState[i].enable = true;
+            chnState[i].mainLoop = mainLoop;
             pthread_mutex_unlock(&mutex);
             return i;
         }
@@ -92,21 +92,21 @@ int take_next_free_channel(bool mainLoop) {
 
 bool channel_is_enable(char index) {
     pthread_mutex_lock(&mutex);
-    bool enable = chnstate[index].enable;
+    bool enable = chnState[index].enable;
     pthread_mutex_unlock(&mutex);
     return enable;
 }
 
 bool channel_main_loop(char index) {
     pthread_mutex_lock(&mutex);
-    bool mainLoop = chnstate[index].mainLoop;
+    bool mainLoop = chnState[index].mainLoop;
     pthread_mutex_unlock(&mutex);
     return mainLoop;
 }
 
 void set_channel_disable(char index) {
     pthread_mutex_lock(&mutex);
-    chnstate[index].enable = false;
+    chnState[index].enable = false;
     pthread_mutex_unlock(&mutex);
 }
 
@@ -225,7 +225,7 @@ int start_sdk() {
         return EXIT_FAILURE;
     }
 
-    if (ispthread) {
+    if (isp_thread) {
         pthread_attr_t thread_attr;
         pthread_attr_init(&thread_attr);
         size_t stacksize;
@@ -235,8 +235,7 @@ int start_sdk() {
             fprintf(stderr, "Can't set stack size %zu!\n", new_stacksize);
         }
         if (pthread_create(
-                     &ispPid, &thread_attr, (void *(*)(void *))ispthread,
-                     NULL)) {
+                     &ispPid, &thread_attr, (void *(*)(void *))isp_thread, NULL)) {
             fprintf(stderr, "Starting the imaging thread failed!\n");
             return EXIT_FAILURE;
         }
@@ -357,7 +356,7 @@ int start_sdk() {
             fprintf(stderr, "Can't set stack size %zu\n", new_stacksize);
         }
         if (pthread_create(
-                     &vencPid, &thread_attr, (void *(*)(void *))encthread, NULL)) {
+                     &vencPid, &thread_attr, (void *(*)(void *))venc_thread, NULL)) {
             fprintf(stderr, "Starting the video encoding thread failed!\n");
             return EXIT_FAILURE;
         }
@@ -402,7 +401,7 @@ int stop_sdk() {
         default: break;      
     }
 
-    if (ispthread)
+    if (isp_thread)
         pthread_join(ispPid, NULL);
 
     switch (plat) {

@@ -9,8 +9,8 @@
 
 #include "http_post.h"
 #include "night.h"
-#include "video.h"
 #include "server.h"
+#include "video.h"
 
 #include "rtsp/ringfifo.h"
 #include "rtsp/rtputils.h"
@@ -25,6 +25,8 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Divinus for infinity6c\n"); break;
         case HAL_PLATFORM_I6F:
             fprintf(stderr, "Divinus for infinity6f\n"); break;
+        case HAL_PLATFORM_V3:
+            fprintf(stderr, "Divinus for hisi-gen3\n"); break;
         default:
             fprintf(stderr, "Unsupported chip family! Quitting...\n");
             return EXIT_FAILURE;
@@ -40,16 +42,14 @@ int main(int argc, char *argv[]) {
     int mainFd;
     if (app_config.rtsp_enable) {
         ring_malloc(app_config.mp4_width * app_config.mp4_height);
-        rtsp_init();
         signal(SIGINT, rtsp_interrupt);
-
         fprintf(stderr, "RTSP server started, listening for clients...\n");
         
         mainFd = tcp_listen(SERVER_RTSP_PORT_DEFAULT);
         if (rtsp_init_schedule() == RTSP_ERR_FATAL) {
             fprintf(stderr,
-                "Can't start scheduler %s, "
-                "%i \nServer is aborting.\n");
+                "Can't start scheduler,\n"
+                "Server is aborting.\n");
             return EXIT_SUCCESS;
         }
         rtsp_portpool_init(RTP_DEFAULT_PORT);
@@ -69,7 +69,8 @@ int main(int argc, char *argv[]) {
             rtsp_eventloop(mainFd);
         }
         ring_free();
-        printf("RTSP server closed!\n");
+        rtsp_deinit_schedule();
+        printf("RTSP server has closed!\n");
     } else 
         while (keepRunning) sleep(1);
 

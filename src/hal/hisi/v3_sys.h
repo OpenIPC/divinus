@@ -72,7 +72,7 @@ typedef struct {
 } v3_sys_ver;
 
 typedef struct {
-    void *handle;
+    void *handle, *handleGoke, *handleDnvqe, *handleVoiceEngine, *handleUpvqe, *handleSecureC;
     
     int (*fnExit)(void);
     int (*fnGetChipId)(unsigned int *chip);
@@ -85,7 +85,13 @@ typedef struct {
 } v3_sys_impl;
 
 static int v3_sys_load(v3_sys_impl *sys_lib) {
-    if (!(sys_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL))) {
+    if (!(sys_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL)) &&
+        (!(sys_lib->handleSecureC = dlopen("libsecurec.so", RTLD_LAZY | RTLD_GLOBAL)) ||
+        !(sys_lib->handleUpvqe = dlopen("libupvqe.so", RTLD_LAZY | RTLD_GLOBAL)) ||
+        !(sys_lib->handleVoiceEngine = dlopen("libvoice_engine.so", RTLD_LAZY | RTLD_GLOBAL)) ||
+        !(sys_lib->handleDnvqe = dlopen("libdnvqe.so", RTLD_LAZY | RTLD_GLOBAL)) ||
+        !(sys_lib->handleGoke = dlopen("libgk_api.so", RTLD_LAZY | RTLD_GLOBAL)) ||
+        !(sys_lib->handle = dlopen("libhi_mpi.so", RTLD_LAZY | RTLD_GLOBAL)))) {
         fprintf(stderr, "[v3_sys] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
@@ -138,5 +144,15 @@ static int v3_sys_load(v3_sys_impl *sys_lib) {
 static void v3_sys_unload(v3_sys_impl *sys_lib) {
     if (sys_lib->handle)
         dlclose(sys_lib->handle = NULL);
+    if (sys_lib->handleGoke)
+        dlclose(sys_lib->handleGoke = NULL);
+    if (sys_lib->handleDnvqe)
+        dlclose(sys_lib->handleDnvqe = NULL);
+    if (sys_lib->handleVoiceEngine)
+        dlclose(sys_lib->handleVoiceEngine = NULL);
+    if (sys_lib->handleUpvqe)
+        dlclose(sys_lib->handleUpvqe = NULL);
+    if (sys_lib->handleSecureC)
+        dlclose(sys_lib->handleSecureC = NULL);
     memset(sys_lib, 0, sizeof(*sys_lib));
 }

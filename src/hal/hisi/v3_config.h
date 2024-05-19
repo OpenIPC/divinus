@@ -16,7 +16,7 @@
 typedef struct {
     // [sensor]
     char sensor_type[128];
-    v3_snr_lwdr mode;
+    v3_common_wdr mode;
     char dll_file[256];
 
     // [mode]

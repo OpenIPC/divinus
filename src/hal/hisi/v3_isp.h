@@ -92,19 +92,19 @@ static int v3_isp_load(v3_isp_impl *isp_lib) {
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnRegisterAE = (int(*)(int device, v3_isp_alg *library))
+    if (!(isp_lib->fnUnregisterAE = (int(*)(int device, v3_isp_alg *library))
         dlsym(isp_lib->handle, "HI_MPI_AE_UnRegister"))) {
         fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_AE_UnRegister!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnRegisterAE = (int(*)(int device, v3_isp_alg *library))
+    if (!(isp_lib->fnUnregisterAF = (int(*)(int device, v3_isp_alg *library))
         dlsym(isp_lib->handle, "HI_MPI_AF_UnRegister"))) {
         fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_AF_UnRegister!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnRegisterAE = (int(*)(int device, v3_isp_alg *library))
+    if (!(isp_lib->fnUnregisterAWB = (int(*)(int device, v3_isp_alg *library))
         dlsym(isp_lib->handle, "HI_MPI_AWB_UnRegister"))) {
         fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_AWB_UnRegister!\n");
         return EXIT_FAILURE;

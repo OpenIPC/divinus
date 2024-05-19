@@ -9,10 +9,11 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-extern void *encthread;
-extern void *ispthread;
-extern char chncount;
-extern hal_chnstate *chnstate;
+extern void *isp_thread;
+extern void *venc_thread;
+
+extern char chnCount;
+extern hal_chnstate *chnState;
 extern hal_platform plat;
 
 extern void *v3_encoder_thread(void);
