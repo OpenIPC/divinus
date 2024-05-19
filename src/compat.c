@@ -1,7 +1,5 @@
 #include <math.h>
-#include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
 
 void __assert(void) {}
 void backtrace(void) {}
