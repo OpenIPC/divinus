@@ -20,7 +20,6 @@ char _i6f_isp_dev = 0;
 char _i6f_isp_port = 0;
 char _i6f_scl_chn = 0;
 char _i6f_scl_dev = 0;
-char _i6f_venc_chn = 0;
 char _i6f_venc_port = 0;
 char _i6f_vif_chn = 0;
 char _i6f_vif_dev = 0;
@@ -70,9 +69,10 @@ int i6f_channel_bind(char index, char framerate, char jpeg)
         i6f_sys_bind source = { .module = I6F_SYS_MOD_SCL, 
             .device = _i6f_scl_dev, .channel = _i6f_scl_chn, .port = index };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_VENC,
-            .device = jpeg ? 8 : 0, .channel = _i6f_venc_chn, .port = _i6f_venc_port };
+            .device = jpeg ? I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0, 
+            .channel = index, .port = _i6f_venc_port };
         if (ret = i6f_sys.fnBindExt(0, &source, &dest, framerate, framerate,
-            jpeg ? I6F_SYS_LINK_REALTIME : I6F_SYS_LINK_RING, 0))
+            I6F_SYS_LINK_REALTIME, 0))
             return ret;
     }
 
@@ -112,7 +112,7 @@ int i6f_channel_unbind(char index, char jpeg)
         i6f_sys_bind source = { .module = I6F_SYS_MOD_SCL, 
             .device = _i6f_scl_dev, .channel = _i6f_scl_chn, .port = index };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_VENC,
-            .device = jpeg ? 8 : 0, .channel = _i6f_venc_chn, .port = _i6f_venc_port };
+            .device = jpeg ? I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0, .channel = index, .port = _i6f_venc_port };
         if (ret = i6f_sys.fnUnbind(0, &source, &dest))
             return ret;
     }
@@ -590,15 +590,29 @@ int i6f_pipeline_create(char sensor, short width, short height, char framerate)
         return ret;
 
     {
-        unsigned int combo = 0;
+        i6f_vif_port port;
+        port.capt = _i6f_snr_plane.capt;
+        port.dest.height = _i6f_snr_plane.capt.height;
+        port.dest.width = _i6f_snr_plane.capt.width;
+        port.pixFmt = (i6f_common_pixfmt)(_i6f_snr_plane.bayer > I6F_BAYER_END ? 
+            _i6f_snr_plane.pixFmt : (I6F_PIXFMT_RGB_BAYER + _i6f_snr_plane.precision * I6F_BAYER_END + _i6f_snr_plane.bayer));
+        port.frate = I6F_VIF_FRATE_FULL;
+        if (ret = i6f_vif.fnSetPortConfig(_i6f_vif_dev, _i6f_vif_chn, &port))
+            return ret;
+    }
+    if (ret = i6f_vif.fnEnablePort(_i6f_vif_dev, _i6f_vif_chn))
+        return ret;
+
+    {
+        unsigned int combo = 1;
         if (ret = i6f_isp.fnCreateDevice(_i6f_isp_dev, &combo))
             return ret;
     }
 
     {
         i6f_isp_chn channel;
-        memset(&_i6f_isp_chn, 0, sizeof(_i6f_isp_chn));
-        channel.sensorId = _i6f_snr_index;
+        memset(&channel, 0, sizeof(channel));
+        channel.sensorId = (1 << _i6f_snr_index);
         if (ret = i6f_isp.fnCreateChannel(_i6f_isp_dev, _i6f_isp_chn, &channel))
             return ret;
     }
@@ -716,7 +730,7 @@ int i6f_system_init(void)
 
     {
         i6f_sys_ver version;
-        if (ret = i6f_sys.fnGetVersion(&version))
+        if (ret = i6f_sys.fnGetVersion(0, &version))
             return ret;
         printf("App built with headers v%s\n", I6F_SYS_API);
         puts(version.version);

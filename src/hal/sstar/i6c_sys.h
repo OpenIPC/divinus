@@ -131,7 +131,7 @@ typedef struct {
     void *handle, *handleCamOsWrapper;
     
     int (*fnExit)(unsigned short chip);
-    int (*fnGetVersion)(i6c_sys_ver *version);
+    int (*fnGetVersion)(unsigned short chip, i6c_sys_ver *version);
     int (*fnInit)(unsigned short chip);
 
     int (*fnBind)(unsigned short chip, i6c_sys_bind *source, i6c_sys_bind *dest, i6c_sys_link *link);
@@ -159,7 +159,7 @@ static int i6c_sys_load(i6c_sys_impl *sys_lib) {
         return EXIT_FAILURE;
     }
 
-    if (!(sys_lib->fnGetVersion = (int(*)(i6c_sys_ver *version))
+    if (!(sys_lib->fnGetVersion = (int(*)(unsigned short chip, i6c_sys_ver *version))
         dlsym(sys_lib->handle, "MI_SYS_GetVersion"))) {
         fprintf(stderr, "[i6c_sys] Failed to acquire symbol MI_SYS_GetVersion!\n");
         return EXIT_FAILURE;

@@ -92,14 +92,11 @@ void hal_identify(void) {
     fclose(file);
 
     switch (val) {
-        case 0x12040000: 
+        case 0x12040000:
         case 0x120a0000:
-        case 0x12100000: 
-                         val = 0x12020000; break;
-        case 0x12080000:
-                         val = 0x12050000; break;
-        case 0x20080000:
-                         val = 0x20050000; break;
+        case 0x12100000: val = 0x12020000; break;
+        case 0x12080000: val = 0x12050000; break;
+        case 0x20080000: val = 0x20050000; break;
         default: return;
     }
 
@@ -109,4 +106,9 @@ void hal_identify(void) {
         if (!i && (SCSYSID[i] >> 16 & 0xFF)) { val = SCSYSID[i]; break; }
         val |= (SCSYSID[i] & 0xFF) << i * 8;
     }
+
+    plat = HAL_PLATFORM_V3;
+    chnCount = V3_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)v3_state;
+    venc_thread = v3_encoder_thread;
 }

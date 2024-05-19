@@ -20,7 +20,6 @@ char _i6c_isp_dev = 0;
 char _i6c_isp_port = 0;
 char _i6c_scl_chn = 0;
 char _i6c_scl_dev = 0;
-char _i6c_venc_chn = 0;
 char _i6c_venc_port = 0;
 char _i6c_vif_chn = 0;
 char _i6c_vif_dev = 0;
@@ -70,7 +69,8 @@ int i6c_channel_bind(char index, char framerate, char jpeg)
         i6c_sys_bind source = { .module = I6C_SYS_MOD_SCL, 
             .device = _i6c_scl_dev, .channel = _i6c_scl_chn, .port = index };
         i6c_sys_bind dest = { .module = I6C_SYS_MOD_VENC,
-            .device = jpeg ? 8 : 0, .channel = _i6c_venc_chn, .port = _i6c_venc_port };
+            .device = jpeg ? I6C_VENC_DEV_MJPG_0 : I6C_VENC_DEV_H26X_0,
+            .channel = index, .port = _i6c_venc_port };
         if (ret = i6c_sys.fnBindExt(0, &source, &dest, framerate, framerate,
             jpeg ? I6C_SYS_LINK_REALTIME : I6C_SYS_LINK_RING, 0))
             return ret;
@@ -112,7 +112,7 @@ int i6c_channel_unbind(char index, char jpeg)
         i6c_sys_bind source = { .module = I6C_SYS_MOD_SCL, 
             .device = _i6c_scl_dev, .channel = _i6c_scl_chn, .port = index };
         i6c_sys_bind dest = { .module = I6C_SYS_MOD_VENC,
-            .device = jpeg ? 8 : 0, .channel = _i6c_venc_chn, .port = _i6c_venc_port };
+            .device = jpeg ? I6C_VENC_DEV_MJPG_0 : I6C_VENC_DEV_H26X_0, .channel = index, .port = _i6c_venc_port };
         if (ret = i6c_sys.fnUnbind(0, &source, &dest))
             return ret;
     }
@@ -256,6 +256,12 @@ attach:
 
     if (ret = i6c_venc.fnCreateChannel(device, index, &channel))
         return ret;
+
+    if (device == I6C_VENC_DEV_H26X_0) {
+        i6c_venc_src_conf config = I6C_VENC_SRC_CONF_RING_DMA;
+        if (ret = i6c_venc.fnSetSourceConfig(device, index, &config))
+            return ret;
+    }
 
     if (config->codec != HAL_VIDCODEC_JPG && 
         (ret = i6c_venc.fnStartReceiving(device, index)))
@@ -572,6 +578,19 @@ int i6c_pipeline_create(char sensor, short width, short height, char framerate)
         return ret;
     if (ret = i6c_snr.fnGetPlaneInfo(_i6c_snr_index, 0, &_i6c_snr_plane))
         return ret;
+
+    i6c_sys_pool pool;
+    memset(&pool, 0, sizeof(pool));
+    pool.type = I6C_SYS_POOL_DEVICE_RING;
+    pool.create = 1;
+    pool.config.ring.module = I6C_SYS_MOD_SCL;
+    pool.config.ring.device = _i6c_scl_dev;
+    pool.config.ring.maxHeight = _i6c_snr_plane.capt.height;
+    pool.config.ring.maxWidth = _i6c_snr_plane.capt.width;
+    pool.config.ring.ringLine = _i6c_snr_plane.capt.height / 4;
+    if (ret = i6c_sys.fnConfigPool(0, &pool))
+        return ret;
+
     if (ret = i6c_snr.fnEnable(_i6c_snr_index))
         return ret;
 
@@ -600,9 +619,24 @@ int i6c_pipeline_create(char sensor, short width, short height, char framerate)
     }
     if (ret = i6c_vif.fnEnableDevice(_i6c_vif_dev))
         return ret;
+    
+    {
+        i6c_vif_port port;
+        port.capt = _i6c_snr_plane.capt;
+        port.dest.height = _i6c_snr_plane.capt.height;
+        port.dest.width = _i6c_snr_plane.capt.width;
+        port.pixFmt = (i6c_common_pixfmt)(_i6c_snr_plane.bayer > I6C_BAYER_END ? 
+            _i6c_snr_plane.pixFmt : (I6C_PIXFMT_RGB_BAYER + _i6c_snr_plane.precision * I6C_BAYER_END + _i6c_snr_plane.bayer));
+        port.frate = I6C_VIF_FRATE_FULL;
+        port.compress = I6C_COMPR_NONE;
+        if (ret = i6c_vif.fnSetPortConfig(_i6c_vif_dev, _i6c_vif_chn, &port))
+            return ret;
+    }
+    if (ret = i6c_vif.fnEnablePort(_i6c_vif_dev, _i6c_vif_chn))
+        return ret;
 
     {
-        unsigned int combo = 0;
+        unsigned int combo = 1;
         if (ret = i6c_isp.fnCreateDevice(_i6c_isp_dev, &combo))
             return ret;
     }
@@ -610,8 +644,8 @@ int i6c_pipeline_create(char sensor, short width, short height, char framerate)
 
     {
         i6c_isp_chn channel;
-        memset(&_i6c_isp_chn, 0, sizeof(_i6c_isp_chn));
-        channel.sensorId = _i6c_snr_index;
+        memset(&channel, 0, sizeof(channel));
+        channel.sensorId = (1 << _i6c_snr_index);
         if (ret = i6c_isp.fnCreateChannel(_i6c_isp_dev, _i6c_isp_chn, &channel))
             return ret;
     }
@@ -730,7 +764,7 @@ int i6c_system_init(void)
 
     {
         i6c_sys_ver version;
-        //if (ret = i6c_sys.fnGetVersion(&version))
+        //if (ret = i6c_sys.fnGetVersion(0, &version))
         //    return ret;
         printf("App built with headers v%s\n", I6C_SYS_API);
         //puts(version.version);

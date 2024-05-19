@@ -47,7 +47,7 @@ typedef struct {
 } i6c_vif_grp;
 
 typedef struct {
-    i6c_common_rect crop;
+    i6c_common_rect capt;
     i6c_common_dim dest;
     i6c_common_pixfmt pixFmt;
     i6c_vif_frate frate;

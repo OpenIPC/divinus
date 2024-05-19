@@ -21,7 +21,7 @@ typedef struct {
     char mirror;
     char flip;
     // Represents 90-degree arcs
-    char rotate;
+    int rotate;
     char yuv2BayerOn;
 } i6c_isp_para;
 
