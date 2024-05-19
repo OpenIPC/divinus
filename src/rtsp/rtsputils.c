@@ -179,7 +179,7 @@ void rtsp_deinit_schedule() {
 int rtsp_init_schedule() {
     for (int i = 0; i < MAX_CONNECTION; i++) {
         sched[i].session = NULL;
-        sched[i].play_action = NULL;
+        sched[i].playAction = NULL;
         sched[i].valid = 0;
         sched[i].BeginFrame = 0;
     }
@@ -240,7 +240,7 @@ void *rtsp_schedule_thread() {
                         buflen = ringbuflen;
                         if (ringinfo.frame_type == FRAME_TYPE_I)
                             sched[i].BeginFrame = 1;
-                        sched[i].play_action(
+                        sched[i].playAction(
                             (unsigned int)(sched[i].session->rtpHandle),
                             ringinfo.buffer, ringinfo.size, mnow);
                     }
@@ -259,7 +259,7 @@ int schedule_add(rtpSession *session) {
             sched[i].valid = 1;
             sched[i].session = session;
 
-            sched[i].play_action = rtp_send;
+            sched[i].playAction = rtp_send;
             printf(
                 "**adding a schedule object action %s,%d**\n", __FILE__,
                 __LINE__);

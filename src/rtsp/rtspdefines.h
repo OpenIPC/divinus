@@ -29,6 +29,11 @@
 #define RTSP_METHOD_SET_PARAMETER  "SET_PARAMETER"
 #define RTSP_METHOD_TEARDOWN       "TEARDOWN"
 
+typedef enum {
+    RTP_TRANSP_NONE = 0,
+    RTP_TRANSP_RTP_AVP,
+    RTP_TRANSP_RTP_AVP_TCP
+} rtpType;
 
 enum {
     RTSP_ERR_CONNECTION_CLOSE = -10,
@@ -56,6 +61,12 @@ enum {
     RTSP_ID_SETUP,
     RTSP_ID_SET_PARAMETER,
     RTSP_ID_TEARDOWN
+};
+
+enum {
+    RTSP_MSG_NOT_FULL,
+    RTSP_MSG_METHOD,
+    RTSP_MSG_INTERLEAVED
 };
 
 enum {
