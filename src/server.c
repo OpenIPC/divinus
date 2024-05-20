@@ -1,17 +1,4 @@
-#include <errno.h>
-#include <netinet/in.h>
-#include <pthread.h>
-#include <regex.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include "jpeg.h"
-#include "mp4/mp4.h"
-#include "mp4/nal.h"
+#include "server.h"
 
 char keepRunning = 1;
 
@@ -419,10 +406,82 @@ int send_image_html(const int client_fd) {
     return 1;
 }
 
-#define MAX_HEADERS 1024 * 8
-char request_headers[MAX_HEADERS];
-char request_path[64];
-char header[256];
+#define MAX_REQSIZE 8192
+char request[MAX_REQSIZE], response[256];
+char *method, *prot, *query, *uri;
+
+typedef struct {
+    char *name, *value;
+} header_t;
+
+header_t reqhdr[17] = {{"\0", "\0"}};
+
+void unescape_uri(char *uri)
+{
+    char *src = uri;
+    char *dst = uri;
+
+    while (*src && !isspace((int)(*src)) && (*src != '%'))
+        src++;
+
+    dst = src;
+    while (*src && !isspace((int)(*src)))
+    {
+        *dst++ = (*src == '+') ? ' ' :
+                 ((*src == '%') && src[1] && src[2]) ?
+                 ((*++src & 0x0F) + 9 * (*src > '9')) * 16 + ((*++src & 0x0F) + 9 * (*src > '9')) :
+                 *src;
+        src++;
+    }
+    *dst = '\0';
+}
+
+char *split(char **input, char *sep) {
+    char *curr = (char *)"";
+    while (curr && !curr[0] && *input) curr = strsep(input, sep);
+    return (curr);
+}
+
+void parse_request(char *request) {
+    method = strtok(request, " \t\r\n");
+    uri = strtok(NULL, " \t");
+    prot = strtok(NULL, " \t\r\n");
+
+    fprintf(stderr, "[server]\x1b[32m New request: (%s) %s\x1b[0m\n", method, uri);
+
+    if (query = strchr(uri, '?'))
+        *query++ = '\0';
+    else
+        query = uri - 1;
+
+    header_t *h = reqhdr;
+    while (h < reqhdr + 16)
+    {
+        char *k, *v, *e;
+        k = strtok(NULL, "\r\n: \t");
+        if (!k)
+            break;
+        v = strtok(NULL, "\r\n");
+        while (*v && *v == ' ' && v++);
+        h->name = k;
+        h++->value = v;
+        fprintf(stderr, "         (H) %s: %s\n", k, v);
+        e = v + 1 + strlen(v);
+        if (e[1] == '\r' && e[2] == '\n')
+            break;
+    }
+}
+
+char *request_header(const char *name)
+{
+    header_t *h = reqhdr;
+    for (; h->name; h++)
+        if (!strcmp(h->name, name))
+            return h->value;
+    return NULL;
+}
+
+header_t *request_headers(void) { return reqhdr; }
 
 void *server_thread(void *vargp) {
     int server_fd = *((int *)vargp);
@@ -451,43 +510,35 @@ void *server_thread(void *vargp) {
         if (client_fd == -1)
             break;
 
-        // parse request headers, get request path
-        recv(client_fd, request_headers, MAX_HEADERS, 0);
-        if (!parse_request_path(request_headers, request_path)) {
-            close_socket_fd(client_fd);
-            continue;
-        };
+        recv(client_fd, request, MAX_REQSIZE, 0);
+        parse_request(request);
 
-        if (!strcmp(request_path, "./exit")) {
+        if (equals(uri, "/exit")) {
             // exit
-            char response[] = "HTTP/1.1 200 OK\r\nContent-Length: "
+            char response2[] = "HTTP/1.1 200 OK\r\nContent-Length: "
                               "11\r\nConnection: close\r\n\r\nClosing...";
             send_to_fd(
-                client_fd, response,
-                sizeof(response) - 1); // zero ending string!
+                client_fd, response2,
+                sizeof(response2) - 1); // zero ending string!
             close_socket_fd(client_fd);
             keepRunning = 0;
             break;
         }
 
-        // if path is root send ./index.html file
-        if (!strcmp(request_path, "./"))
-            strcpy(request_path, "./mjpeg.html");
-
         // send JPEG html page
-        if (!strcmp(request_path, "./image.html") &&
+        if (equals(uri, "/image.html") &&
             app_config.jpeg_enable) {
             send_image_html(client_fd);
             continue;
         }
         // send MJPEG html page
-        if (!strcmp(request_path, "./mjpeg.html") &&
+        if (equals(uri, "/mjpeg.html") &&
             app_config.mjpeg_enable) {
             send_mjpeg_html(client_fd);
             continue;
         }
         // send MP4 html page
-        if (!strcmp(request_path, "./video.html") &&
+        if (equals(uri, "/video.html") &&
             app_config.mp4_enable) {
             send_video_html(client_fd);
             continue;
@@ -495,12 +546,12 @@ void *server_thread(void *vargp) {
 
         // if h264 stream is requested add client_fd socket to client_fds array
         // and send h264 stream with http_thread
-        if (!strcmp(request_path, "./video.h264")) {
-            int header_len = sprintf(
-                header, "HTTP/1.1 200 OK\r\nContent-Type: "
+        if (equals(uri, "/video.264")) {
+            int respLen = sprintf(
+                response, "HTTP/1.1 200 OK\r\nContent-Type: "
                         "application/octet-stream\r\nTransfer-Encoding: "
                         "chunked\r\nConnection: keep-alive\r\n\r\n");
-            send_to_fd(client_fd, header, header_len);
+            send_to_fd(client_fd, response, respLen);
             pthread_mutex_lock(&client_fds_mutex);
             for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
                 if (client_fds[i].socket_fd < 0) {
@@ -513,12 +564,12 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (!strcmp(request_path, "./video.mp4") && app_config.mp4_enable) {
-            int header_len = sprintf(
-                header, "HTTP/1.1 200 OK\r\nContent-Type: "
+        if (equals(uri, "/video.mp4") && app_config.mp4_enable) {
+            int respLen = sprintf(
+                response, "HTTP/1.1 200 OK\r\nContent-Type: "
                         "video/mp4\r\nTransfer-Encoding: "
                         "chunked\r\nConnection: keep-alive\r\n\r\n");
-            send_to_fd(client_fd, header, header_len);
+            send_to_fd(client_fd, response, respLen);
             pthread_mutex_lock(&client_fds_mutex);
             for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
                 if (client_fds[i].socket_fd < 0) {
@@ -533,13 +584,13 @@ void *server_thread(void *vargp) {
 
         // If the MJPEG stream is requested add client_fd socket to client_fds array
         // and send it with the HTTP thread
-        if (!strcmp(request_path, "./mjpeg") && app_config.mjpeg_enable) {
-            int header_len = sprintf(
-                header, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nPragma: "
+        if (app_config.mjpeg_enable && equals(uri, "/mjpeg")) {
+            int respLen = sprintf(
+                response, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nPragma: "
                         "no-cache\r\nConnection: close\r\nContent-Type: "
                         "multipart/x-mixed-replace; "
                         "boundary=boundarydonotcross\r\n\r\n");
-            send_to_fd(client_fd, header, header_len);
+            send_to_fd(client_fd, response, respLen);
             pthread_mutex_lock(&client_fds_mutex);
             for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
                 if (client_fds[i].socket_fd < 0) {
@@ -551,7 +602,7 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (starts_with(request_path, "./image.jpg") && app_config.jpeg_enable) {
+        if (app_config.jpeg_enable && starts_with(uri, "/image.jpg")) {
             {
                 struct jpegtask task;
                 task.client_fd = client_fd;
@@ -560,10 +611,35 @@ void *server_thread(void *vargp) {
                 task.qfactor = app_config.jpeg_qfactor;
                 task.color2Gray = 3;
 
-                get_uint16(request_path, "width=", &task.width);
-                get_uint16(request_path, "height=", &task.height);
-                get_uint8(request_path, "qfactor=", &task.qfactor);
-                get_uint8(request_path, "color2gray=", &task.color2Gray);
+                if (!empty(query)) {
+                    char *remain;
+                    while (query) {
+                        char *value = split(&query, "&");
+                        if (!value || !*value) continue;
+                        char *key = split(&value, "=");
+                        if (!key || !*key || !value || !*value) continue;
+                        if (equals(key, "width")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                task.width = result;
+                        }
+                        else if (equals(key, "height")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                task.height = result;
+                        }
+                        else if (equals(key, "qfactor")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                task.qfactor = result;
+                        }
+                        else if (equals(key, "color2gray")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                task.color2Gray = result;
+                        }
+                    }
+                }
 
                 pthread_t thread_id;
                 pthread_attr_t thread_attr;
@@ -584,13 +660,60 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.web_enable_static && send_file(client_fd, request_path))
+        if (app_config.osd_enable && starts_with(uri, "/api/osd/") &&
+            uri[9] && uri[9] >= '0' && uri[9] <= (MAX_OSD - 1 + '0'))
+        {
+            char id = uri[9] - '0';
+            if (!empty(query))
+            {
+                char *remain;
+                while (query) {
+                    char *value = split(&query, "&");
+                    if (!value || !*value) continue;
+                    unescape_uri(value);
+                    char *key = split(&value, "=");
+                    if (!key || !*key || !value || !*value) continue;
+                    if (equals(key, "font"))
+                        strcpy(osds[id].font, !empty(value) ? value : DEF_FONT);
+                    else if (equals(key, "text"))
+                        strcpy(osds[id].text, value);
+                    else if (equals(key, "size")) {
+                        double result = strtod(value, &remain);
+                        if (remain == value) continue;
+                        osds[id].size = (result != 0 ? result : DEF_SIZE);
+                    }
+                    else if (equals(key, "posx")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            osds[id].posx = result;
+                    }
+                    else if (equals(key, "posy")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            osds[id].posy = result;
+                    }
+                }
+                osds[id].updt = 1;
+            }
+            int respLen = sprintf(response,
+                "HTTP/1.1 200 OK\r\n" \
+                "Content-Type: application/json;charset=UTF-8\r\n" \
+                "Connection: close\r\n" \
+                "\r\n" \
+                "{\"id\":%d,\"pos\":[%d,%d],\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\"}", 
+                id, osds[id].posx, osds[id].posy, osds[id].font, osds[id].size, osds[id].text);
+            send_to_fd(client_fd, response, respLen);
+            close_socket_fd(client_fd);
+            continue;
+        }
+
+        if (app_config.web_enable_static && send_file(client_fd, uri))
             continue;
 
-        static char response[] = "HTTP/1.1 404 Not Found\r\nContent-Length: "
+        static char response2[] = "HTTP/1.1 404 Not Found\r\nContent-Length: "
                                  "11\r\nConnection: close\r\n\r\n";
         send_to_fd(
-            client_fd, response, sizeof(response) - 1); // zero ending string!
+            client_fd, response2, sizeof(response2) - 1); // zero ending string!
         close_socket_fd(client_fd);
     }
     close_socket_fd(server_fd);

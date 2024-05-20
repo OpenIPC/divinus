@@ -1,9 +1,23 @@
 #pragma once
 
+#include <ctype.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <regex.h>
+#include <signal.h>
 #include <stdbool.h>
-#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 #include "common.h"
+#include "jpeg.h"
+#include "mp4/mp4.h"
+#include "mp4/nal.h"
+#include "region.h"
 
 extern char keepRunning;
 
