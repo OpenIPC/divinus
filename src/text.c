@@ -2,6 +2,11 @@
 
 const double inv255 = 1.0 / 255.0;
 
+static SFT sft;
+static SFT_Image canvas;
+static SFT_LMetrics lmtx;
+static hal_bitmap bitmap;
+
 static void text_copy_rendered(SFT_Image *dest, const SFT_Image *source, int x0, int y0, int color)
 {
     unsigned short maskr = (color & 0x7C00) >> 10;

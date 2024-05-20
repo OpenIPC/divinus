@@ -99,7 +99,13 @@ void region_fill_formatted(char* str)
 
 void *region_thread(void)
 {
-    for (int id = 0; id < MAX_OSD; id++)
+    switch (plat) {
+        case HAL_PLATFORM_I6: i6_region_init(); break;
+        case HAL_PLATFORM_I6C: i6c_region_init(); break;
+        case HAL_PLATFORM_I6F: i6f_region_init(); break;
+    }
+
+    for (char id = 0; id < MAX_OSD; id++)
     {
         osds[id].hand = id;
         osds[id].size = DEF_SIZE;
@@ -112,7 +118,7 @@ void *region_thread(void)
 
     while (keepRunning) {
         for (char id = 0; id < MAX_OSD; id++) {
-            if (!empty(osds[id].text) && !osds[id].updt)
+            if (!empty(osds[id].text))
             {
                 char out[80];
                 strcpy(out, osds[id].text);
@@ -135,8 +141,8 @@ void *region_thread(void)
                                 i6_region_setbitmap(osds[id].hand, &bitmap);
                                 break;
                             case HAL_PLATFORM_I6C:
-                                i6_region_create(osds[id].hand, rect);
-                                i6_region_setbitmap(osds[id].hand, &bitmap);
+                                i6c_region_create(osds[id].hand, rect);
+                                i6c_region_setbitmap(osds[id].hand, &bitmap);
                                 break;
                             case HAL_PLATFORM_I6F:
                                 i6f_region_create(osds[id].hand, rect);
@@ -153,16 +159,22 @@ void *region_thread(void)
             }
             else if (empty(osds[id].text) && osds[id].updt)
             {
-                
-            } else switch (plat) {
-                case HAL_PLATFORM_I6: i6_region_destroy(osds[id].hand); break;
-                case HAL_PLATFORM_I6C: i6c_region_destroy(osds[id].hand); break;
-                case HAL_PLATFORM_I6F: i6f_region_destroy(osds[id].hand); break;
-                case HAL_PLATFORM_V3: v3_region_destroy(osds[id].hand); break;
+                switch (plat) {
+                    case HAL_PLATFORM_I6: i6_region_destroy(osds[id].hand); break;
+                    case HAL_PLATFORM_I6C: i6c_region_destroy(osds[id].hand); break;
+                    case HAL_PLATFORM_I6F: i6f_region_destroy(osds[id].hand); break;
+                    case HAL_PLATFORM_V3: v3_region_destroy(osds[id].hand); break;
+                }
             }
             osds[id].updt = 0;
         }
         sleep(1);
+    }
+
+    switch (plat) {
+        case HAL_PLATFORM_I6: i6_region_deinit(); break;
+        case HAL_PLATFORM_I6C: i6c_region_deinit(); break;
+        case HAL_PLATFORM_I6F: i6f_region_deinit(); break;
     }
 }
 

@@ -12,11 +12,6 @@
         return EXIT_FAILURE; \
     } while (0)
 
-static SFT sft;
-static SFT_Image canvas;
-static SFT_LMetrics lmtx;
-static hal_bitmap bitmap;
-
 hal_bitmap text_create_rendered(const char *font, double size, const char *text);
 hal_dim text_measure_rendered(const char *font, double size, const char *text);
 

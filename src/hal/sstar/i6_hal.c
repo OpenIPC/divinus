@@ -658,12 +658,11 @@ int i6_region_create(char handle, hal_rect rect)
     region.pixFmt = I6_RGN_PIXFMT_ARGB1555;
     region.size.width = rect.width;
     region.size.height = rect.height;
-    if (ret = i6_rgn.fnGetRegionConfig(handle, &regionCurr))
-        return ret;
-    if (ret = i6_rgn.fnCreateRegion(handle, &region))
-        return ret;
-
-    if (regionCurr.size.height != region.size.height || 
+    if (ret = i6_rgn.fnGetRegionConfig(handle, &regionCurr)) {
+        fprintf(stderr, "[i6_rgn] Creating region %d...\n", handle);
+        if (ret = i6_rgn.fnCreateRegion(handle, &region))
+            return ret;
+    } else if (regionCurr.size.height != region.size.height || 
         regionCurr.size.width != region.size.width) {
         fprintf(stderr, "[i6_rgn] Parameters are different, recreating "
             "region %d...\n", handle);
@@ -676,10 +675,10 @@ int i6_region_create(char handle, hal_rect rect)
             return ret;
     }
 
-    if (ret = i6_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
+    if (i6_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
         fprintf(stderr, "[i6_rgn] Attaching region %d...\n", handle);
     else if (attribCurr.point.x != rect.x || attribCurr.point.x != rect.y) {
-        fprintf(stderr, "[i6_rgn] Position has changed, detaching "
+        fprintf(stderr, "[i6_rgn] Position has changed, reattaching "
             "region %d...\n", handle);
         channel.port = 1;
         i6_rgn.fnDetachChannel(handle, &channel);

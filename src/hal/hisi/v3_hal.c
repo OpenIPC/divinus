@@ -594,14 +594,13 @@ int v3_region_create(char handle, hal_rect rect)
     region.overlay.pixFmt = V3_PIXFMT_ABGR1555;
     region.overlay.size.width = rect.width;
     region.overlay.size.height = rect.height;
-    if (ret = v3_rgn.fnGetRegionConfig(handle, &regionCurr))
-        return ret;
-    if (ret = v3_rgn.fnCreateRegion(handle, &region))
-        return ret;
-
-    if (regionCurr.overlay.size.height != region.overlay.size.height || 
+    if (ret = v3_rgn.fnGetRegionConfig(handle, &regionCurr)) {
+        fprintf(stderr, "[v3_rgn] Creating region %d...\n", handle);
+        if (ret = v3_rgn.fnCreateRegion(handle, &region))
+            return ret;
+    } else if (regionCurr.overlay.size.height != region.overlay.size.height || 
         regionCurr.overlay.size.width != region.overlay.size.width) {
-        fprintf(stderr, "[i6_rgn] Parameters are different, recreating "
+        fprintf(stderr, "[v3_rgn] Parameters are different, recreating "
             "region %d...\n", handle);
         v3_rgn.fnDetachChannel(handle, &channel);
         v3_rgn.fnDestroyRegion(handle);
@@ -609,10 +608,10 @@ int v3_region_create(char handle, hal_rect rect)
             return ret;
     }
 
-    if (ret = v3_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
-        fprintf(stderr, "[i6_rgn] Attaching region %d...\n", handle);
+    if (v3_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
+        fprintf(stderr, "[v3_rgn] Attaching region %d...\n", handle);
     else if (attribCurr.overlay.point.x != rect.x || attribCurr.overlay.point.x != rect.y) {
-        fprintf(stderr, "[i6_rgn] Position has changed, detaching "
+        fprintf(stderr, "[v3_rgn] Position has changed, reattaching "
             "region %d...\n", handle);
         v3_rgn.fnDetachChannel(handle, &channel);
     }
