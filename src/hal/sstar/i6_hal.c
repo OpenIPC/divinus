@@ -645,6 +645,77 @@ void i6_pipeline_destroy(void)
     i6_snr.fnDisable(_i6_snr_index);
 }
 
+int i6_region_create(char handle, hal_rect rect)
+{
+    int ret;
+
+    i6_sys_bind channel = { .module = I6_SYS_MOD_VPE,
+        .device = _i6_vpe_dev, .channel = _i6_vpe_chn };
+    i6_rgn_cnf region, regionCurr;
+    i6_rgn_chn attrib, attribCurr;
+
+    region.type = I6_RGN_TYPE_OSD;
+    region.pixFmt = I6_PIXFMT_ARGB1555;
+    region.size.width = rect.width;
+    region.size.height = rect.height;
+    if (ret = i6_rgn.fnGetRegionParam(handle, &regionCurr))
+        return ret;
+    if (ret = i6_rgn.fnCreateRegion(handle, &region))
+        return ret;
+
+    if (regionCurr.size.height != region.size.height || 
+        regionCurr.size.width != region.size.width) {
+        fprintf(stderr, "[i6_rgn] Parameters are different, recreating "
+            "region %d...\n", handle);
+        channel.port = 1;
+        i6_rgn.fnDetachChannel(handle, &channel);
+        channel.port = 0;
+        i6_rgn.fnDetachChannel(handle, &channel);
+        i6_rgn.fnDestroyRegion(handle);
+        if (ret = i6_rgn.fnCreateRegion(handle, &region))
+            return ret;
+    }
+
+    if (ret = i6_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
+        fprintf(stderr, "[i6_rgn] Attaching region %d...\n", handle);
+    else if (attribCurr.point.x != rect.x || attribCurr.point.x != rect.y) {
+        fprintf(stderr, "[i6_rgn] Position has changed, detaching "
+            "region %d...\n", handle);
+        channel.port = 1;
+        i6_rgn.fnDetachChannel(handle, &channel);
+        channel.port = 0;
+        i6_rgn.fnDetachChannel(handle, &channel);
+    }
+
+    memset(&attrib, 0, sizeof(attrib));
+    attrib.show = 1;
+    attrib.point.x = rect.x;
+    attrib.point.y = rect.y;
+    attrib.osd.layer = 0;
+    attrib.osd.constAlphaOn = 0;
+    attrib.osd.bgFgAlpha[0] = 0;
+    attrib.osd.bgFgAlpha[1] = 255;
+
+    channel.port = 0;
+    i6_rgn.fnAttachChannel(handle, &channel, &attrib);
+    channel.port = 1;
+    i6_rgn.fnAttachChannel(handle, &channel, &attrib);
+
+    return ret;
+}
+
+void i6_region_destroy(char handle)
+{
+    i6_sys_bind channel = { .module = I6_SYS_MOD_VPE,
+        .device = _i6_vpe_dev, .channel = _i6_vpe_chn };
+    
+    channel.port = 1;
+    i6_rgn.fnDetachChannel(handle, &channel);
+    channel.port = 0;
+    i6_rgn.fnDetachChannel(handle, &channel);
+    i6_rgn.fnDestroyRegion(handle);
+}
+
 void i6_system_deinit(void)
 {
     i6_sys.fnExit();

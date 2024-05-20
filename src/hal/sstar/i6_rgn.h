@@ -94,9 +94,11 @@ typedef struct {
 
     int (*fnCreateRegion)(unsigned int handle, i6_rgn_cnf *config);
     int (*fnDestroyRegion)(unsigned int handle);
+    int (*fnGetRegionParam)(unsigned int handle, i6_rgn_cnf *config);
 
     int (*fnAttachChannel)(unsigned int handle, i6_sys_bind *dest, i6_rgn_chn *config);
     int (*fnDetachChannel)(unsigned int handle, i6_sys_bind *dest);
+    int (*fnGetChannelConfig)(unsigned int handle, i6_sys_bind *dest, i6_rgn_chn *config);
     int (*fnSetChannelConfig)(unsigned int handle, i6_sys_bind *dest, i6_rgn_chn *config);
 
     int (*fnSetBitmap)(unsigned int handle, i6_rgn_bmp *bitmap);
@@ -132,6 +134,12 @@ static int i6_rgn_load(i6_rgn_impl *rgn_lib) {
         return EXIT_FAILURE;
     }
 
+    if (!(rgn_lib->fnGetRegionParam = (int(*)(unsigned int handle, i6_rgn_cnf *config))
+        dlsym(rgn_lib->handle, "MI_RGN_GetAttr"))) {
+        fprintf(stderr, "[i6_rgn] Failed to acquire symbol MI_RGN_GetAttr!\n");
+        return EXIT_FAILURE;
+    }
+
     if (!(rgn_lib->fnAttachChannel = (int(*)(unsigned int handle, i6_sys_bind *dest, i6_rgn_chn *config))
         dlsym(rgn_lib->handle, "MI_RGN_AttachToChn"))) {
         fprintf(stderr, "[i6_rgn] Failed to acquire symbol MI_RGN_AttachToChn!\n");
@@ -141,6 +149,12 @@ static int i6_rgn_load(i6_rgn_impl *rgn_lib) {
     if (!(rgn_lib->fnDetachChannel = (int(*)(unsigned int handle, i6_sys_bind *dest))
         dlsym(rgn_lib->handle, "MI_RGN_DetachFromChn"))) {
         fprintf(stderr, "[i6_rgn] Failed to acquire symbol MI_RGN_DetachFromChn!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(rgn_lib->fnGetChannelConfig = (int(*)(unsigned int handle, i6_sys_bind *dest, i6_rgn_chn *config))
+        dlsym(rgn_lib->handle, "MI_RGN_GetDisplayAttr"))) {
+        fprintf(stderr, "[i6_rgn] Failed to acquire symbol MI_RGN_GetDisplayAttr!\n");
         return EXIT_FAILURE;
     }
 

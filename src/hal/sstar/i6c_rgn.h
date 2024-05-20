@@ -94,9 +94,11 @@ typedef struct {
 
     int (*fnCreateRegion)(unsigned short chip, unsigned int handle, i6c_rgn_cnf *config);
     int (*fnDestroyRegion)(unsigned short chip, unsigned int handle);
+    int (*fnGetRegionParam)(unsigned short chip, unsigned int handle, i6c_rgn_cnf *config);
 
     int (*fnAttachChannel)(unsigned short chip, unsigned int handle, i6c_sys_bind *dest, i6c_rgn_chn *config);
     int (*fnDetachChannel)(unsigned short chip, unsigned int handle, i6c_sys_bind *dest);
+    int (*fnGetChannelConfig)(unsigned short chip, unsigned int handle, i6c_sys_bind *dest, i6c_rgn_chn *config);
     int (*fnSetChannelConfig)(unsigned short chip, unsigned int handle, i6c_sys_bind *dest, i6c_rgn_chn *config);
 
     int (*fnSetBitmap)(unsigned short chip, unsigned int handle, i6c_rgn_bmp *bitmap);
@@ -132,6 +134,12 @@ static int i6c_rgn_load(i6c_rgn_impl *rgn_lib) {
         return EXIT_FAILURE;
     }
 
+    if (!(rgn_lib->fnGetRegionParam = (int(*)(unsigned short chip, unsigned int handle, i6c_rgn_cnf *config))
+        dlsym(rgn_lib->handle, "MI_RGN_GetAttr"))) {
+        fprintf(stderr, "[i6c_rgn] Failed to acquire symbol MI_RGN_GetAttr!\n");
+        return EXIT_FAILURE;
+    }
+
     if (!(rgn_lib->fnAttachChannel = (int(*)(unsigned short chip, unsigned int handle, i6c_sys_bind *dest, i6c_rgn_chn *config))
         dlsym(rgn_lib->handle, "MI_RGN_AttachToChn"))) {
         fprintf(stderr, "[i6c_rgn] Failed to acquire symbol MI_RGN_AttachToChn!\n");
@@ -141,6 +149,12 @@ static int i6c_rgn_load(i6c_rgn_impl *rgn_lib) {
     if (!(rgn_lib->fnDetachChannel = (int(*)(unsigned short chip, unsigned int handle, i6c_sys_bind *dest))
         dlsym(rgn_lib->handle, "MI_RGN_DetachFromChn"))) {
         fprintf(stderr, "[i6c_rgn] Failed to acquire symbol MI_RGN_DetachFromChn!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(rgn_lib->fnGetChannelConfig = (int(*)(unsigned short chip, unsigned int handle, i6c_sys_bind *dest, i6c_rgn_chn *config))
+        dlsym(rgn_lib->handle, "MI_RGN_GetDisplayAttr"))) {
+        fprintf(stderr, "[i6c_rgn] Failed to acquire symbol MI_RGN_GetDisplayAttr!\n");
         return EXIT_FAILURE;
     }
 
