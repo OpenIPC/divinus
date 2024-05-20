@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 DL="https://github.com/openipc/firmware/releases/download/latest"
 
 toolchain() {
