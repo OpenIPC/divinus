@@ -60,6 +60,10 @@ typedef struct {
 } hal_chnstate;
 
 typedef struct {
+    unsigned short width, height;
+} hal_dim;
+
+typedef struct {
     unsigned char *data;
     unsigned int length;
     unsigned int jpegSize;

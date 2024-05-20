@@ -729,7 +729,7 @@ int i6f_region_create(char handle, hal_rect rect)
     i6f_rgn_chn attrib, attribCurr;
 
     region.type = I6F_RGN_TYPE_OSD;
-    region.pixFmt = I6F_PIXFMT_ARGB1555;
+    region.pixFmt = I6F_RGN_PIXFMT_ARGB1555;
     region.size.width = rect.width;
     region.size.height = rect.height;
     if (ret = i6f_rgn.fnGetRegionParam(0, handle, &regionCurr))
@@ -788,6 +788,14 @@ void i6f_region_destroy(char handle)
     channel.port = 0;
     i6f_rgn.fnDetachChannel(0, handle, &channel);
     i6f_rgn.fnDestroyRegion(0, handle);
+}
+
+int i6f_region_setbitmap(int handle, hal_dim dim, void *data)
+{
+    i6f_rgn_bmp bitmap = { .data = data, .pixFmt = I6F_RGN_PIXFMT_ARGB1555,
+        .size.height = dim.height, .size.width = dim.width };
+
+    return i6f_rgn.fnSetBitmap(handle, &bitmap);
 }
 
 void i6f_system_deinit(void)
