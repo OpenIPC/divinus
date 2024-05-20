@@ -829,7 +829,7 @@ int i6c_region_setbitmap(int handle, hal_dim dim, void *data)
     i6c_rgn_bmp bitmap = { .data = data, .pixFmt = I6C_RGN_PIXFMT_ARGB1555,
         .size.height = dim.height, .size.width = dim.width };
 
-    return i6c_rgn.fnSetBitmap(handle, &bitmap);
+    return i6c_rgn.fnSetBitmap(0, handle, &bitmap);
 }
 
 void i6c_system_deinit(void)
