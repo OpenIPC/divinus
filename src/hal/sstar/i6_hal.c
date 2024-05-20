@@ -649,7 +649,7 @@ int i6_region_create(char handle, hal_rect rect)
 {
     int ret;
 
-    i6_sys_bind channel = { .module = I6_SYS_MOD_VPE,
+    i6_sys_bind channel = { .module = 0,
         .device = _i6_vpe_dev, .channel = _i6_vpe_chn };
     i6_rgn_cnf region, regionCurr;
     i6_rgn_chn attrib, attribCurr;
@@ -658,7 +658,7 @@ int i6_region_create(char handle, hal_rect rect)
     region.pixFmt = I6_RGN_PIXFMT_ARGB1555;
     region.size.width = rect.width;
     region.size.height = rect.height;
-    if (ret = i6_rgn.fnGetRegionParam(handle, &regionCurr))
+    if (ret = i6_rgn.fnGetRegionConfig(handle, &regionCurr))
         return ret;
     if (ret = i6_rgn.fnCreateRegion(handle, &region))
         return ret;
@@ -704,9 +704,14 @@ int i6_region_create(char handle, hal_rect rect)
     return ret;
 }
 
+void i6_region_deinit(void)
+{
+    i6_rgn.fnDeinit();
+}
+
 void i6_region_destroy(char handle)
 {
-    i6_sys_bind channel = { .module = I6_SYS_MOD_VPE,
+    i6_sys_bind channel = { .module = 0,
         .device = _i6_vpe_dev, .channel = _i6_vpe_chn };
     
     channel.port = 1;
@@ -716,12 +721,18 @@ void i6_region_destroy(char handle)
     i6_rgn.fnDestroyRegion(handle);
 }
 
-int i6_region_setbitmap(int handle, hal_dim dim, void *data)
+void i6_region_init(void)
 {
-    i6_rgn_bmp bitmap = { .data = data, .pixFmt = I6_RGN_PIXFMT_ARGB1555,
-        .size.height = dim.height, .size.width = dim.width };
+    i6_rgn_pal palette = {{{0, 0, 0, 0}}};
+    i6_rgn.fnInit(&palette);
+}
 
-    return i6_rgn.fnSetBitmap(handle, &bitmap);
+int i6_region_setbitmap(int handle, hal_bitmap *bitmap)
+{
+    i6_rgn_bmp nativeBmp = { .data = bitmap->data, .pixFmt = I6_RGN_PIXFMT_ARGB1555,
+        .size.height = bitmap->dim.height, .size.width = bitmap->dim.width };
+
+    return i6_rgn.fnSetBitmap(handle, &nativeBmp);
 }
 
 void i6_system_deinit(void)

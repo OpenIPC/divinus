@@ -128,8 +128,6 @@ unsigned int rtp_create(unsigned int ip, int port, rtpPayload payload) {
     handle->u32SSrc =
         htonl(((struct sockaddr_in *)(&stIfr.ifr_addr))->sin_addr.s_addr);
 
-    printf("<><><><>success creat RTP<><><><>\n");
-
     return (unsigned int)handle;
 
 cleanup:

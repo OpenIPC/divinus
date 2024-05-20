@@ -108,10 +108,12 @@ typedef struct {
 
     int (*fnCreateRegion)(unsigned int handle, v3_rgn_cnf *config);
     int (*fnDestroyRegion)(unsigned int handle);
+    int (*fnGetRegionConfig)(unsigned int handle, v3_rgn_cnf *config);
     int (*fnSetRegionConfig)(unsigned int handle, v3_rgn_cnf *config);
 
     int (*fnAttachChannel)(unsigned int handle, v3_sys_bind *dest, v3_rgn_chn *config);
     int (*fnDetachChannel)(unsigned int handle, v3_sys_bind *dest);
+    int (*fnGetChannelConfig)(unsigned int handle, v3_sys_bind *dest, v3_rgn_chn *config);
     int (*fnSetChannelConfig)(unsigned int handle, v3_sys_bind *dest, v3_rgn_chn *config);
 
     int (*fnSetBitmap)(unsigned int handle, v3_rgn_bmp *bitmap);
@@ -135,6 +137,12 @@ static int v3_rgn_load(v3_rgn_impl *rgn_lib) {
         return EXIT_FAILURE;
     }
 
+    if (!(rgn_lib->fnGetRegionConfig = (int(*)(unsigned int handle, v3_rgn_cnf *config))
+        dlsym(rgn_lib->handle, "HI_MPI_RGN_GetAttr"))) {
+        fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_GetAttr!\n");
+        return EXIT_FAILURE;
+    }
+
     if (!(rgn_lib->fnSetRegionConfig = (int(*)(unsigned int handle, v3_rgn_cnf *config))
         dlsym(rgn_lib->handle, "HI_MPI_RGN_SetAttr"))) {
         fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_SetAttr!\n");
@@ -150,6 +158,12 @@ static int v3_rgn_load(v3_rgn_impl *rgn_lib) {
     if (!(rgn_lib->fnDetachChannel = (int(*)(unsigned int handle, v3_sys_bind *dest))
         dlsym(rgn_lib->handle, "HI_MPI_RGN_DetachFromChn"))) {
         fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_DetachFromChn!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(rgn_lib->fnGetChannelConfig = (int(*)(unsigned int handle, v3_sys_bind *dest, v3_rgn_chn *config))
+        dlsym(rgn_lib->handle, "HI_MPI_RGN_GetDisplayAttr"))) {
+        fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_GetDisplayAttr!\n");
         return EXIT_FAILURE;
     }
 

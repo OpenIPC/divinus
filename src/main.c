@@ -60,8 +60,19 @@ int main(int argc, char *argv[]) {
 
     if (app_config.night_mode_enable)
         start_monitor_light_sensor();
+
     if (app_config.http_post_enable)
         start_http_post_send();
+
+    if (app_config.osd_enable) {
+        switch (plat) {
+            case HAL_PLATFORM_I6: i6_region_init(); break;
+            case HAL_PLATFORM_I6C: i6c_region_init(); break;
+            case HAL_PLATFORM_I6F: i6f_region_init(); break;
+        }
+        start_region_handler();
+    }
+        
     if (app_config.rtsp_enable) {
         struct timespec ts = {2, 0};
         while (keepRunning) {
@@ -74,9 +85,20 @@ int main(int argc, char *argv[]) {
     } else 
         while (keepRunning) sleep(1);
 
+    if (app_config.osd_enable) {
+        stop_region_handler();
+        switch (plat) {
+            case HAL_PLATFORM_I6: i6_region_deinit(); break;
+            case HAL_PLATFORM_I6C: i6c_region_init(); break;
+            case HAL_PLATFORM_I6F: i6f_region_init(); break;
+        }
+    }
+
     if (app_config.night_mode_enable)
         stop_monitor_light_sensor();
+
     stop_sdk();
+
     stop_server();
 
     printf("Main thread is shutting down...\n");

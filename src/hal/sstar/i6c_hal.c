@@ -766,7 +766,7 @@ int i6c_region_create(char handle, hal_rect rect)
     region.pixFmt = I6C_RGN_PIXFMT_ARGB1555;
     region.size.width = rect.width;
     region.size.height = rect.height;
-    if (ret = i6c_rgn.fnGetRegionParam(0, handle, &regionCurr))
+    if (ret = i6c_rgn.fnGetRegionConfig(0, handle, &regionCurr))
         return ret;
     if (ret = i6c_rgn.fnCreateRegion(0, handle, &region))
         return ret;
@@ -812,6 +812,11 @@ int i6c_region_create(char handle, hal_rect rect)
     return ret;
 }
 
+void i6c_region_deinit(void)
+{
+    i6c_rgn.fnDeinit(0);
+}
+
 void i6c_region_destroy(char handle)
 {
     i6c_sys_bind channel = { .module = I6C_SYS_MOD_SCL,
@@ -824,12 +829,18 @@ void i6c_region_destroy(char handle)
     i6c_rgn.fnDestroyRegion(0, handle);
 }
 
-int i6c_region_setbitmap(int handle, hal_dim dim, void *data)
+void i6c_region_init(void)
 {
-    i6c_rgn_bmp bitmap = { .data = data, .pixFmt = I6C_RGN_PIXFMT_ARGB1555,
-        .size.height = dim.height, .size.width = dim.width };
+    i6c_rgn_pal palette = {{{0, 0, 0, 0}}};
+    i6c_rgn.fnInit(0, &palette);
+}
 
-    return i6c_rgn.fnSetBitmap(0, handle, &bitmap);
+int i6c_region_setbitmap(int handle, hal_bitmap *bitmap)
+{
+    i6c_rgn_bmp nativeBmp = { .data = bitmap->data, .pixFmt = I6C_RGN_PIXFMT_ARGB1555,
+        .size.height = bitmap->dim.height, .size.width = bitmap->dim.width };
+
+    return i6c_rgn.fnSetBitmap(0, handle, &nativeBmp);
 }
 
 void i6c_system_deinit(void)

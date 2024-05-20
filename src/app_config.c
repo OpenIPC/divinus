@@ -214,6 +214,8 @@ enum ConfigError parse_app_config(const char *path) {
             goto RET_ERR;
     }
 
+    parse_bool(&ini, "osd", "enable", &app_config.osd_enable);
+
     err = parse_bool(&ini, "jpeg", "enable", &app_config.jpeg_enable);
     if (err != CONFIG_OK)
         goto RET_ERR;

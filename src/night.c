@@ -69,11 +69,11 @@ int start_monitor_light_sensor() {
     pthread_attr_getstacksize(&thread_attr, &stacksize);
     size_t new_stacksize = 16 * 1024;
     if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-        printf(tag "Error:  Can't set stack size %ld\n", new_stacksize);
+        printf(tag "Error:  Can't set stack size %zu\n", new_stacksize);
     }
     pthread_create(&nightPid, &thread_attr, (void *(*)(void *))night_thread, NULL);
     if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-        printf(tag "Error:  Can't set stack size %ld\n", stacksize);
+        printf(tag "Error:  Can't set stack size %zu\n", stacksize);
     }
     pthread_attr_destroy(&thread_attr);
 }

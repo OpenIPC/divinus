@@ -50,6 +50,10 @@ void *v3_image_thread(void);
 int v3_pipeline_create(char mirror, char flip);
 void v3_pipeline_destroy(void);
 
+int v3_region_create(char handle, hal_rect rect);
+void v3_region_destroy(char handle);
+int v3_region_setbitmap(int handle, hal_bitmap *bitmap);
+
 int v3_sensor_config(void);
 void v3_sensor_deinit(void);
 int v3_sensor_init(char *name);

@@ -54,22 +54,6 @@ int compile_regex(regex_t *r, const char *regex_text) {
     return 1;
 }
 
-int parse_request_path(const char *headers, char *path) {
-    regex_t regex;
-    compile_regex(&regex, "^GET (/.*) HTTP");
-    size_t n_matches = 2; // We have 1 capturing group + the whole match group
-    regmatch_t m[n_matches];
-    const char *p = headers;
-    int match = regexec(&regex, p, n_matches, m, 0);
-    regfree(&regex);
-    if (match)
-        return -1;
-
-    sprintf(
-        path, ".%.*s", (int)(m[1].rm_eo - m[1].rm_so), &headers[m[1].rm_so]);
-    return 1;
-}
-
 static const char basis_64[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -103,11 +87,6 @@ int base64_encode(char *encoded, const char *string, int len) {
 
     *p++ = '\0';
     return p - encoded;
-}
-
-bool starts_with(const char *str, const char *prefix) {
-    size_t lenpre = strlen(prefix), lenstr = strlen(str);
-    return lenstr < lenpre ? false : memcmp(prefix, str, lenpre) == 0;
 }
 
 bool get_uint64(char *str, char *pattern, uint64_t *value) {

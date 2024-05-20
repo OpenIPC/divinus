@@ -35,5 +35,11 @@ void *i6f_encoder_thread(void);
 int i6f_pipeline_create(char sensor, short width, short height, char framerate);
 void i6f_pipeline_destroy(void);
 
+int i6f_region_create(char handle, hal_rect rect);
+void i6f_region_deinit(void);
+void i6f_region_destroy(char handle);
+void i6f_region_init(void);
+int i6f_region_setbitmap(int handle, hal_bitmap *bitmap);
+
 void i6f_system_deinit(void);
 int i6f_system_init(void);

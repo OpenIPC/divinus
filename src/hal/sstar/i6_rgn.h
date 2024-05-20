@@ -94,7 +94,7 @@ typedef struct {
 
     int (*fnCreateRegion)(unsigned int handle, i6_rgn_cnf *config);
     int (*fnDestroyRegion)(unsigned int handle);
-    int (*fnGetRegionParam)(unsigned int handle, i6_rgn_cnf *config);
+    int (*fnGetRegionConfig)(unsigned int handle, i6_rgn_cnf *config);
 
     int (*fnAttachChannel)(unsigned int handle, i6_sys_bind *dest, i6_rgn_chn *config);
     int (*fnDetachChannel)(unsigned int handle, i6_sys_bind *dest);
@@ -134,7 +134,7 @@ static int i6_rgn_load(i6_rgn_impl *rgn_lib) {
         return EXIT_FAILURE;
     }
 
-    if (!(rgn_lib->fnGetRegionParam = (int(*)(unsigned int handle, i6_rgn_cnf *config))
+    if (!(rgn_lib->fnGetRegionConfig = (int(*)(unsigned int handle, i6_rgn_cnf *config))
         dlsym(rgn_lib->handle, "MI_RGN_GetAttr"))) {
         fprintf(stderr, "[i6_rgn] Failed to acquire symbol MI_RGN_GetAttr!\n");
         return EXIT_FAILURE;

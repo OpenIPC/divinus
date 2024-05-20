@@ -64,6 +64,11 @@ typedef struct {
 } hal_dim;
 
 typedef struct {
+    hal_dim dim;
+    void *data;
+} hal_bitmap;
+
+typedef struct {
     unsigned char *data;
     unsigned int length;
     unsigned int jpegSize;
