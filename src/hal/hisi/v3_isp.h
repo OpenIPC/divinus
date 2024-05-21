@@ -115,7 +115,7 @@ static int v3_isp_load(v3_isp_impl *isp_lib) {
 }
 
 static void v3_isp_unload(v3_isp_impl *isp_lib) {
-    if (isp_lib->handle)
-        dlclose(isp_lib->handle = NULL);
+    if (isp_lib->handle) dlclose(isp_lib->handle);
+    isp_lib->handle = NULL;
     memset(isp_lib, 0, sizeof(*isp_lib));
 }

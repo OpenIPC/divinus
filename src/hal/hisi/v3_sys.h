@@ -144,17 +144,17 @@ static int v3_sys_load(v3_sys_impl *sys_lib) {
 }
 
 static void v3_sys_unload(v3_sys_impl *sys_lib) {
-    if (sys_lib->handle)
-        dlclose(sys_lib->handle = NULL);
-    if (sys_lib->handleGoke)
-        dlclose(sys_lib->handleGoke = NULL);
-    if (sys_lib->handleDnvqe)
-        dlclose(sys_lib->handleDnvqe = NULL);
-    if (sys_lib->handleVoiceEngine)
-        dlclose(sys_lib->handleVoiceEngine = NULL);
-    if (sys_lib->handleUpvqe)
-        dlclose(sys_lib->handleUpvqe = NULL);
-    if (sys_lib->handleSecureC)
-        dlclose(sys_lib->handleSecureC = NULL);
+    if (sys_lib->handle) dlclose(sys_lib->handle);
+    sys_lib->handle = NULL;
+    if (sys_lib->handleGoke) dlclose(sys_lib->handleGoke);
+    sys_lib->handleGoke = NULL;
+    if (sys_lib->handleDnvqe) dlclose(sys_lib->handleDnvqe);
+    sys_lib->handleDnvqe = NULL;
+    if (sys_lib->handleVoiceEngine) dlclose(sys_lib->handleVoiceEngine);
+    sys_lib->handleVoiceEngine = NULL;
+    if (sys_lib->handleUpvqe) dlclose(sys_lib->handleUpvqe);
+    sys_lib->handleUpvqe = NULL;
+    if (sys_lib->handleSecureC) dlclose(sys_lib->handleSecureC);
+    sys_lib->handleSecureC = NULL;
     memset(sys_lib, 0, sizeof(*sys_lib));
 }

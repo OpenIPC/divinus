@@ -63,7 +63,7 @@ static int v3_vb_load(v3_vb_impl *vb_lib) {
 }
 
 static void v3_vb_unload(v3_vb_impl *vb_lib) {
-    if (vb_lib->handle)
-        dlclose(vb_lib->handle = NULL);
+    if (vb_lib->handle) dlclose(vb_lib->handle);
+    vb_lib->handle = NULL;
     memset(vb_lib, 0, sizeof(*vb_lib));
 }

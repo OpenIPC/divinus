@@ -183,7 +183,7 @@ static int v3_rgn_load(v3_rgn_impl *rgn_lib) {
 }
 
 static void v3_rgn_unload(v3_rgn_impl *rgn_lib) {
-    if (rgn_lib->handle)
-        dlclose(rgn_lib->handle = NULL);
+    if (rgn_lib->handle) dlclose(rgn_lib->handle);
+    rgn_lib->handle = NULL;
     memset(rgn_lib, 0, sizeof(*rgn_lib));
 }

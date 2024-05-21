@@ -126,7 +126,7 @@ static int i6f_vif_load(i6f_vif_impl *vif_lib) {
 }
 
 static void i6f_vif_unload(i6f_vif_impl *vif_lib) {
-    if (vif_lib->handle)
-        dlclose(vif_lib->handle = NULL);
+    if (vif_lib->handle) dlclose(vif_lib->handle);
+    vif_lib->handle = NULL;
     memset(vif_lib, 0, sizeof(*vif_lib));
 }

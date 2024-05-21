@@ -123,7 +123,7 @@ static int v3_vpss_load(v3_vpss_impl *vpss_lib) {
 }
 
 static void v3_vpss_unload(v3_vpss_impl *vpss_lib) {
-    if (vpss_lib->handle)
-        dlclose(vpss_lib->handle = NULL);
+    if (vpss_lib->handle) dlclose(vpss_lib->handle);
+    vpss_lib->handle = NULL;
     memset(vpss_lib, 0, sizeof(*vpss_lib));
 }

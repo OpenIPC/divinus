@@ -112,7 +112,7 @@ static int i6c_scl_load(i6c_scl_impl *scl_lib) {
 }
 
 static void i6c_scl_unload(i6c_scl_impl *scl_lib) {
-    if (scl_lib->handle)
-        dlclose(scl_lib->handle = NULL);
+    if (scl_lib->handle) dlclose(scl_lib->handle);
+    scl_lib->handle = NULL;
     memset(scl_lib, 0, sizeof(*scl_lib));
 }

@@ -41,12 +41,11 @@ static int i6_isp_load(i6_isp_impl *isp_lib) {
 }
 
 static void i6_isp_unload(i6_isp_impl *isp_lib) {
-
-    if (isp_lib->handle)
-        dlclose(isp_lib->handle = NULL);
-    if (isp_lib->handleCus3a)
-        dlclose(isp_lib->handleCus3a = NULL);
-    if (isp_lib->handleIspAlgo)
-        dlclose(isp_lib->handleIspAlgo = NULL);
+    if (isp_lib->handle) dlclose(isp_lib->handle);
+    isp_lib->handle = NULL;
+    if (isp_lib->handleCus3a) dlclose(isp_lib->handleCus3a);
+    isp_lib->handleCus3a = NULL;
+    if (isp_lib->handleIspAlgo) dlclose(isp_lib->handleIspAlgo);
+    isp_lib->handleIspAlgo = NULL;
     memset(isp_lib, 0, sizeof(*isp_lib));
 }

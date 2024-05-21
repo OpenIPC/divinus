@@ -491,7 +491,7 @@ static int v3_venc_load(v3_venc_impl *venc_lib) {
 }
 
 static void v3_venc_unload(v3_venc_impl *venc_lib) {
-    if (venc_lib->handle)
-        dlclose(venc_lib->handle = NULL);
+    if (venc_lib->handle) dlclose(venc_lib->handle);
+    venc_lib->handle = NULL;
     memset(venc_lib, 0, sizeof(*venc_lib));
 }

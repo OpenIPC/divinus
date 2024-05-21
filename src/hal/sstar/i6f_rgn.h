@@ -174,7 +174,7 @@ static int i6f_rgn_load(i6f_rgn_impl *rgn_lib) {
 }
 
 static void i6f_rgn_unload(i6f_rgn_impl *rgn_lib) {
-    if (rgn_lib->handle)
-        dlclose(rgn_lib->handle = NULL);
+    if (rgn_lib->handle) dlclose(rgn_lib->handle);
+    rgn_lib->handle = NULL;
     memset(rgn_lib, 0, sizeof(*rgn_lib));
 }

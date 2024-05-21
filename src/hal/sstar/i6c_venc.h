@@ -425,7 +425,7 @@ static int i6c_venc_load(i6c_venc_impl *venc_lib) {
 }
 
 static void i6c_venc_unload(i6c_venc_impl *venc_lib) {
-    if (venc_lib->handle)
-        dlclose(venc_lib->handle = NULL);
+    if (venc_lib->handle) dlclose(venc_lib->handle);
+    venc_lib->handle = NULL;
     memset(venc_lib, 0, sizeof(*venc_lib));
 }

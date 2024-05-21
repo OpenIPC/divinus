@@ -143,7 +143,7 @@ static int i6_vpe_load(i6_vpe_impl *vpe_lib) {
 }
 
 static void i6_vpe_unload(i6_vpe_impl *vpe_lib) {
-    if (vpe_lib->handle)
-        dlclose(vpe_lib->handle = NULL);
+    if (vpe_lib->handle) dlclose(vpe_lib->handle);
+    vpe_lib->handle = NULL;
     memset(vpe_lib, 0, sizeof(*vpe_lib));
 }

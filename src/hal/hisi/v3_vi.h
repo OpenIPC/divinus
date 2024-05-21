@@ -171,7 +171,7 @@ static int v3_vi_load(v3_vi_impl *vi_lib) {
 }
 
 static void v3_vi_unload(v3_vi_impl *vi_lib) {
-    if (vi_lib->handle)
-        dlclose(vi_lib->handle = NULL);
+    if (vi_lib->handle) dlclose(vi_lib->handle);
+    vi_lib->handle = NULL;
     memset(vi_lib, 0, sizeof(*vi_lib));
 }

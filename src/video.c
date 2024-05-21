@@ -130,7 +130,6 @@ int create_vpss_chn(char index, short width, short height, char framerate, char 
         case HAL_PLATFORM_I6F: return i6f_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_V3: return v3_channel_create(index, width, height, framerate);
-        default: return EXIT_FAILURE;
     }
 }
 
@@ -140,7 +139,6 @@ int bind_vpss_venc(char index, char framerate, char jpeg) {
         case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate, jpeg);
         case HAL_PLATFORM_I6F: return i6f_channel_bind(index, framerate, jpeg);
         case HAL_PLATFORM_V3: return v3_channel_bind(index);
-        default: return EXIT_FAILURE;        
     }
 }
 
@@ -150,7 +148,6 @@ int unbind_vpss_venc(char index, char jpeg) {
         case HAL_PLATFORM_I6C: return i6c_channel_unbind(index, jpeg);
         case HAL_PLATFORM_I6F: return i6f_channel_unbind(index, jpeg);
         case HAL_PLATFORM_V3: return v3_channel_unbind(index);
-        default: return EXIT_FAILURE;        
     }
 }
 
@@ -160,7 +157,6 @@ int disable_venc_chn(char index, char jpeg) {
         case HAL_PLATFORM_I6C: return i6c_encoder_destroy(index, jpeg);
         case HAL_PLATFORM_I6F: return i6f_encoder_destroy(index, jpeg);
         case HAL_PLATFORM_V3: return v3_encoder_destroy(index);
-        default: return EXIT_FAILURE;        
     }    
     return 0;
 };
@@ -173,7 +169,6 @@ int start_sdk() {
         case HAL_PLATFORM_I6C: ret = i6c_hal_init(); break;
         case HAL_PLATFORM_I6F: ret = i6f_hal_init(); break;
         case HAL_PLATFORM_V3: ret = v3_hal_init(); break;
-        default: return EXIT_FAILURE;        
     }
     if (ret) {
         fprintf(stderr, "HAL initialization failed with %#x!\n%s\n",
@@ -186,7 +181,6 @@ int start_sdk() {
         case HAL_PLATFORM_I6C: i6c_venc_cb = save_stream; break;
         case HAL_PLATFORM_I6F: i6f_venc_cb = save_stream; break;
         case HAL_PLATFORM_V3: v3_venc_cb = save_stream; break;
-        default: return EXIT_FAILURE;        
     }
 
     switch (plat) {
@@ -196,7 +190,6 @@ int start_sdk() {
         case HAL_PLATFORM_V3: ret = v3_system_init(app_config.align_width, 
             app_config.blk_cnt, app_config.max_pool_cnt, 
             app_config.sensor_config); break;
-        default: return EXIT_FAILURE;        
     }
     if (ret) {
         fprintf(stderr, "System initialization failed with %#x!\n%s\n",
@@ -217,7 +210,6 @@ int start_sdk() {
             height, framerate); break;
         case HAL_PLATFORM_V3: ret = v3_pipeline_create(app_config.mirror,
             app_config.flip); break;
-        default: return EXIT_FAILURE;        
     }
     if (ret) {
         fprintf(stderr, "Pipeline creation failed with %#x!\n%s\n",
@@ -273,7 +265,6 @@ int start_sdk() {
                 case HAL_PLATFORM_I6C: ret = i6c_encoder_create(index, &config); break;
                 case HAL_PLATFORM_I6F: ret = i6f_encoder_create(index, &config); break;
                 case HAL_PLATFORM_V3: ret = v3_encoder_create(index, &config); break;
-                default: return EXIT_FAILURE;      
             }
 
             if (ret) {
@@ -319,7 +310,6 @@ int start_sdk() {
                 case HAL_PLATFORM_I6C: ret = i6c_encoder_create(index, &config); break;
                 case HAL_PLATFORM_I6F: ret = i6f_encoder_create(index, &config); break;
                 case HAL_PLATFORM_V3: ret = v3_encoder_create(index, &config); break;
-                default: return EXIT_FAILURE;      
             }
 
             if (ret) {
@@ -370,8 +360,7 @@ int start_sdk() {
         switch (plat) {
             case HAL_PLATFORM_I6: i6_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_I6C: i6_config_load(app_config.sensor_config); break;
-            case HAL_PLATFORM_I6F: i6_config_load(app_config.sensor_config); break;
-            default: break;      
+            case HAL_PLATFORM_I6F: i6_config_load(app_config.sensor_config); break;    
         }
 
     fprintf(stderr, "SDK has started successfully!\n");
@@ -390,15 +379,13 @@ int stop_sdk() {
         case HAL_PLATFORM_I6C: i6c_encoder_destroy_all(); break;
         case HAL_PLATFORM_I6F: i6f_encoder_destroy_all(); break;
         case HAL_PLATFORM_V3: v3_encoder_destroy_all(); break;
-        default: break;      
     }
 
     switch (plat) {
         case HAL_PLATFORM_I6: i6_pipeline_destroy(); break;
         case HAL_PLATFORM_I6C: i6c_pipeline_destroy(); break;
         case HAL_PLATFORM_I6F: i6f_pipeline_destroy(); break;
-        case HAL_PLATFORM_V3: v3_pipeline_destroy(); break;
-        default: break;      
+        case HAL_PLATFORM_V3: v3_pipeline_destroy(); break;   
     }
 
     if (isp_thread)
@@ -408,13 +395,18 @@ int stop_sdk() {
         case HAL_PLATFORM_I6: i6_system_deinit(); break;
         case HAL_PLATFORM_I6C: i6_system_deinit(); break;
         case HAL_PLATFORM_I6F: i6_system_deinit(); break;
-        case HAL_PLATFORM_V3: i6_system_deinit(); break;
-        default: break;      
+        case HAL_PLATFORM_V3: i6_system_deinit(); break;  
     }
 
     switch (plat) {
         case HAL_PLATFORM_V3: v3_sensor_deinit(); break;
-        default: break;      
+    }
+
+    switch (plat) {
+        case HAL_PLATFORM_I6: i6_hal_deinit(); break;
+        case HAL_PLATFORM_I6C: i6c_hal_deinit(); break;
+        case HAL_PLATFORM_I6F: i6f_hal_deinit(); break;
+        case HAL_PLATFORM_V3: v3_hal_deinit(); break;
     }
 
     fprintf(stderr, "SDK had stopped successfully!\n");

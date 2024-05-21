@@ -168,7 +168,7 @@ static int i6c_snr_load(i6c_snr_impl *snr_lib) {
 }
 
 static void i6c_snr_unload(i6c_snr_impl *snr_lib) {
-    if (snr_lib->handle)
-        dlclose(snr_lib->handle = NULL);
+    if (snr_lib->handle) dlclose(snr_lib->handle);
+    snr_lib->handle = NULL;
     memset(snr_lib, 0, sizeof(*snr_lib));
 }

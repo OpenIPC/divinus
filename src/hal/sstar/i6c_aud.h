@@ -212,7 +212,7 @@ static int i6c_aud_load(i6c_aud_impl *aud_lib) {
 }
 
 static void i6c_aud_unload(i6c_aud_impl *aud_lib) {
-    if (aud_lib->handle)
-        dlclose(aud_lib->handle = NULL);
+    if (aud_lib->handle) dlclose(aud_lib->handle);
+    aud_lib->handle = NULL;
     memset(aud_lib, 0, sizeof(*aud_lib));
 }

@@ -184,9 +184,9 @@ static int i6f_sys_load(i6f_sys_impl *sys_lib) {
 }
 
 static void i6f_sys_unload(i6f_sys_impl *sys_lib) {
-    if (sys_lib->handle)
-        dlclose(sys_lib->handle = NULL);
-    if (sys_lib->handleCamOsWrapper)
-        dlclose(sys_lib->handleCamOsWrapper = NULL);
+    if (sys_lib->handle) dlclose(sys_lib->handle);
+    sys_lib->handle = NULL;
+    if (sys_lib->handleCamOsWrapper) dlclose(sys_lib->handleCamOsWrapper);
+    sys_lib->handleCamOsWrapper = NULL;
     memset(sys_lib, 0, sizeof(*sys_lib));
 }
