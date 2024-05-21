@@ -129,11 +129,9 @@ int tcp_read(int fd, void *buffer, int nbytes, struct sockaddr *Addr) {
     char addr_str[128];
     n = recv(fd, buffer, nbytes, 0);
     if (n > 0) {
-        //获取对方IP信息，Addr是输出参数，保存函数执行后的结果
         if (getpeername(fd, Addr, &Addrlen) < 0) {
             fprintf(stderr, "error getperrname:%s %i\n", __FILE__, __LINE__);
         } else {
-            //打印出IP和port
             fprintf(
                 stderr, "%s ",
                 sock_ntop_host(Addr, Addrlen, addr_str, sizeof(addr_str)));
@@ -169,7 +167,7 @@ int tcp_write(int connectSocketId, char *dataBuf, int dataSize) {
 
 rtspSchedList sched[MAX_CONNECTION];
 
-int stop_schedule = 0;
+char stopSchedule = 0;
 int num_conn = 2;
 
 void rtsp_deinit_schedule() {
@@ -247,7 +245,7 @@ void *rtsp_schedule_thread() {
                 }
             }
         }
-    } while (!stop_schedule);
+    } while (!stopSchedule);
 
     return RTSP_ERR_NOERROR;
 }

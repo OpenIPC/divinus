@@ -734,7 +734,6 @@ void *server_thread(void *vargp) {
 void sig_handler(int signo) {
     printf("Graceful shutdown...\n");
     keepRunning = 0;
-    stop_schedule = 1;
 }
 void epipe_handler(int signo) { printf("EPIPE\n"); }
 void spipe_handler(int signo) { printf("SIGPIPE\n"); }
