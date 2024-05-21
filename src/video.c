@@ -90,7 +90,7 @@ int take_next_free_channel(bool mainLoop) {
     return -1;
 }
 
-bool channel_is_enable(char index) {
+bool channel_is_enabled(char index) {
     pthread_mutex_lock(&mutex);
     bool enable = chnState[index].enable;
     pthread_mutex_unlock(&mutex);
