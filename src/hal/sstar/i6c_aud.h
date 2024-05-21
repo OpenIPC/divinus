@@ -135,6 +135,7 @@ typedef struct {
 
     int (*fnSetI2SConfig)(i6c_aud_input input, i6c_aud_i2s *config);
 
+    int (*fnSetGain)(int device, unsigned char group, char gains[], unsigned char gainSize);
     int (*fnSetMute)(int device, unsigned char group, char actives[], unsigned char activeSize);
 
     int (*fnFreeFrame)(int device, unsigned char group, i6c_aud_frm *frame, i6c_aud_frm *echoFrame);
@@ -183,7 +184,13 @@ static int i6c_aud_load(i6c_aud_impl *aenc_lib) {
         return EXIT_FAILURE;
     }
 
-    if (!(aenc_lib->fnSetMute = (int(*)(int device, unsigned char group, char active[], unsigned char activeSize))
+    if (!(aenc_lib->fnSetGain = (int(*)(int device, unsigned char group, char gains[], unsigned char gainSize))
+        dlsym(aenc_lib->handle, "MI_AI_SetGain"))) {
+        fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_SetGain!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(aenc_lib->fnSetMute = (int(*)(int device, unsigned char group, char actives[], unsigned char activeSize))
         dlsym(aenc_lib->handle, "MI_AI_SetMute"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_SetMute!\n");
         return EXIT_FAILURE;

@@ -16,9 +16,9 @@ The information is being compiled.
 | Hi3516CV200 | ✗            | ✔️             | ✔️           | ✗             | ✗                 |
 | Hi3516CV300 | ✗            | ✔️             | ✔️           | ✗             | ✗                 |
 | Hi3516CV500 | ✗            | ✗             | ✗           | ✗             | ✗                 |
-| infinity6b0 | ✗            | ✔️             | ✔️           | ✗             | ✗                 |
-| infinity6c  | ✗            | ✔️             | ✔️           | ✗             | ✗                 |
-| infinity6e  | ✗            | ✔️             | ✔️           | ✗             | ✗                 |
+| infinity6b0 | ✗            | ✔️             | ✔️           | ✗             | ✔️                 |
+| infinity6c  | ✗            | ✔️             | ✔️           | ✗             | ✔️                 |
+| infinity6e  | ✗            | ✔️             | ✔️           | ✗             | ✔️                 |
 
 _✔️ - supported, ✗ - not supported, ⁿ/ₐ - not supported by hardware_
 
