@@ -6,9 +6,6 @@ int start_sdk();
 int stop_sdk();
 
 int take_next_free_channel(bool mainLoop);
-bool channel_is_enabled(char index);
-bool channel_main_loop(char index);
-void set_channel_disable(char index);
 void set_grayscale(bool active);
 
 int create_vpss_chn(char index, short width, short height, char framerate, char jpeg);

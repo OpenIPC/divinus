@@ -64,7 +64,9 @@ void hal_identify(void) {
             case 0xEF: // Macaron (6)
             case 0xF1: // Pudding (6E)
             case 0xF2: // Ispahan (6B0)
-                plat = HAL_PLATFORM_I6;
+                plat = val == 0xF1 ? HAL_PLATFORM_I6E : 
+                    val == 0xF2 ? HAL_PLATFORM_I6B0 : 
+                    HAL_PLATFORM_I6;
                 chnCount = I6_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6_state;
                 venc_thread = i6_video_thread;
