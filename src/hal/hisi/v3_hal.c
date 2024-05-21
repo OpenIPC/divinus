@@ -131,380 +131,6 @@ int v3_channel_unbind(char index)
     return EXIT_SUCCESS;
 }
 
-int v3_encoder_create(char index, hal_vidconfig *config)
-{
-    int ret;
-    v3_venc_chn channel;
-    v3_venc_attr_h26x *attrib;
-
-    if (config->codec == HAL_VIDCODEC_JPG) {
-        channel.attrib.codec = V3_VENC_CODEC_JPEGE;
-        channel.attrib.jpg.maxWidth = ALIGN_BACK(config->width, 16);
-        channel.attrib.jpg.maxHeight = ALIGN_BACK(config->height, 16);
-        channel.attrib.jpg.bufSize = 
-            ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
-        channel.attrib.jpg.byFrame = 1;
-        channel.attrib.jpg.width = config->width;
-        channel.attrib.jpg.height = config->height;
-        channel.attrib.jpg.dcfThumbs = 0;
-    } else if (config->codec == HAL_VIDCODEC_MJPG) {
-        channel.attrib.codec = V3_VENC_CODEC_MJPG;
-        channel.attrib.mjpg.maxWidth = ALIGN_BACK(config->width, 16);
-        channel.attrib.mjpg.maxHeight = ALIGN_BACK(config->height, 16);
-        channel.attrib.mjpg.bufSize = 
-            ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
-        channel.attrib.mjpg.byFrame = 1;
-        channel.attrib.mjpg.width = config->width;
-        channel.attrib.mjpg.height = config->height;
-        switch (config->mode) {
-            case HAL_VIDMODE_CBR:
-                channel.rate.mode = V3_VENC_RATEMODE_MJPGCBR;
-                channel.rate.mjpgCbr = (v3_venc_rate_mjpgcbr){ .statTime = 1, .srcFps = config->framerate,
-                    .dstFps = config->framerate, .bitrate = config->bitrate, .avgLvl = 0 }; break;
-            case HAL_VIDMODE_VBR:
-                channel.rate.mode = V3_VENC_RATEMODE_MJPGVBR;
-                channel.rate.mjpgVbr = (v3_venc_rate_mjpgvbr){ .statTime = 1, .srcFps = config->framerate,
-                    .dstFps = config->framerate , .maxBitrate = MAX(config->bitrate, config->maxBitrate), 
-                    .maxQual = config->maxQual, .minQual = config->maxQual }; break;
-            case HAL_VIDMODE_QP:
-                channel.rate.mode = V3_VENC_RATEMODE_MJPGQP;
-                channel.rate.mjpgQp = (v3_venc_rate_mjpgqp){ .srcFps = config->framerate,
-                    .dstFps = config->framerate, .quality = config->maxQual }; break;
-            default:
-                V3_ERROR("MJPEG encoder can only support CBR, VBR or fixed QP modes!");
-        }
-        goto attach;
-    } else if (config->codec == HAL_VIDCODEC_H265) {
-        channel.attrib.codec = V3_VENC_CODEC_H265;
-        attrib = &channel.attrib.h265;
-        switch (config->mode) {
-            case HAL_VIDMODE_CBR:
-                channel.rate.mode = V3_VENC_RATEMODE_H265CBR;
-                channel.rate.h265Cbr = (v3_venc_rate_h26xcbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .bitrate = config->bitrate, .avgLvl = 1 }; break;
-            case HAL_VIDMODE_VBR:
-                channel.rate.mode = V3_VENC_RATEMODE_H265VBR;
-                channel.rate.h265Vbr = (v3_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
-                    .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
-                    .minQual = config->minQual, .minIQual = config->minQual }; break;
-            case HAL_VIDMODE_QP:
-                channel.rate.mode = V3_VENC_RATEMODE_H265QP;
-                channel.rate.h265Qp = (v3_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
-                    .predQual = config->minQual, .bipredQual = config->minQual }; break;
-            case HAL_VIDMODE_AVBR:
-                channel.rate.mode = V3_VENC_RATEMODE_H265AVBR;
-                channel.rate.h265Avbr = (v3_venc_rate_h26xxvbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .bitrate = config->bitrate }; break;
-            default:
-                V3_ERROR("H.265 encoder does not support this mode!");
-        }
-    } else if (config->codec == HAL_VIDCODEC_H264) {
-        channel.attrib.codec = V3_VENC_CODEC_H264;
-        attrib = &channel.attrib.h264;
-        switch (config->mode) {
-            case HAL_VIDMODE_CBR:
-                channel.rate.mode = V3_VENC_RATEMODE_H264CBR;
-                channel.rate.h264Cbr = (v3_venc_rate_h26xcbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .bitrate = config->bitrate, .avgLvl = 1 }; break;
-            case HAL_VIDMODE_VBR:
-                channel.rate.mode = V3_VENC_RATEMODE_H264VBR;
-                channel.rate.h264Vbr = (v3_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
-                    .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
-                    .minQual = config->minQual, .minIQual = config->minQual }; break;
-            case HAL_VIDMODE_QP:
-                channel.rate.mode = V3_VENC_RATEMODE_H264QP;
-                channel.rate.h264Qp = (v3_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
-                    .predQual = config->minQual, .bipredQual = config->minQual }; break;
-            case HAL_VIDMODE_AVBR:
-                channel.rate.mode = V3_VENC_RATEMODE_H264AVBR;
-                channel.rate.h264Avbr = (v3_venc_rate_h26xxvbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .bitrate = config->bitrate }; break;
-            default:
-                V3_ERROR("H.264 encoder does not support this mode!");
-        }
-    } else V3_ERROR("This codec is not supported by the hardware!");
-    attrib->maxWidth = ALIGN_BACK(config->width, 16);
-    attrib->maxHeight = ALIGN_BACK(config->height, 16);
-    attrib->bufSize = ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
-    attrib->profile = config->profile;
-    attrib->byFrame = 1;
-    attrib->width = config->width;
-    attrib->height = config->height;
-attach:
-    if (ret = v3_venc.fnCreateChannel(index, &channel))
-        return ret;
-
-    if (config->codec != HAL_VIDCODEC_JPG && 
-        (ret = v3_venc.fnStartReceiving(index)))
-        return ret;
-    
-    v3_state[index].payload = config->codec;
-
-    return EXIT_SUCCESS;
-}
-
-int v3_encoder_destroy(char index)
-{
-    int ret;
-    int _v3_vpss_grp = index / V3_VPSS_CHN_NUM;
-    int vpss_chn = index - _v3_vpss_grp * V3_VPSS_CHN_NUM;
-
-    v3_state[index].payload = HAL_VIDCODEC_UNSPEC;
-
-    if (ret = v3_venc.fnStopReceiving(index))
-        return ret;
-
-    {
-        v3_sys_bind source = { .module = V3_SYS_MOD_VPSS, 
-            .device = _v3_vpss_grp, .channel = vpss_chn };
-        v3_sys_bind dest = { .module = V3_SYS_MOD_VENC,
-            .device = _v3_venc_dev, .channel = index };
-        if (ret = v3_sys.fnUnbind(&source, &dest))
-            return ret;
-    }
-
-    if (ret = v3_venc.fnDestroyChannel(index))
-        return ret;
-    
-    if (ret = v3_vpss.fnDisableChannel(_v3_vpss_grp, vpss_chn))
-        return ret;
-
-    return EXIT_SUCCESS;
-}
-    
-int v3_encoder_destroy_all(void)
-{
-    int ret;
-
-    for (char i = 0; i < V3_VENC_CHN_NUM; i++)
-        if (v3_state[i].enable)
-            if (ret = v3_encoder_destroy(i))
-                return ret;
-
-    return EXIT_SUCCESS;
-}
-
-int v3_encoder_snapshot_grab(char index, short width, short height, 
-    char quality, char grayscale, hal_jpegdata *jpeg)
-{
-    int ret;
-
-    if (ret = v3_channel_bind(index)) {
-        fprintf(stderr, "[v3_venc] Binding the encoder channel "
-            "%d failed with %#x!\n", index, ret);
-        goto abort;
-    }
-    return ret;
-
-    v3_venc_jpg param;
-    memset(&param, 0, sizeof(param));
-    if (ret = v3_venc.fnGetJpegParam(index, &param)) {
-        fprintf(stderr, "[v3_venc] Reading the JPEG settings "
-            "%d failed with %#x!\n", index, ret);
-        goto abort;
-    }
-    return ret;
-        return ret;
-    param.quality = quality;
-    if (ret = v3_venc.fnSetJpegParam(index, &param)) {
-        fprintf(stderr, "[v3_venc] Writing the JPEG settings "
-            "%d failed with %#x!\n", index, ret);
-        goto abort;
-    }
-
-    v3_channel_grayscale(grayscale);
-
-    unsigned int count = 1;
-    if (v3_venc.fnStartReceivingEx(index, &count)) {
-        fprintf(stderr, "[v3_venc] Requesting one frame "
-            "%d failed with %#x!\n", index, ret);
-        goto abort;
-    }
-
-    int fd = v3_venc.fnGetDescriptor(index);
-
-    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
-    fd_set readFds;
-    FD_ZERO(&readFds);
-    FD_SET(fd, &readFds);
-    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
-    if (ret < 0) {
-        fprintf(stderr, "[v3_venc] Select operation failed!\n");
-        goto abort;
-    } else if (ret == 0) {
-        fprintf(stderr, "[v3_venc] Capture stream timed out!\n");
-        goto abort;
-    }
-
-    if (FD_ISSET(fd, &readFds)) {
-        v3_venc_stat stat;
-        if (v3_venc.fnQuery(index, &stat)) {
-            fprintf(stderr, "[v3_venc] Querying the encoder channel "
-                "%d failed with %#x!\n", index, ret);
-            goto abort;
-        }
-
-        if (!stat.curPacks) {
-            fprintf(stderr, "[v3_venc] Current frame is empty, skipping it!\n");
-            goto abort;
-        }
-
-        v3_venc_strm strm;
-        memset(&strm, 0, sizeof(strm));
-        strm.packet = (v3_venc_pack*)malloc(sizeof(v3_venc_pack) * stat.curPacks);
-        if (!strm.packet) {
-            fprintf(stderr, "[v3_venc] Memory allocation on channel %d failed!\n", index);
-            goto abort;
-        }
-        strm.count = stat.curPacks;
-
-        if (ret = v3_venc.fnGetStream(index, &strm, stat.curPacks)) {
-            fprintf(stderr, "[v3_venc] Getting the stream on "
-                "channel %d failed with %#x!\n", index, ret);
-            free(strm.packet);
-            strm.packet = NULL;
-            goto abort;
-        }
-
-        {
-            jpeg->jpegSize = 0;
-            for (unsigned int i = 0; i < strm.count; i++) {
-                v3_venc_pack *pack = &strm.packet[i];
-                unsigned int packLen = pack->length - pack->offset;
-                unsigned char *packData = pack->data + pack->offset;
-
-                unsigned int newLen = jpeg->jpegSize + packLen;
-                if (newLen > jpeg->length) {
-                    jpeg->data = realloc(jpeg->data, newLen);
-                    jpeg->length = newLen;
-                }
-                memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
-                jpeg->jpegSize += packLen;
-            }
-        }
-
-abort:
-        v3_venc.fnFreeStream(index, &strm);
-    }
-
-    v3_venc.fnFreeDescriptor(index);
-
-    v3_venc.fnStopReceiving(index);
-
-    v3_channel_unbind(index);
-
-    return ret;
-}
-
-void *v3_encoder_thread(void)
-{
-    int ret;
-    int maxFd = 0;
-
-    for (int i = 0; i < V3_VENC_CHN_NUM; i++) {
-        if (!v3_state[i].enable) continue;
-        if (!v3_state[i].mainLoop) continue;
-
-        ret = v3_venc.fnGetDescriptor(i);
-        if (ret < 0) {
-            fprintf(stderr, "[v3_venc] Getting the encoder descriptor failed with %#x!\n", ret);
-            return NULL;
-        }
-        v3_state[i].fileDesc = ret;
-
-        if (maxFd <= v3_state[i].fileDesc)
-            maxFd = v3_state[i].fileDesc;
-    }
-
-    v3_venc_stat stat;
-    v3_venc_strm stream;
-    struct timeval timeout;
-    fd_set readFds;
-
-    while (keepRunning) {
-        FD_ZERO(&readFds);
-        for(int i = 0; i < V3_VENC_CHN_NUM; i++) {
-            if (!v3_state[i].enable) continue;
-            if (!v3_state[i].mainLoop) continue;
-            FD_SET(v3_state[i].fileDesc, &readFds);
-        }
-
-        timeout.tv_sec = 2;
-        timeout.tv_usec = 0;
-        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
-        if (ret < 0) {
-            fprintf(stderr, "[v3_venc] Select operation failed!\n");
-            break;
-        } else if (ret == 0) {
-            fprintf(stderr, "[v3_venc] Main stream loop timed out!\n");
-            continue;
-        } else {
-            for (int i = 0; i < V3_VENC_CHN_NUM; i++) {
-                if (!v3_state[i].enable) continue;
-                if (!v3_state[i].mainLoop) continue;
-                if (FD_ISSET(v3_state[i].fileDesc, &readFds)) {
-                    memset(&stream, 0, sizeof(stream));
-                    
-                    if (ret = v3_venc.fnQuery(i, &stat)) {
-                        fprintf(stderr, "[v3_venc] Querying the encoder channel "
-                            "%d failed with %#x!\n", i, ret);
-                        break;
-                    }
-
-                    if (!stat.curPacks) {
-                        fprintf(stderr, "[v3_venc] Current frame is empty, skipping it!\n");
-                        continue;
-                    }
-
-                    stream.packet = (v3_venc_pack*)malloc(
-                        sizeof(v3_venc_pack) * stat.curPacks);
-                    if (!stream.packet) {
-                        fprintf(stderr, "[v3_venc] Memory allocation on channel %d failed!\n", i);
-                        break;
-                    }
-                    stream.count = stat.curPacks;
-
-                    if (ret = v3_venc.fnGetStream(i, &stream, stat.curPacks)) {
-                        fprintf(stderr, "[v3_venc] Getting the stream on "
-                            "channel %d failed with %#x!\n", i, ret);
-                        break;
-                    }
-
-                    if (v3_venc_cb) {
-                        hal_vidstream outStrm;
-                        hal_vidpack outPack[stat.curPacks];
-                        outStrm.count = stream.count;
-                        outStrm.seq = stream.sequence;
-                        for (int j = 0; j < stat.curPacks; j++) {
-                            outPack[j].data = stream.packet[j].data;
-                            outPack[j].length = stream.packet[j].length;
-                            outPack[j].offset = stream.packet[j].offset;
-                        }
-                        outStrm.pack = outPack;
-                        (*v3_venc_cb)(i, &outStrm);
-                    }
-
-                    if (ret = v3_venc.fnFreeStream(i, &stream)) {
-                        fprintf(stderr, "[v3_venc] Releasing the stream on "
-                            "channel %d failed with %#x!\n", i, ret);
-                    }
-                    free(stream.packet);
-                    stream.packet = NULL;
-                }
-            }
-        }
-    }
-    fprintf(stderr, "[v3_venc] Shutting down encoding thread...\n");
-}
-
 void *v3_image_thread(void)
 {
     if (v3_isp.fnRun(_v3_isp_dev))
@@ -700,6 +326,380 @@ int v3_sensor_init(char *name)
         (int(*)(void))dlsym(v3_drv.handle, "sensor_unregister_callback");
 
     return EXIT_SUCCESS;
+}
+
+int v3_video_create(char index, hal_vidconfig *config)
+{
+    int ret;
+    v3_venc_chn channel;
+    v3_venc_attr_h26x *attrib;
+
+    if (config->codec == HAL_VIDCODEC_JPG) {
+        channel.attrib.codec = V3_VENC_CODEC_JPEGE;
+        channel.attrib.jpg.maxWidth = ALIGN_BACK(config->width, 16);
+        channel.attrib.jpg.maxHeight = ALIGN_BACK(config->height, 16);
+        channel.attrib.jpg.bufSize = 
+            ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
+        channel.attrib.jpg.byFrame = 1;
+        channel.attrib.jpg.width = config->width;
+        channel.attrib.jpg.height = config->height;
+        channel.attrib.jpg.dcfThumbs = 0;
+    } else if (config->codec == HAL_VIDCODEC_MJPG) {
+        channel.attrib.codec = V3_VENC_CODEC_MJPG;
+        channel.attrib.mjpg.maxWidth = ALIGN_BACK(config->width, 16);
+        channel.attrib.mjpg.maxHeight = ALIGN_BACK(config->height, 16);
+        channel.attrib.mjpg.bufSize = 
+            ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
+        channel.attrib.mjpg.byFrame = 1;
+        channel.attrib.mjpg.width = config->width;
+        channel.attrib.mjpg.height = config->height;
+        switch (config->mode) {
+            case HAL_VIDMODE_CBR:
+                channel.rate.mode = V3_VENC_RATEMODE_MJPGCBR;
+                channel.rate.mjpgCbr = (v3_venc_rate_mjpgcbr){ .statTime = 1, .srcFps = config->framerate,
+                    .dstFps = config->framerate, .bitrate = config->bitrate, .avgLvl = 0 }; break;
+            case HAL_VIDMODE_VBR:
+                channel.rate.mode = V3_VENC_RATEMODE_MJPGVBR;
+                channel.rate.mjpgVbr = (v3_venc_rate_mjpgvbr){ .statTime = 1, .srcFps = config->framerate,
+                    .dstFps = config->framerate , .maxBitrate = MAX(config->bitrate, config->maxBitrate), 
+                    .maxQual = config->maxQual, .minQual = config->maxQual }; break;
+            case HAL_VIDMODE_QP:
+                channel.rate.mode = V3_VENC_RATEMODE_MJPGQP;
+                channel.rate.mjpgQp = (v3_venc_rate_mjpgqp){ .srcFps = config->framerate,
+                    .dstFps = config->framerate, .quality = config->maxQual }; break;
+            default:
+                V3_ERROR("MJPEG encoder can only support CBR, VBR or fixed QP modes!");
+        }
+        goto attach;
+    } else if (config->codec == HAL_VIDCODEC_H265) {
+        channel.attrib.codec = V3_VENC_CODEC_H265;
+        attrib = &channel.attrib.h265;
+        switch (config->mode) {
+            case HAL_VIDMODE_CBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H265CBR;
+                channel.rate.h265Cbr = (v3_venc_rate_h26xcbr){ .gop = config->gop,
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
+                    .bitrate = config->bitrate, .avgLvl = 1 }; break;
+            case HAL_VIDMODE_VBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H265VBR;
+                channel.rate.h265Vbr = (v3_venc_rate_h26xvbr){ .gop = config->gop,
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
+                    .minQual = config->minQual, .minIQual = config->minQual }; break;
+            case HAL_VIDMODE_QP:
+                channel.rate.mode = V3_VENC_RATEMODE_H265QP;
+                channel.rate.h265Qp = (v3_venc_rate_h26xqp){ .gop = config->gop,
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .predQual = config->minQual, .bipredQual = config->minQual }; break;
+            case HAL_VIDMODE_AVBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H265AVBR;
+                channel.rate.h265Avbr = (v3_venc_rate_h26xxvbr){ .gop = config->gop,
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
+                    .bitrate = config->bitrate }; break;
+            default:
+                V3_ERROR("H.265 encoder does not support this mode!");
+        }
+    } else if (config->codec == HAL_VIDCODEC_H264) {
+        channel.attrib.codec = V3_VENC_CODEC_H264;
+        attrib = &channel.attrib.h264;
+        switch (config->mode) {
+            case HAL_VIDMODE_CBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H264CBR;
+                channel.rate.h264Cbr = (v3_venc_rate_h26xcbr){ .gop = config->gop,
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
+                    .bitrate = config->bitrate, .avgLvl = 1 }; break;
+            case HAL_VIDMODE_VBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H264VBR;
+                channel.rate.h264Vbr = (v3_venc_rate_h26xvbr){ .gop = config->gop,
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
+                    .minQual = config->minQual, .minIQual = config->minQual }; break;
+            case HAL_VIDMODE_QP:
+                channel.rate.mode = V3_VENC_RATEMODE_H264QP;
+                channel.rate.h264Qp = (v3_venc_rate_h26xqp){ .gop = config->gop,
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .predQual = config->minQual, .bipredQual = config->minQual }; break;
+            case HAL_VIDMODE_AVBR:
+                channel.rate.mode = V3_VENC_RATEMODE_H264AVBR;
+                channel.rate.h264Avbr = (v3_venc_rate_h26xxvbr){ .gop = config->gop,
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
+                    .bitrate = config->bitrate }; break;
+            default:
+                V3_ERROR("H.264 encoder does not support this mode!");
+        }
+    } else V3_ERROR("This codec is not supported by the hardware!");
+    attrib->maxWidth = ALIGN_BACK(config->width, 16);
+    attrib->maxHeight = ALIGN_BACK(config->height, 16);
+    attrib->bufSize = ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
+    attrib->profile = config->profile;
+    attrib->byFrame = 1;
+    attrib->width = config->width;
+    attrib->height = config->height;
+attach:
+    if (ret = v3_venc.fnCreateChannel(index, &channel))
+        return ret;
+
+    if (config->codec != HAL_VIDCODEC_JPG && 
+        (ret = v3_venc.fnStartReceiving(index)))
+        return ret;
+    
+    v3_state[index].payload = config->codec;
+
+    return EXIT_SUCCESS;
+}
+
+int v3_video_destroy(char index)
+{
+    int ret;
+    int _v3_vpss_grp = index / V3_VPSS_CHN_NUM;
+    int vpss_chn = index - _v3_vpss_grp * V3_VPSS_CHN_NUM;
+
+    v3_state[index].payload = HAL_VIDCODEC_UNSPEC;
+
+    if (ret = v3_venc.fnStopReceiving(index))
+        return ret;
+
+    {
+        v3_sys_bind source = { .module = V3_SYS_MOD_VPSS, 
+            .device = _v3_vpss_grp, .channel = vpss_chn };
+        v3_sys_bind dest = { .module = V3_SYS_MOD_VENC,
+            .device = _v3_venc_dev, .channel = index };
+        if (ret = v3_sys.fnUnbind(&source, &dest))
+            return ret;
+    }
+
+    if (ret = v3_venc.fnDestroyChannel(index))
+        return ret;
+    
+    if (ret = v3_vpss.fnDisableChannel(_v3_vpss_grp, vpss_chn))
+        return ret;
+
+    return EXIT_SUCCESS;
+}
+    
+int v3_video_destroy_all(void)
+{
+    int ret;
+
+    for (char i = 0; i < V3_VENC_CHN_NUM; i++)
+        if (v3_state[i].enable)
+            if (ret = v3_video_destroy(i))
+                return ret;
+
+    return EXIT_SUCCESS;
+}
+
+int v3_video_snapshot_grab(char index, short width, short height, 
+    char quality, char grayscale, hal_jpegdata *jpeg)
+{
+    int ret;
+
+    if (ret = v3_channel_bind(index)) {
+        fprintf(stderr, "[v3_venc] Binding the encoder channel "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+    return ret;
+
+    v3_venc_jpg param;
+    memset(&param, 0, sizeof(param));
+    if (ret = v3_venc.fnGetJpegParam(index, &param)) {
+        fprintf(stderr, "[v3_venc] Reading the JPEG settings "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+    return ret;
+        return ret;
+    param.quality = quality;
+    if (ret = v3_venc.fnSetJpegParam(index, &param)) {
+        fprintf(stderr, "[v3_venc] Writing the JPEG settings "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+
+    v3_channel_grayscale(grayscale);
+
+    unsigned int count = 1;
+    if (v3_venc.fnStartReceivingEx(index, &count)) {
+        fprintf(stderr, "[v3_venc] Requesting one frame "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+
+    int fd = v3_venc.fnGetDescriptor(index);
+
+    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+    fd_set readFds;
+    FD_ZERO(&readFds);
+    FD_SET(fd, &readFds);
+    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
+    if (ret < 0) {
+        fprintf(stderr, "[v3_venc] Select operation failed!\n");
+        goto abort;
+    } else if (ret == 0) {
+        fprintf(stderr, "[v3_venc] Capture stream timed out!\n");
+        goto abort;
+    }
+
+    if (FD_ISSET(fd, &readFds)) {
+        v3_venc_stat stat;
+        if (v3_venc.fnQuery(index, &stat)) {
+            fprintf(stderr, "[v3_venc] Querying the encoder channel "
+                "%d failed with %#x!\n", index, ret);
+            goto abort;
+        }
+
+        if (!stat.curPacks) {
+            fprintf(stderr, "[v3_venc] Current frame is empty, skipping it!\n");
+            goto abort;
+        }
+
+        v3_venc_strm strm;
+        memset(&strm, 0, sizeof(strm));
+        strm.packet = (v3_venc_pack*)malloc(sizeof(v3_venc_pack) * stat.curPacks);
+        if (!strm.packet) {
+            fprintf(stderr, "[v3_venc] Memory allocation on channel %d failed!\n", index);
+            goto abort;
+        }
+        strm.count = stat.curPacks;
+
+        if (ret = v3_venc.fnGetStream(index, &strm, stat.curPacks)) {
+            fprintf(stderr, "[v3_venc] Getting the stream on "
+                "channel %d failed with %#x!\n", index, ret);
+            free(strm.packet);
+            strm.packet = NULL;
+            goto abort;
+        }
+
+        {
+            jpeg->jpegSize = 0;
+            for (unsigned int i = 0; i < strm.count; i++) {
+                v3_venc_pack *pack = &strm.packet[i];
+                unsigned int packLen = pack->length - pack->offset;
+                unsigned char *packData = pack->data + pack->offset;
+
+                unsigned int newLen = jpeg->jpegSize + packLen;
+                if (newLen > jpeg->length) {
+                    jpeg->data = realloc(jpeg->data, newLen);
+                    jpeg->length = newLen;
+                }
+                memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
+                jpeg->jpegSize += packLen;
+            }
+        }
+
+abort:
+        v3_venc.fnFreeStream(index, &strm);
+    }
+
+    v3_venc.fnFreeDescriptor(index);
+
+    v3_venc.fnStopReceiving(index);
+
+    v3_channel_unbind(index);
+
+    return ret;
+}
+
+void *v3_video_thread(void)
+{
+    int ret;
+    int maxFd = 0;
+
+    for (int i = 0; i < V3_VENC_CHN_NUM; i++) {
+        if (!v3_state[i].enable) continue;
+        if (!v3_state[i].mainLoop) continue;
+
+        ret = v3_venc.fnGetDescriptor(i);
+        if (ret < 0) {
+            fprintf(stderr, "[v3_venc] Getting the encoder descriptor failed with %#x!\n", ret);
+            return NULL;
+        }
+        v3_state[i].fileDesc = ret;
+
+        if (maxFd <= v3_state[i].fileDesc)
+            maxFd = v3_state[i].fileDesc;
+    }
+
+    v3_venc_stat stat;
+    v3_venc_strm stream;
+    struct timeval timeout;
+    fd_set readFds;
+
+    while (keepRunning) {
+        FD_ZERO(&readFds);
+        for(int i = 0; i < V3_VENC_CHN_NUM; i++) {
+            if (!v3_state[i].enable) continue;
+            if (!v3_state[i].mainLoop) continue;
+            FD_SET(v3_state[i].fileDesc, &readFds);
+        }
+
+        timeout.tv_sec = 2;
+        timeout.tv_usec = 0;
+        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
+        if (ret < 0) {
+            fprintf(stderr, "[v3_venc] Select operation failed!\n");
+            break;
+        } else if (ret == 0) {
+            fprintf(stderr, "[v3_venc] Main stream loop timed out!\n");
+            continue;
+        } else {
+            for (int i = 0; i < V3_VENC_CHN_NUM; i++) {
+                if (!v3_state[i].enable) continue;
+                if (!v3_state[i].mainLoop) continue;
+                if (FD_ISSET(v3_state[i].fileDesc, &readFds)) {
+                    memset(&stream, 0, sizeof(stream));
+                    
+                    if (ret = v3_venc.fnQuery(i, &stat)) {
+                        fprintf(stderr, "[v3_venc] Querying the encoder channel "
+                            "%d failed with %#x!\n", i, ret);
+                        break;
+                    }
+
+                    if (!stat.curPacks) {
+                        fprintf(stderr, "[v3_venc] Current frame is empty, skipping it!\n");
+                        continue;
+                    }
+
+                    stream.packet = (v3_venc_pack*)malloc(
+                        sizeof(v3_venc_pack) * stat.curPacks);
+                    if (!stream.packet) {
+                        fprintf(stderr, "[v3_venc] Memory allocation on channel %d failed!\n", i);
+                        break;
+                    }
+                    stream.count = stat.curPacks;
+
+                    if (ret = v3_venc.fnGetStream(i, &stream, stat.curPacks)) {
+                        fprintf(stderr, "[v3_venc] Getting the stream on "
+                            "channel %d failed with %#x!\n", i, ret);
+                        break;
+                    }
+
+                    if (v3_venc_cb) {
+                        hal_vidstream outStrm;
+                        hal_vidpack outPack[stat.curPacks];
+                        outStrm.count = stream.count;
+                        outStrm.seq = stream.sequence;
+                        for (int j = 0; j < stat.curPacks; j++) {
+                            outPack[j].data = stream.packet[j].data;
+                            outPack[j].length = stream.packet[j].length;
+                            outPack[j].offset = stream.packet[j].offset;
+                        }
+                        outStrm.pack = outPack;
+                        (*v3_venc_cb)(i, &outStrm);
+                    }
+
+                    if (ret = v3_venc.fnFreeStream(i, &stream)) {
+                        fprintf(stderr, "[v3_venc] Releasing the stream on "
+                            "channel %d failed with %#x!\n", i, ret);
+                    }
+                    free(stream.packet);
+                    stream.packet = NULL;
+                }
+            }
+        }
+    }
+    fprintf(stderr, "[v3_venc] Shutting down encoding thread...\n");
 }
 
 int v3_system_calculate_block(short width, short height, v3_common_pixfmt pixFmt,

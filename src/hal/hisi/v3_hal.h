@@ -38,13 +38,6 @@ int v3_channel_in_mainloop(char index);
 int v3_channel_next(char mainLoop);
 int v3_channel_unbind(char index);
 
-int v3_encoder_create(char index, hal_vidconfig *config);
-int v3_encoder_destroy(char index);
-int v3_encoder_destroy_all(void);
-int v3_encoder_snapshot_grab(char index, short width, short height, 
-    char quality, char grayscale, hal_jpegdata *jpeg);
-void *v3_encoder_thread(void);
-
 void *v3_image_thread(void);
 
 int v3_pipeline_create(char mirror, char flip);
@@ -57,6 +50,13 @@ int v3_region_setbitmap(int handle, hal_bitmap *bitmap);
 int v3_sensor_config(void);
 void v3_sensor_deinit(void);
 int v3_sensor_init(char *name);
+
+int v3_video_create(char index, hal_vidconfig *config);
+int v3_video_destroy(char index);
+int v3_video_destroy_all(void);
+int v3_video_snapshot_grab(char index, short width, short height, 
+    char quality, char grayscale, hal_jpegdata *jpeg);
+void *v3_video_thread(void);
 
 int v3_system_calculate_block(short width, short height, v3_common_pixfmt pixFmt,
     unsigned int alignWidth);

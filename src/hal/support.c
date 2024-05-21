@@ -67,19 +67,19 @@ void hal_identify(void) {
                 plat = HAL_PLATFORM_I6;
                 chnCount = I6_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6_state;
-                venc_thread = i6_encoder_thread;
+                venc_thread = i6_video_thread;
                 return;
             case 0xF9:
                 plat = HAL_PLATFORM_I6C;
                 chnCount = I6C_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6c_state;
-                venc_thread = i6c_encoder_thread;
+                venc_thread = i6c_video_thread;
                 return;
             case 0xFB:
                 plat = HAL_PLATFORM_I6F;
                 chnCount = I6F_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6f_state;
-                venc_thread = i6f_encoder_thread;
+                venc_thread = i6f_video_thread;
                 return;
         }
 
@@ -110,5 +110,5 @@ void hal_identify(void) {
     plat = HAL_PLATFORM_V3;
     chnCount = V3_VENC_CHN_NUM;
     chnState = (hal_chnstate*)v3_state;
-    venc_thread = v3_encoder_thread;
+    venc_thread = v3_video_thread;
 }

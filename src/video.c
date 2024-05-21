@@ -153,10 +153,10 @@ int unbind_vpss_venc(char index, char jpeg) {
 
 int disable_venc_chn(char index, char jpeg) {
     switch (plat) {
-        case HAL_PLATFORM_I6: return i6_encoder_destroy(index);
-        case HAL_PLATFORM_I6C: return i6c_encoder_destroy(index, jpeg);
-        case HAL_PLATFORM_I6F: return i6f_encoder_destroy(index, jpeg);
-        case HAL_PLATFORM_V3: return v3_encoder_destroy(index);
+        case HAL_PLATFORM_I6: return i6_video_destroy(index);
+        case HAL_PLATFORM_I6C: return i6c_video_destroy(index, jpeg);
+        case HAL_PLATFORM_I6F: return i6f_video_destroy(index, jpeg);
+        case HAL_PLATFORM_V3: return v3_video_destroy(index);
     }    
     return 0;
 };
@@ -261,10 +261,10 @@ int start_sdk() {
             config.bitrate = app_config.mp4_bitrate;
 
             switch (plat) {
-                case HAL_PLATFORM_I6: ret = i6_encoder_create(index, &config); break;
-                case HAL_PLATFORM_I6C: ret = i6c_encoder_create(index, &config); break;
-                case HAL_PLATFORM_I6F: ret = i6f_encoder_create(index, &config); break;
-                case HAL_PLATFORM_V3: ret = v3_encoder_create(index, &config); break;
+                case HAL_PLATFORM_I6: ret = i6_video_create(index, &config); break;
+                case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
+                case HAL_PLATFORM_I6F: ret = i6f_video_create(index, &config); break;
+                case HAL_PLATFORM_V3: ret = v3_video_create(index, &config); break;
             }
 
             if (ret) {
@@ -306,10 +306,10 @@ int start_sdk() {
             config.bitrate = app_config.mjpeg_bitrate;
 
             switch (plat) {
-                case HAL_PLATFORM_I6: ret = i6_encoder_create(index, &config); break;
-                case HAL_PLATFORM_I6C: ret = i6c_encoder_create(index, &config); break;
-                case HAL_PLATFORM_I6F: ret = i6f_encoder_create(index, &config); break;
-                case HAL_PLATFORM_V3: ret = v3_encoder_create(index, &config); break;
+                case HAL_PLATFORM_I6: ret = i6_video_create(index, &config); break;
+                case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
+                case HAL_PLATFORM_I6F: ret = i6f_video_create(index, &config); break;
+                case HAL_PLATFORM_V3: ret = v3_video_create(index, &config); break;
             }
 
             if (ret) {
@@ -375,10 +375,10 @@ int stop_sdk() {
         jpeg_deinit();
 
     switch (plat) {
-        case HAL_PLATFORM_I6: i6_encoder_destroy_all(); break;
-        case HAL_PLATFORM_I6C: i6c_encoder_destroy_all(); break;
-        case HAL_PLATFORM_I6F: i6f_encoder_destroy_all(); break;
-        case HAL_PLATFORM_V3: v3_encoder_destroy_all(); break;
+        case HAL_PLATFORM_I6: i6_video_destroy_all(); break;
+        case HAL_PLATFORM_I6C: i6c_video_destroy_all(); break;
+        case HAL_PLATFORM_I6F: i6f_video_destroy_all(); break;
+        case HAL_PLATFORM_V3: v3_video_destroy_all(); break;
     }
 
     switch (plat) {
@@ -393,9 +393,10 @@ int stop_sdk() {
 
     switch (plat) {
         case HAL_PLATFORM_I6: i6_system_deinit(); break;
-        case HAL_PLATFORM_I6C: i6_system_deinit(); break;
-        case HAL_PLATFORM_I6F: i6_system_deinit(); break;
-        case HAL_PLATFORM_V3: i6_system_deinit(); break;  
+        case HAL_PLATFORM_I6C: i6c_system_deinit(); break;
+        case HAL_PLATFORM_I6F: i6f_system_deinit(); break;
+        case HAL_PLATFORM_V3: v3_system_deinit(); break;  
+
     }
 
     switch (plat) {
