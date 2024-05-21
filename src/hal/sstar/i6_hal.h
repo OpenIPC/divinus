@@ -22,11 +22,7 @@ int i6_audio_init(void);
 
 int i6_channel_bind(char index, char framerate, char jpeg);
 int i6_channel_create(char index, short width, short height, char mirror, char flip, char jpeg);
-void i6_channel_disable(char index);
-int i6_channel_enabled(char index);
 int i6_channel_grayscale(char enable);
-int i6_channel_in_mainloop(char index);
-int i6_channel_next(char mainLoop);
 int i6_channel_unbind(char index);
 
 int i6_config_load(char *path);

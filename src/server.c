@@ -734,6 +734,7 @@ void *server_thread(void *vargp) {
 void sig_handler(int signo) {
     printf("Graceful shutdown...\n");
     keepRunning = 0;
+    stop_schedule = 1;
 }
 void epipe_handler(int signo) { printf("EPIPE\n"); }
 void spipe_handler(int signo) { printf("SIGPIPE\n"); }
@@ -742,17 +743,12 @@ int server_fd = -1;
 pthread_t server_thread_id;
 
 int start_server() {
-    if (signal(SIGINT, sig_handler) == SIG_ERR)
-        printf("Error: can't catch SIGINT\n");
-    if (signal(SIGQUIT, sig_handler) == SIG_ERR)
-        printf("Error: can't catch SIGQUIT\n");
-    if (signal(SIGTERM, sig_handler) == SIG_ERR)
-        printf("Error: can't catch SIGTERM\n");
+    signal(SIGINT, sig_handler);
+    signal(SIGQUIT, sig_handler);
+    signal(SIGTERM, sig_handler);
 
-    if (signal(SIGPIPE, spipe_handler) == SIG_ERR)
-        printf("Error: can't catch SIGPIPE\n");
-    if (signal(EPIPE, epipe_handler) == SIG_ERR)
-        printf("Error: can't catch EPIPE\n");
+    signal(SIGPIPE, spipe_handler);
+    signal(EPIPE, epipe_handler);
 
     for (uint32_t i = 0; i < MAX_CLIENTS; ++i) {
         client_fds[i].socket_fd = -1;

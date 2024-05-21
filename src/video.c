@@ -253,7 +253,8 @@ int start_sdk() {
             hal_vidconfig config;
             config.width = app_config.mp4_width;
             config.height = app_config.mp4_height;
-            config.codec = app_config.mp4_codecH265;
+            config.codec = app_config.mp4_codecH265 ? 
+                HAL_VIDCODEC_H265 : HAL_VIDCODEC_H264;
             config.mode = HAL_VIDMODE_CBR;
             config.profile = HAL_VIDPROFILE_BASELINE;
             config.gop = app_config.mp4_fps * 2;
@@ -408,7 +409,6 @@ int stop_sdk() {
         case HAL_PLATFORM_I6C:  i6c_system_deinit(); break;
         case HAL_PLATFORM_I6F:  i6f_system_deinit(); break;
         case HAL_PLATFORM_V3:   v3_system_deinit(); break;  
-
     }
 
     switch (plat) {
