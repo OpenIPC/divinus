@@ -255,7 +255,7 @@ int start_sdk() {
             hal_vidconfig config;
             config.width = app_config.mp4_width;
             config.height = app_config.mp4_height;
-            config.codec = HAL_VIDCODEC_H264;
+            config.codec = app_config.mp4_codecH265;
             config.mode = HAL_VIDMODE_CBR;
             config.profile = HAL_VIDPROFILE_BASELINE;
             config.gop = app_config.mp4_fps * 2;

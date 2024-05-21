@@ -194,6 +194,18 @@ enum ConfigError parse_app_config(const char *path) {
     if (err != CONFIG_OK)
         goto RET_ERR;
     if (app_config.mp4_enable) {
+        {
+            const char *possible_values[] = {"H.264", "H.265", "H264", "H265", "AVC", "HEVC"};
+            const int count = sizeof(possible_values) / sizeof(const char *);
+            int val = 0;
+            parse_enum(
+                &ini, "mp4", "codec", (void *)&val,
+                possible_values, count, 0);
+            if (val % 2)
+                app_config.mp4_codecH265 = true;
+            else
+                app_config.mp4_codecH265 = false;
+        }
         err = parse_int(
             &ini, "mp4", "width", 160, INT_MAX, &app_config.mp4_width);
         if (err != CONFIG_OK)
@@ -205,9 +217,9 @@ enum ConfigError parse_app_config(const char *path) {
         err = parse_int(&ini, "mp4", "fps", 1, INT_MAX, &app_config.mp4_fps);
         if (err != CONFIG_OK)
             goto RET_ERR;
-        err = parse_int(&ini, "mp4", "profile", 0, 2, &app_config.mp4_profile);
-        if (err != CONFIG_OK)
-            goto RET_ERR;
+
+        parse_int(&ini, "mp4", "profile", 0, 2, &app_config.mp4_profile);
+
         err = parse_int(
             &ini, "mp4", "bitrate", 32, INT_MAX, &app_config.mp4_bitrate);
         if (err != CONFIG_OK)
