@@ -45,10 +45,12 @@ int jpeg_init() {
         config.minQual = app_config.jpeg_qfactor;
 
         switch (plat) {
-            case HAL_PLATFORM_I6: ret = i6_video_create(jpeg_index, &config); break;
-            case HAL_PLATFORM_I6C: ret = i6c_video_create(jpeg_index, &config); break;
-            case HAL_PLATFORM_I6F: ret = i6f_video_create(jpeg_index, &config); break;
-            case HAL_PLATFORM_V3: ret = v3_video_create(jpeg_index, &config); break;
+            case HAL_PLATFORM_I6: 
+            case HAL_PLATFORM_I6B0:
+            case HAL_PLATFORM_I6E:  ret = i6_video_create(jpeg_index, &config); break;
+            case HAL_PLATFORM_I6C:  ret = i6c_video_create(jpeg_index, &config); break;
+            case HAL_PLATFORM_I6F:  ret = i6f_video_create(jpeg_index, &config); break;
+            case HAL_PLATFORM_V3:   ret = v3_video_create(jpeg_index, &config); break;
             default: 
                 pthread_mutex_unlock(&jpeg_mutex);
                 return EXIT_FAILURE;      
@@ -88,7 +90,9 @@ int jpeg_get(short width, short height, char quality, char grayscale,
     int ret;
 
     switch (plat) {
-        case HAL_PLATFORM_I6: ret = i6_video_snapshot_grab(jpeg_index, width, height, 
+        case HAL_PLATFORM_I6:
+        case HAL_PLATFORM_I6B0:
+        case HAL_PLATFORM_I6E: ret = i6_video_snapshot_grab(jpeg_index, width, height, 
             quality, grayscale, jpeg); break;
         case HAL_PLATFORM_I6C: ret = i6c_video_snapshot_grab(jpeg_index, width, height, 
             quality, grayscale, jpeg); break;
