@@ -272,7 +272,7 @@ int i6f_pipeline_create(char sensor, short width, short height, char framerate)
     {
         i6f_isp_para param;
         param.hdr = I6F_HDR_OFF;
-        param.level3DNR = 0;
+        param.level3DNR = 1;
         param.mirror = 0;
         param.flip = 0;
         param.rotate = 0;

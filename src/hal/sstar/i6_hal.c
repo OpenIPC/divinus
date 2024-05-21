@@ -266,7 +266,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
     {
         i6_vpe_para param;
         param.hdr = I6_HDR_OFF;
-        param.level3DNR = 0;
+        param.level3DNR = 1;
         param.mirror = 0;
         param.flip = 0;
         param.lensAdjOn = 0;

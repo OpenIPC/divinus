@@ -112,5 +112,6 @@ void hal_identify(void) {
     plat = HAL_PLATFORM_V3;
     chnCount = V3_VENC_CHN_NUM;
     chnState = (hal_chnstate*)v3_state;
+    isp_thread = v3_image_thread;
     venc_thread = v3_video_thread;
 }

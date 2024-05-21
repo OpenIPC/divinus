@@ -1,6 +1,7 @@
 #pragma once
 
 #include "v3_common.h"
+#include "v3_aud.h"
 #include "v3_config.h"
 #include "v3_isp.h"
 #include "v3_rgn.h"

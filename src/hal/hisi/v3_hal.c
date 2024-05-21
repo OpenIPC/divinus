@@ -1,5 +1,6 @@
 #include "v3_hal.h"
 
+v3_aud_impl    v3_aud;
 v3_config_impl v3_config;
 v3_drv_impl    v3_drv;
 v3_isp_impl    v3_isp;
@@ -13,6 +14,8 @@ v3_vpss_impl   v3_vpss;
 hal_chnstate v3_state[V3_VENC_CHN_NUM] = {0};
 int (*v3_venc_cb)(char, hal_vidstream*);
 
+char _v3_aud_chn = 0;
+char _v3_aud_dev = 0;
 char _v3_isp_chn = 0;
 char _v3_isp_dev = 0;
 char _v3_venc_dev = 0;
@@ -28,6 +31,7 @@ void v3_hal_deinit(void)
     v3_vb_unload(&v3_vb);
     v3_rgn_unload(&v3_rgn);
     v3_isp_unload(&v3_isp);
+    v3_aud_unload(&v3_aud);
     v3_sys_unload(&v3_sys);
 }
 
@@ -36,6 +40,8 @@ int v3_hal_init(void)
     int ret;
 
     if (ret = v3_sys_load(&v3_sys))
+        return ret;
+    if (ret = v3_aud_load(&v3_aud))
         return ret;
     if (ret = v3_isp_load(&v3_isp))
         return ret;
@@ -49,6 +55,42 @@ int v3_hal_init(void)
         return ret;
     if (ret = v3_vpss_load(&v3_vpss))
         return ret;
+
+    return EXIT_SUCCESS;
+}
+
+void v3_audio_deinit(void)
+{
+    v3_aud.fnDisableChannel(_v3_aud_dev, _v3_aud_chn);
+
+    v3_aud.fnDisableDevice(_v3_aud_dev);
+}
+
+int i6_audio_init(void)
+{
+    int ret;
+
+    {
+        v3_aud_cnf config;
+        config.rate = 48000;
+        config.bit = V3_AUD_BIT_16;
+        config.intf = V3_AUD_INTF_I2S_SLAVE;
+        config.stereoOn = 0;
+        config.expandOn = 0;
+        config.frmNum = 0;
+        config.packNumPerFrm = 0;
+        config.chnNum = 0;
+        config.syncRxClkOn = 0;
+        if (ret = v3_aud.fnSetDeviceConfig(_v3_aud_dev, &config))
+            return ret;
+    }
+    if (ret = v3_aud.fnEnableDevice(_v3_aud_dev))
+        return ret;
+    
+    if (ret = v3_aud.fnEnableChannel(_v3_aud_dev, _v3_aud_chn))
+        return ret;
+    if (ret = v3_aud.fnSetVolume(_v3_aud_dev, _v3_aud_chn, 0xF6))
+            return ret;
 
     return EXIT_SUCCESS;
 }
@@ -160,7 +202,7 @@ int v3_pipeline_create(char mirror, char flip)
         v3_vpss_grp group;
         group.imgEnhOn = 0;
         group.dciOn = 0;
-        group.noiseRedOn = 0;
+        group.noiseRedOn = 1;
         group.histOn = 0;
         group.deintMode = 1;
         if (ret = v3_vpss.fnCreateGroup(_v3_vpss_grp, &group))
