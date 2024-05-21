@@ -66,7 +66,7 @@ void v3_audio_deinit(void)
     v3_aud.fnDisableDevice(_v3_aud_dev);
 }
 
-int i6_audio_init(void)
+int v3_audio_init(void)
 {
     int ret;
 

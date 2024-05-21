@@ -69,7 +69,7 @@ typedef struct {
 } v3_aud_impl;
 
 static int v3_aud_load(v3_aud_impl *aud_lib) {
-    if (!(aud_lib->handle = dlopen("libmi_ai.so", RTLD_LAZY | RTLD_GLOBAL))) {
+    if (!(aud_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[v3_aud] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
