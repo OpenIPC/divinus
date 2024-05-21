@@ -43,7 +43,7 @@ typedef enum {
 } i6_aud_type;
 
 typedef struct {
-    int LeftJustOn;
+    int leftJustOn;
     i6_aud_clk clock;
     char syncRxClkOn;
 } i6_aud_i2s;

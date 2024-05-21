@@ -50,7 +50,7 @@ typedef enum {
 } i6f_aud_type;
 
 typedef struct {
-    int LeftJustOn;
+    int leftJustOn;
     i6f_aud_clk clock;
     char syncRxClkOn;
     unsigned int tdmSlotNum;

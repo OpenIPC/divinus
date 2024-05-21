@@ -90,7 +90,7 @@ int i6c_audio_init(void)
         i6c_aud_i2s config;
         config.intf = I6C_AUD_INTF_I2S_SLAVE;
         config.bit = I6C_AUD_BIT_32;
-        config.LeftJustOn = 0;
+        config.leftJustOn = 0;
         config.rate = 48000;
         config.clock = I6C_AUD_CLK_OFF;
         config.syncRxClkOn = 1;
@@ -100,6 +100,7 @@ int i6c_audio_init(void)
         if (ret = i6c_aud.fnAttachToDevice(_i6c_aud_dev, &input, 1))
             return ret;
     }
+
     {
         char gain[1] = { 0xF6 };
         if (ret = i6c_aud.fnSetGain(_i6c_aud_dev, _i6c_aud_chn, (char*)&gain, 1))

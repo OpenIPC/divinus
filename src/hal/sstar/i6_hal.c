@@ -63,6 +63,44 @@ int i6_hal_init(void)
     return EXIT_SUCCESS;
 }
 
+void i6_audio_deinit(void)
+{
+    i6_aud.fnDisableChannel(_i6_aud_dev, _i6_aud_chn);
+
+    i6_aud.fnDisableDevice(_i6_aud_dev);
+}
+
+int i6_audio_init(void)
+{
+    int ret;
+
+    {
+        i6_aud_cnf config;
+        config.rate = 48000;
+        config.bit24On = 0;
+        config.intf = I6_AUD_INTF_I2S_SLAVE;
+        config.sound = I6_AUD_SND_MONO;
+        config.frmNum = 0;
+        config.packNumPerFrm = 0;
+        config.codecChnNum = 0;
+        config.chnNum = 0;
+        config.i2s.clock = I6_AUD_CLK_OFF;
+        config.i2s.leftJustOn = 0;
+        config.i2s.syncRxClkOn = 0;
+        if (ret = i6_aud.fnSetDeviceConfig(_i6_aud_dev, &config))
+            return ret;
+    }
+    if (ret = i6_aud.fnEnableDevice(_i6_aud_dev))
+        return ret;
+    
+    if (ret = i6_aud.fnEnableChannel(_i6_aud_dev, _i6_aud_chn))
+        return ret;
+    if (ret = i6_aud.fnSetVolume(_i6_aud_dev, _i6_aud_chn, 0xF6))
+            return ret;
+
+    return EXIT_SUCCESS;
+}
+
 int i6_channel_bind(char index, char framerate, char jpeg)
 {
     int ret;

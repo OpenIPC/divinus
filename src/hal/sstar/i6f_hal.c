@@ -64,6 +64,47 @@ int i6f_hal_init(void)
     return EXIT_SUCCESS;
 }
 
+void i6f_audio_deinit(void)
+{
+    i6f_aud.fnDisableChannel(_i6f_aud_dev, _i6f_aud_chn);
+
+    i6f_aud.fnDisableDevice(_i6f_aud_dev);
+}
+
+
+int i6f_audio_init(void)
+{
+    int ret;
+
+    {
+        i6f_aud_cnf config;
+        config.rate = 48000;
+        config.bit = I6F_AUD_BIT_16;
+        config.intf = I6F_AUD_INTF_I2S_SLAVE;
+        config.sound = I6F_AUD_SND_STEREO;
+        config.frmNum = 0;
+        config.packNumPerFrm = 0;
+        config.codecChnNum = 0;
+        config.chnNum = 0;
+        config.i2s.clock = I6F_AUD_CLK_OFF;
+        config.i2s.leftJustOn = 0;
+        config.i2s.syncRxClkOn = 1;
+        config.i2s.tdmSlotNum = 2;
+        config.i2s.bit = I6F_AUD_BIT_32;
+        if (ret = i6f_aud.fnSetDeviceConfig(_i6f_aud_dev, &config))
+            return ret;
+    }
+    if (ret = i6f_aud.fnEnableDevice(_i6f_aud_dev))
+        return ret;
+    
+    if (ret = i6f_aud.fnEnableChannel(_i6f_aud_dev, _i6f_aud_chn))
+        return ret;
+    if (ret = i6f_aud.fnSetVolume(_i6f_aud_dev, _i6f_aud_chn, 0xF6))
+            return ret;
+
+    return EXIT_SUCCESS;
+}
+
 int i6f_channel_bind(char index, char framerate, char jpeg)
 {
     int ret;

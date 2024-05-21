@@ -98,7 +98,7 @@ typedef enum {
 typedef struct {
     i6c_aud_intf intf;
     i6c_aud_bit bit;
-    int LeftJustOn;
+    int leftJustOn;
     // Accept industry standards from 8000 to 96000Hz
     int rate;
     i6c_aud_clk clock;
