@@ -2,7 +2,7 @@
 
 char keepRunning = 1;
 
-enum StreamType { STREAM_H264, STREAM_JPEG, STREAM_MJPEG, STREAM_MP4 };
+enum StreamType { STREAM_H26X, STREAM_JPEG, STREAM_MJPEG, STREAM_MP4 };
 
 struct Client {
     int socket_fd;
@@ -56,7 +56,7 @@ int send_to_client(int i, char *buf, ssize_t size) {
     return 0;
 }
 
-void send_h264_to_client(unsigned char index, const void *p) {
+void send_h26x_to_client(unsigned char index, const void *p) {
     const hal_vidstream *stream = (const hal_vidstream *)p;
 
     for (unsigned int i = 0; i < stream->count; ++i) {
@@ -78,11 +78,12 @@ void send_h264_to_client(unsigned char index, const void *p) {
         for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
             if (client_fds[i].socket_fd < 0)
                 continue;
-            if (client_fds[i].type != STREAM_H264)
+            if (client_fds[i].type != STREAM_H26X)
                 continue;
 
             if (client_fds[i].nalCnt == 0 &&
-                nal.unit_type != NalUnitType_SPS)
+                (nal.unit_type != NalUnitType_SPS ||
+                 nal.unit_type != NalUnitType_SPS_HEVC))
                 continue;
 
             printf("NAL: %s send to %d\n", nal_type_to_str(nal.unit_type), i);
@@ -108,7 +109,7 @@ void send_h264_to_client(unsigned char index, const void *p) {
     }
 }
 
-void send_mp4_to_client(unsigned char index, const void *p) {
+void send_mp4_to_client(unsigned char index, const void *p, char isH265) {
     const hal_vidstream *stream = (const hal_vidstream *)p;
 
     for (unsigned int i = 0; i < stream->count; ++i) {
@@ -124,6 +125,7 @@ void send_mp4_to_client(unsigned char index, const void *p) {
         }
 
         struct NAL nal;
+        nal.isH265 = isH265 & 1;
         unsigned char *nal_end = pack_data + pack_len;
         while (nal_end - pack_data > nal_start) {
             unsigned char *bound = memstr(
@@ -134,14 +136,22 @@ void send_mp4_to_client(unsigned char index, const void *p) {
             size_t size = (bound ? bound : nal_end) - pack_data;
             nal_parse_header(&nal, pack_data[0]);
 
-            if (nal.unit_type == NalUnitType_SPS && size >= 4 && size <= UINT16_MAX)
-                set_sps(pack_data, size);
-            else if (nal.unit_type == NalUnitType_PPS && size <= UINT16_MAX)
-                set_pps(pack_data, size);
-            else if (nal.unit_type == NalUnitType_CodedSliceIdr)
-                set_slice(pack_data, size, nal.unit_type);
+            if (!nal.isH265 && nal.unit_type == NalUnitType_SPS && size >= 4 && size <= UINT16_MAX)
+                set_sps(pack_data, size, 0);
+            else if (nal.isH265 && nal.unit_type == NalUnitType_SPS_HEVC && size >= 4 && size <= UINT16_MAX)
+                set_sps(pack_data, size, 1);
+            else if (!nal.isH265 && nal.unit_type == NalUnitType_PPS && size <= UINT16_MAX)
+                set_pps(pack_data, size, 0);
+            else if (nal.isH265 && nal.unit_type == NalUnitType_PPS_HEVC && size <= UINT16_MAX)
+                set_pps(pack_data, size, 1);
+            else if (nal.unit_type == NalUnitType_VPS_HEVC && size >= 4 && size <= UINT16_MAX)
+                set_vps(pack_data, size);
+            else if (!nal.isH265 && nal.unit_type == NalUnitType_CodedSliceIdr)
+                set_slice(pack_data, size, 1);
+            else if (nal.isH265 && nal.unit_type == NalUnitType_CodedSliceAux)
+                set_slice(pack_data, size, 1);
             else if (nal.unit_type == NalUnitType_CodedSliceNonIdr)
-                set_slice(pack_data, pack_len, nal.unit_type);
+                set_slice(pack_data, pack_len, 0);
 
             pack_data += size;
         }
@@ -556,7 +566,7 @@ void *server_thread(void *vargp) {
             for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
                 if (client_fds[i].socket_fd < 0) {
                     client_fds[i].socket_fd = client_fd;
-                    client_fds[i].type = STREAM_H264;
+                    client_fds[i].type = STREAM_H26X;
                     client_fds[i].nalCnt = 0;
                     break;
                 }

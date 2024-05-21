@@ -23,11 +23,21 @@ enum NalUnitType {                    //   Table 7-1 NAL unit type codes
         19, // Coded slice of an auxiliary coded picture without partitioning
     // 20..23           // Reserved
     // 24..31           // Unspecified
+    NalUnitType_VPS_HEVC = 32,
+    NalUnitType_SPS_HEVC = 33,
+    NalUnitType_PPS_HEVC = 34,
+    NalUnitType_AUD_HEVC = 35,
+    NalUnitType_EndOfSequence_HEVC = 36,
+    NalUnitType_EndOfStream_HEVC = 37,
+    NalUnitType_Filler_HEVC = 38,
+    NalUnitType_SEI_HEVC = 39,
+    NalUnitType_SEI_HEVC_2 = 40,
 };
 
 char *nal_type_to_str(const enum NalUnitType nal_type);
 
 struct NAL {
+    char isH265;
     char *data;
     uint64_t data_size;
     uint32_t picture_order_count;

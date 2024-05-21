@@ -24,9 +24,11 @@ int save_stream(char index, hal_vidstream *stream) {
 
     switch (chnState[index].payload) {
         case HAL_VIDCODEC_H264:
+        case HAL_VIDCODEC_H265:
             if (app_config.mp4_enable) {
-                send_mp4_to_client(index, stream);
-                send_h264_to_client(index, stream);
+                send_mp4_to_client(index, stream, 
+                    chnState[index].payload == HAL_VIDCODEC_H265 ? 1 : 0);
+                send_h26x_to_client(index, stream);
             }
             if (app_config.rtsp_enable)
                 put_h264_data_to_buffer(stream);
@@ -255,7 +257,7 @@ int start_sdk() {
             config.height = app_config.mp4_height;
             config.codec = HAL_VIDCODEC_H264;
             config.mode = HAL_VIDMODE_CBR;
-            config.profile = HAL_VIDPROFILE_HIGH;
+            config.profile = HAL_VIDPROFILE_BASELINE;
             config.gop = app_config.mp4_fps * 2;
             config.framerate = app_config.mp4_fps;
             config.bitrate = app_config.mp4_bitrate;
@@ -359,8 +361,8 @@ int start_sdk() {
     if (!access(app_config.sensor_config, 0) && !sleep(1))
         switch (plat) {
             case HAL_PLATFORM_I6: i6_config_load(app_config.sensor_config); break;
-            case HAL_PLATFORM_I6C: i6_config_load(app_config.sensor_config); break;
-            case HAL_PLATFORM_I6F: i6_config_load(app_config.sensor_config); break;    
+            case HAL_PLATFORM_I6C: i6c_config_load(app_config.sensor_config); break;
+            case HAL_PLATFORM_I6F: i6f_config_load(app_config.sensor_config); break;    
         }
 
     fprintf(stderr, "SDK has started successfully!\n");

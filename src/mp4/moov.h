@@ -3,8 +3,11 @@
 #include "bitbuf.h"
 
 struct MoovInfo {
+    char isH265;
     uint8_t profile_idc;
     uint8_t level_idc;
+    char *vps;
+    uint16_t vps_length;
     char *sps;
     uint16_t sps_length;
     char *pps;

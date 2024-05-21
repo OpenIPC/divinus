@@ -2,7 +2,9 @@
 
 #include "moov.h"
 
-enum BufError write_ftyp(struct BitBuf *ptr);
+#include "nal.h"
+
+enum BufError write_ftyp(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_moov(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 
 enum BufError write_mvhd(struct BitBuf *ptr, const struct MoovInfo *moov_info);
@@ -17,8 +19,9 @@ enum BufError write_url(struct BitBuf *ptr);
 enum BufError write_vmhd(struct BitBuf *ptr);
 enum BufError write_stbl(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_stsd(struct BitBuf *ptr, const struct MoovInfo *moov_info);
-enum BufError write_avc1(struct BitBuf *ptr, const struct MoovInfo *moov_info);
+enum BufError write_avc1_hev1(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_avcC(struct BitBuf *ptr, const struct MoovInfo *moov_info);
+enum BufError write_hvcC(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_stts(struct BitBuf *ptr);
 enum BufError write_stsc(struct BitBuf *ptr);
 enum BufError write_stsz(struct BitBuf *ptr);
@@ -35,14 +38,14 @@ write_ilst(struct BitBuf *ptr, const uint8_t *array, const uint32_t len);
 
 enum BufError write_header(struct BitBuf *ptr, struct MoovInfo *moov_info) {
     enum BufError err;
-    err = write_ftyp(ptr);
+    err = write_ftyp(ptr, moov_info);
     chk_err;
     err = write_moov(ptr, moov_info);
     chk_err;
     return BUF_OK;
 }
 
-enum BufError write_ftyp(struct BitBuf *ptr) {
+enum BufError write_ftyp(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     enum BufError err;
     // atom header  <fake size><id>
     uint32_t start_atom = ptr->offset;
@@ -60,8 +63,13 @@ enum BufError write_ftyp(struct BitBuf *ptr) {
     chk_err;
     err = put_str4(ptr, "iso2");
     chk_err;
-    err = put_str4(ptr, "avc1");
+
+    if (moov_info->isH265)
+        err = put_str4(ptr, "hvc1");
+    else
+        err = put_str4(ptr, "avc1");
     chk_err;
+    
     err = put_str4(ptr, "iso6");
     chk_err;
     err = put_str4(ptr, "mp41");
@@ -106,30 +114,47 @@ enum BufError write_mvhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
 
     err = put_u8(ptr, 0);
     chk_err; // 1 version
-    err = put_u8(ptr, 0);
-    chk_err;
 
     err = put_u8(ptr, 0);
     chk_err;
-
+    err = put_u8(ptr, 0);
+    chk_err;
     err = put_u8(ptr, 0);
     chk_err; // 3 flags
+
+    // A 32-bit integer that specifies the calendar date and time (in seconds
+    // since midnight, January 1, 1904) when the movie atom was created in
+    // coordinated universal time (UTC)
     err = put_u32_be(ptr, moov_info->creation_time);
     chk_err; // 4 creation_time
     err = put_u32_be(ptr, 0);
     chk_err; // 4 modification_time
+
+    // A time value that indicates the time scale for this movie—that is, the
+    // number of time units that pass per second in its time coordinate system
     err = put_u32_be(ptr, moov_info->timescale);
     chk_err; // 4 timescale
+
+    // A time value that indicates the duration of the movie in time scale
+    // units, derived from the movie’s tracks, corresponding to the duration of
+    // the longest track in the movie
     err = put_u32_be(ptr, 0);
     chk_err; // 4 duration
+
+    // A 32-bit fixed-point number that specifies the rate at which to play this
+    // movie (a value of 1.0 indicates normal rate); set here to '0x00010000'
     err = put_u32_be(ptr, 65536);
     chk_err; // 4 preferred rate
+
+    // A 16-bit fixed-point number that specifies how loud to play this movie’s
+    // sound (a value of 1.0 indicates full volume); set here to '0x0100'
     err = put_u16_le(ptr, 1);
     chk_err; // 2 preferred volume
+
     err = put_skip(ptr, 10);
     chk_err; // 10 reserved
     {        // 36 matrix
-        err = put_u32_be(ptr, 65536);
+        err = put_u32_be(ptr, 0x10000);
         chk_err;
         err = put_u32_be(ptr, 0);
         chk_err;
@@ -137,7 +162,7 @@ enum BufError write_mvhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
         chk_err;
         err = put_u32_be(ptr, 0);
         chk_err;
-        err = put_u32_be(ptr, 65536);
+        err = put_u32_be(ptr, 0x10000);
         chk_err;
         err = put_u32_be(ptr, 0);
         chk_err;
@@ -145,7 +170,7 @@ enum BufError write_mvhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
         chk_err;
         err = put_u32_be(ptr, 0);
         chk_err;
-        err = put_u32_be(ptr, 1073741824);
+        err = put_u32_be(ptr, 0x40000000);
         chk_err;
     }
     err = put_u32_be(ptr, 0);
@@ -214,7 +239,7 @@ enum BufError write_tkhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     err = put_u16_be(ptr, 0);                        // 2 Volume
     err = put_u16_be(ptr, 0);                        // 2 Reserved
     {                                                // 36 Matrix structure
-        err = put_u32_be(ptr, 65536);
+        err = put_u32_be(ptr, 0x10000);
         chk_err;
         err = put_u32_be(ptr, 0);
         chk_err;
@@ -222,7 +247,7 @@ enum BufError write_tkhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
         chk_err;
         err = put_u32_be(ptr, 0);
         chk_err;
-        err = put_u32_be(ptr, 65536);
+        err = put_u32_be(ptr, 0x10000);
         chk_err;
         err = put_u32_be(ptr, 0);
         chk_err;
@@ -230,7 +255,7 @@ enum BufError write_tkhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
         chk_err;
         err = put_u32_be(ptr, 0);
         chk_err;
-        err = put_u32_be(ptr, 1073741824);
+        err = put_u32_be(ptr, 0x40000000);
         chk_err;
     }
     err = put_u32_be(ptr, 125829120);
@@ -289,7 +314,7 @@ enum BufError write_mdhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     chk_err; // 4 timescale
     err = put_u32_be(ptr, 0);
     chk_err; // 4 duration
-    err = put_u16_be(ptr, 21956);
+    err = put_u16_be(ptr, 0x55C4);
     chk_err; // 2 language
     err = put_u16_be(ptr, 0);
     chk_err; // 2 quality
@@ -457,20 +482,23 @@ enum BufError write_stsd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     chk_err; // 3 flags
     err = put_u32_be(ptr, 1);
     chk_err; // 4  Number of entries
-    err = write_avc1(ptr, moov_info);
+    err = write_avc1_hev1(ptr, moov_info);
     chk_err;
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;
     return BUF_OK;
 }
 
-enum BufError write_avc1(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
+enum BufError write_avc1_hev1(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
     chk_err;
 
-    err = put_str4(ptr, "avc1");
+    if (moov_info->isH265)
+        err = put_str4(ptr, "hvc1");
+    else
+        err = put_str4(ptr, "avc1");
     chk_err;
 
     err = put_u8(ptr, 0);
@@ -523,7 +551,11 @@ enum BufError write_avc1(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     chk_err; // 2 depth
     err = put_u16_be(ptr, 0xffff);
     chk_err; // 2 color_table_id
-    err = write_avcC(ptr, moov_info);
+
+    if (moov_info->isH265)
+        err = write_hvcC(ptr, moov_info);
+    else
+        err = write_avcC(ptr, moov_info);
     chk_err;
 
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
@@ -557,6 +589,123 @@ enum BufError write_avcC(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     err = put(ptr, (const char *)moov_info->sps, moov_info->sps_length);
     chk_err; // SPS
     err = put_u8(ptr, 1);
+    chk_err; // 1 num pps
+    err = put_u16_be(ptr, moov_info->pps_length);
+    chk_err;
+    err = put(ptr, (const char *)moov_info->pps, moov_info->pps_length);
+    chk_err; // pps
+
+    err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
+    chk_err;
+    return BUF_OK;
+}
+
+/* Discards emulation prevention three bytes */
+static inline size_t nal_decode(const uint8_t *p_src, uint8_t *p_dst, size_t i_size) {
+    size_t j = 0;
+    for (size_t i = 0; i < i_size; i++) {
+        if (i < i_size - 3 && p_src[i] == 0 && p_src[i + 1] == 0 &&
+            p_src[i + 2] == 3) {
+            p_dst[j++] = 0;
+            p_dst[j++] = 0;
+            i += 2;
+            continue;
+        }
+        p_dst[j++] = p_src[i];
+    }
+    return j;
+}
+
+static void hevcParseVPS(
+    uint8_t *p_buffer, size_t i_buffer, uint8_t *general, uint8_t *numTemporalLayer,
+    bool *temporalIdNested) {
+    const size_t i_decoded_nal_size = 512;
+    uint8_t p_dec_nal[i_decoded_nal_size];
+    size_t i_size =
+        (i_buffer < i_decoded_nal_size) ? i_buffer : i_decoded_nal_size;
+    nal_decode(p_buffer, p_dec_nal, i_size);
+
+    /* first two bytes are the NAL header, 3rd and 4th are:
+        vps_video_parameter_set_id(4)
+        vps_reserved_3_2bis(2)
+        vps_max_layers_minus1(6)
+        vps_max_sub_layers_minus1(3)
+        vps_temporal_id_nesting_flags
+    */
+    *numTemporalLayer = ((p_dec_nal[3] & 0x0E) >> 1) + 1;
+    *temporalIdNested = (bool)(p_dec_nal[3] & 0x01);
+
+    /* 5th & 6th are reserved 0xffff */
+    /* copy the first 12 bytes of profile tier */
+    memcpy(general, &p_dec_nal[6], 12);
+}
+
+// HEVC Configuration Atom
+// http://git.videolan.org/?p=vlc.git;a=blob;f=modules/mux/mp4.c;h=92fe09a4d26480ca5a707324cea167bf01d538fb;hb=HEAD#l881
+// https://lists.matroska.org/pipermail/matroska-devel/2013-September/004567.html
+enum BufError write_hvcC(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
+    enum BufError err;
+    uint32_t start_atom = ptr->offset;
+    err = put_u32_be(ptr, 0);
+    chk_err;
+
+    err = put_str4(ptr, "hvcC");
+    chk_err;
+
+    err = put_u8(ptr, 1);
+    chk_err; // 1 version
+
+    uint8_t general_configuration[12] = {0}, i_numTemporalLayer = 0;
+    bool b_temporalIdNested = false;
+    hevcParseVPS(
+        (uint8_t *)moov_info->vps, moov_info->vps_length, general_configuration,
+        &i_numTemporalLayer, &b_temporalIdNested);
+    err = put(
+        ptr, (const uint8_t *)general_configuration, sizeof(general_configuration));
+    chk_err; 
+
+    err = put_u16_be(ptr, 0xF000);
+    chk_err; // spatial_seg
+
+    err = put_u8(ptr, 0xFC);
+    chk_err; // parallelism
+
+    uint8_t i_chroma_idc = 1, i_bit_depth_luma_minus8 = 0, i_bit_depth_chroma_minus8 = 0;
+    err = put_u8(ptr, 0xFC | (i_chroma_idc & 0x03));
+    chk_err;
+    err = put_u8(ptr, 0xF8 | (i_bit_depth_luma_minus8 & 0x07));
+    chk_err;
+    err = put_u8(ptr, 0xF8 | (i_bit_depth_chroma_minus8 & 0x07));
+    chk_err;
+
+    err = put_u16_be(ptr, 0);
+    chk_err; // framerate
+    
+    err = put_u8(ptr, 0x0F); // from VPS
+    chk_err; // nal_size
+
+    err = put_u8(ptr, 3);
+    chk_err; // nal_num
+
+    err = put_u8(ptr, NalUnitType_VPS_HEVC);
+    chk_err; 
+    err = put_u16_be(ptr, 1);
+    chk_err; // 1 num vps
+    err = put_u16_be(ptr, moov_info->vps_length);
+    chk_err;
+    err = put(ptr, (const char *)moov_info->vps, moov_info->vps_length);
+    chk_err; // vps
+    err = put_u8(ptr, NalUnitType_SPS_HEVC);
+    chk_err; 
+    err = put_u16_be(ptr, 1);
+    chk_err; // 1 num sps
+    err = put_u16_be(ptr, moov_info->sps_length);
+    chk_err;
+    err = put(ptr, (const char *)moov_info->sps, moov_info->sps_length);
+    chk_err; // sps
+    err = put_u8(ptr, NalUnitType_PPS_HEVC);
+    chk_err; 
+    err = put_u16_be(ptr, 1);
     chk_err; // 1 num pps
     err = put_u16_be(ptr, moov_info->pps_length);
     chk_err;

@@ -26,5 +26,5 @@ int stop_server();
 
 void send_jpeg(unsigned char chn_index, char *buf, ssize_t size);
 void send_mjpeg(unsigned char chn_index, char *buf, ssize_t size);
-void send_h264_to_client(unsigned char chn_index, const void *p);
-void send_mp4_to_client(unsigned char chn_index, const void *p);
+void send_h26x_to_client(unsigned char chn_index, const void *p);
+void send_mp4_to_client(unsigned char chn_index, const void *p, char isH265);

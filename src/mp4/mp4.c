@@ -6,7 +6,7 @@
 
 uint32_t default_sample_size = 40000;
 
-enum BufError create_header();
+enum BufError create_header(char isH265);
 
 short vid_width = 1920, vid_height = 1080;
 char vid_framerate = 30;
@@ -15,6 +15,8 @@ char buf_pps[128];
 uint16_t buf_pps_len = 0;
 char buf_sps[128];
 uint16_t buf_sps_len = 0;
+char buf_vps[128];
+uint16_t buf_vps_len = 0;
 struct BitBuf buf_header;
 struct BitBuf buf_mdat;
 struct BitBuf buf_moof;
@@ -26,16 +28,19 @@ void set_mp4_config(short width, short height, char framerate)
     vid_framerate = framerate;
 }
 
-enum BufError create_header() {
+enum BufError create_header(char isH265) {
     if (buf_header.offset > 0)
         return BUF_OK;
     if (buf_sps_len == 0)
         return BUF_OK;
     if (buf_pps_len == 0)
         return BUF_OK;
+    if (isH265 && buf_vps_len == 0)
+        return BUF_OK;
 
     struct MoovInfo moov_info;
     memset(&moov_info, 0, sizeof(struct MoovInfo));
+    moov_info.isH265 = isH265 & 1;
     moov_info.profile_idc = 100;
     moov_info.level_idc = 41;
     moov_info.width = vid_width;
@@ -49,22 +54,30 @@ enum BufError create_header() {
     moov_info.sps_length = buf_sps_len;
     moov_info.pps = buf_pps;
     moov_info.pps_length = buf_pps_len;
+    moov_info.vps = buf_vps;
+    moov_info.vps_length = buf_vps_len;
 
     buf_header.offset = 0;
     enum BufError err = write_header(&buf_header, &moov_info);
     chk_err return BUF_OK;
 }
 
-void set_sps(const char *nal_data, const uint32_t nal_len) {
+void set_sps(const char *nal_data, const uint32_t nal_len, char isH265) {
     memcpy(buf_sps, nal_data, MIN(nal_len, sizeof(buf_sps)));
     buf_sps_len = nal_len;
-    create_header();
+    create_header(isH265);
 }
 
-void set_pps(const char *nal_data, const uint32_t nal_len) {
+void set_pps(const char *nal_data, const uint32_t nal_len, char isH265) {
     memcpy(buf_pps, nal_data, MIN(nal_len, sizeof(buf_pps)));
     buf_pps_len = nal_len;
-    create_header();
+    create_header(isH265);
+}
+
+void set_vps(const char *nal_data, const uint32_t nal_len) {
+    memcpy(buf_vps, nal_data, MIN(nal_len, sizeof(buf_vps)));
+    buf_vps_len = nal_len;
+    create_header(1);
 }
 
 enum BufError get_header(struct BitBuf *ptr) {
@@ -75,7 +88,7 @@ enum BufError get_header(struct BitBuf *ptr) {
 }
 
 enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
-    const enum NalUnitType unit_type) {
+    char isIframe) {
     enum BufError err;
 
     const uint32_t samples_info_len = 1;
@@ -85,7 +98,7 @@ enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
     samples_info[0].composition_offset = default_sample_size;
     samples_info[0].decode_time = default_sample_size;
     samples_info[0].duration = default_sample_size;
-    samples_info[0].flags = unit_type == NalUnitType_CodedSliceIdr ? 0 : 65536;
+    samples_info[0].flags = isIframe ? 0 : 65536;
 
     buf_moof.offset = 0;
     err = write_moof(
