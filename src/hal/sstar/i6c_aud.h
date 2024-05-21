@@ -142,68 +142,68 @@ typedef struct {
     int (*fnGetFrame)(int device, unsigned char group, i6c_aud_frm *frame, i6c_aud_frm *echoFrame, int millis);
 } i6c_aud_impl;
 
-static int i6c_aud_load(i6c_aud_impl *aenc_lib) {
-    if (!(aenc_lib->handle = dlopen("libmi_ai.so", RTLD_LAZY | RTLD_GLOBAL))) {
+static int i6c_aud_load(i6c_aud_impl *aud_lib) {
+    if (!(aud_lib->handle = dlopen("libmi_ai.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[i6c_aud] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
 
-    if (!(aenc_lib->fnAttachToDevice = (int(*)(int device, i6c_aud_input inputs[], unsigned char inputSize))
-        dlsym(aenc_lib->handle, "MI_AI_AttachIf"))) {
+    if (!(aud_lib->fnAttachToDevice = (int(*)(int device, i6c_aud_input inputs[], unsigned char inputSize))
+        dlsym(aud_lib->handle, "MI_AI_AttachIf"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_AttachIf!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aenc_lib->fnDisableDevice = (int(*)(int device))
-        dlsym(aenc_lib->handle, "MI_AI_Close"))) {
+    if (!(aud_lib->fnDisableDevice = (int(*)(int device))
+        dlsym(aud_lib->handle, "MI_AI_Close"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_Close!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aenc_lib->fnEnableDevice = (int(*)(int device, i6c_aud_cnf *config))
-        dlsym(aenc_lib->handle, "MI_AI_Open"))) {
+    if (!(aud_lib->fnEnableDevice = (int(*)(int device, i6c_aud_cnf *config))
+        dlsym(aud_lib->handle, "MI_AI_Open"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_Open!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aenc_lib->fnDisableGroup = (int(*)(int device, unsigned char group))
-        dlsym(aenc_lib->handle, "MI_AI_DisableChnGroup"))) {
+    if (!(aud_lib->fnDisableGroup = (int(*)(int device, unsigned char group))
+        dlsym(aud_lib->handle, "MI_AI_DisableChnGroup"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_DisableChnGroup!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aenc_lib->fnEnableGroup = (int(*)(int device, unsigned char group))
-        dlsym(aenc_lib->handle, "MI_AI_EnableChnGroup"))) {
+    if (!(aud_lib->fnEnableGroup = (int(*)(int device, unsigned char group))
+        dlsym(aud_lib->handle, "MI_AI_EnableChnGroup"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_EnableChnGroup!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aenc_lib->fnSetI2SConfig = (int(*)(i6c_aud_input input, i6c_aud_i2s *config))
-        dlsym(aenc_lib->handle, "MI_AI_SetI2SConfig"))) {
+    if (!(aud_lib->fnSetI2SConfig = (int(*)(i6c_aud_input input, i6c_aud_i2s *config))
+        dlsym(aud_lib->handle, "MI_AI_SetI2SConfig"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_SetI2SConfig!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aenc_lib->fnSetGain = (int(*)(int device, unsigned char group, char gains[], unsigned char gainSize))
-        dlsym(aenc_lib->handle, "MI_AI_SetGain"))) {
+    if (!(aud_lib->fnSetGain = (int(*)(int device, unsigned char group, char gains[], unsigned char gainSize))
+        dlsym(aud_lib->handle, "MI_AI_SetGain"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_SetGain!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aenc_lib->fnSetMute = (int(*)(int device, unsigned char group, char actives[], unsigned char activeSize))
-        dlsym(aenc_lib->handle, "MI_AI_SetMute"))) {
+    if (!(aud_lib->fnSetMute = (int(*)(int device, unsigned char group, char actives[], unsigned char activeSize))
+        dlsym(aud_lib->handle, "MI_AI_SetMute"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_SetMute!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aenc_lib->fnFreeFrame = (int(*)(int device, unsigned char group, i6c_aud_frm *frame, i6c_aud_frm *echoFrame))
-        dlsym(aenc_lib->handle, "MI_AI_ReleaseData"))) {
+    if (!(aud_lib->fnFreeFrame = (int(*)(int device, unsigned char group, i6c_aud_frm *frame, i6c_aud_frm *echoFrame))
+        dlsym(aud_lib->handle, "MI_AI_ReleaseData"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_ReleaseData!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aenc_lib->fnGetFrame = (int(*)(int device, unsigned char group, i6c_aud_frm *frame, i6c_aud_frm *echoFrame, int millis))
-        dlsym(aenc_lib->handle, "MI_AI_Read"))) {
+    if (!(aud_lib->fnGetFrame = (int(*)(int device, unsigned char group, i6c_aud_frm *frame, i6c_aud_frm *echoFrame, int millis))
+        dlsym(aud_lib->handle, "MI_AI_Read"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_Read!\n");
         return EXIT_FAILURE;
     }
@@ -211,8 +211,8 @@ static int i6c_aud_load(i6c_aud_impl *aenc_lib) {
     return EXIT_SUCCESS;
 }
 
-static void i6c_aud_unload(i6c_aud_impl *aenc_lib) {
-    if (aenc_lib->handle)
-        dlclose(aenc_lib->handle = NULL);
-    memset(aenc_lib, 0, sizeof(*aenc_lib));
+static void i6c_aud_unload(i6c_aud_impl *aud_lib) {
+    if (aud_lib->handle)
+        dlclose(aud_lib->handle = NULL);
+    memset(aud_lib, 0, sizeof(*aud_lib));
 }
