@@ -775,10 +775,18 @@ int v4_system_calculate_block(short width, short height, v4_common_pixfmt pixFmt
 
 void v4_system_deinit(void)
 {
+    v4_isp.fnExit(_v4_isp_dev);
     v4_isp.fnUnregisterAWB(_v4_isp_dev, &v4_ae_lib);
     v4_isp.fnUnregisterAE(_v4_isp_dev, &v4_awb_lib);
 
     v4_isp_drv.obj->pfnUnRegisterCallback(_v4_isp_dev, &v4_ae_lib, &v4_awb_lib);
+
+    v4_vi.fnDisableDevice(_v4_vi_dev);
+
+    v4_vi.fnStopPipe(_v4_vi_pipe);
+    v4_vi.fnDestroyPipe(_v4_vi_pipe);
+
+    v4_vi.fnDisableChannel(_v4_vi_chn);
 
     v4_sensor_deconfig();
 
@@ -862,8 +870,8 @@ int v4_system_init(char *snrConfig, char mirror, char flip)
         pipe.bypass = 0;
         pipe.yuvSkipOn = 0;
         pipe.ispBypassOn = 0;
-        pipe.maxSize.width = 0;
-        pipe.maxSize.height = 0;
+        pipe.maxSize.width = v4_config.isp.capt.width;
+        pipe.maxSize.height = v4_config.isp.capt.height;
         pipe.pixFmt = V4_PIXFMT_RGB_BAYER_8BPP + v4_config.mipi.prec;
         pipe.compress = V4_COMPR_NONE;
         pipe.prec = v4_config.mipi.prec;
@@ -873,8 +881,8 @@ int v4_system_init(char *snrConfig, char mirror, char flip)
         pipe.nRed.srcRfrOrChn0 = 0;
         pipe.nRed.compress = V4_COMPR_NONE;
         pipe.sharpenOn = 0;
-        pipe.srcFps = 25;
-        pipe.dstFps = 25;
+        pipe.srcFps = -1;
+        pipe.dstFps = -1;
         pipe.discProPic = 0;
         if (ret = v4_vi.fnCreatePipe(_v4_vi_pipe, &pipe))
             return ret;
@@ -894,10 +902,10 @@ int v4_system_init(char *snrConfig, char mirror, char flip)
         channel.depth = 0;
         channel.srcFps = -1;
         channel.dstFps = -1;
-        if (ret = v4_vi.fnSetChannelConfig(_v4_isp_chn, &channel))
+        if (ret = v4_vi.fnSetChannelConfig(_v4_vi_chn, &channel))
             return ret;
     }
-    if (ret = v4_vi.fnEnableChannel(_v4_isp_chn))
+    if (ret = v4_vi.fnEnableChannel(_v4_vi_chn))
         return ret;
 
     {
