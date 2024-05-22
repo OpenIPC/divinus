@@ -109,9 +109,9 @@ void hal_identify(void) {
         val |= (SCSYSID[i] & 0xFF) << i * 8;
     }
 
-    plat = HAL_PLATFORM_V3;
-    chnCount = V3_VENC_CHN_NUM;
-    chnState = (hal_chnstate*)v3_state;
-    isp_thread = v3_image_thread;
-    venc_thread = v3_video_thread;
+    plat = HAL_PLATFORM_V4;
+    chnCount = V4_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)v4_state;
+    isp_thread = v4_image_thread;
+    venc_thread = v4_video_thread;
 }

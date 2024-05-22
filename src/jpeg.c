@@ -50,7 +50,7 @@ int jpeg_init() {
             case HAL_PLATFORM_I6E:  ret = i6_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_I6C:  ret = i6c_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_I6F:  ret = i6f_video_create(jpeg_index, &config); break;
-            case HAL_PLATFORM_V3:   ret = v3_video_create(jpeg_index, &config); break;
+            case HAL_PLATFORM_V4:   ret = v4_video_create(jpeg_index, &config); break;
             default: 
                 pthread_mutex_unlock(&jpeg_mutex);
                 return EXIT_FAILURE;      
@@ -98,6 +98,8 @@ int jpeg_get(short width, short height, char quality, char grayscale,
             quality, grayscale, jpeg); break;
         case HAL_PLATFORM_I6F: ret = i6f_video_snapshot_grab(jpeg_index, width, height, 
             quality, grayscale, jpeg); break;
+        case HAL_PLATFORM_V4:  ret = v4_video_snapshot_grab(jpeg_index, width, height,
+            quality, jpeg); break;
     }
     if (ret) {
         if (jpeg->data)

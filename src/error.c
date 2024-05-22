@@ -14,27 +14,27 @@ char *errstr(int error) {
             error = error & 0xFF000FFF | (level > 0 ? (4 << 13) : 0);
             switch (module) {
                 case I6_SYS_MOD_SYS:
-                    error |= (V3_SYS_MOD_SYS << 16); break;
+                    error |= (V4_SYS_MOD_SYS << 16); break;
                 case I6_SYS_MOD_ISP:
-                    error |= (V3_SYS_MOD_ISP << 16); break;
+                    error |= (V4_SYS_MOD_ISP << 16); break;
                 case I6_SYS_MOD_VIF:
-                    error |= (V3_SYS_MOD_VIU << 16); break;
+                    error |= (V4_SYS_MOD_VIU << 16); break;
                 case I6_SYS_MOD_VPE:
-                    error |= (V3_SYS_MOD_VPSS << 16); break;
+                    error |= (V4_SYS_MOD_VPSS << 16); break;
                 case I6_SYS_MOD_VENC:
-                    error |= (V3_SYS_MOD_VENC << 16); break;
+                    error |= (V4_SYS_MOD_VENC << 16); break;
                 case I6_SYS_MOD_RGN:
-                    error |= (V3_SYS_MOD_RGN << 16); break;
+                    error |= (V4_SYS_MOD_RGN << 16); break;
                 case I6_SYS_MOD_AI:
-                    error |= (V3_SYS_MOD_AI << 16); break;
+                    error |= (V4_SYS_MOD_AI << 16); break;
                 case I6_SYS_MOD_AO:
-                    error |= (V3_SYS_MOD_AO << 16); break;
+                    error |= (V4_SYS_MOD_AO << 16); break;
                 case I6_SYS_MOD_LDC:
-                    error |= (V3_SYS_MOD_FISHEYE << 16); break;
+                    error |= (V4_SYS_MOD_FISHEYE << 16); break;
                 case I6_SYS_MOD_CIPHER:
                     error |= (0x4D << 16); break;
                 case I6_SYS_MOD_IVE:
-                    error |= (V3_SYS_MOD_IVE << 16); break;
+                    error |= (V4_SYS_MOD_IVE << 16); break;
                 default:
                     error |= (module << 16); break;
             }
@@ -44,27 +44,27 @@ char *errstr(int error) {
             error = error & 0xFF000FFF | (level > 0 ? (4 << 13) : 0);
             switch (module) {
                 case I6C_SYS_MOD_SYS:
-                    error |= (V3_SYS_MOD_SYS << 16); break;
+                    error |= (V4_SYS_MOD_SYS << 16); break;
                 case I6C_SYS_MOD_ISP:
-                    error |= (V3_SYS_MOD_ISP << 16); break;
+                    error |= (V4_SYS_MOD_ISP << 16); break;
                 case I6C_SYS_MOD_VIF:
-                    error |= (V3_SYS_MOD_VIU << 16); break;
+                    error |= (V4_SYS_MOD_VIU << 16); break;
                 case I6C_SYS_MOD_SCL:
-                    error |= (V3_SYS_MOD_VPSS << 16); break;
+                    error |= (V4_SYS_MOD_VPSS << 16); break;
                 case I6C_SYS_MOD_VENC:
-                    error |= (V3_SYS_MOD_VENC << 16); break;
+                    error |= (V4_SYS_MOD_VENC << 16); break;
                 case I6C_SYS_MOD_RGN:
-                    error |= (V3_SYS_MOD_RGN << 16); break;
+                    error |= (V4_SYS_MOD_RGN << 16); break;
                 case I6C_SYS_MOD_AI:
-                    error |= (V3_SYS_MOD_AI << 16); break;
+                    error |= (V4_SYS_MOD_AI << 16); break;
                 case I6C_SYS_MOD_AO:
-                    error |= (V3_SYS_MOD_AO << 16); break;
+                    error |= (V4_SYS_MOD_AO << 16); break;
                 case I6C_SYS_MOD_LDC:
-                    error |= (V3_SYS_MOD_FISHEYE << 16); break;
+                    error |= (V4_SYS_MOD_FISHEYE << 16); break;
                 case I6C_SYS_MOD_CIPHER:
                     error |= (0x4D << 16); break;
                 case I6C_SYS_MOD_IVE:
-                    error |= (V3_SYS_MOD_IVE << 16); break;
+                    error |= (V4_SYS_MOD_IVE << 16); break;
                 default:
                     error |= (module << 16); break;
             }
@@ -74,27 +74,27 @@ char *errstr(int error) {
             error = error & 0xFF000FFF | (level > 0 ? (4 << 13) : 0);
             switch (module) {
                 case I6F_SYS_MOD_SYS:
-                    error |= (V3_SYS_MOD_SYS << 16); break;
+                    error |= (V4_SYS_MOD_SYS << 16); break;
                 case I6F_SYS_MOD_ISP:
-                    error |= (V3_SYS_MOD_ISP << 16); break;
+                    error |= (V4_SYS_MOD_ISP << 16); break;
                 case I6F_SYS_MOD_VIF:
-                    error |= (V3_SYS_MOD_VIU << 16); break;
+                    error |= (V4_SYS_MOD_VIU << 16); break;
                 case I6F_SYS_MOD_SCL:
-                    error |= (V3_SYS_MOD_VPSS << 16); break;
+                    error |= (V4_SYS_MOD_VPSS << 16); break;
                 case I6F_SYS_MOD_VENC:
-                    error |= (V3_SYS_MOD_VENC << 16); break;
+                    error |= (V4_SYS_MOD_VENC << 16); break;
                 case I6F_SYS_MOD_RGN:
-                    error |= (V3_SYS_MOD_RGN << 16); break;
+                    error |= (V4_SYS_MOD_RGN << 16); break;
                 case I6F_SYS_MOD_AI:
-                    error |= (V3_SYS_MOD_AI << 16); break;
+                    error |= (V4_SYS_MOD_AI << 16); break;
                 case I6F_SYS_MOD_AO:
-                    error |= (V3_SYS_MOD_AO << 16); break;
+                    error |= (V4_SYS_MOD_AO << 16); break;
                 case I6F_SYS_MOD_LDC:
-                    error |= (V3_SYS_MOD_FISHEYE << 16); break;
+                    error |= (V4_SYS_MOD_FISHEYE << 16); break;
                 case I6F_SYS_MOD_CIPHER:
                     error |= (0x4D << 16); break;
                 case I6F_SYS_MOD_IVE:
-                    error |= (V3_SYS_MOD_IVE << 16); break;
+                    error |= (V4_SYS_MOD_IVE << 16); break;
                 default:
                     error |= (module << 16); break;
             }

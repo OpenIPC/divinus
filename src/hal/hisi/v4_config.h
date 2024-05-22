@@ -1,9 +1,9 @@
 #pragma once
 
-#include "v3_common.h"
-#include "v3_isp.h"
-#include "v3_snr.h"
-#include "v3_vi.h"
+#include "v4_common.h"
+#include "v4_isp.h"
+#include "v4_snr.h"
+#include "v4_vi.h"
 
 #include <limits.h>
 #include <stdio.h>
@@ -16,32 +16,32 @@
 typedef struct {
     // [sensor]
     char sensor_type[128];
-    v3_common_wdr mode;
+    v4_common_wdr mode;
     char dll_file[256];
 
     // [mode]
-    v3_snr_input input_mode;
+    v4_snr_input input_mode;
 
     // [mipi]
-    v3_snr_mipi mipi;
+    v4_snr_mipi mipi;
 
     // [lvds]
-    v3_snr_lvds lvds;
+    v4_snr_lvds lvds;
 
     // [isp_image]
-    v3_isp_dev isp;
+    v4_isp_dev isp;
 
     // [vi_dev]
-    v3_vi_dev videv;
+    v4_vi_dev videv;
 
     // [vi_chn]
-    v3_vi_chn vichn;
-} v3_config_impl;
+    v4_vi_chn vichn;
+} v4_config_impl;
 
-extern v3_config_impl v3_config;
+extern v4_config_impl v4_config;
 
-static enum ConfigError v3_parse_config_lvds(
-    struct IniConfig *ini, const char *section, v3_snr_lvds *lvds) {
+static enum ConfigError v4_parse_config_lvds(
+    struct IniConfig *ini, const char *section, v4_snr_lvds *lvds) {
     enum ConfigError err;
     err = parse_int(
         ini, section, "img_size_w", INT_MIN, INT_MAX, &lvds->capt.width);
@@ -124,15 +124,18 @@ static enum ConfigError v3_parse_config_lvds(
     return CONFIG_OK;
 }
 
-static enum ConfigError v3_parse_config_videv(
-    struct IniConfig *ini, const char *section, v3_vi_dev *device) {
+static enum ConfigError v4_parse_config_videv(
+    struct IniConfig *ini, const char *section, v4_vi_dev *device) {
     enum ConfigError err;
     {
         const char *possible_values[] = {
-            "VI_INPUT_MODE_BT656",          "VI_INPUT_MODE_BT601",
-            "VI_INPUT_MODE_DIGITAL_CAMERA", "VI_INPUT_MODE_INTERLEAVED",
-            "VI_INPUT_MODE_MIPI",           "VI_INPUT_MODE_LVDS",
-            "VI_INPUT_MODE_HISPI"};
+            "VI_MODE_BT656",            "VI_MODE_BT656_PACKED_YUV",
+            "VI_MODE_BT601",            "VI_MODE_DIGITAL_CAMERA",
+            "VI_MODE_BT1120_STANDARD",  "VI_MODE_BT1120_INTERLEAVED",
+            "VI_MODE_MIPI",             "VI_MODE_MIPI_YUV420_NORMAL",
+            "VI_MODE_YUV420_LEGACY",    "VI_MODE_MIPI_YUV422",
+            "VI_MODE_LVDS",             "VI_MODE_HISPI",
+            "VI_MODE_SLVS"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             ini, section, "input_mod", (void*)&device->intf,
@@ -173,8 +176,7 @@ static enum ConfigError v3_parse_config_videv(
     }
     {
         const char *possible_values[] = {
-            "VI_CLK_EDGE_SINGLE_UP", "VI_CLK_EDGE_SINGLE_DOWN",
-            "VI_CLK_EDGE_DOUBLE"};
+            "VI_CLK_EDGE_SINGLE_UP", "VI_CLK_EDGE_SINGLE_DOWN"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             ini, section, "clock_edge", (void*)&device->clkDownOn,
@@ -206,18 +208,18 @@ static enum ConfigError v3_parse_config_videv(
     }
     {
         const char *possible_values[] = {
-            "VI_INPUT_DATA_VUVU", "VI_INPUT_DATA_UVUV"};
+            "VI_DATA_SEQ_VUVU", "VI_DATA_SEQ_UVUV"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, section, "Data_seq", (void*)&device->input, possible_values,
+            ini, section, "data_seq", (void*)&device->input, possible_values,
             count, 0);
         if (err != CONFIG_OK) {
             const char *possible_values[] = {
-                "VI_INPUT_DATA_UYVY", "VI_INPUT_DATA_VYUY",
-                "VI_INPUT_DATA_YUYV", "VI_INPUT_DATA_YVYU"};
+                "VI_DATA_SEQ_UYVY", "VI_DATA_SEQ_VYUY",
+                "VI_DATA_SEQ_YUYV", "VI_DATA_SEQ_YVYU"};
             const int count = sizeof(possible_values) / sizeof(const char *);
             err = parse_enum(
-                ini, section, "Data_seq", (void*)&device->input,
+                ini, section, "data_seq", (void*)&device->input,
                 possible_values, count, 0);
             if (err != CONFIG_OK)
                 return err;
@@ -330,11 +332,11 @@ static enum ConfigError v3_parse_config_videv(
     {
         const char *possible_values[] = {"BT656_FIXCODE_1", "BT656_FIXCODE_0"};
         const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
+        parse_enum(
             ini, section, "fixcode", (void*)&device->codeZeroOn, possible_values,
             count, 0);
         if (err != CONFIG_OK)
-            return err;
+            device->codeZeroOn = 0;
     }
     {
         const char *possible_values[] = {
@@ -344,7 +346,7 @@ static enum ConfigError v3_parse_config_videv(
             ini, section, "fieldpolar", (void*)&device->polarNstdOn,
             possible_values, count, 0);
         if (err != CONFIG_OK)
-            return err;
+            device->polarNstdOn = 0;
     }
     {
         const char *possible_values[] = {
@@ -354,7 +356,7 @@ static enum ConfigError v3_parse_config_videv(
             ini, section, "datapath", (void*)&device->dataPath,
             possible_values, count, 0);
         if (err != CONFIG_OK)
-            return err;
+            device->dataPath = 0;
     }
     {
         const char *possible_values[] = {
@@ -364,7 +366,7 @@ static enum ConfigError v3_parse_config_videv(
             ini, section, "inputdatatype", &device->rgbModeOn,
             possible_values, count, 0);
         if (err != CONFIG_OK)
-            return err;
+            device->rgbModeOn = 0;
     }
     err = parse_int(ini, section, "datarev", 0, INT_MAX, &device->dataRev);
     if (err != CONFIG_OK)
@@ -384,31 +386,31 @@ static enum ConfigError v3_parse_config_videv(
     return CONFIG_OK;
 }
 
-static enum ConfigError v3_parse_config_vichn(
-    struct IniConfig *ini, const char *section, v3_vi_chn *channel) {
+static enum ConfigError v4_parse_config_vichn(
+    struct IniConfig *ini, const char *section, v4_vi_chn *channel) {
     enum ConfigError err;
     err = parse_int(ini, section, "caprect_x", 0, INT_MAX, &channel->capt.x);
     if (err != CONFIG_OK)
-        return err;
-    err = parse_int(ini, section, "caprect_y", 0, INT_MAX, &channel->capt.y);
+        channel->capt.x = 0;
+    parse_int(ini, section, "caprect_y", 0, INT_MAX, &channel->capt.y);
     if (err != CONFIG_OK)
-        return err;
-    err = parse_int(
+        channel->capt.y = 0;
+    parse_int(
         ini, section, "caprect_width", 0, INT_MAX, &channel->capt.width);
     if (err != CONFIG_OK)
-        return err;
-    err = parse_int(
+        channel->capt.width = 0;
+    parse_int(
         ini, section, "caprect_height", 0, INT_MAX, &channel->capt.height);
     if (err != CONFIG_OK)
-        return err;
-    err = parse_int(
+        channel->capt.height = 0;
+    parse_int(
         ini, section, "destsize_width", 0, INT_MAX, &channel->dest.width);
     if (err != CONFIG_OK)
-        return err;
-    err = parse_int(
+        channel->dest.width = 0;
+    parse_int(
         ini, section, "destsize_height", 0, INT_MAX, &channel->dest.height);
     if (err != CONFIG_OK)
-        return err;
+        channel->dest.height = 0;
     {
         const char *possible_values[] = {
             "VI_CAPSEL_TOP", "VI_CAPSEL_BOTTOM", "VI_CAPSEL_BOTH"};
@@ -417,46 +419,74 @@ static enum ConfigError v3_parse_config_vichn(
             ini, section, "capsel", (void*)&channel->field, possible_values,
             count, 0);
         if (err != CONFIG_OK)
-            return err;
+            channel->field = 0;
     }
     {
         const char *possible_values[] = {
-            "PIXEL_FORMAT_RGB_1BPP",
-            "PIXEL_FORMAT_RGB_2BPP",
-            "PIXEL_FORMAT_RGB_4BPP",
-            "PIXEL_FORMAT_RGB_8BPP",
             "PIXEL_FORMAT_RGB_444",
-            "PIXEL_FORMAT_RGB_4444",
             "PIXEL_FORMAT_RGB_555",
             "PIXEL_FORMAT_RGB_565",
-            "PIXEL_FORMAT_RGB_1555",
             "PIXEL_FORMAT_RGB_888",
-            "PIXEL_FORMAT_RGB_8888",
-            "PIXEL_FORMAT_RGB_PLANAR_888",
+            "PIXEL_FORMAT_BGR_444",
+            "PIXEL_FORMAT_BGR_555",
+            "PIXEL_FORMAT_BGR_565",
+            "PIXEL_FORMAT_BGR_888",
+            "PIXEL_FORMAT_ARGB_1555",
+            "PIXEL_FORMAT_ARGB_444",
+            "PIXEL_FORMAT_ARGB_8565",
+            "PIXEL_FORMAT_ARGB_8888",
+            "PIXEL_FORMAT_ARGB_2BPP",
+            "PIXEL_FORMAT_ABGR_1555",
+            "PIXEL_FORMAT_ABGR_444",
+            "PIXEL_FORMAT_ABGR_8565",
+            "PIXEL_FORMAT_ABGR_8888",
             "PIXEL_FORMAT_RGB_BAYER_8BPP",
             "PIXEL_FORMAT_RGB_BAYER_10BPP",
             "PIXEL_FORMAT_RGB_BAYER_12BPP",
             "PIXEL_FORMAT_RGB_BAYER_14BPP",
-            "PIXEL_FORMAT_RGB_BAYER",
-            "PIXEL_FORMAT_YUV_A422",
-            "PIXEL_FORMAT_YUV_A444",
+            "PIXEL_FORMAT_RGB_BAYER_16BPP",
             "PIXEL_FORMAT_YUV_PLANAR_422",
             "PIXEL_FORMAT_YUV_PLANAR_420",
             "PIXEL_FORMAT_YUV_PLANAR_444",
             "PIXEL_FORMAT_YUV_SEMIPLANAR_422",
             "PIXEL_FORMAT_YUV_SEMIPLANAR_420",
             "PIXEL_FORMAT_YUV_SEMIPLANAR_444",
-            "PIXEL_FORMAT_UYVY_PACKAGE_422",
+            "PIXEL_FORMAT_YUV_SEMIPLANAR_422",
+            "PIXEL_FORMAT_YUV_SEMIPLANAR_420",
+            "PIXEL_FORMAT_YUV_SEMIPLANAR_444",
             "PIXEL_FORMAT_YUYV_PACKAGE_422",
+            "PIXEL_FORMAT_YVYU_PACKAGE_422",
+            "PIXEL_FORMAT_UYVY_PACKAGE_422",
             "PIXEL_FORMAT_VYUY_PACKAGE_422",
-            "PIXEL_FORMAT_YCbCr_PLANAR",
-            "PIXEL_FORMAT_YUV_400"};
+            "PIXEL_FORMAT_YYUV_PACKAGE_422",
+            "PIXEL_FORMAT_YYVU_PACKAGE_422",
+            "PIXEL_FORMAT_UVYY_PACKAGE_422",
+            "PIXEL_FORMAT_VUTT_PACKAGE_422",
+            "PIXEL_FORMAT_VY1UY0_PACKAGE_422",
+            "PIXEL_FORMAT_YUV_400",
+            "PIXEL_FORMAT_UV_420",
+            "PIXEL_FORMAT_BGR_PLANAR_888",
+            "PIXEL_FORMAT_HSV_888",
+            "PIXEL_FORMAT_HSV_PLANAR_888",
+            "PIXEL_FORMAT_LAB_888",
+            "PIXEL_FORMAT_LAB_PLANAR_888",
+            "PIXEL_FORMAT_SBC1",
+            "PIXEL_FORMAT_SBC2",
+            "PIXEL_FORMAT_SBC2_PLANAR",
+            "PIXEL_FORMAT_SBC3_PLANAR",
+            "PIXEL_FORMAT_S16C1",
+            "PIXEL_FORMAT_U8C1",
+            "PIXEL_FORMAT_U16C1",
+            "PIXEL_FORMAT_S32C1",
+            "PIXEL_FORMAT_U32C1",
+            "PIXEL_FORMAT_U64C1",
+            "PIXEL_FORMAT_S64C1"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             ini, section, "pixformat", (void*)&channel->pixFmt,
             possible_values, count, 0);
         if (err != CONFIG_OK)
-            return err;
+            channel->pixFmt = V4_PIXFMT_YUV422SP;
     }
     {
         const char *possible_values[] = {
@@ -480,25 +510,23 @@ static enum ConfigError v3_parse_config_vichn(
     return CONFIG_OK;
 }
 
-static enum ConfigError v3_parse_config_isp(
-    struct IniConfig *ini, const char *section, v3_isp_dev *isp) {
+static enum ConfigError v4_parse_config_isp(
+    struct IniConfig *ini, const char *section, v4_isp_dev *isp) {
     enum ConfigError err;
-    err = parse_int(ini, "isp_image", "isp_x", 0, INT_MAX, &isp->capt.x);
-    if (err != CONFIG_OK)
-        return err;
-    err = parse_int(ini, "isp_image", "isp_y", 0, INT_MAX, &isp->capt.y);
-    if (err != CONFIG_OK)
-        return err;
-    err = parse_int(ini, "isp_image", "isp_w", 0, INT_MAX, &isp->capt.width);
-    if (err != CONFIG_OK)
-        return err;
-    err = parse_int(ini, "isp_image", "isp_h", 0, INT_MAX, &isp->capt.height);
-    if (err != CONFIG_OK)
-        return err;
+    parse_int(ini, "isp_image", "isp_x", 0, INT_MAX, &isp->capt.x);
+
+    parse_int(ini, "isp_image", "isp_y", 0, INT_MAX, &isp->capt.y);
+
+    parse_int(ini, "isp_image", "isp_w", 0, INT_MAX, &isp->capt.width);
+
+    parse_int(ini, "isp_image", "isp_h", 0, INT_MAX, &isp->capt.height);
+
+    int value;
     err = parse_int(
-        ini, "isp_image", "isp_frameRate", 0, INT_MAX, &isp->framerate);
+        ini, "isp_image", "isp_framerate", 0, INT_MAX, &value);
     if (err != CONFIG_OK)
         return err;
+    else isp->framerate = value;
     {
         const char *possible_values[] = {
             "BAYER_RGGB", "BAYER_GRBG", "BAYER_GBRG", "BAYER_BGGR"};
@@ -512,7 +540,7 @@ static enum ConfigError v3_parse_config_isp(
     return CONFIG_OK;
 }
 
-static enum ConfigError v3_parse_sensor_config(char *path, v3_config_impl *config) {
+static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *config) {
     if (config == NULL)
         return (enum ConfigError)-1;
     memset(config, 0, sizeof(config));
@@ -584,8 +612,8 @@ static enum ConfigError v3_parse_sensor_config(char *path, v3_config_impl *confi
     {
         const char *possible_values[] = {
             "INPUT_MODE_MIPI",   "INPUT_MODE_SUBLVDS",  "INPUT_MODE_LVDS",
-            "INPUT_MODE_HISPI",  "INPUT_MODE_CMOS_18V", "INPUT_MODE_CMOS_33V",
-            "INPUT_MODE_BT1120", "INPUT_MODE_BYPASS"};
+            "INPUT_MODE_HISPI",  "INPUT_MODE_CMOS",     "INPUT_MODE_BT601",
+            "INPUT_MODE_BT656",  "INPUT_MODE_BT1120",   "INPUT_MODE_BYPASS"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             &ini, "mode", "input_mode", (void*)&config->input_mode,
@@ -594,44 +622,62 @@ static enum ConfigError v3_parse_sensor_config(char *path, v3_config_impl *confi
             goto RET_ERR;
     }
 
-    if (config->input_mode == V3_VI_INTF_MIPI) {
+    if (config->input_mode == V4_VI_INTF_MIPI) {
         // [mipi]
         {
-            const char *possible_values[] = {// starts from 1 !!!!!
-                                             "RAW_DATA_8BIT", "RAW_DATA_10BIT",
-                                             "RAW_DATA_12BIT",
-                                             "RAW_DATA_14BIT"};
+            const char *possible_values[] = {
+                "RAW_DATA_8BIT", "RAW_DATA_10BIT", "RAW_DATA_12BIT",
+                "RAW_DATA_14BIT", "RAW_DATA_16BIT", "RAW_DATA_YUV420_8BIT_NORMAL",
+                "RAW_DATA_YUV420_8BIT_LEGACY", "RAW_DATA_YUV422_8BIT"};
             const int count = sizeof(possible_values) / sizeof(const char *);
             err = parse_enum(
                 &ini, "mipi", "data_type", (void*)&config->mipi.prec,
-                possible_values, count, 1);
+                possible_values, count, 0);
             if (err != CONFIG_OK)
                 goto RET_ERR;
         }
         err = parse_array(&ini, "mipi", "lane_id", (int*)&config->mipi.laneId, 8);
         if (err != CONFIG_OK)
             goto RET_ERR;
-    } else if (config->input_mode == V3_VI_INTF_LVDS) {
+    } else if (config->input_mode == V4_VI_INTF_LVDS) {
         // [lvds]
-        err = v3_parse_config_lvds(&ini, "lvds", &config->lvds);
+        err = v4_parse_config_lvds(&ini, "lvds", &config->lvds);
         if (err != CONFIG_OK)
             goto RET_ERR;
     }
 
     // [isp_image]
-    err = v3_parse_config_isp(&ini, "ips_image", &config->isp);
-    if (err != CONFIG_OK)
-        goto RET_ERR;
-    // [vi_dev]
-    err = v3_parse_config_videv(&ini, "vi_dev", &config->videv);
-    if (err != CONFIG_OK)
-        goto RET_ERR;
-    // [vi_chn]
-    err = v3_parse_config_vichn(&ini, "vi_chn", &config->vichn);
+    err = v4_parse_config_isp(&ini, "isp_image", &config->isp);
     if (err != CONFIG_OK)
         goto RET_ERR;
 
-    v3_config = *config;
+    // [vi_dev]
+    err = v4_parse_config_videv(&ini, "vi_dev", &config->videv);
+    if (err != CONFIG_OK)
+        goto RET_ERR;
+    // [vi_chn]
+    v4_parse_config_vichn(&ini, "vi_chn", &config->vichn);
+
+    // Fallbacks for default sensor configuration files
+    if (!config->vichn.capt.x)
+        config->vichn.capt.x = config->videv.capt.x;
+    if (!config->vichn.capt.y)
+        config->vichn.capt.y = config->videv.capt.y;
+    if (!config->vichn.capt.width)
+        config->vichn.capt.width = config->videv.capt.width;
+    if (!config->vichn.capt.height)
+        config->vichn.capt.height = config->videv.capt.height;
+    
+    if (!config->isp.capt.x)
+        config->isp.capt.x = config->vichn.capt.x;
+    if (!config->isp.capt.y)
+        config->isp.capt.y = config->vichn.capt.y;
+    if (!config->isp.capt.width)
+        config->isp.capt.width = config->vichn.capt.width;
+    if (!config->isp.capt.height)
+        config->isp.capt.height = config->vichn.capt.height;
+
+    v4_config = *config;
     free(ini.str);
     return CONFIG_OK;
 RET_ERR:

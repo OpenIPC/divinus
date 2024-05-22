@@ -9,6 +9,11 @@ void _MI_PRINT_GetDebugLevel(void) {}
 void __stdin(void) {}
 void _stdlib_mb_cur_max(void) {}
 
+void ISP_AlgRegisterDehaze(void) {}
+void ISP_AlgRegisterDrc(void) {}
+void ISP_AlgRegisterLdci(void) {}
+void MPI_ISP_IrAutoRunOnce(void) {}
+
 float __expf_finite(float x) { return expf(x); }
 int __fgetc_unlocked(FILE *stream) { return fgetc(stream); }
 double __log_finite(double x) { return log(x); }
