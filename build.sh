@@ -19,13 +19,13 @@ fi
 
 if [ "$1" = "divinus-musl" ]; then
 	toolchain cortex_a7_thumb2-gcc13-musl-4_9
-	make -B CC=$GCC OPT="$OPT"
+	make -C src -B CC=$GCC OPT="$OPT"
 elif [ "$1" = "divinus-muslhf" ]; then
 	toolchain cortex_a7_thumb2_hf-gcc13-musl-4_9
-	make -B CC=$GCC OPT="$OPT"
+	make -C src -B CC=$GCC OPT="$OPT"
 elif [ "$1" = "divinus-glibc" ]; then
 	toolchain cortex_a7_thumb2_hf-gcc13-glibc-4_9
-	make -B CC=$GCC OPT="$OPT -lm"
+	make -C src -B CC=$GCC OPT="$OPT -lm"
 else
 	echo "Usage: $0 [divinus-musl|divinus-muslhf|divinus-glibc]"
 	exit 1
