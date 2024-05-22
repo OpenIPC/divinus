@@ -45,17 +45,17 @@ typedef enum {
 } v4_vi_work;
 
 typedef struct {
-    int hsyncFront;
-    int hsyncWidth;
-    int hsyncBack;
-    int vsyncFront;
-    int vsyncWidth;
-    int vsyncBack;
+    unsigned int hsyncFront;
+    unsigned int hsyncWidth;
+    unsigned int hsyncBack;
+    unsigned int vsyncFront;
+    unsigned int vsyncWidth;
+    unsigned int vsyncBack;
     // Next three are valid on interlace mode
     // and define even-frame timings
-    int vsyncIntrlFront;
-    int vsyncIntrlWidth;
-    int vsyncIntrlBack;
+    unsigned int vsyncIntrlFront;
+    unsigned int vsyncIntrlWidth;
+    unsigned int vsyncIntrlBack;
 } v4_vi_timing;
 
 typedef struct {
@@ -84,26 +84,20 @@ typedef struct {
 typedef struct {
     v4_vi_intf intf;
     v4_vi_work work;
-    int separateOn;
-    int doubleCompOn;
-    int clkDownOn;
     unsigned int cmpntMask[2];
     int progressiveOn;
     int adChn[4];
     v4_vi_input input;
     v4_vi_sync sync;
-    int codeZeroOn;
-    int polarNstdOn;
-    // Accepts values between 0-2
-    // (0: bypass ISP, 1: enable ISP, 2: raw)
-    int dataPath;
     int rgbModeOn;
-    int dataRev;
-    v4_common_rect capt;
+    int dataRevOn;
+    v4_common_dim size;
+    v4_common_dim bayerSize;
     v4_vi_rephase hsyncBayerReph;
     v4_vi_rephase vsyncBayerReph;
-    v4_common_dim bayerSize;
-    int bayerComprOn;
+    v4_common_wdr wdr;
+    unsigned int wdrCacheLine;
+    int dataRate2X;
 } v4_vi_dev;
 
 typedef struct {

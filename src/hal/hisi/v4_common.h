@@ -126,6 +126,7 @@ typedef enum {
 typedef enum {
     V4_WDR_NONE,
     V4_WDR_BUILTIN,
+    V4_WDR_QUDRA,
     V4_WDR_2TO1_LINE,
     V4_WDR_2TO1_FRAME,
     V4_WDR_2TO1_FRAME_FULLRATE,

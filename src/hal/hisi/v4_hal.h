@@ -16,12 +16,6 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-typedef struct {
-    void* handle;
-    int (*fnRegister)(void);
-    int (*fnUnregister)(void);
-} v4_drv_impl;
-
 extern char keepRunning;
 
 extern hal_chnstate v4_state[V4_VENC_CHN_NUM];
@@ -52,7 +46,7 @@ int v4_region_setbitmap(int handle, hal_bitmap *bitmap);
 
 int v4_sensor_config(void);
 void v4_sensor_deinit(void);
-int v4_sensor_init(char *name);
+int v4_sensor_init(char *name, char *obj);
 
 int v4_video_create(char index, hal_vidconfig *config);
 int v4_video_destroy(char index);

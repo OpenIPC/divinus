@@ -43,14 +43,6 @@ extern v4_config_impl v4_config;
 static enum ConfigError v4_parse_config_lvds(
     struct IniConfig *ini, const char *section, v4_snr_lvds *lvds) {
     enum ConfigError err;
-    err = parse_int(
-        ini, section, "img_size_w", INT_MIN, INT_MAX, &lvds->capt.width);
-    if (err != CONFIG_OK)
-        return err;
-    err = parse_int(
-        ini, section, "img_size_h", INT_MIN, INT_MAX, &lvds->capt.height);
-    if (err != CONFIG_OK)
-        return err;
     {
         const char *possible_values[] = {
             "HI_WDR_MODE_NONE",  "HI_WDR_MODE_2F",     "HI_WDR_MODE_3F",
@@ -75,8 +67,9 @@ static enum ConfigError v4_parse_config_lvds(
     }
     {
         const char *possible_values[] = {
-            "RAW_DATA_8BIT", "RAW_DATA_10BIT", "RAW_DATA_12BIT",
-            "RAW_DATA_14BIT"};
+            "RAW_DATA_8BIT",                "RAW_DATA_10BIT",       "RAW_DATA_12BIT",
+            "RAW_DATA_14BIT",               "RAW_DATA_16BIT",       "RAW_DATA_YUV420_8BIT_NORMAL",
+            "RAW_DATA_YUV420_8BIT_LEGACY",  "RAW_DATA_YUV422_8BIT"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             ini, section, "raw_data_type", (void*)&lvds->prec,
@@ -99,34 +92,29 @@ static enum ConfigError v4_parse_config_lvds(
         if (err != CONFIG_OK)
             return err;
     }
-    err = parse_array(ini, section, "lane_id", lvds->laneId, 8);
+    int laneId[4];
+    err = parse_array(ini, section, "lane_id", laneId, 4);
     if (err != CONFIG_OK)
         return err;
-    err = parse_int(
-        ini, section, "lvds_lane_num", INT_MIN, INT_MAX, &lvds->laneNum);
-    if (err != CONFIG_OK)
-        return err;
-    err = parse_int(
-        ini, section, "wdr_vc_num", INT_MIN, INT_MAX, &lvds->wdrVcNum);
-    if (err != CONFIG_OK)
-        return err;
-    err = parse_int(
-        ini, section, "sync_code_num", INT_MIN, INT_MAX, &lvds->syncCodeNum);
-    if (err != CONFIG_OK)
-        return err;
+    else for (char i = 0; i < 4; i++)
+        lvds->laneId[i] = (short)laneId[i];
     char syncname[16];
+    int synccode[128];
     for (int i = 0; i < 8; i++) {
         sprintf(syncname, "sync_code_%d", i);
-        err = parse_array(ini, section, syncname, lvds->syncCode[i], 16);
+        err = parse_array(ini, section, syncname, synccode + i * 16, 16);
         if (err != CONFIG_OK)
             return err;
     }
+    for (int j = 0; j < 32; j++)
+        lvds->syncCode[j] = (unsigned short)synccode[j];
     return CONFIG_OK;
 }
 
 static enum ConfigError v4_parse_config_videv(
     struct IniConfig *ini, const char *section, v4_vi_dev *device) {
     enum ConfigError err;
+    memset(device, 0, sizeof(*device));
     {
         const char *possible_values[] = {
             "VI_MODE_BT656",            "VI_MODE_BT656_PACKED_YUV",
@@ -152,37 +140,7 @@ static enum ConfigError v4_parse_config_videv(
             ini, section, "work_mod", (void*)&device->work, possible_values,
             count, 0);
         if (err != CONFIG_OK)
-            return err;
-    }
-    {
-        const char *possible_values[] = {
-            "VI_COMBINE_COMPOSITE", "VI_COMBINE_SEPARATE"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            ini, section, "combine_mode", (void*)&device->separateOn,
-            possible_values, count, 0);
-        if (err != CONFIG_OK)
-            return err;
-    }
-    {
-        const char *possible_values[] = {
-            "VI_COMP_MODE_SINGLE", "VI_COMP_MODE_DOUBLE"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            ini, section, "comp_mode", (void*)&device->doubleCompOn,
-            possible_values, count, 0);
-        if (err != CONFIG_OK)
-            return err;
-    }
-    {
-        const char *possible_values[] = {
-            "VI_CLK_EDGE_SINGLE_UP", "VI_CLK_EDGE_SINGLE_DOWN"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            ini, section, "clock_edge", (void*)&device->clkDownOn,
-            possible_values, count, 0);
-        if (err != CONFIG_OK)
-            return err;
+            device->work = V4_VI_WORK_1MULTIPLEX;
     }
     err = parse_uint32(ini, section, "mask_0", 0, UINT_MAX - 1, &device->cmpntMask[0]);
     if (err != CONFIG_OK)
@@ -208,22 +166,15 @@ static enum ConfigError v4_parse_config_videv(
     }
     {
         const char *possible_values[] = {
-            "VI_DATA_SEQ_VUVU", "VI_DATA_SEQ_UVUV"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            ini, section, "data_seq", (void*)&device->input, possible_values,
-            count, 0);
-        if (err != CONFIG_OK) {
-            const char *possible_values[] = {
-                "VI_DATA_SEQ_UYVY", "VI_DATA_SEQ_VYUY",
-                "VI_DATA_SEQ_YUYV", "VI_DATA_SEQ_YVYU"};
+            "VI_DATA_SEQ_VUVU", "VI_DATA_SEQ_UVUV",
+            "VI_DATA_SEQ_UYVY", "VI_DATA_SEQ_VYUY",
+            "VI_DATA_SEQ_YUYV", "VI_DATA_SEQ_YVYU"};
             const int count = sizeof(possible_values) / sizeof(const char *);
             err = parse_enum(
                 ini, section, "data_seq", (void*)&device->input,
                 possible_values, count, 0);
             if (err != CONFIG_OK)
                 return err;
-        }
     }
     {
         const char *possible_values[] = {"VI_VSYNC_FIELD", "VI_VSYNC_PULSE"};
@@ -246,7 +197,7 @@ static enum ConfigError v4_parse_config_videv(
     }
     {
         const char *possible_values[] = {
-            "VI_HSYNC_VALID_SINGNAL", "VI_HSYNC_PULSE"};
+            "VI_HSYNC_VALID_SIGNAL", "VI_HSYNC_PULSE"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             ini, section, "hsync", (void*)&device->sync.hsyncPulse, possible_values,
@@ -266,7 +217,7 @@ static enum ConfigError v4_parse_config_videv(
     }
     {
         const char *possible_values[] = {
-            "VI_VSYNC_NORM_PULSE", "VI_VSYNC_VALID_SINGAL"};
+            "VI_VSYNC_NORM_PULSE", "VI_VSYNC_VALID_SIGNAL"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             ini, section, "vsyncvalid", (void*)&device->sync.vsyncValid,
@@ -329,60 +280,26 @@ static enum ConfigError v4_parse_config_videv(
         &device->sync.timing.vsyncIntrlBack);
     if (err != CONFIG_OK)
         return err;
-    {
-        const char *possible_values[] = {"BT656_FIXCODE_1", "BT656_FIXCODE_0"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        parse_enum(
-            ini, section, "fixcode", (void*)&device->codeZeroOn, possible_values,
-            count, 0);
-        if (err != CONFIG_OK)
-            device->codeZeroOn = 0;
-    }
-    {
-        const char *possible_values[] = {
-            "BT656_FIELD_POLAR_STD", "BT656_FIELD_POLAR_NSTD"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            ini, section, "fieldpolar", (void*)&device->polarNstdOn,
-            possible_values, count, 0);
-        if (err != CONFIG_OK)
-            device->polarNstdOn = 0;
-    }
-    {
-        const char *possible_values[] = {
-            "VI_PATH_BYPASS", "VI_PATH_ISP", "VI_PATH_RAW"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            ini, section, "datapath", (void*)&device->dataPath,
-            possible_values, count, 0);
-        if (err != CONFIG_OK)
-            device->dataPath = 0;
-    }
-    {
-        const char *possible_values[] = {
-            "VI_DATA_TYPE_YUV", "VI_DATA_TYPE_RGB"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            ini, section, "inputdatatype", &device->rgbModeOn,
-            possible_values, count, 0);
-        if (err != CONFIG_OK)
-            device->rgbModeOn = 0;
-    }
-    err = parse_int(ini, section, "datarev", 0, INT_MAX, &device->dataRev);
+    err = parse_int(ini, section, "datarev", 0, INT_MAX, &device->dataRevOn);
     if (err != CONFIG_OK)
         return err;
-    err = parse_int(ini, section, "devrect_x", 0, INT_MAX, &device->capt.x);
+    err = parse_int(ini, section, "devrect_x", 0, INT_MAX, &v4_config.vichn.capt.x);
     if (err != CONFIG_OK)
         return err;
-    err = parse_int(ini, section, "devrect_y", 0, INT_MAX, &device->capt.y);
+    err = parse_int(ini, section, "devrect_y", 0, INT_MAX, &v4_config.vichn.capt.y);
     if (err != CONFIG_OK)
         return err;
-    err = parse_int(ini, section, "devrect_w", 0, INT_MAX, &device->capt.width);
+    err = parse_int(ini, section, "devrect_w", 0, INT_MAX, &v4_config.vichn.capt.width);
     if (err != CONFIG_OK)
         return err;
-    err = parse_int(ini, section, "devrect_h", 0, INT_MAX, &device->capt.height);
+    err = parse_int(ini, section, "devrect_h", 0, INT_MAX, &v4_config.vichn.capt.height);
     if (err != CONFIG_OK)
         return err;
+
+    for (char i = 0; i < 4; i++)
+        device->adChn[i] = -1;
+    device->wdrCacheLine = v4_config.vichn.capt.width;
+
     return CONFIG_OK;
 }
 
@@ -393,24 +310,14 @@ static enum ConfigError v4_parse_config_vichn(
     if (err != CONFIG_OK)
         channel->capt.x = 0;
     parse_int(ini, section, "caprect_y", 0, INT_MAX, &channel->capt.y);
-    if (err != CONFIG_OK)
-        channel->capt.y = 0;
     parse_int(
         ini, section, "caprect_width", 0, INT_MAX, &channel->capt.width);
-    if (err != CONFIG_OK)
-        channel->capt.width = 0;
     parse_int(
         ini, section, "caprect_height", 0, INT_MAX, &channel->capt.height);
-    if (err != CONFIG_OK)
-        channel->capt.height = 0;
     parse_int(
         ini, section, "destsize_width", 0, INT_MAX, &channel->dest.width);
-    if (err != CONFIG_OK)
-        channel->dest.width = 0;
     parse_int(
         ini, section, "destsize_height", 0, INT_MAX, &channel->dest.height);
-    if (err != CONFIG_OK)
-        channel->dest.height = 0;
     {
         const char *possible_values[] = {
             "VI_CAPSEL_TOP", "VI_CAPSEL_BOTTOM", "VI_CAPSEL_BOTH"};
@@ -490,7 +397,7 @@ static enum ConfigError v4_parse_config_vichn(
     }
     {
         const char *possible_values[] = {
-            "COMPRESS_MODE_NONE", "COMPRESS_MODE_SEG", "COMPRESS_MODE_SEG128",
+            "COMPRESS_MODE_NONE", "COMPRESS_MODE_SEG", "COMPRESS_MODE_TILE",
             "COMPRESS_MODE_LINE", "COMPRESS_MODE_FRAME"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
@@ -588,6 +495,7 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
         const char *possible_values[] = {
             "WDR_MODE_NONE",
             "WDR_MODE_BUILT_IN",
+            "WDR_MODE_QUDRA",
             "WDR_MODE_2To1_LINE",
             "WDR_MODE_2To1_FRAME",
             "WDR_MODE_2To1_FRAME_FULL_RATE",
@@ -602,7 +510,7 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
             &ini, "sensor", "mode", (void*)&config->mode, possible_values,
             count, 0);
         if (err != CONFIG_OK)
-            goto RET_ERR;
+            config->mode = V4_WDR_NONE;
     }
     err = parse_param_value(&ini, "sensor", "dllfile", config->dll_file);
     if (err != CONFIG_OK)
@@ -619,19 +527,19 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
             &ini, "mode", "input_mode", (void*)&config->input_mode,
             possible_values, count, 0);
         if (err != CONFIG_OK)
-            goto RET_ERR;
+            config->input_mode = V4_SNR_INPUT_MIPI;
     }
 
     if (config->input_mode == V4_VI_INTF_MIPI) {
         // [mipi]
         {
             const char *possible_values[] = {
-                "RAW_DATA_8BIT", "RAW_DATA_10BIT", "RAW_DATA_12BIT",
-                "RAW_DATA_14BIT", "RAW_DATA_16BIT", "RAW_DATA_YUV420_8BIT_NORMAL",
-                "RAW_DATA_YUV420_8BIT_LEGACY", "RAW_DATA_YUV422_8BIT"};
+                "RAW_DATA_8BIT",                "RAW_DATA_10BIT",       "RAW_DATA_12BIT",
+                "RAW_DATA_14BIT",               "RAW_DATA_16BIT",       "RAW_DATA_YUV420_8BIT_NORMAL",
+                "RAW_DATA_YUV420_8BIT_LEGACY",  "RAW_DATA_YUV422_8BIT"};
             const int count = sizeof(possible_values) / sizeof(const char *);
             err = parse_enum(
-                &ini, "mipi", "data_type", (void*)&config->mipi.prec,
+                &ini, "mode", "raw_bitness", (void*)&config->mipi.prec,
                 possible_values, count, 0);
             if (err != CONFIG_OK)
                 goto RET_ERR;
@@ -651,23 +559,15 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
     if (err != CONFIG_OK)
         goto RET_ERR;
 
+    // [vi_chn]
+    v4_parse_config_vichn(&ini, "vi_chn", &config->vichn);
+
     // [vi_dev]
     err = v4_parse_config_videv(&ini, "vi_dev", &config->videv);
     if (err != CONFIG_OK)
         goto RET_ERR;
-    // [vi_chn]
-    v4_parse_config_vichn(&ini, "vi_chn", &config->vichn);
 
     // Fallbacks for default sensor configuration files
-    if (!config->vichn.capt.x)
-        config->vichn.capt.x = config->videv.capt.x;
-    if (!config->vichn.capt.y)
-        config->vichn.capt.y = config->videv.capt.y;
-    if (!config->vichn.capt.width)
-        config->vichn.capt.width = config->videv.capt.width;
-    if (!config->vichn.capt.height)
-        config->vichn.capt.height = config->videv.capt.height;
-    
     if (!config->isp.capt.x)
         config->isp.capt.x = config->vichn.capt.x;
     if (!config->isp.capt.y)
@@ -676,6 +576,14 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
         config->isp.capt.width = config->vichn.capt.width;
     if (!config->isp.capt.height)
         config->isp.capt.height = config->vichn.capt.height;
+
+    if (!config->isp.size.width)
+        config->isp.size.width = config->vichn.capt.width;
+    if (!config->isp.size.height)
+        config->isp.size.height = config->vichn.capt.height;
+
+    if (!config->isp.wdr)
+        config->isp.wdr = config->mode;
 
     v4_config = *config;
     free(ini.str);

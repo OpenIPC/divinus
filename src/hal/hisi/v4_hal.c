@@ -1,15 +1,17 @@
 #include "v4_hal.h"
 
-v4_aud_impl    v4_aud;
-v4_config_impl v4_config;
-v4_drv_impl    v4_drv;
-v4_isp_impl    v4_isp;
-v4_rgn_impl    v4_rgn;
-v4_sys_impl    v4_sys;
-v4_vb_impl     v4_vb;
-v4_venc_impl   v4_venc;
-v4_vi_impl     v4_vi;
-v4_vpss_impl   v4_vpss;
+v4_isp_alg      v4_ae_lib = { .libName = "ae_lib" };
+v4_aud_impl     v4_aud;
+v4_isp_alg      v4_awb_lib = { .libName = "awb_lib" };
+v4_config_impl  v4_config;
+v4_isp_impl     v4_isp;
+v4_isp_drv_impl v4_isp_drv;
+v4_rgn_impl     v4_rgn;
+v4_sys_impl     v4_sys;
+v4_vb_impl      v4_vb;
+v4_venc_impl    v4_venc;
+v4_vi_impl      v4_vi;
+v4_vpss_impl    v4_vpss;
 
 hal_chnstate v4_state[V4_VENC_CHN_NUM] = {0};
 int (*v4_venc_cb)(char, hal_vidstream*);
@@ -157,8 +159,11 @@ int v4_channel_unbind(char index)
 
 void *v4_image_thread(void)
 {
-    if (v4_isp.fnRun(_v4_isp_dev))
-        fprintf(stderr, "[v4_isp] Shutting down ISP thread...\n");
+    int ret;
+
+    if (ret = v4_isp.fnRun(_v4_isp_dev))
+        fprintf(stderr, "[v4_isp] Operation failed with %#x!\n", ret);
+    fprintf(stderr, "[v4_isp] Shutting down ISP thread...\n");
 }
 
 int v4_pipeline_create(char mirror, char flip)
@@ -295,7 +300,9 @@ int v4_region_setbitmap(int handle, hal_bitmap *bitmap)
 int v4_sensor_config(void) {
     v4_snr_dev config;
     config.device = 0;
+    config.dataRate2X = 0;
     config.input = v4_config.input_mode;
+    config.rect = v4_config.vichn.capt;
     memcpy(&config.lvds, &v4_config.lvds, sizeof(v4_snr_lvds));
     memcpy(&config.mipi, &v4_config.mipi, sizeof(v4_snr_mipi));
 
@@ -323,11 +330,11 @@ int v4_sensor_cb_empty(void) { return EXIT_SUCCESS; }
 
 void v4_sensor_deinit(void)
 {
-    dlclose(v4_drv.handle);
-    v4_drv.handle = NULL;
+    dlclose(v4_isp_drv.handle);
+    v4_isp_drv.handle = NULL;
 }
 
-int v4_sensor_init(char *name)
+int v4_sensor_init(char *name, char *obj)
 {
     char path[128];
     char* dirs[] = {"%s", "./%s", "/usr/lib/sensors/%s"};
@@ -335,18 +342,13 @@ int v4_sensor_init(char *name)
 
     while (*dir++) {
         sprintf(path, *dir, name);
-        if (v4_drv.handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL))
+        if (v4_isp_drv.handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL))
             break;
-    } if (!v4_drv.handle)
+    } if (!v4_isp_drv.handle)
         V4_ERROR("Failed to load the sensor driver");
     
-    if (!(v4_drv.fnRegister = 
-        (int(*)(void))dlsym(v4_drv.handle, "sensor_register_callback")))
-        v4_drv.fnRegister = v4_sensor_cb_empty;
-    
-    if (!(v4_drv.fnUnregister =
-        (int(*)(void))dlsym(v4_drv.handle, "sensor_unregister_callback")))
-        v4_drv.fnUnregister = v4_sensor_cb_empty;
+    if (!(v4_isp_drv.obj = (v4_isp_obj*)dlsym(v4_isp_drv.handle, obj)))
+        V4_ERROR("Failed to connect the sensor object");
 
     return EXIT_SUCCESS;
 }
@@ -748,10 +750,10 @@ int v4_system_calculate_block(short width, short height, v4_common_pixfmt pixFmt
 
 void v4_system_deinit(void)
 {
-    v4_isp.fnUnregisterAWB(_v4_isp_dev, &(v4_isp_alg){.libName = "hisi_awb_lib"});
-    v4_isp.fnUnregisterAE(_v4_isp_dev, &(v4_isp_alg){.libName = "hisi_ae_lib"});
+    v4_isp.fnUnregisterAWB(_v4_isp_dev, &v4_ae_lib);
+    v4_isp.fnUnregisterAE(_v4_isp_dev, &v4_awb_lib);
 
-    v4_drv.fnUnregister();
+    v4_isp_drv.obj->pfnUnRegisterCallback(_v4_isp_dev, &v4_ae_lib, &v4_awb_lib);
 
     v4_sys.fnExit();
     v4_vb.fnExit();
@@ -768,13 +770,13 @@ int v4_system_init(unsigned int alignWidth, unsigned int blockCnt,
         v4_sys_ver version;
         v4_sys.fnGetVersion(&version);
         printf("App built with headers v%s\n", V4_SYS_API);
-        printf("MPP version: %s\n", version.version);
+        printf("%s\n", version.version);
     }
 
     if (v4_parse_sensor_config(snrConfig, &v4_config) != CONFIG_OK)
         V4_ERROR("Can't load sensor config\n");
 
-    v4_sensor_init(v4_config.dll_file);
+    v4_sensor_init(v4_config.dll_file, v4_config.sensor_type);
 
     v4_sys.fnExit();
     v4_vb.fnExit();
@@ -785,9 +787,9 @@ int v4_system_init(unsigned int alignWidth, unsigned int blockCnt,
             .comm = {
                 {
                     .blockSize = v4_system_calculate_block(
-                        v4_config.videv.capt.width,
-                        v4_config.videv.capt.height,
-                        v4_config.vichn.pixFmt,
+                        v4_config.vichn.capt.width,
+                        v4_config.vichn.capt.height,
+                        V4_PIXFMT_RGB_BAYER_8BPP,
                         alignWidth),
                     .blockCnt = blockCnt
                 }
@@ -814,12 +816,12 @@ int v4_system_init(unsigned int alignWidth, unsigned int blockCnt,
     if (ret = v4_sensor_config())
         return ret;
 
-    if (ret = v4_drv.fnRegister())
+    if (!(v4_isp_drv.obj->pfnRegisterCallback(_v4_isp_dev, &v4_ae_lib, &v4_awb_lib)))
         return ret;
 
-    if (ret = v4_isp.fnRegisterAE(_v4_isp_dev, &(v4_isp_alg){.libName = "hisi_ae_lib"}))
+    if (ret = v4_isp.fnRegisterAE(_v4_isp_dev, &v4_ae_lib))
         return ret;
-    if (ret = v4_isp.fnRegisterAWB(_v4_isp_dev, &(v4_isp_alg){.libName = "hisi_awb_lib"}))
+    if (ret = v4_isp.fnRegisterAWB(_v4_isp_dev, &v4_awb_lib))
         return ret;
     if (ret = v4_isp.fnMemInit(_v4_isp_dev))
         return ret;

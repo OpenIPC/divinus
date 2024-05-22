@@ -194,6 +194,27 @@ int start_sdk() {
         return EXIT_FAILURE;
     }
 
+    if (isp_thread) {
+        pthread_attr_t thread_attr;
+        pthread_attr_init(&thread_attr);
+        size_t stacksize;
+        pthread_attr_getstacksize(&thread_attr, &stacksize);
+        size_t new_stacksize = app_config.isp_thread_stack_size;
+        if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
+            fprintf(stderr, "Can't set stack size %zu!\n", new_stacksize);
+        }
+        if (pthread_create(
+                     &ispPid, &thread_attr, (void *(*)(void *))isp_thread, NULL)) {
+            fprintf(stderr, "Starting the imaging thread failed!\n");
+            return EXIT_FAILURE;
+        }
+        if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
+            fprintf(stderr, "Can't set stack size %zu!\n", stacksize);
+        }
+        pthread_attr_destroy(&thread_attr);
+    }
+    usleep(1000);
+
     short width = MAX(app_config.mp4_width, app_config.mjpeg_width);
     short height = MAX(app_config.mp4_height, app_config.mjpeg_height);
     short framerate = MAX(app_config.mp4_fps, app_config.mjpeg_fps);
@@ -215,27 +236,6 @@ int start_sdk() {
             ret, errstr(ret));
         return EXIT_FAILURE;
     }
-
-    if (isp_thread) {
-        pthread_attr_t thread_attr;
-        pthread_attr_init(&thread_attr);
-        size_t stacksize;
-        pthread_attr_getstacksize(&thread_attr, &stacksize);
-        size_t new_stacksize = app_config.isp_thread_stack_size;
-        if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-            fprintf(stderr, "Can't set stack size %zu!\n", new_stacksize);
-        }
-        if (pthread_create(
-                     &ispPid, &thread_attr, (void *(*)(void *))isp_thread, NULL)) {
-            fprintf(stderr, "Starting the imaging thread failed!\n");
-            return EXIT_FAILURE;
-        }
-        if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-            fprintf(stderr, "Can't set stack size %zu!\n", stacksize);
-        }
-        pthread_attr_destroy(&thread_attr);
-    }
-    usleep(1000);
 
     if (app_config.mp4_enable) {
         int index = take_next_free_channel(true);

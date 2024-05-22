@@ -2,10 +2,26 @@
 
 #include "v4_common.h"
 
+typedef enum {
+    V4_ISP_DIR_NORMAL,
+    V4_ISP_DIR_MIRROR,
+    V4_ISP_DIR_FLIP,
+    V4_ISP_DIR_MIRROR_FLIP,
+    V4_ISP_DIR_END
+} v4_isp_dir;
+
 typedef struct {
     int id;
     char libName[20];
 } v4_isp_alg;
+
+typedef union {
+    char i2c;
+    struct {
+        char dev : 4;
+        char cs  : 4;
+    } ssp;
+} v4_isp_bus;
 
 typedef struct {
     v4_common_rect capt;
@@ -15,6 +31,40 @@ typedef struct {
     v4_common_wdr wdr;
     unsigned char mode;
 } v4_isp_dev;
+
+typedef struct {
+    unsigned int expTime;
+    unsigned int aGain;
+    unsigned int dGain;
+    unsigned int ispDGain;
+    unsigned int exposure;
+    unsigned int linesPer500ms;
+    unsigned int pirisFNO;
+    unsigned short wbRGain;
+    unsigned short wbGGain;
+    unsigned short wbBGain;
+    unsigned short sampleRGain;
+    unsigned short sampleBGain;
+    unsigned short ccm[9];
+} v4_isp_init;
+
+typedef struct {
+    int (*pfnRegisterCallback)(int device, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
+    int (*pfnUnRegisterCallback)(int device, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
+    int (*pfnSetBusInfo)(int device, v4_isp_bus unSNSBusInfo);
+    int (*pfnSetBusExInfo)(int device, char *address);
+    void (*pfnStandby)(int device);
+    void (*pfnRestart)(int device);
+    void (*pfnMirrorFlip)(int device, v4_isp_dir mode);
+    int (*pfnWriteReg)(int device, int addr, int data);
+    int (*pfnReadReg)(int device, int addr);
+    int (*pfnSetInit)(int device, v4_isp_init *config);
+} v4_isp_obj;
+
+typedef struct {
+    void *handle;
+    v4_isp_obj *obj;
+} v4_isp_drv_impl;
 
 typedef struct {
     void *handle, *handleDehaze, *handleDrc, *handleLdci, *handleIrAuto, *handleAwb, 
