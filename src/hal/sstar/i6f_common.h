@@ -10,7 +10,9 @@
 
 #define I6F_ERROR(x, ...) \
     do { \
-        fprintf(stderr, "%s \033[31m%s\033[0m\n", "[i6f_hal]", (x), ##__VA_ARGS__); \
+        fprintf(stderr, "[i6f_hal] \033[31m"); \
+        fprintf(stderr, (x), ##__VA_ARGS__); \
+        fprintf(stderr, "\033[0m"); \
         return EXIT_FAILURE; \
     } while (0)
 

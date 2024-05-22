@@ -10,7 +10,9 @@
 
 #define V4_ERROR(x, ...) \
     do { \
-        fprintf(stderr, "%s \033[31m%s\033[0m\n", "[v4_hal]", (x), ##__VA_ARGS__); \
+        fprintf(stderr, "[v4_hal] \033[31m"); \
+        fprintf(stderr, (x), ##__VA_ARGS__); \
+        fprintf(stderr, "\033[0m"); \
         return EXIT_FAILURE; \
     } while (0)
 

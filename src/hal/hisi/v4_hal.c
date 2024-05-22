@@ -300,26 +300,35 @@ int v4_region_setbitmap(int handle, hal_bitmap *bitmap)
 int v4_sensor_config(void) {
     v4_snr_dev config;
     config.device = 0;
-    config.dataRate2X = 0;
     config.input = v4_config.input_mode;
+    config.dataRate2X = 0;
     config.rect = v4_config.vichn.capt;
-    memcpy(&config.lvds, &v4_config.lvds, sizeof(v4_snr_lvds));
-    memcpy(&config.mipi, &v4_config.mipi, sizeof(v4_snr_mipi));
+
+    if (config.input == V4_SNR_INPUT_MIPI)
+        memcpy(&config.mipi, &v4_config.mipi, sizeof(v4_snr_mipi));
+    else if (config.input == V4_SNR_INPUT_LVDS)
+        memcpy(&config.lvds, &v4_config.lvds, sizeof(v4_snr_lvds));
 
     int fd = open(V4_SNR_ENDPOINT, O_RDWR);
     if (fd < 0)
         V4_ERROR("Opening imaging device has failed!\n");
 
-    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_INTF, unsigned int), &config.device);
-    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device);
+    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_INTF, unsigned int), &config.device))
+        V4_ERROR("Resetting imaging device has failed!\n");
+    
+    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device))
+        V4_ERROR("Resetting imaging sensor has failed!\n");
 
     if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_DEV, v4_snr_dev), &config) && close(fd))
         V4_ERROR("Configuring imaging device has failed!\n");
 
     usleep(10000);
 
-    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_INTF, unsigned int), &config.device);
-    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_INTF, unsigned int), &config.device);
+    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_INTF, unsigned int), &config.device))
+        V4_ERROR("Unresetting imaging device has failed!\n");
+
+    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_SENS, unsigned int), &config.device))
+        V4_ERROR("Unresetting imaging sensor has failed!\n");
 
     close(fd);
 
@@ -776,7 +785,8 @@ int v4_system_init(unsigned int alignWidth, unsigned int blockCnt,
     if (v4_parse_sensor_config(snrConfig, &v4_config) != CONFIG_OK)
         V4_ERROR("Can't load sensor config\n");
 
-    v4_sensor_init(v4_config.dll_file, v4_config.sensor_type);
+    if (ret = v4_sensor_init(v4_config.dll_file, v4_config.sensor_type))
+        return ret;
 
     v4_sys.fnExit();
     v4_vb.fnExit();
@@ -789,7 +799,7 @@ int v4_system_init(unsigned int alignWidth, unsigned int blockCnt,
                     .blockSize = v4_system_calculate_block(
                         v4_config.vichn.capt.width,
                         v4_config.vichn.capt.height,
-                        V4_PIXFMT_RGB_BAYER_8BPP,
+                        v4_config.vichn.pixFmt,
                         alignWidth),
                     .blockCnt = blockCnt
                 }
@@ -799,17 +809,15 @@ int v4_system_init(unsigned int alignWidth, unsigned int blockCnt,
             return ret;
     }
     {
-        v4_vb_supl supl = V4_VB_USERINFO_MASK;
+        v4_vb_supl supl = V4_VB_JPEG_MASK;
         if (ret = v4_vb.fnConfigSupplement(&supl))
             return ret;
     }
     if (ret = v4_vb.fnInit())
         return ret;
 
-    {
-        if (ret = v4_sys.fnSetAlignment(&alignWidth))
-            return ret;
-    }
+    if (ret = v4_sys.fnSetAlignment(&alignWidth))
+        return ret;
     if (ret = v4_sys.fnInit())
         return ret;
 

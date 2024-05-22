@@ -3,11 +3,10 @@
 #include "v4_common.h"
 
 typedef enum {
-    V4_VB_JPEG_MASK,
-    V4_VB_USERINFO_MASK,
-    V4_VB_ISPINFO_MASK,
-    V4_VB_ISPSTAT_MASK,
-    V4_VB_DNG_MASK
+    V4_VB_JPEG_MASK = 0x1,
+    V4_VB_ISPINFO_MASK = 0x2,
+    V4_VB_MOTIONDATA_MASK = 0x4,
+    V4_VB_DNG_MASK = 0x8
 } v4_vb_supl;
 
 typedef struct {

@@ -97,7 +97,9 @@ typedef struct {
     v4_snr_mwdr mode;
     // Value -1 signifies a lane is disabled
     short laneId[4];
-    short wdrVcType[2];
+    union {
+        short wdrVcType[2];
+    };
 } v4_snr_mipi;
 
 typedef struct {
