@@ -283,22 +283,22 @@ static enum ConfigError v4_parse_config_videv(
     err = parse_int(ini, section, "datarev", 0, INT_MAX, &device->dataRevOn);
     if (err != CONFIG_OK)
         return err;
-    err = parse_int(ini, section, "devrect_x", 0, INT_MAX, &v4_config.vichn.capt.x);
+    err = parse_int(ini, section, "devrect_x", 0, INT_MAX, &v4_config.isp.capt.x);
     if (err != CONFIG_OK)
         return err;
-    err = parse_int(ini, section, "devrect_y", 0, INT_MAX, &v4_config.vichn.capt.y);
+    err = parse_int(ini, section, "devrect_y", 0, INT_MAX, &v4_config.isp.capt.y);
     if (err != CONFIG_OK)
         return err;
-    err = parse_int(ini, section, "devrect_w", 0, INT_MAX, &v4_config.vichn.capt.width);
+    err = parse_int(ini, section, "devrect_w", 0, INT_MAX, &v4_config.isp.capt.width);
     if (err != CONFIG_OK)
         return err;
-    err = parse_int(ini, section, "devrect_h", 0, INT_MAX, &v4_config.vichn.capt.height);
+    err = parse_int(ini, section, "devrect_h", 0, INT_MAX, &v4_config.isp.capt.height);
     if (err != CONFIG_OK)
         return err;
 
     for (char i = 0; i < 4; i++)
         device->adChn[i] = -1;
-    device->wdrCacheLine = v4_config.vichn.capt.width;
+    device->wdrCacheLine = v4_config.isp.capt.width;
 
     return CONFIG_OK;
 }
@@ -306,28 +306,6 @@ static enum ConfigError v4_parse_config_videv(
 static enum ConfigError v4_parse_config_vichn(
     struct IniConfig *ini, const char *section, v4_vi_chn *channel) {
     enum ConfigError err;
-    err = parse_int(ini, section, "caprect_x", 0, INT_MAX, &channel->capt.x);
-    if (err != CONFIG_OK)
-        channel->capt.x = 0;
-    parse_int(ini, section, "caprect_y", 0, INT_MAX, &channel->capt.y);
-    parse_int(
-        ini, section, "caprect_width", 0, INT_MAX, &channel->capt.width);
-    parse_int(
-        ini, section, "caprect_height", 0, INT_MAX, &channel->capt.height);
-    parse_int(
-        ini, section, "destsize_width", 0, INT_MAX, &channel->dest.width);
-    parse_int(
-        ini, section, "destsize_height", 0, INT_MAX, &channel->dest.height);
-    {
-        const char *possible_values[] = {
-            "VI_CAPSEL_TOP", "VI_CAPSEL_BOTTOM", "VI_CAPSEL_BOTH"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            ini, section, "capsel", (void*)&channel->field, possible_values,
-            count, 0);
-        if (err != CONFIG_OK)
-            channel->field = 0;
-    }
     {
         const char *possible_values[] = {
             "PIXEL_FORMAT_RGB_444",
@@ -568,19 +546,20 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
         goto RET_ERR;
 
     // Fallbacks for default sensor configuration files
-    if (!config->isp.capt.x)
-        config->isp.capt.x = config->vichn.capt.x;
-    if (!config->isp.capt.y)
-        config->isp.capt.y = config->vichn.capt.y;
-    if (!config->isp.capt.width)
-        config->isp.capt.width = config->vichn.capt.width;
-    if (!config->isp.capt.height)
-        config->isp.capt.height = config->vichn.capt.height;
-
     if (!config->isp.size.width)
-        config->isp.size.width = config->vichn.capt.width;
+        config->isp.size.width = config->isp.capt.width;
     if (!config->isp.size.height)
-        config->isp.size.height = config->vichn.capt.height;
+        config->isp.size.height = config->isp.capt.height;
+
+    if (!config->videv.size.width)
+        config->videv.size.width = config->isp.capt.width;
+    if (!config->videv.size.height)
+        config->videv.size.height = config->isp.capt.height;
+
+    if (!config->videv.bayerSize.width)
+        config->videv.bayerSize.width = config->isp.capt.width;
+    if (!config->videv.bayerSize.height)
+        config->videv.bayerSize.height = config->isp.capt.height;
 
     if (!config->isp.wdr)
         config->isp.wdr = config->mode;

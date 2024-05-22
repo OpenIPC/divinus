@@ -30,9 +30,6 @@ enum ConfigError parse_app_config(const char *path) {
     app_config.venc_stream_thread_stack_size = 16 * 1024;
     app_config.web_server_thread_stack_size = 32 * 1024;
 
-    app_config.align_width = 64;
-    app_config.blk_cnt = 4;
-    app_config.max_pool_cnt = 16;
     app_config.mirror = false;
     app_config.flip = false;
 
@@ -144,37 +141,6 @@ enum ConfigError parse_app_config(const char *path) {
         err = parse_int(
             &ini, "night_mode", "pin_switch_delay_us", 0, 1000,
             &app_config.pin_switch_delay_us);
-        if (err != CONFIG_OK)
-            goto RET_ERR;
-    }
-
-    {
-        const char *possible_values[] = {"1", "4", "16", "64", "128"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            &ini, "isp", "align_width", &app_config.align_width,
-            possible_values, count, 0);
-        if (err != CONFIG_OK)
-            goto RET_ERR;
-        err = parse_int(
-            &ini, "isp", "align_width", 0, INT_MAX, &app_config.align_width);
-        if (err != CONFIG_OK)
-            goto RET_ERR;
-    }
-    err = parse_int(
-        &ini, "isp", "max_pool_cnt", 1, INT_MAX, &app_config.max_pool_cnt);
-    if (err != CONFIG_OK)
-        goto RET_ERR;
-    {
-        const char *possible_values[] = {"4", "10"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            &ini, "isp", "blk_cnt", &app_config.blk_cnt, possible_values, count,
-            0);
-        if (err != CONFIG_OK)
-            goto RET_ERR;
-        err =
-            parse_int(&ini, "isp", "blk_cnt", 4, INT_MAX, &app_config.blk_cnt);
         if (err != CONFIG_OK)
             goto RET_ERR;
     }

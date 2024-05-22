@@ -45,6 +45,48 @@ typedef enum {
 } v4_vi_work;
 
 typedef struct {
+	unsigned int num;
+	int pipeId[2];
+} v4_vi_bind;
+
+typedef struct {
+    v4_common_dim size;
+    v4_common_pixfmt pixFmt;
+    v4_common_hdr dynRange;
+    int videoFmt;
+    v4_common_compr compress;
+    int mirror;
+    int flip;
+    unsigned int depth;
+    int srcFps;
+    int dstFps;
+} v4_vi_chn;
+
+typedef struct {
+    v4_common_pixfmt pixFmt;
+    v4_common_prec prec;
+    int srcRfrOrChn0;
+    v4_common_compr compress;
+} v4_vi_nred;
+
+typedef struct {
+    // Accepts values from 0-2 (no, front, back)
+    int bypass;
+    int yuvSkipOn;
+    int ispBypassOn;
+    v4_common_dim maxSize;
+    v4_common_pixfmt pixFmt;
+    v4_common_compr compress;
+    v4_common_prec prec;
+    int nRedOn;
+    v4_vi_nred nRed;
+    int sharpenOn;
+    int srcFps;
+    int dstFps;
+    int discProPic;
+} v4_vi_pipe;
+
+typedef struct {
     unsigned int hsyncFront;
     unsigned int hsyncWidth;
     unsigned int hsyncBack;
@@ -67,19 +109,6 @@ typedef struct {
     int vsyncValidInv;
     v4_vi_timing timing;
 } v4_vi_sync;
-
-typedef struct {
-    v4_common_rect capt;
-    v4_common_dim dest;
-    // Values 0-3 correspond to Top, Bottom, Both
-    int field;
-    v4_common_pixfmt pixFmt;
-    v4_common_compr compress;
-    int mirror;
-    int flip;
-    int srcFps;
-    int dstFps;
-} v4_vi_chn;
 
 typedef struct {
     v4_vi_intf intf;
@@ -115,6 +144,12 @@ typedef struct {
     int (*fnDisableChannel)(int channel);
     int (*fnEnableChannel)(int channel);
     int (*fnSetChannelConfig)(int channel, v4_vi_chn *config);
+
+    int (*fnBindPipe)(int device, v4_vi_bind *config);
+    int (*fnCreatePipe)(int pipe, v4_vi_pipe *config);
+    int (*fnDestroyPipe)(int pipe);
+    int (*fnStartPipe)(int pipe);
+    int (*fnStopPipe)(int pipe);
 } v4_vi_impl;
 
 static int v4_vi_load(v4_vi_impl *vi_lib) {
@@ -159,6 +194,36 @@ static int v4_vi_load(v4_vi_impl *vi_lib) {
     if (!(vi_lib->fnSetChannelConfig = (int(*)(int device, v4_vi_chn *config))
         dlsym(vi_lib->handle, "HI_MPI_VI_SetChnAttr"))) {
         fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_SetChnAttr!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(vi_lib->fnBindPipe = (int(*)(int device, v4_vi_bind *config))
+        dlsym(vi_lib->handle, "HI_MPI_VI_SetDevBindPipe"))) {
+        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_SetDevBindPipe!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(vi_lib->fnCreatePipe = (int(*)(int pipe, v4_vi_pipe *config))
+        dlsym(vi_lib->handle, "HI_MPI_VI_CreatePipe"))) {
+        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_CreatePipe!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(vi_lib->fnDestroyPipe = (int(*)(int pipe))
+        dlsym(vi_lib->handle, "HI_MPI_VI_DestroyPipe"))) {
+        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_DestroyPipe!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(vi_lib->fnStartPipe = (int(*)(int pipe))
+        dlsym(vi_lib->handle, "HI_MPI_VI_StartPipe"))) {
+        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_StartPipe!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(vi_lib->fnStopPipe = (int(*)(int pipe))
+        dlsym(vi_lib->handle, "HI_MPI_VI_StopPipe"))) {
+        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_StopPipe!\n");
         return EXIT_FAILURE;
     }
 

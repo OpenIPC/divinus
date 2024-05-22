@@ -51,9 +51,7 @@ struct AppConfig {
     unsigned int venc_stream_thread_stack_size;
     unsigned int web_server_thread_stack_size;
 
-    unsigned int align_width;
-    unsigned int max_pool_cnt;
-    unsigned int blk_cnt;
+    // [isp]
     bool mirror;
     bool flip;
 

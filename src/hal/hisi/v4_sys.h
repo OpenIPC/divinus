@@ -4,8 +4,7 @@
 
 #define V4_SYS_API "1.0"
 
-typedef enum
-{
+typedef enum {
     V4_SYS_MOD_CMPI,
     V4_SYS_MOD_VB,
     V4_SYS_MOD_SYS,
@@ -61,6 +60,16 @@ typedef enum
     V4_SYS_MOD_END
 } v4_sys_mod;
 
+typedef enum {
+	V4_SYS_OPER_VIOFF_VPSSOFF,
+	V4_SYS_OPER_VIOFF_VPSSON,
+	V4_SYS_OPER_VION_VPSSOFF,
+	V4_SYS_OPER_VION_VPSSON,
+	V4_SYS_OPER_VIPARA_VPSSOFF,
+	V4_SYS_OPER_VIPARA_VPSSPARA,
+	V4_SYS_OPER_END
+} v4_sys_oper;
+
 typedef struct {
     v4_sys_mod module;
     int device;
@@ -77,11 +86,15 @@ typedef struct {
     int (*fnExit)(void);
     int (*fnGetChipId)(unsigned int *chip);
     int (*fnGetVersion)(v4_sys_ver *version);
+    
     int (*fnInit)(void);
     int (*fnSetAlignment)(unsigned int *width);
 
     int (*fnBind)(v4_sys_bind *source, v4_sys_bind *dest);
     int (*fnUnbind)(v4_sys_bind *source, v4_sys_bind *dest);
+
+    int (*fnGetViVpssMode)(v4_sys_oper *mode);
+    int (*fnSetViVpssMode)(v4_sys_oper *mode);
 } v4_sys_impl;
 
 static int v4_sys_load(v4_sys_impl *sys_lib) {
@@ -138,6 +151,18 @@ static int v4_sys_load(v4_sys_impl *sys_lib) {
     if (!(sys_lib->fnUnbind = (int(*)(v4_sys_bind *source, v4_sys_bind *dest))
         dlsym(sys_lib->handle, "HI_MPI_SYS_UnBind"))) {
         fprintf(stderr, "[v4_sys] Failed to acquire symbol HI_MPI_SYS_UnBind!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(sys_lib->fnGetViVpssMode = (int(*)(v4_sys_oper *mode))
+        dlsym(sys_lib->handle, "HI_MPI_SYS_GetVIVPSSMode"))) {
+        fprintf(stderr, "[v4_sys] Failed to acquire symbol HI_MPI_SYS_GetVIVPSSMode!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(sys_lib->fnSetViVpssMode = (int(*)(v4_sys_oper *mode))
+        dlsym(sys_lib->handle, "HI_MPI_SYS_SetVIVPSSMode"))) {
+        fprintf(stderr, "[v4_sys] Failed to acquire symbol HI_MPI_SYS_SetVIVPSSMode!\n");
         return EXIT_FAILURE;
     }
 

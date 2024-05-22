@@ -23,6 +23,7 @@ char _v4_isp_dev = 0;
 char _v4_venc_dev = 0;
 char _v4_vi_chn = 0;
 char _v4_vi_dev = 0;
+char _v4_vi_pipe = 0;
 char _v4_vpss_grp = 0;
 
 void v4_hal_deinit(void)
@@ -170,16 +171,6 @@ int v4_pipeline_create(char mirror, char flip)
 {
     int ret;
 
-    if (ret = v4_vi.fnSetDeviceConfig(_v4_isp_dev, &v4_config.videv))
-        return ret;
-    if (ret = v4_vi.fnEnableDevice(_v4_isp_dev))
-        return ret;
-
-    if (ret = v4_vi.fnSetChannelConfig(_v4_isp_chn, &v4_config.vichn))
-        return ret;
-    if (ret = v4_vi.fnEnableChannel(_v4_isp_chn))
-        return ret;
-
     {
         v4_vpss_grp group;
         group.imgEnhOn = 0;
@@ -302,7 +293,7 @@ int v4_sensor_config(void) {
     config.device = 0;
     config.input = v4_config.input_mode;
     config.dataRate2X = 0;
-    config.rect = v4_config.vichn.capt;
+    config.rect = v4_config.isp.capt;
 
     if (config.input == V4_SNR_INPUT_MIPI)
         memcpy(&config.mipi, &v4_config.mipi, sizeof(v4_snr_mipi));
@@ -774,11 +765,12 @@ int v4_system_calculate_block(short width, short height, v4_common_pixfmt pixFmt
     unsigned int bufSize = CEILING_2_POWER(width, alignWidth) *
         CEILING_2_POWER(height, alignWidth) *
         (pixFmt == V4_PIXFMT_YUV422SP ? 2 : 1.5);
-    unsigned int headSize;
+    unsigned int headSize = 16 * height;
     if (pixFmt == V4_PIXFMT_YUV422SP || pixFmt >= V4_PIXFMT_RGB_BAYER_8BPP)
-        headSize = 16 * height * 2;
+        headSize *= 2;
     else if (pixFmt == V4_PIXFMT_YUV420SP)
-        headSize = (16 * height * 3) >> 1;
+        headSize *= 3;
+        headSize >>= 1;
     return bufSize + headSize;
 }
 
@@ -797,8 +789,7 @@ void v4_system_deinit(void)
     v4_sensor_deinit();
 }
 
-int v4_system_init(unsigned int alignWidth, unsigned int blockCnt, 
-    unsigned int poolCnt, char *snrConfig)
+int v4_system_init(char *snrConfig)
 {
     int ret;
 
@@ -818,42 +809,83 @@ int v4_system_init(unsigned int alignWidth, unsigned int blockCnt,
     v4_sys.fnExit();
     v4_vb.fnExit();
 
+    unsigned int alignWidth = 16;
     {
-        v4_vb_pool pool = {
-            .count = poolCnt,
-            .comm = {
-                {
-                    .blockSize = v4_system_calculate_block(
-                        v4_config.vichn.capt.width,
-                        v4_config.vichn.capt.height,
-                        v4_config.vichn.pixFmt,
-                        alignWidth),
-                    .blockCnt = blockCnt
-                }
-            }
-        };
+        v4_vb_pool pool;
+        unsigned long long vencSize =  v4_system_calculate_block(
+            v4_config.vichn.size.width, v4_config.vichn.size.height, 
+            v4_config.vichn.pixFmt, alignWidth);
+
+        memset(&pool, 0, sizeof(pool));
+        pool.count = 2;
+        pool.comm[0].blockSize = v4_vb_virawbuffer(v4_config.vichn.size.width,
+            v4_config.vichn.size.height, V4_PIXFMT_YUV420SP,
+            v4_config.vichn.compress, alignWidth);
+        pool.comm[0].blockCnt = 3;
+        pool.comm[1].blockSize = vencSize;
+        pool.comm[1].blockCnt = 2;
+
         if (ret = v4_vb.fnConfigPool(&pool))
-            return ret;
-    }
-    {
-        v4_vb_supl supl = V4_VB_JPEG_MASK;
-        if (ret = v4_vb.fnConfigSupplement(&supl))
             return ret;
     }
     if (ret = v4_vb.fnInit())
         return ret;
 
-    if (ret = v4_sys.fnSetAlignment(&alignWidth))
-        return ret;
     if (ret = v4_sys.fnInit())
         return ret;
+
+    {
+        v4_sys_oper mode[4];
+        v4_sys.fnGetViVpssMode((v4_sys_oper*)mode);
+        mode[_v4_vi_dev] = V4_SYS_OPER_VIOFF_VPSSON;
+        if (ret = v4_sys.fnSetViVpssMode((v4_sys_oper*)mode))
+            return ret;
+    }
 
     if (ret = v4_sensor_config())
         return ret;
 
-    if (ret = v4_isp_drv.obj->pfnRegisterCallback(_v4_isp_dev, &v4_ae_lib, &v4_awb_lib))
+    if (ret = v4_vi.fnSetDeviceConfig(_v4_vi_dev, &v4_config.videv))
+        return ret;
+    if (ret = v4_vi.fnEnableDevice(_v4_vi_dev))
         return ret;
 
+    {
+        v4_vi_bind bind;
+        bind.num = 1;
+        bind.pipeId[0] = _v4_vi_pipe;
+        if (ret = v4_vi.fnBindPipe(_v4_vi_dev, &bind))
+            return ret;
+    }
+
+    {
+        v4_vi_pipe pipe;
+        memset(&pipe, 0, sizeof(pipe));
+        pipe.pixFmt = v4_config.vichn.pixFmt;
+        pipe.compress = v4_config.vichn.compress;
+        pipe.prec = v4_config.mipi.prec;
+        pipe.srcFps = -1;
+        pipe.dstFps = -1;
+        if (ret = v4_vi.fnCreatePipe(_v4_vi_pipe, &pipe))
+            printf("ret: %#x\n", ret);//return ret;
+    }
+    if (ret = v4_vi.fnStartPipe(_v4_vi_pipe))
+        return ret;
+
+    if (ret = v4_vi.fnSetChannelConfig(_v4_isp_chn, &v4_config.vichn))
+        return ret;
+    if (ret = v4_vi.fnEnableChannel(_v4_isp_chn))
+        return ret;
+
+    if (ret = v4_isp_drv.obj->pfnRegisterCallback(_v4_isp_dev, &v4_ae_lib, &v4_awb_lib))
+        return ret;
+    {
+        v4_isp_bus bus;
+        bus.i2c = 0;
+        if (ret = v4_isp_drv.obj->pfnSetBusInfo(_v4_isp_dev, bus))
+            return ret;
+    }
+    
     if (ret = v4_isp.fnRegisterAE(_v4_isp_dev, &v4_ae_lib))
         return ret;
     if (ret = v4_isp.fnRegisterAWB(_v4_isp_dev, &v4_awb_lib))

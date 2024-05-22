@@ -184,8 +184,7 @@ int start_sdk() {
         case HAL_PLATFORM_I6E:  ret = i6_system_init(); break;
         case HAL_PLATFORM_I6C:  ret = i6c_system_init(); break;
         case HAL_PLATFORM_I6F:  ret = i6f_system_init(); break;
-        case HAL_PLATFORM_V4:   ret = v4_system_init(app_config.align_width, 
-            app_config.blk_cnt, app_config.max_pool_cnt, 
+        case HAL_PLATFORM_V4:   ret = v4_system_init(
             app_config.sensor_config); break;
     }
     if (ret) {
