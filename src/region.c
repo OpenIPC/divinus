@@ -191,7 +191,7 @@ int start_region_handler() {
     pthread_attr_init(&thread_attr);
     size_t stacksize;
     pthread_attr_getstacksize(&thread_attr, &stacksize);
-    size_t new_stacksize = 16 * 1024;
+    size_t new_stacksize = 256 * 1024;
     if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
         printf(tag "Can't set stack size %zu\n", new_stacksize);
     }

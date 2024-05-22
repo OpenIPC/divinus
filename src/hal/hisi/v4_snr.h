@@ -9,18 +9,24 @@
 #define V4_SNR_IOC_MAGIC 'm'
 #define V4_SNR_LVDS_LANE_NUM 4
 #define V4_SNR_MIPI_LANE_NUM 4
-#define V4_SNR_WDR_VC_NUM 4
+#define V4_SNR_WDR_VC_NUM 2
 
 enum {
     V4_SNR_CMD_CONF_DEV = 1,
-    V4_SNR_CMD_CONF_CLKEDGE,
-    V4_SNR_CMD_CONF_OUTMSB,
-    V4_SNR_CMD_CONF_CMV,
+    V4_SNR_CMD_CONF_CMV = 4,
     V4_SNR_CMD_RST_SENS,
     V4_SNR_CMD_UNRST_SENS,
-    V4_SNR_CMD_RST_INTF,
-    V4_SNR_CMD_UNRST_INTF,
-    V4_SNR_CMD_CONF_CROP
+    V4_SNR_CMD_RST_MIPI,
+    V4_SNR_CMD_UNRST_MIPI,
+    V4_SNR_CMD_RST_SLVS,
+    V4_SNR_CMD_UNRST_SLVS,
+    V4_SNR_CMD_CONF_HSMODE,
+    V4_SNR_CMD_CLKON_MIPI,
+    V4_SNR_CMD_CLKOFF_MIPI,
+    V4_SNR_CMD_CLKON_SLVS,
+    V4_SNR_CMD_CLKOFF_SLVS,
+    V4_SNR_CMD_CLKON_SENS,
+    V4_SNR_CMD_CLKOFF_SENS
 };
 
 typedef enum {
@@ -89,7 +95,7 @@ typedef struct
     /* Each lane has two virtual channel, each has four params
        If syncSavOn is false: SOF, EOF, SOL, EOL
        If syncSavOn is true: invalid sav, invalid eav, valid sav, valid eav  */
-    unsigned short syncCode[4 * 2 * 4];
+    unsigned short syncCode[V4_SNR_LVDS_LANE_NUM * V4_SNR_WDR_VC_NUM * 4];
 } v4_snr_lvds;
 
 typedef struct {

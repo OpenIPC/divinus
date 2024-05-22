@@ -2,12 +2,66 @@
 
 const double inv255 = 1.0 / 255.0;
 
-static SFT sft;
-static SFT_Image canvas;
-static SFT_LMetrics lmtx;
-static hal_bitmap bitmap;
+SFT sft;
+SFT_Image canvas;
+SFT_LMetrics lmtx;
+hal_bitmap bitmap;
 
-static void text_copy_rendered(SFT_Image *dest, const SFT_Image *source, int x0, int y0, int color)
+int utf8_to_utf32(const unsigned char *utf8, 
+    unsigned int *utf32, int max)
+{
+    unsigned int c;
+    int i = 0;
+    --max;
+    while (*utf8)
+    {
+        if (i >= max)
+            return 0;
+        if (!(*utf8 & 0x80U))
+        {
+            utf32[i++] = *utf8++;
+        }
+        else if ((*utf8 & 0xe0U) == 0xc0U)
+        {
+            c = (*utf8++ & 0x1fU) << 6;
+            if ((*utf8 & 0xc0U) != 0x80U)
+                return 0;
+            utf32[i++] = c + (*utf8++ & 0x3fU);
+        }
+        else if ((*utf8 & 0xf0U) == 0xe0U)
+        {
+            c = (*utf8++ & 0x0fU) << 12;
+            if ((*utf8 & 0xc0U) != 0x80U)
+                return 0;
+            c += (*utf8++ & 0x3fU) << 6;
+            if ((*utf8 & 0xc0U) != 0x80U)
+                return 0;
+            utf32[i++] = c + (*utf8++ & 0x3fU);
+        }
+        else if ((*utf8 & 0xf8U) == 0xf0U)
+        {
+            c = (*utf8++ & 0x07U) << 18;
+            if ((*utf8 & 0xc0U) != 0x80U)
+                return 0;
+            c += (*utf8++ & 0x3fU) << 12;
+            if ((*utf8 & 0xc0U) != 0x80U)
+                return 0;
+            c += (*utf8++ & 0x3fU) << 6;
+            if ((*utf8 & 0xc0U) != 0x80U)
+                return 0;
+            c += (*utf8++ & 0x3fU);
+            if ((c & 0xFFFFF800U) == 0xD800U)
+                return 0;
+            utf32[i++] = c;
+        }
+        else
+            return 0;
+    }
+    utf32[i] = 0;
+    return i;
+}
+
+void text_copy_rendered(SFT_Image *dest, const SFT_Image *source, int x0, int y0, int color)
 {
     unsigned short maskr = (color & 0x7C00) >> 10;
     unsigned short maskg = (color & 0x3E0) >> 5;
@@ -30,7 +84,7 @@ static void text_copy_rendered(SFT_Image *dest, const SFT_Image *source, int x0,
     }
 }
 
-static int text_load_font(SFT *sft, const char *path, double size, SFT_LMetrics *lmtx)
+int text_load_font(SFT *sft, const char *path, double size, SFT_LMetrics *lmtx)
 {
     SFT_Font *font = sft_loadfile(path);
     if (font == NULL)
@@ -46,7 +100,7 @@ static int text_load_font(SFT *sft, const char *path, double size, SFT_LMetrics 
     return EXIT_SUCCESS;
 }
 
-static int text_load_glyph(const SFT *sft, SFT_UChar codepoint, SFT_Glyph *glyph, SFT_GMetrics *metrics)
+int text_load_glyph(const SFT *sft, SFT_UChar codepoint, SFT_Glyph *glyph, SFT_GMetrics *metrics)
 {
     if (sft_lookup(sft, codepoint, glyph) < 0)
         TEXT_ERROR("sft_lookup failed");
@@ -55,7 +109,7 @@ static int text_load_glyph(const SFT *sft, SFT_UChar codepoint, SFT_Glyph *glyph
     return EXIT_SUCCESS;
 }
 
-static void text_new_rendered(SFT_Image *image, int width, int height, int color)
+void text_new_rendered(SFT_Image *image, int width, int height, int color)
 {
     size_t size = (size_t)(width * height * 2);
     void *pixels = malloc(size);
@@ -68,7 +122,7 @@ static void text_new_rendered(SFT_Image *image, int width, int height, int color
         ((unsigned short*)pixels)[i] = color;
 }
 
-static inline void text_dim_rendered(double *margin, double *height, double *width, const char* text)
+void text_dim_rendered(double *margin, double *height, double *width, const char* text)
 {
     double lwidth = 0;
     *margin = 0;

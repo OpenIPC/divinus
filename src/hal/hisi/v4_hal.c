@@ -313,9 +313,19 @@ int v4_sensor_config(void) {
     if (fd < 0)
         V4_ERROR("Opening imaging device has failed!\n");
 
-    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_INTF, unsigned int), &config.device))
+    int laneMode = 0;
+    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_HSMODE, int), &laneMode))
+        V4_ERROR("Configuring imaging device lane-splitting mode has failed!\n");
+
+    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_MIPI, unsigned int), &config.device))
+        V4_ERROR("Enabling imaging device clocking has failed!\n");
+
+    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_MIPI, unsigned int), &config.device))
         V4_ERROR("Resetting imaging device has failed!\n");
-    
+
+    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_SENS, unsigned int), &config.device))
+        V4_ERROR("Enabling imaging sensor clocking has failed!\n");
+
     if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device))
         V4_ERROR("Resetting imaging sensor has failed!\n");
 
@@ -324,18 +334,33 @@ int v4_sensor_config(void) {
 
     usleep(10000);
 
-    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_INTF, unsigned int), &config.device))
-        V4_ERROR("Unresetting imaging device has failed!\n");
+    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_MIPI, unsigned int), &config.device);
 
-    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_SENS, unsigned int), &config.device))
-        V4_ERROR("Unresetting imaging sensor has failed!\n");
+    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_SENS, unsigned int), &config.device);
 
     close(fd);
 
     return EXIT_SUCCESS;
 }
 
-int v4_sensor_cb_empty(void) { return EXIT_SUCCESS; }
+void v4_sensor_deconfig(void) {
+    v4_snr_dev config;
+    config.device = 0;
+
+    int fd = open(V4_SNR_ENDPOINT, O_RDWR);
+    if (fd < 0)
+        fprintf(stderr, "[v4_hal] Opening imaging device has failed!\n");
+
+    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKOFF_SENS, unsigned int), &config.device);
+
+    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device);
+
+    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_MIPI, unsigned int), &config.device);
+
+    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_MIPI, unsigned int), &config.device);
+
+    close(fd);
+}
 
 void v4_sensor_deinit(void)
 {
@@ -740,7 +765,7 @@ void *v4_video_thread(void)
 int v4_system_calculate_block(short width, short height, v4_common_pixfmt pixFmt,
     unsigned int alignWidth)
 {
-    if (alignWidth & 0b0001111) {
+    if (alignWidth & 0b10001111) {
         fprintf(stderr, "[v4_sys] Alignment width (%d) "
             "is invalid!\n", alignWidth);
         return -1;
@@ -763,6 +788,8 @@ void v4_system_deinit(void)
     v4_isp.fnUnregisterAE(_v4_isp_dev, &v4_awb_lib);
 
     v4_isp_drv.obj->pfnUnRegisterCallback(_v4_isp_dev, &v4_ae_lib, &v4_awb_lib);
+
+    v4_sensor_deconfig();
 
     v4_sys.fnExit();
     v4_vb.fnExit();
@@ -824,7 +851,7 @@ int v4_system_init(unsigned int alignWidth, unsigned int blockCnt,
     if (ret = v4_sensor_config())
         return ret;
 
-    if (!(v4_isp_drv.obj->pfnRegisterCallback(_v4_isp_dev, &v4_ae_lib, &v4_awb_lib)))
+    if (ret = v4_isp_drv.obj->pfnRegisterCallback(_v4_isp_dev, &v4_ae_lib, &v4_awb_lib))
         return ret;
 
     if (ret = v4_isp.fnRegisterAE(_v4_isp_dev, &v4_ae_lib))
