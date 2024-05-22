@@ -185,7 +185,8 @@ int start_sdk() {
         case HAL_PLATFORM_I6C:  ret = i6c_system_init(); break;
         case HAL_PLATFORM_I6F:  ret = i6f_system_init(); break;
         case HAL_PLATFORM_V4:   ret = v4_system_init(
-            app_config.sensor_config); break;
+            app_config.sensor_config, app_config.mirror, 
+            app_config.flip); break;
     }
     if (ret) {
         fprintf(stderr, "System initialization failed with %#x!\n%s\n",
@@ -227,8 +228,7 @@ int start_sdk() {
             height, framerate); break;
         case HAL_PLATFORM_I6F:  ret = i6f_pipeline_create(0, width,
             height, framerate); break;
-        case HAL_PLATFORM_V4:   ret = v4_pipeline_create(app_config.mirror,
-            app_config.flip); break;
+        case HAL_PLATFORM_V4:   ret = v4_pipeline_create(); break;
     }
     if (ret) {
         fprintf(stderr, "Pipeline creation failed with %#x!\n%s\n",

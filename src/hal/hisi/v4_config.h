@@ -33,9 +33,6 @@ typedef struct {
 
     // [vi_dev]
     v4_vi_dev videv;
-
-    // [vi_chn]
-    v4_vi_chn vichn;
 } v4_config_impl;
 
 extern v4_config_impl v4_config;
@@ -296,115 +293,12 @@ static enum ConfigError v4_parse_config_videv(
     if (err != CONFIG_OK)
         return err;
 
-    for (char i = 0; i < 4; i++)
-        device->adChn[i] = -1;
-    device->wdrCacheLine = v4_config.isp.capt.width;
-
-    return CONFIG_OK;
-}
-
-static enum ConfigError v4_parse_config_vichn(
-    struct IniConfig *ini, const char *section, v4_vi_chn *channel) {
-    enum ConfigError err;
-    {
-        const char *possible_values[] = {
-            "PIXEL_FORMAT_RGB_444",
-            "PIXEL_FORMAT_RGB_555",
-            "PIXEL_FORMAT_RGB_565",
-            "PIXEL_FORMAT_RGB_888",
-            "PIXEL_FORMAT_BGR_444",
-            "PIXEL_FORMAT_BGR_555",
-            "PIXEL_FORMAT_BGR_565",
-            "PIXEL_FORMAT_BGR_888",
-            "PIXEL_FORMAT_ARGB_1555",
-            "PIXEL_FORMAT_ARGB_444",
-            "PIXEL_FORMAT_ARGB_8565",
-            "PIXEL_FORMAT_ARGB_8888",
-            "PIXEL_FORMAT_ARGB_2BPP",
-            "PIXEL_FORMAT_ABGR_1555",
-            "PIXEL_FORMAT_ABGR_444",
-            "PIXEL_FORMAT_ABGR_8565",
-            "PIXEL_FORMAT_ABGR_8888",
-            "PIXEL_FORMAT_RGB_BAYER_8BPP",
-            "PIXEL_FORMAT_RGB_BAYER_10BPP",
-            "PIXEL_FORMAT_RGB_BAYER_12BPP",
-            "PIXEL_FORMAT_RGB_BAYER_14BPP",
-            "PIXEL_FORMAT_RGB_BAYER_16BPP",
-            "PIXEL_FORMAT_YUV_PLANAR_422",
-            "PIXEL_FORMAT_YUV_PLANAR_420",
-            "PIXEL_FORMAT_YUV_PLANAR_444",
-            "PIXEL_FORMAT_YUV_SEMIPLANAR_422",
-            "PIXEL_FORMAT_YUV_SEMIPLANAR_420",
-            "PIXEL_FORMAT_YUV_SEMIPLANAR_444",
-            "PIXEL_FORMAT_YUV_SEMIPLANAR_422",
-            "PIXEL_FORMAT_YUV_SEMIPLANAR_420",
-            "PIXEL_FORMAT_YUV_SEMIPLANAR_444",
-            "PIXEL_FORMAT_YUYV_PACKAGE_422",
-            "PIXEL_FORMAT_YVYU_PACKAGE_422",
-            "PIXEL_FORMAT_UYVY_PACKAGE_422",
-            "PIXEL_FORMAT_VYUY_PACKAGE_422",
-            "PIXEL_FORMAT_YYUV_PACKAGE_422",
-            "PIXEL_FORMAT_YYVU_PACKAGE_422",
-            "PIXEL_FORMAT_UVYY_PACKAGE_422",
-            "PIXEL_FORMAT_VUTT_PACKAGE_422",
-            "PIXEL_FORMAT_VY1UY0_PACKAGE_422",
-            "PIXEL_FORMAT_YUV_400",
-            "PIXEL_FORMAT_UV_420",
-            "PIXEL_FORMAT_BGR_PLANAR_888",
-            "PIXEL_FORMAT_HSV_888",
-            "PIXEL_FORMAT_HSV_PLANAR_888",
-            "PIXEL_FORMAT_LAB_888",
-            "PIXEL_FORMAT_LAB_PLANAR_888",
-            "PIXEL_FORMAT_SBC1",
-            "PIXEL_FORMAT_SBC2",
-            "PIXEL_FORMAT_SBC2_PLANAR",
-            "PIXEL_FORMAT_SBC3_PLANAR",
-            "PIXEL_FORMAT_S16C1",
-            "PIXEL_FORMAT_U8C1",
-            "PIXEL_FORMAT_U16C1",
-            "PIXEL_FORMAT_S32C1",
-            "PIXEL_FORMAT_U32C1",
-            "PIXEL_FORMAT_U64C1",
-            "PIXEL_FORMAT_S64C1"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            ini, section, "pixformat", (void*)&channel->pixFmt,
-            possible_values, count, 0);
-        if (err != CONFIG_OK)
-            channel->pixFmt = V4_PIXFMT_YUV422SP;
-    }
-    {
-        const char *possible_values[] = {
-            "COMPRESS_MODE_NONE", "COMPRESS_MODE_SEG", "COMPRESS_MODE_TILE",
-            "COMPRESS_MODE_LINE", "COMPRESS_MODE_FRAME"};
-        const int count = sizeof(possible_values) / sizeof(const char *);
-        err = parse_enum(
-            ini, section, "compressmode", (void*)&channel->compress,
-            possible_values, count, 0);
-        if (err != CONFIG_OK)
-            return err;
-    }
-    err = parse_int(
-        ini, section, "srcframeRate", INT_MIN, INT_MAX, &channel->srcFps);
-    if (err != CONFIG_OK)
-        return err;
-    err = parse_int(
-        ini, section, "framerate", INT_MIN, INT_MAX, &channel->dstFps);
-    if (err != CONFIG_OK)
-        return err;
     return CONFIG_OK;
 }
 
 static enum ConfigError v4_parse_config_isp(
     struct IniConfig *ini, const char *section, v4_isp_dev *isp) {
     enum ConfigError err;
-    parse_int(ini, "isp_image", "isp_x", 0, INT_MAX, &isp->capt.x);
-
-    parse_int(ini, "isp_image", "isp_y", 0, INT_MAX, &isp->capt.y);
-
-    parse_int(ini, "isp_image", "isp_w", 0, INT_MAX, &isp->capt.width);
-
-    parse_int(ini, "isp_image", "isp_h", 0, INT_MAX, &isp->capt.height);
 
     int value;
     err = parse_int(
@@ -537,13 +431,13 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
     if (err != CONFIG_OK)
         goto RET_ERR;
 
-    // [vi_chn]
-    v4_parse_config_vichn(&ini, "vi_chn", &config->vichn);
-
     // [vi_dev]
     err = v4_parse_config_videv(&ini, "vi_dev", &config->videv);
     if (err != CONFIG_OK)
         goto RET_ERR;
+
+    for (char i = 0; i < 4; i++)
+        config->videv.adChn[i] = -1;
 
     // Fallbacks for default sensor configuration files
     if (!config->isp.size.width)
@@ -560,6 +454,8 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
         config->videv.bayerSize.width = config->isp.capt.width;
     if (!config->videv.bayerSize.height)
         config->videv.bayerSize.height = config->isp.capt.height;
+
+    config->videv.wdrCacheLine = v4_config.isp.capt.width;
 
     if (!config->isp.wdr)
         config->isp.wdr = config->mode;

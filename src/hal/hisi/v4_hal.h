@@ -37,7 +37,7 @@ int v4_channel_unbind(char index);
 
 void *v4_image_thread(void);
 
-int v4_pipeline_create(char mirror, char flip);
+int v4_pipeline_create(void);
 void v4_pipeline_destroy(void);
 
 int v4_region_create(char handle, hal_rect rect);
@@ -58,4 +58,4 @@ void *v4_video_thread(void);
 int v4_system_calculate_block(short width, short height, v4_common_pixfmt pixFmt,
     unsigned int alignWidth);
 void v4_system_deinit(void);
-int v4_system_init(char *snrConfig);
+int v4_system_init(char *snrConfig, char mirror, char flip);
