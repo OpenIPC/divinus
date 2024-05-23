@@ -395,7 +395,7 @@ int v4_region_setbitmap(int handle, hal_bitmap *bitmap)
 int v4_sensor_config(void) {
     int fd;
     v4_snr_dev config;
-    memset(&config, 0, sizeof(config));
+    //memset(&config, 0, sizeof(config));
     config.device = 0;
     config.input = v4_config.input_mode;
     config.rect.width = v4_config.isp.capt.width;

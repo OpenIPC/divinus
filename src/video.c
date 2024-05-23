@@ -233,7 +233,6 @@ int start_sdk() {
         }
         pthread_attr_destroy(&thread_attr);
     }
-    usleep(1000);
 
     if (app_config.mp4_enable) {
         int index = take_next_free_channel(true);

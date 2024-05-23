@@ -2,6 +2,11 @@
 
 #include "v4_common.h"
 
+extern int (*fnISP_AlgRegisterDehaze)(int);
+extern int (*fnISP_AlgRegisterDrc)(int);
+extern int (*fnISP_AlgRegisterLdci)(int);
+extern int (*fnMPI_ISP_IrAutoRunOnce)(int, void*);
+
 typedef enum {
     V4_ISP_DIR_NORMAL,
     V4_ISP_DIR_MIRROR,
@@ -60,6 +65,30 @@ static int v4_isp_load(v4_isp_impl *isp_lib) {
          !(isp_lib->handleDehaze = dlopen("libdehaze.so", RTLD_LAZY | RTLD_GLOBAL)) ||
          !(isp_lib->handle = dlopen("libhi_isp.so", RTLD_LAZY | RTLD_GLOBAL)))) {
         fprintf(stderr, "[v4_isp] Failed to load library!\nError: %s\n", dlerror());
+        return EXIT_FAILURE;
+    }
+
+    if (!(fnISP_AlgRegisterDehaze = (int(*)(int))
+        dlsym(isp_lib->handleDehaze, "ISP_AlgRegisterDehaze"))) {
+        fprintf(stderr, "[v4_isp] Failed to acquire symbol ISP_AlgRegisterDehaze!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(fnISP_AlgRegisterDrc = (int(*)(int))
+        dlsym(isp_lib->handleDrc, "ISP_AlgRegisterDrc"))) {
+        fprintf(stderr, "[v4_isp] Failed to acquire symbol ISP_AlgRegisterDrc!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(fnISP_AlgRegisterLdci = (int(*)(int))
+        dlsym(isp_lib->handleLdci, "ISP_AlgRegisterLdci"))) {
+        fprintf(stderr, "[v4_isp] Failed to acquire symbol ISP_AlgRegisterLdci!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(fnMPI_ISP_IrAutoRunOnce = (int(*)(int, void*))
+        dlsym(isp_lib->handleIrAuto, "MPI_ISP_IrAutoRunOnce"))) {
+        fprintf(stderr, "[v4_isp] Failed to acquire symbol MPI_ISP_IrAutoRunOnce!\n");
         return EXIT_FAILURE;
     }
 

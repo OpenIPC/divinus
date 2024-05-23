@@ -462,7 +462,7 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
     if (!config->videv.bayerSize.height)
         config->videv.bayerSize.height = config->isp.capt.height;
 
-    config->videv.wdrCacheLine = v4_config.isp.capt.width;
+    config->videv.wdrCacheLine = v4_config.isp.capt.height;
 
     if (!config->isp.wdr)
         config->isp.wdr = config->mode;
