@@ -76,18 +76,22 @@ typedef enum {
 } v4_snr_mwdr;
 
 typedef struct {
+    v4_snr_lfid type;
+    unsigned char outputFil;
+} v4_snr_fid;
+
+typedef struct {
     v4_snr_lvsynct type;
     unsigned short hBlank1;
     unsigned short hBlank2; 
 } v4_snr_lvsync;
 
-typedef struct
-{
+typedef struct {
     v4_common_prec prec;
     v4_snr_lwdr wdr;
     int syncSavOn;
-    v4_snr_lvsynct vsync;
-    v4_snr_lfid fid;
+    v4_snr_lvsync vsync;
+    v4_snr_fid fid;
     int dataBeOn;
     int syncBeOn;
     // Value -1 signifies a lane is disabled

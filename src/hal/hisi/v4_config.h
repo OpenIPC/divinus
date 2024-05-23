@@ -402,24 +402,27 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
             config->input_mode = V4_SNR_INPUT_MIPI;
     }
 
-    if (config->input_mode == V4_VI_INTF_MIPI) {
+    if (config->input_mode == V4_SNR_INPUT_MIPI) {
         // [mipi]
         {
-            const char *possible_values[] = {
-                "RAW_DATA_8BIT",                "RAW_DATA_10BIT",       "RAW_DATA_12BIT",
-                "RAW_DATA_14BIT",               "RAW_DATA_16BIT",       "RAW_DATA_YUV420_8BIT_NORMAL",
-                "RAW_DATA_YUV420_8BIT_LEGACY",  "RAW_DATA_YUV422_8BIT"};
-            const int count = sizeof(possible_values) / sizeof(const char *);
-            err = parse_enum(
-                &ini, "mode", "raw_bitness", (void*)&config->mipi.prec,
-                possible_values, count, 0);
-            if (err != CONFIG_OK)
-                goto RET_ERR;
+            int rawBitness;
+            parse_int(&ini, "mode", "raw_bitness", 0, INT_MAX, &rawBitness);
+            switch (rawBitness) {
+                case 8:  config->mipi.prec = V4_PREC_8BPP;  break;
+                case 10: config->mipi.prec = V4_PREC_10BPP; break;
+                case 12: config->mipi.prec = V4_PREC_12BPP; break;
+                case 14: config->mipi.prec = V4_PREC_14BPP; break;
+                case 16: config->mipi.prec = V4_PREC_16BPP; break;
+                default: config->mipi.prec = V4_PREC_10BPP; break;
+            }
         }
-        err = parse_array(&ini, "mipi", "lane_id", (int*)&config->mipi.laneId, 8);
+        int laneId[4];
+        err = parse_array(&ini, "mipi", "lane_id", (int*)&laneId, 4);
         if (err != CONFIG_OK)
             goto RET_ERR;
-    } else if (config->input_mode == V4_VI_INTF_LVDS) {
+        else for (char i = 0; i < 4; i++)
+            config->mipi.laneId[i] = laneId[i];
+    } else if (config->input_mode == V4_SNR_INPUT_LVDS) {
         // [lvds]
         err = v4_parse_config_lvds(&ini, "lvds", &config->lvds);
         if (err != CONFIG_OK)

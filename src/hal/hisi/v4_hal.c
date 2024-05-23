@@ -215,11 +215,6 @@ void v4_pipeline_destroy(void)
         v4_vpss.fnStopGroup(grp);
         v4_vpss.fnDestroyGroup(grp);
     }
-
-    v4_vi.fnDisableChannel(_v4_vi_chn);
-    v4_vi.fnDisableDevice(_v4_vi_dev);
-
-    v4_isp.fnExit(_v4_isp_dev);
 }
 
 int v4_region_create(char handle, hal_rect rect)
@@ -295,7 +290,6 @@ int v4_sensor_config(void) {
     config.input = v4_config.input_mode;
     config.rect.width = v4_config.isp.capt.width;
     config.rect.height = v4_config.isp.capt.height;
-
     if (config.input == V4_SNR_INPUT_MIPI)
         memcpy(&config.mipi, &v4_config.mipi, sizeof(v4_snr_mipi));
     else if (config.input == V4_SNR_INPUT_LVDS)
@@ -306,23 +300,20 @@ int v4_sensor_config(void) {
         V4_ERROR("Opening imaging device has failed!\n");
 
     int laneMode = 0;
-    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_HSMODE, int), &laneMode))
-        V4_ERROR("Configuring imaging device lane-splitting mode has failed!\n");
+    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_HSMODE, int), &laneMode);
 
-    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_MIPI, unsigned int), &config.device))
-        V4_ERROR("Enabling imaging device clocking has failed!\n");
+    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_MIPI, unsigned int), &config.device);
 
-    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_MIPI, unsigned int), &config.device))
-        V4_ERROR("Resetting imaging device has failed!\n");
+    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_MIPI, unsigned int), &config.device);
 
-    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_SENS, unsigned int), &config.device))
-        V4_ERROR("Enabling imaging sensor clocking has failed!\n");
+    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_SENS, unsigned int), &config.device);
 
-    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device))
-        V4_ERROR("Resetting imaging sensor has failed!\n");
-
-    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_DEV, v4_snr_dev), &config) && close(fd))
+    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device);
+    
+    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_DEV, v4_snr_dev), &config))
         V4_ERROR("Configuring imaging device has failed!\n");
+
+    usleep(10000);
 
     ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_MIPI, unsigned int), &config.device);
 
@@ -786,7 +777,7 @@ void v4_system_deinit(void)
     v4_vi.fnStopPipe(_v4_vi_pipe);
     v4_vi.fnDestroyPipe(_v4_vi_pipe);
 
-    v4_vi.fnDisableChannel(_v4_vi_chn);
+    v4_vi.fnDisableChannel(_v4_vi_pipe, _v4_vi_chn);
 
     v4_sensor_deconfig();
 
@@ -892,8 +883,9 @@ int v4_system_init(char *snrConfig, char mirror, char flip)
 
     {
         v4_vi_chn channel;
-        channel.size = v4_config.isp.size;
-        channel.pixFmt = V4_PIXFMT_RGB_BAYER_8BPP + v4_config.mipi.prec;
+        channel.size.width = v4_config.isp.capt.width;
+        channel.size.height = v4_config.isp.capt.height;
+        channel.pixFmt = V4_PIXFMT_YVU420SP;
         channel.dynRange = V4_HDR_SDR8;
         channel.videoFmt = 0;
         channel.compress = V4_COMPR_NONE;
@@ -902,10 +894,10 @@ int v4_system_init(char *snrConfig, char mirror, char flip)
         channel.depth = 0;
         channel.srcFps = -1;
         channel.dstFps = -1;
-        if (ret = v4_vi.fnSetChannelConfig(_v4_vi_chn, &channel))
+        if (ret = v4_vi.fnSetChannelConfig(_v4_vi_pipe, _v4_vi_chn, &channel))
             return ret;
     }
-    if (ret = v4_vi.fnEnableChannel(_v4_vi_chn))
+    if (ret = v4_vi.fnEnableChannel(_v4_vi_pipe, _v4_vi_chn))
         return ret;
 
     {
