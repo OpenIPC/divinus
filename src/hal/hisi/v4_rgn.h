@@ -12,6 +12,13 @@ typedef enum {
 } v4_rgn_blk;
 
 typedef enum {
+    V4_RGN_DEST_MAIN,
+    V4_RGN_DEST_MPF0,
+    V4_RGN_DEST_MPF1,
+    V4_RGN_DEST_END
+} v4_rgn_dest;
+
+typedef enum {
     V4_RGN_TYPE_OVERLAY,
     V4_RGN_TYPE_COVER,
     V4_RGN_TYPE_COVEREX,
@@ -43,6 +50,8 @@ typedef struct {
     int quality;
     int qualOff;
     v4_rgn_inv invert;
+    v4_rgn_dest attachDest;
+    unsigned short colorLut[2];
 } v4_rgn_ovlc;
 
 typedef struct {
@@ -59,6 +68,7 @@ typedef struct {
     };
     unsigned int color;
     unsigned int layer;
+    int absOrRatioCoord;
 } v4_rgn_covc;
 
 typedef struct {
@@ -67,7 +77,18 @@ typedef struct {
     unsigned int bgAlpha;
     // Accepts values from 0-15
     unsigned int layer;
+    unsigned short colorLut[2];
 } v4_rgn_ovlxc;
+
+typedef struct {
+    int quadRangleOn;
+    union {
+        v4_common_rect rect;
+        v4_rgn_qdr quadR;
+    };
+    unsigned int color;
+    unsigned int layer;
+} v4_rgn_covxc;
 
 typedef struct {
     v4_common_rect rect;
@@ -82,7 +103,7 @@ typedef struct {
     union {
         v4_rgn_ovlc overlay;
         v4_rgn_covc cover;
-        v4_rgn_covc coverex;
+        v4_rgn_covxc coverex;
         v4_rgn_ovlxc overlayex;
         v4_rgn_mosc mosaic;
     };

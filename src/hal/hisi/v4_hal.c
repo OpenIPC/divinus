@@ -338,10 +338,13 @@ int v4_region_create(char handle, hal_rect rect)
     v4_rgn_cnf region, regionCurr;
     v4_rgn_chn attrib, attribCurr;
 
+    memset(&region, 0, sizeof(region));
     region.type = V4_RGN_TYPE_OVERLAY;
-    region.overlay.pixFmt = V4_PIXFMT_ABGR1555;
+    region.overlay.pixFmt = V4_PIXFMT_ARGB1555;
     region.overlay.size.width = rect.width;
     region.overlay.size.height = rect.height;
+    region.overlay.canvas = handle;
+
     if (ret = v4_rgn.fnGetRegionConfig(handle, &regionCurr)) {
         fprintf(stderr, "[v4_rgn] Creating region %d...\n", handle);
         if (ret = v4_rgn.fnCreateRegion(handle, &region))
@@ -372,6 +375,7 @@ int v4_region_create(char handle, hal_rect rect)
     attrib.overlay.point.x = rect.x;
     attrib.overlay.point.y = rect.y;
     attrib.overlay.layer = 7;
+    attrib.overlay.attachDest = V4_RGN_DEST_MAIN;
 
     v4_rgn.fnAttachChannel(handle, &channel, &attrib);
 

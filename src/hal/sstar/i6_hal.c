@@ -323,6 +323,7 @@ int i6_region_create(char handle, hal_rect rect)
     region.pixFmt = I6_RGN_PIXFMT_ARGB1555;
     region.size.width = rect.width;
     region.size.height = rect.height;
+
     if (ret = i6_rgn.fnGetRegionConfig(handle, &regionCurr)) {
         fprintf(stderr, "[i6_rgn] Creating region %d...\n", handle);
         if (ret = i6_rgn.fnCreateRegion(handle, &region))
