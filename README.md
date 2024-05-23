@@ -27,7 +27,7 @@ The information is being compiled.
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
-_* At the moment, only text overlays are handled, eventually bitmaps, matricial formats and covers are to follow
+_* At the moment, only text overlays are handled, eventually bitmaps, matricial formats and covers are to follow_
 
 
 ### Technical support and donations
