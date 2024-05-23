@@ -10,18 +10,20 @@ The information is being compiled.
 
 ### Supported hardware and features
 
-| SoC Family  | Audio Stream | JPEG Snapshot | RTSP Stream | Motion Detect | On-Screen Display |
-|-------------|:------------:|:-------------:|:-----------:|:-------------:|:-----------------:|
-| Hi3516CV500 | ✗            | ✔️             | ✔️           | ✗             | ✗                 |
-| Hi3516EV200 | ✗            | ✔️             | ✔️           | ✗             | ✗                 |
-| Hi3516EV300 | ✗            | ✔️             | ✔️           | ✗             | ✗                 |
-| Hi3519AV100 | ✗            | ✔️             | ✔️           | ✗             | ✗                 |
-| Hi3559AV100 | ✗            | ✔️             | ✔️           | ✗             | ✗                 |
-| infinity6   | ✗            | ✔️             | ✔️           | ✗             | ✔️                 |
-| infinity6b0 | ✗            | ✔️             | ✔️           | ✗             | ✔️                 |
-| infinity6c  | ✗            | ✔️             | ✔️           | ✗             | ✔️                 |
-| infinity6e  | ✗            | ✔️             | ✔️           | ✗             | ✔️                 |
-| infinity6f  | ✗            | ✔️             | ✔️           | ✗             | ✔️                 |
+| SoC Family              | Audio Stream | JPEG Snapshot | RTSP Stream | Motion Detect | On-Screen Display |
+|-------------------------|:------------:|:-------------:|:-----------:|:-------------:|:-----------------:|
+| Hi3516AV300/CV500/DV300 | ✗            | ✔️           | ✔️          | ✗            | ✗                 |
+| Hi3516DV200             | ✗            | ✔️           | ✔️          | ✗            | ✗                 |
+| Hi3516EV200/300         | ✗            | ✔️           | ✔️          | ✗            | ✗                 |
+| Hi3518EV300             | ✗            | ✔️           | ✔️          | ✗            | ✗                 |
+| GK7605V100              | ✗            | ✔️           | ✔️          | ✗            | ✗                 |
+| GK7205V200/300          | ✗            | ✔️           | ✔️          | ✗            | ✗                 |
+| GK7202V300              | ✗            | ✔️           | ✔️          | ✗            | ✗                 |
+| Hi3519AV100             | ✗            | ✔️           | ✔️          | ✗            | ✗                 |
+| Hi3559AV100             | ✗            | ✔️           | ✔️          | ✗            | ✗                 |
+| infinity6/6b0/6e        | ✗            | ✔️           | ✔️          | ✗            | ✔️                |
+| infinity6c              | ✗            | ✔️           | ✔️          | ✗            | ✔️                |
+| infinity6f              | ✗            | ✔️           | ✔️          | ✗            | ✔️                |
 
 _✔️ - supported, ✗ - not supported, ⁿ/ₐ - not supported by hardware_
 
