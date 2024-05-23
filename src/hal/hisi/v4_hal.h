@@ -13,6 +13,7 @@
 #include "v4_vpss.h"
 
 #include <fcntl.h>
+#include <pthread.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -28,7 +29,7 @@ void v4_audio_deinit(void);
 int v4_audio_init(void);
 
 int v4_channel_bind(char index);
-int v4_channel_create(char index, short width, short height, char framerate);
+int v4_channel_create(char index, short width, short height, char mirror, char flip, char framerate);
 void v4_channel_disable(char index);
 int v4_channel_enabled(char index);
 int v4_channel_in_mainloop(char index);
@@ -44,6 +45,7 @@ int v4_region_create(char handle, hal_rect rect);
 void v4_region_destroy(char handle);
 int v4_region_setbitmap(int handle, hal_bitmap *bitmap);
 
+void v4_sensor_deconfig(void);
 int v4_sensor_config(void);
 void v4_sensor_deinit(void);
 int v4_sensor_init(char *name, char *obj);
@@ -58,4 +60,4 @@ void *v4_video_thread(void);
 int v4_system_calculate_block(short width, short height, v4_common_pixfmt pixFmt,
     unsigned int alignWidth);
 void v4_system_deinit(void);
-int v4_system_init(char *snrConfig, char mirror, char flip);
+int v4_system_init(char *snrConfig);

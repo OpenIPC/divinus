@@ -16,6 +16,7 @@ typedef enum {
     V4_VENC_GOPMODE_NORMALP,
     V4_VENC_GOPMODE_DUALP,
     V4_VENC_GOPMODE_SMARTP,
+    V4_VENC_GOPMODE_ADVSMARTP,
     V4_VENC_GOPMODE_BIPREDB,
     V4_VENC_GOPMODE_LOWDELAYB,
     V4_VENC_GOPMODE_END
@@ -49,6 +50,8 @@ typedef enum {
     V4_VENC_NALU_MJPG_APP,
     V4_VENC_NALU_MJPG_VDO,
     V4_VENC_NALU_MJPG_PIC,
+    V4_VENC_NALU_MJPG_DCF,
+    V4_VENC_NALU_MJPG_DCFPIC,
     V4_VENC_NALU_MJPG_END
 } v4_venc_nalu_mjpg;
 
@@ -57,6 +60,7 @@ typedef enum {
     V4_VENC_RATEMODE_H264VBR,
     V4_VENC_RATEMODE_H264AVBR,
     V4_VENC_RATEMODE_H264QVBR,
+    V4_VENC_RATEMODE_H264CVBR,
     V4_VENC_RATEMODE_H264QP,
     V4_VENC_RATEMODE_H264QPMAP,
     V4_VENC_RATEMODE_MJPGCBR,
@@ -66,47 +70,40 @@ typedef enum {
     V4_VENC_RATEMODE_H265VBR,
     V4_VENC_RATEMODE_H265AVBR,
     V4_VENC_RATEMODE_H265QVBR,
+    V4_VENC_RATEMODE_H265CVBR,
     V4_VENC_RATEMODE_H265QP,
     V4_VENC_RATEMODE_H265QPMAP,
     V4_VENC_RATEMODE_END
 } v4_venc_ratemode;
 
 typedef struct {
-    unsigned int maxWidth;
-    unsigned int maxHeight;
-    unsigned int bufSize;
-    unsigned int profile;
-    char byFrame;
-    unsigned int width;
-    unsigned int height;
+    int rcnRefShareBufOn;
 } v4_venc_attr_h26x;
 
 typedef struct {
-    unsigned int maxWidth;
-    unsigned int maxHeight;
-    unsigned int bufSize;
-    char byFrame;
-    unsigned int width;
-    unsigned int height;
+
 } v4_venc_attr_mjpg;
 
 typedef struct {
-    unsigned int maxWidth;
-    unsigned int maxHeight;
-    unsigned int bufSize;
-    char byFrame;
-    unsigned int width;
-    unsigned int height;
-    char dcfThumbs;
+    int dcfThumbs;
+    unsigned char numThumbs;
+    v4_common_dim sizeThumbs[2];
+    int multiReceiveOn;
 } v4_venc_attr_jpg;
 
 typedef struct {
     v4_venc_codec codec;
+    v4_common_dim maxPic;
+    unsigned int bufSize;
+    unsigned int profile;
+    int byFrame;
+    v4_common_dim pic;
     union {
         v4_venc_attr_h26x h264;
-        v4_venc_attr_mjpg mjpg;
-        v4_venc_attr_jpg  jpg;
         v4_venc_attr_h26x h265;
+        v4_venc_attr_mjpg  mjpg;
+        v4_venc_attr_jpg  jpg;
+        int prores[3];
     };
 } v4_venc_attrib;
 
@@ -115,9 +112,8 @@ typedef struct {
     unsigned int statTime;
     unsigned int srcFps;
     unsigned int dstFps;
-    unsigned int bitrate;
-    unsigned int avgLvl;
-} v4_venc_rate_h26xcbr;
+    unsigned int maxBitrate;
+} v4_venc_rate_h26xbr;
 
 typedef struct {
     unsigned int gop;
@@ -125,18 +121,11 @@ typedef struct {
     unsigned int srcFps;
     unsigned int dstFps;
     unsigned int maxBitrate;
-    unsigned int maxQual;
-    unsigned int minQual;
-    unsigned int minIQual;
-} v4_venc_rate_h26xvbr;
-
-typedef struct {
-    unsigned int gop;
-    unsigned int statTime;
-    unsigned int srcFps;
-    unsigned int dstFps;
-    unsigned int bitrate;
-} v4_venc_rate_h26xxvbr;
+    unsigned int shortTermStatTime;
+    unsigned int longTermStatTime;
+    unsigned int longTermMaxBitrate;
+    unsigned int longTermMinBitrate;
+} v4_venc_rate_h26xcvbr;
 
 typedef struct {
     unsigned int gop;
@@ -152,28 +141,23 @@ typedef struct {
     unsigned int statTime;
     unsigned int srcFps;
     unsigned int dstFps;
-    // Accepts values from 0-2 (mean QP, min QP, max QP)
-    unsigned int qpMapMode;
-    unsigned int predQual;
-    unsigned int bipredQual;
-} v4_venc_rate_h26xqpmap;
+} v4_venc_rate_h264qpmap;
 
 typedef struct {
+    unsigned int gop;
     unsigned int statTime;
     unsigned int srcFps;
     unsigned int dstFps;
-    unsigned int bitrate;
-    unsigned int avgLvl;
-} v4_venc_rate_mjpgcbr;
+    // Accepts values from 0-2 (mean QP, min QP, max QP)
+    int qpMapMode;
+} v4_venc_rate_h265qpmap;
 
 typedef struct {
     unsigned int statTime;
     unsigned int srcFps;
     unsigned int dstFps;
     unsigned int maxBitrate;
-    unsigned int maxQual;
-    unsigned int minQual;
-} v4_venc_rate_mjpgvbr;
+} v4_venc_rate_mjpgbr;
 
 typedef struct {
     unsigned int srcFps;
@@ -184,23 +168,24 @@ typedef struct {
 typedef struct {
     v4_venc_ratemode mode;
     union {
-        v4_venc_rate_h26xcbr h264Cbr;
-        v4_venc_rate_h26xvbr h264Vbr;
-        v4_venc_rate_h26xxvbr h264Avbr;
-        v4_venc_rate_h26xxvbr h264Qvbr;
+        v4_venc_rate_h26xbr h264Cbr;
+        v4_venc_rate_h26xbr h264Vbr;
+        v4_venc_rate_h26xbr h264Avbr;
+        v4_venc_rate_h26xbr h264Qvbr;
+        v4_venc_rate_h26xcvbr h264Cvbr;
         v4_venc_rate_h26xqp h264Qp;
-        v4_venc_rate_h26xqpmap h264QpMap;
-        v4_venc_rate_mjpgcbr mjpgCbr;
-        v4_venc_rate_mjpgvbr mjpgVbr;
+        v4_venc_rate_h264qpmap h264QpMap;
+        v4_venc_rate_mjpgbr mjpgCbr;
+        v4_venc_rate_mjpgbr mjpgVbr;
         v4_venc_rate_mjpgqp mjpgQp;
-        v4_venc_rate_h26xcbr h265Cbr;
-        v4_venc_rate_h26xvbr h265Vbr;
-        v4_venc_rate_h26xxvbr h265Avbr;
-        v4_venc_rate_h26xxvbr h265Qvbr;
+        v4_venc_rate_h26xbr h265Cbr;
+        v4_venc_rate_h26xbr h265Vbr;
+        v4_venc_rate_h26xbr h265Avbr;
+        v4_venc_rate_h26xbr h265Qvbr;
+        v4_venc_rate_h26xcvbr h265Cvbr;
         v4_venc_rate_h26xqp h265Qp;
-        v4_venc_rate_h26xqpmap h265QpMap;
+        v4_venc_rate_h265qpmap h265QpMap;
     };
-    void *extend;
 } v4_venc_rate;
 
 typedef struct {
@@ -231,6 +216,7 @@ typedef struct {
         v4_venc_gop_normalp normalP;
         v4_venc_gop_dualp dualP;
         v4_venc_gop_smartp smartP;
+        v4_venc_gop_smartp advSmartP;
         v4_venc_gop_bipredb bipredB;
     };
 } v4_venc_gop;
@@ -253,6 +239,7 @@ typedef union {
     v4_venc_nalu_h264 h264Nalu;
     v4_venc_nalu_mjpg mjpgNalu;
     v4_venc_nalu_h265 h265Nalu;
+    int proresNalu;
 } v4_venc_nalu;
 
 typedef struct {
@@ -263,8 +250,8 @@ typedef struct {
 
 typedef struct {
     unsigned long long addr;
-    unsigned char *data;
-    unsigned int length;
+    unsigned char __attribute__((aligned (4)))*data;
+    unsigned int __attribute__((aligned (4)))length;
     unsigned long long timestamp;
     char endFrame;
     v4_venc_nalu naluType;
@@ -277,13 +264,11 @@ typedef struct {
     unsigned int leftPics;
     unsigned int leftBytes;
     unsigned int leftFrames;
-    unsigned int leftMillis;
     unsigned int curPacks;
     unsigned int leftRecvPics;
     unsigned int leftEncPics;
-    unsigned int fpsNum;
-    unsigned int fpsDen;
-    unsigned int bitrate;
+    int jpegSnapEnd;
+    int strmInfo[14];
 } v4_venc_stat;
 
 typedef struct {
@@ -293,11 +278,11 @@ typedef struct {
     unsigned int pMb16;
     unsigned int pMb8;
     unsigned int pMb4;
-    unsigned int refSliceType;
     unsigned int refType;
     unsigned int updAttrCnt;
     unsigned int startQual;
     unsigned int meanQual;
+    int pSkip;
 } v4_venc_strminfo_h264;
 
 typedef struct {
@@ -314,6 +299,7 @@ typedef struct {
     unsigned int updAttrCnt;
     unsigned int startQual;
     unsigned int meanQual;
+    int pSkip;
 } v4_venc_strminfo_h265;
 
 typedef struct {
@@ -323,7 +309,7 @@ typedef struct {
 } v4_venc_strminfo_mjpg;
 
 typedef struct {
-    char sseOn;
+    int sseOn;
     unsigned int sseVal;
 } v4_venc_sseinfo;
 
@@ -337,6 +323,8 @@ typedef struct {
     unsigned int mseSum;
     v4_venc_sseinfo sseInfo[8];
     unsigned int qualHstgrm[52];
+    unsigned int moveSceneNum;
+    unsigned int moveSceneBits;
 } v4_venc_strmadvinfo_h26x;
 
 typedef struct {
@@ -344,13 +332,14 @@ typedef struct {
 } v4_venc_strmadvinfo_mjpg;
 
 typedef struct {
-    v4_venc_pack *packet;
-    unsigned int count;
+    v4_venc_pack __attribute__((aligned (4)))*packet;
+    unsigned int __attribute__((aligned (4)))count;
     unsigned int sequence;
     union {
         v4_venc_strminfo_h264 h264Info;
         v4_venc_strminfo_mjpg mjpgInfo;
         v4_venc_strminfo_h265 h265Info;
+        unsigned int proresInfo[2];
     };
     union {
         v4_venc_strmadvinfo_h26x h264aInfo;

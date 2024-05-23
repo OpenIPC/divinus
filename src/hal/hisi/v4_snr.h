@@ -5,7 +5,6 @@
 #include <asm/ioctl.h>
 #include <fcntl.h>
 
-#define V4_SNR_ENDPOINT "/dev/mipi"
 #define V4_SNR_IOC_MAGIC 'm'
 #define V4_SNR_LVDS_LANE_NUM 4
 #define V4_SNR_MIPI_LANE_NUM 4
@@ -122,3 +121,47 @@ typedef struct {
         v4_snr_lvds lvds;
     };
 } v4_snr_dev;
+
+typedef union {
+    signed char i2c;
+    struct {
+        signed char dev : 4;
+        signed char cs  : 4;
+    } ssp;
+} v4_snr_bus;
+
+typedef struct {
+    unsigned int expTime;
+    unsigned int aGain;
+    unsigned int dGain;
+    unsigned int ispDGain;
+    unsigned int exposure;
+    unsigned int linesPer500ms;
+    unsigned int pirisFNO;
+    unsigned short wbRGain;
+    unsigned short wbGGain;
+    unsigned short wbBGain;
+    unsigned short sampleRGain;
+    unsigned short sampleBGain;
+    unsigned short ccm[9];
+} v4_snr_init;
+
+typedef struct {
+    int (*pfnRegisterCallback)(int pipe, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
+    int (*pfnUnRegisterCallback)(int pipe, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
+    int (*pfnSetBusInfo)(int pipe, v4_snr_bus unSNSBusInfo);
+    int (*pfnSetBusExInfo)(int pipe, char *address);
+    void (*pfnStandby)(int pipe);
+    void (*pfnRestart)(int pipe);
+    void (*pfnMirrorFlip)(int pipe, v4_isp_dir mode);
+    int (*pfnWriteReg)(int pipe, int addr, int data);
+    int (*pfnReadReg)(int pipe, int addr);
+    int (*pfnSetInit)(int pipe, v4_snr_init *config);
+} v4_snr_obj;
+
+typedef struct {
+    void *handle;
+    v4_snr_obj *obj;
+} v4_snr_drv_impl;
+
+static const char v4_snr_endp[] = {"/dev/hi_mipi"};

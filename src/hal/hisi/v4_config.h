@@ -168,7 +168,7 @@ static enum ConfigError v4_parse_config_videv(
             "VI_DATA_SEQ_YUYV", "VI_DATA_SEQ_YVYU"};
             const int count = sizeof(possible_values) / sizeof(const char *);
             err = parse_enum(
-                ini, section, "data_seq", (void*)&device->input,
+                ini, section, "data_seq", (void*)&device->seq,
                 possible_values, count, 0);
             if (err != CONFIG_OK)
                 return err;
@@ -292,6 +292,10 @@ static enum ConfigError v4_parse_config_videv(
     err = parse_int(ini, section, "devrect_h", 0, INT_MAX, &v4_config.isp.capt.height);
     if (err != CONFIG_OK)
         return err;
+    
+    if (device->intf == V4_VI_INTF_MIPI || device->intf == V4_VI_INTF_LVDS)
+        device->rgbModeOn = 1;
+    else device->rgbModeOn = 0;
 
     return CONFIG_OK;
 }
@@ -402,8 +406,6 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
             config->input_mode = V4_SNR_INPUT_MIPI;
     }
 
-    config->videv.rgbModeOn = 1;
-
     if (config->input_mode == V4_SNR_INPUT_MIPI) {
         // [mipi]
         {
@@ -429,7 +431,7 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
         err = v4_parse_config_lvds(&ini, "lvds", &config->lvds);
         if (err != CONFIG_OK)
             goto RET_ERR;
-    } else config->videv.rgbModeOn = 0;   
+    }
 
     // [isp_image]
     err = v4_parse_config_isp(&ini, "isp_image", &config->isp);

@@ -15,14 +15,6 @@ typedef struct {
     char libName[20];
 } v4_isp_alg;
 
-typedef union {
-    char i2c;
-    struct {
-        char dev : 4;
-        char cs  : 4;
-    } ssp;
-} v4_isp_bus;
-
 typedef struct {
     v4_common_rect capt;
     v4_common_dim size;
@@ -31,40 +23,6 @@ typedef struct {
     v4_common_wdr wdr;
     unsigned char mode;
 } v4_isp_dev;
-
-typedef struct {
-    unsigned int expTime;
-    unsigned int aGain;
-    unsigned int dGain;
-    unsigned int ispDGain;
-    unsigned int exposure;
-    unsigned int linesPer500ms;
-    unsigned int pirisFNO;
-    unsigned short wbRGain;
-    unsigned short wbGGain;
-    unsigned short wbBGain;
-    unsigned short sampleRGain;
-    unsigned short sampleBGain;
-    unsigned short ccm[9];
-} v4_isp_init;
-
-typedef struct {
-    int (*pfnRegisterCallback)(int pipe, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
-    int (*pfnUnRegisterCallback)(int pipe, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
-    int (*pfnSetBusInfo)(int pipe, v4_isp_bus unSNSBusInfo);
-    int (*pfnSetBusExInfo)(int pipe, char *address);
-    void (*pfnStandby)(int pipe);
-    void (*pfnRestart)(int pipe);
-    void (*pfnMirrorFlip)(int pipe, v4_isp_dir mode);
-    int (*pfnWriteReg)(int pipe, int addr, int data);
-    int (*pfnReadReg)(int pipe, int addr);
-    int (*pfnSetInit)(int pipe, v4_isp_init *config);
-} v4_isp_obj;
-
-typedef struct {
-    void *handle;
-    v4_isp_obj *obj;
-} v4_isp_drv_impl;
 
 typedef struct {
     void *handle, *handleDehaze, *handleDrc, *handleLdci, *handleIrAuto, *handleAwb, 

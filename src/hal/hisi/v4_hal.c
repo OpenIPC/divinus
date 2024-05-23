@@ -5,7 +5,7 @@ v4_aud_impl     v4_aud;
 v4_isp_alg      v4_awb_lib = { .id = 0, .libName = "awb_lib" };
 v4_config_impl  v4_config;
 v4_isp_impl     v4_isp;
-v4_isp_drv_impl v4_isp_drv;
+v4_snr_drv_impl v4_snr_drv;
 v4_rgn_impl     v4_rgn;
 v4_sys_impl     v4_sys;
 v4_vb_impl      v4_vb;
@@ -24,6 +24,7 @@ char _v4_venc_dev = 0;
 char _v4_vi_chn = 0;
 char _v4_vi_dev = 0;
 char _v4_vi_pipe = 0;
+char _v4_vpss_chn = 0;
 char _v4_vpss_grp = 0;
 
 void v4_hal_deinit(void)
@@ -101,15 +102,13 @@ int v4_audio_init(void)
 int v4_channel_bind(char index)
 {
     int ret;
-    int _v4_vpss_grp = index / V4_VPSS_CHN_NUM;
-    int vpss_chn = index - _v4_vpss_grp * V4_VPSS_CHN_NUM;
 
-    if (ret = v4_vpss.fnEnableChannel(_v4_vpss_grp, vpss_chn))
+    if (ret = v4_vpss.fnEnableChannel(_v4_vpss_grp, index))
         return ret;
 
     {
         v4_sys_bind source = { .module = V4_SYS_MOD_VPSS, 
-            .device = _v4_vpss_grp, .channel = vpss_chn };
+            .device = _v4_vpss_grp, .channel = index };
         v4_sys_bind dest = { .module = V4_SYS_MOD_VENC,
             .device = _v4_venc_dev, .channel = index };
         if (ret = v4_sys.fnBind(&source, &dest))
@@ -119,18 +118,22 @@ int v4_channel_bind(char index)
     return EXIT_SUCCESS;
 }
 
-int v4_channel_create(char index, short width, short height, char framerate)
+int v4_channel_create(char index, short width, short height, char mirror, char flip, char framerate)
 {
     int ret;
-    int _v4_vpss_grp = index / V4_VPSS_CHN_NUM;
-    int vpss_chn = index - _v4_vpss_grp * V4_VPSS_CHN_NUM;
 
     {
         v4_vpss_chn channel;
         memset(&channel, 0, sizeof(channel));
-        channel.srcFps = framerate;
+        channel.dest.width = width;
+        channel.dest.height = height;
+        channel.pixFmt = V4_PIXFMT_YVU420SP;
+        channel.hdr = V4_HDR_SDR8;
+        channel.srcFps = v4_config.isp.framerate;
         channel.dstFps = framerate;
-        if (ret = v4_vpss.fnSetChannelConfig(_v4_vpss_grp, vpss_chn, &channel))
+        channel.mirror = mirror;
+        channel.flip = flip;
+        if (ret = v4_vpss.fnSetChannelConfig(_v4_vpss_grp, index, &channel))
             return ret;
     }
 
@@ -140,15 +143,13 @@ int v4_channel_create(char index, short width, short height, char framerate)
 int v4_channel_unbind(char index)
 {
     int ret;
-    int _v4_vpss_grp = index / V4_VPSS_CHN_NUM;
-    int vpss_chn = index - _v4_vpss_grp * V4_VPSS_CHN_NUM;
 
-    if (ret = v4_vpss.fnDisableChannel(_v4_vpss_grp, vpss_chn))
+    if (ret = v4_vpss.fnDisableChannel(_v4_vpss_grp, index))
         return ret;
 
     {
         v4_sys_bind source = { .module = V4_SYS_MOD_VPSS, 
-            .device = _v4_vpss_grp, .channel = vpss_chn };
+            .device = _v4_vpss_grp, .channel = index };
         v4_sys_bind dest = { .module = V4_SYS_MOD_VENC,
             .device = _v4_venc_dev, .channel = index };
         if (ret = v4_sys.fnUnbind(&source, &dest))
@@ -172,12 +173,106 @@ int v4_pipeline_create(void)
     int ret;
 
     {
+        v4_sys_oper mode[4];
+        v4_sys.fnGetViVpssMode((v4_sys_oper*)mode);
+        mode[_v4_vi_dev] = V4_SYS_OPER_VIOFF_VPSSON;
+        if (ret = v4_sys.fnSetViVpssMode((v4_sys_oper*)mode))
+            return ret;
+    }
+
+    if (ret = v4_sensor_config())
+        return ret;
+
+    if (ret = v4_vi.fnSetDeviceConfig(_v4_vi_dev, &v4_config.videv))
+        return ret;
+    if (ret = v4_vi.fnEnableDevice(_v4_vi_dev))
+        return ret;
+
+    {
+        v4_vi_bind bind;
+        bind.num = 1;
+        bind.pipeId[0] = _v4_vi_pipe;
+        if (ret = v4_vi.fnBindPipe(_v4_vi_dev, &bind))
+            return ret;
+    }
+
+    {
+        v4_vi_pipe pipe;
+        pipe.bypass = 0;
+        pipe.yuvSkipOn = 0;
+        pipe.ispBypassOn = 0;
+        pipe.maxSize.width = v4_config.isp.capt.width;
+        pipe.maxSize.height = v4_config.isp.capt.height;
+        pipe.pixFmt = V4_PIXFMT_RGB_BAYER_8BPP + v4_config.mipi.prec;
+        pipe.compress = V4_COMPR_NONE;
+        pipe.prec = v4_config.mipi.prec;
+        pipe.nRedOn = 0;
+        pipe.nRed.pixFmt = 0;
+        pipe.nRed.prec = 0;
+        pipe.nRed.srcRfrOrChn0 = 0;
+        pipe.nRed.compress = V4_COMPR_NONE;
+        pipe.sharpenOn = 1;
+        pipe.srcFps = -1;
+        pipe.dstFps = -1;
+        pipe.discProPic = 0;
+        if (ret = v4_vi.fnCreatePipe(_v4_vi_pipe, &pipe))
+            return ret;
+    }
+    if (ret = v4_vi.fnStartPipe(_v4_vi_pipe))
+        return ret;
+
+    {
+        v4_vi_chn channel;
+        channel.size.width = v4_config.isp.capt.width;
+        channel.size.height = v4_config.isp.capt.height;
+        channel.pixFmt = V4_PIXFMT_YVU420SP;
+        channel.dynRange = V4_HDR_SDR8;
+        channel.videoFmt = 0;
+        channel.compress = V4_COMPR_NONE;
+        channel.mirror = 0;
+        channel.flip = 0;
+        channel.depth = 0;
+        channel.srcFps = v4_config.isp.framerate;
+        channel.dstFps = v4_config.isp.framerate;
+        if (ret = v4_vi.fnSetChannelConfig(_v4_vi_pipe, _v4_vi_chn, &channel))
+            return ret;
+    }
+    if (ret = v4_vi.fnEnableChannel(_v4_vi_pipe, _v4_vi_chn))
+        return ret;
+
+    {
+        v4_snr_bus bus;
+        bus.i2c = 0;
+        if (ret = v4_snr_drv.obj->pfnSetBusInfo(_v4_vi_pipe, bus))
+            return ret;
+    }
+    if (ret = v4_snr_drv.obj->pfnRegisterCallback(_v4_vi_pipe, &v4_ae_lib, &v4_awb_lib))
+        return ret;
+    
+    if (ret = v4_isp.fnRegisterAE(_v4_vi_pipe, &v4_ae_lib))
+        return ret;
+    if (ret = v4_isp.fnRegisterAWB(_v4_vi_pipe, &v4_awb_lib))
+        return ret;
+    if (ret = v4_isp.fnMemInit(_v4_vi_pipe))
+        return ret;
+    if (ret = v4_isp.fnSetDeviceConfig(_v4_vi_pipe, &v4_config.isp))
+        return ret;
+    if (ret = v4_isp.fnInit(_v4_vi_pipe))
+        return ret;
+    
+    {
         v4_vpss_grp group;
-        group.imgEnhOn = 0;
-        group.dciOn = 0;
-        group.noiseRedOn = 1;
-        group.histOn = 0;
-        group.deintMode = 1;
+        memset(&group, 0, sizeof(group));
+        group.dest.width = v4_config.isp.capt.width;
+        group.dest.height = v4_config.isp.capt.height;
+        group.pixFmt = V4_PIXFMT_YVU420SP;
+        group.hdr = V4_HDR_SDR8;
+        group.srcFps = v4_config.isp.framerate;
+        group.dstFps = v4_config.isp.framerate;
+        group.nRedOn = 1;
+        group.nRed.mode = V4_VPSS_NMODE_VIDEO;
+        group.nRed.compress = V4_COMPR_NONE;
+        group.nRed.motionCompOn = 0;
         if (ret = v4_vpss.fnCreateGroup(_v4_vpss_grp, &group))
             return ret;
     }
@@ -193,12 +288,17 @@ int v4_pipeline_create(void)
             return ret;
     }
 
-
     return EXIT_SUCCESS;
 }
 
 void v4_pipeline_destroy(void)
 {
+    v4_isp.fnExit(_v4_vi_pipe);
+    v4_isp.fnUnregisterAWB(_v4_vi_pipe, &v4_ae_lib);
+    v4_isp.fnUnregisterAE(_v4_vi_pipe, &v4_awb_lib);
+
+    v4_snr_drv.obj->pfnUnRegisterCallback(_v4_vi_pipe, &v4_ae_lib, &v4_awb_lib);
+
     for (char grp = 0; grp < V4_VPSS_GRP_NUM; grp++)
     {
         for (char chn = 0; chn < V4_VPSS_CHN_NUM; chn++)
@@ -215,6 +315,15 @@ void v4_pipeline_destroy(void)
         v4_vpss.fnStopGroup(grp);
         v4_vpss.fnDestroyGroup(grp);
     }
+    
+    v4_vi.fnDisableChannel(_v4_vi_pipe, _v4_vi_chn);
+
+    v4_vi.fnStopPipe(_v4_vi_pipe);
+    v4_vi.fnDestroyPipe(_v4_vi_pipe);
+
+    v4_vi.fnDisableDevice(_v4_vi_dev);
+
+    v4_sensor_deconfig();
 }
 
 int v4_region_create(char handle, hal_rect rect)
@@ -284,6 +393,7 @@ int v4_region_setbitmap(int handle, hal_bitmap *bitmap)
 }
 
 int v4_sensor_config(void) {
+    int fd;
     v4_snr_dev config;
     memset(&config, 0, sizeof(config));
     config.device = 0;
@@ -295,7 +405,10 @@ int v4_sensor_config(void) {
     else if (config.input == V4_SNR_INPUT_LVDS)
         memcpy(&config.lvds, &v4_config.lvds, sizeof(v4_snr_lvds));
 
-    int fd = open(V4_SNR_ENDPOINT, O_RDWR);
+
+    if (!access(v4_snr_endp, F_OK))
+        fd = open(v4_snr_endp, O_RDWR);
+    else fd = open("/dev/mipi", O_RDWR);
     if (fd < 0)
         V4_ERROR("Opening imaging device has failed!\n");
 
@@ -313,8 +426,6 @@ int v4_sensor_config(void) {
     if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_DEV, v4_snr_dev), &config))
         V4_ERROR("Configuring imaging device has failed!\n");
 
-    usleep(10000);
-
     ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_MIPI, unsigned int), &config.device);
 
     ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_SENS, unsigned int), &config.device);
@@ -325,10 +436,13 @@ int v4_sensor_config(void) {
 }
 
 void v4_sensor_deconfig(void) {
+    int fd;
     v4_snr_dev config;
     config.device = 0;
 
-    int fd = open(V4_SNR_ENDPOINT, O_RDWR);
+    if (!access(v4_snr_endp, F_OK))
+        fd = open(v4_snr_endp, O_RDWR);
+    else fd = open("/dev/mipi", O_RDWR);
     if (fd < 0)
         fprintf(stderr, "[v4_hal] Opening imaging device has failed!\n");
 
@@ -345,8 +459,8 @@ void v4_sensor_deconfig(void) {
 
 void v4_sensor_deinit(void)
 {
-    dlclose(v4_isp_drv.handle);
-    v4_isp_drv.handle = NULL;
+    dlclose(v4_snr_drv.handle);
+    v4_snr_drv.handle = NULL;
 }
 
 int v4_sensor_init(char *name, char *obj)
@@ -357,12 +471,12 @@ int v4_sensor_init(char *name, char *obj)
 
     while (*dir++) {
         sprintf(path, *dir, name);
-        if (v4_isp_drv.handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL))
+        if (v4_snr_drv.handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL))
             break;
-    } if (!v4_isp_drv.handle)
+    } if (!v4_snr_drv.handle)
         V4_ERROR("Failed to load the sensor driver");
     
-    if (!(v4_isp_drv.obj = (v4_isp_obj*)dlsym(v4_isp_drv.handle, obj)))
+    if (!(v4_snr_drv.obj = (v4_snr_obj*)dlsym(v4_snr_drv.handle, obj)))
         V4_ERROR("Failed to connect the sensor object");
 
     return EXIT_SUCCESS;
@@ -372,37 +486,21 @@ int v4_video_create(char index, hal_vidconfig *config)
 {
     int ret;
     v4_venc_chn channel;
-    v4_venc_attr_h26x *attrib;
-
-    if (config->codec == HAL_VIDCODEC_JPG) {
+    memset(&channel, 0, sizeof(channel));
+    if (config->codec == HAL_VIDCODEC_JPG)
         channel.attrib.codec = V4_VENC_CODEC_JPEGE;
-        channel.attrib.jpg.maxWidth = ALIGN_BACK(config->width, 16);
-        channel.attrib.jpg.maxHeight = ALIGN_BACK(config->height, 16);
-        channel.attrib.jpg.bufSize = 
-            ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
-        channel.attrib.jpg.byFrame = 1;
-        channel.attrib.jpg.width = config->width;
-        channel.attrib.jpg.height = config->height;
-        channel.attrib.jpg.dcfThumbs = 0;
-    } else if (config->codec == HAL_VIDCODEC_MJPG) {
+    else if (config->codec == HAL_VIDCODEC_MJPG) {
         channel.attrib.codec = V4_VENC_CODEC_MJPG;
-        channel.attrib.mjpg.maxWidth = ALIGN_BACK(config->width, 16);
-        channel.attrib.mjpg.maxHeight = ALIGN_BACK(config->height, 16);
-        channel.attrib.mjpg.bufSize = 
-            ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
-        channel.attrib.mjpg.byFrame = 1;
-        channel.attrib.mjpg.width = config->width;
-        channel.attrib.mjpg.height = config->height;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = V4_VENC_RATEMODE_MJPGCBR;
-                channel.rate.mjpgCbr = (v4_venc_rate_mjpgcbr){ .statTime = 1, .srcFps = config->framerate,
-                    .dstFps = config->framerate, .bitrate = config->bitrate, .avgLvl = 0 }; break;
+                channel.rate.mjpgCbr = (v4_venc_rate_mjpgbr){ .statTime = 1, .srcFps = config->framerate,
+                    .dstFps = config->framerate, .maxBitrate = config->bitrate }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V4_VENC_RATEMODE_MJPGVBR;
-                channel.rate.mjpgVbr = (v4_venc_rate_mjpgvbr){ .statTime = 1, .srcFps = config->framerate,
-                    .dstFps = config->framerate , .maxBitrate = MAX(config->bitrate, config->maxBitrate), 
-                    .maxQual = config->maxQual, .minQual = config->maxQual }; break;
+                channel.rate.mjpgVbr = (v4_venc_rate_mjpgbr){ .statTime = 1, 
+                    .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V4_VENC_RATEMODE_MJPGQP;
                 channel.rate.mjpgQp = (v4_venc_rate_mjpgqp){ .srcFps = config->framerate,
@@ -410,77 +508,76 @@ int v4_video_create(char index, hal_vidconfig *config)
             default:
                 V4_ERROR("MJPEG encoder can only support CBR, VBR or fixed QP modes!");
         }
-        goto attach;
     } else if (config->codec == HAL_VIDCODEC_H265) {
         channel.attrib.codec = V4_VENC_CODEC_H265;
-        attrib = &channel.attrib.h265;
+        channel.gop.mode = V4_VENC_GOPMODE_NORMALP;
+        channel.gop.normalP.ipQualDelta = config->gop / config->framerate;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H265CBR;
-                channel.rate.h265Cbr = (v4_venc_rate_h26xcbr){ .gop = config->gop,
+                channel.rate.h265Cbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .bitrate = config->bitrate, .avgLvl = 1 }; break;
+                    .maxBitrate = config->bitrate }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H265VBR;
-                channel.rate.h265Vbr = (v4_venc_rate_h26xvbr){ .gop = config->gop,
+                channel.rate.h265Vbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
-                    .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
-                    .minQual = config->minQual, .minIQual = config->minQual }; break;
+                    .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V4_VENC_RATEMODE_H265QP;
-                channel.rate.h265Qp = (v4_venc_rate_h26xqp){ .gop = config->gop,
+                channel.rate.h265Qp = (v4_venc_rate_h26xqp){ .gop = config->gop / config->framerate,
                     .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H265AVBR;
-                channel.rate.h265Avbr = (v4_venc_rate_h26xxvbr){ .gop = config->gop,
+                channel.rate.h265Avbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .bitrate = config->bitrate }; break;
+                    .maxBitrate = config->bitrate }; break;
             default:
                 V4_ERROR("H.265 encoder does not support this mode!");
         }
     } else if (config->codec == HAL_VIDCODEC_H264) {
         channel.attrib.codec = V4_VENC_CODEC_H264;
-        attrib = &channel.attrib.h264;
+        channel.gop.mode = V4_VENC_GOPMODE_NORMALP;
+        channel.gop.normalP.ipQualDelta = config->gop / config->framerate;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H264CBR;
-                channel.rate.h264Cbr = (v4_venc_rate_h26xcbr){ .gop = config->gop,
+                channel.rate.h264Cbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .bitrate = config->bitrate, .avgLvl = 1 }; break;
+                    .maxBitrate = config->bitrate }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H264VBR;
-                channel.rate.h264Vbr = (v4_venc_rate_h26xvbr){ .gop = config->gop,
+                channel.rate.h264Vbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
-                    .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
-                    .minQual = config->minQual, .minIQual = config->minQual }; break;
+                    .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V4_VENC_RATEMODE_H264QP;
-                channel.rate.h264Qp = (v4_venc_rate_h26xqp){ .gop = config->gop,
+                channel.rate.h264Qp = (v4_venc_rate_h26xqp){ .gop = config->gop / config->framerate,
                     .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H264AVBR;
-                channel.rate.h264Avbr = (v4_venc_rate_h26xxvbr){ .gop = config->gop,
+                channel.rate.h264Avbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .bitrate = config->bitrate }; break;
+                    .maxBitrate = config->bitrate }; break;
             default:
                 V4_ERROR("H.264 encoder does not support this mode!");
         }
     } else V4_ERROR("This codec is not supported by the hardware!");
-    attrib->maxWidth = ALIGN_BACK(config->width, 16);
-    attrib->maxHeight = ALIGN_BACK(config->height, 16);
-    attrib->bufSize = ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
-    attrib->profile = config->profile;
-    attrib->byFrame = 1;
-    attrib->width = config->width;
-    attrib->height = config->height;
-attach:
+    channel.attrib.maxPic.width = config->width;
+    channel.attrib.maxPic.height = config->height;
+    channel.attrib.bufSize = ALIGN_UP(config->height * config->width * 3 / 4, 64);
+    channel.attrib.profile = config->profile;
+    channel.attrib.byFrame = 1;
+    channel.attrib.pic.width = config->width;
+    channel.attrib.pic.height = config->height;
+
     if (ret = v4_venc.fnCreateChannel(index, &channel))
         return ret;
 
     {
-        int count = 0;
+        int count = -1;
         if (config->codec != HAL_VIDCODEC_JPG && 
             (ret = v4_venc.fnStartReceivingEx(index, &count)))
             return ret;
@@ -494,8 +591,6 @@ attach:
 int v4_video_destroy(char index)
 {
     int ret;
-    int _v4_vpss_grp = index / V4_VPSS_CHN_NUM;
-    int vpss_chn = index - _v4_vpss_grp * V4_VPSS_CHN_NUM;
 
     v4_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
@@ -504,7 +599,7 @@ int v4_video_destroy(char index)
 
     {
         v4_sys_bind source = { .module = V4_SYS_MOD_VPSS, 
-            .device = _v4_vpss_grp, .channel = vpss_chn };
+            .device = _v4_vpss_grp, .channel = index };
         v4_sys_bind dest = { .module = V4_SYS_MOD_VENC,
             .device = _v4_venc_dev, .channel = index };
         if (ret = v4_sys.fnUnbind(&source, &dest))
@@ -514,7 +609,7 @@ int v4_video_destroy(char index)
     if (ret = v4_venc.fnDestroyChannel(index))
         return ret;
     
-    if (ret = v4_vpss.fnDisableChannel(_v4_vpss_grp, vpss_chn))
+    if (ret = v4_vpss.fnDisableChannel(_v4_vpss_grp, index))
         return ret;
 
     return EXIT_SUCCESS;
@@ -743,45 +838,15 @@ void *v4_video_thread(void)
     fprintf(stderr, "[v4_venc] Shutting down encoding thread...\n");
 }
 
-int v4_system_calculate_block(short width, short height, v4_common_pixfmt pixFmt,
-    unsigned int alignWidth)
-{
-    unsigned int bufSize = CEILING_2_POWER(width, alignWidth) *
-        CEILING_2_POWER(height, alignWidth) *
-        (pixFmt == V4_PIXFMT_YVU422SP ? 2 : 1.5);
-    unsigned int headSize = 16 * height;
-    if (pixFmt == V4_PIXFMT_YVU422SP || pixFmt >= V4_PIXFMT_RGB_BAYER_8BPP)
-        headSize *= 2;
-    else if (pixFmt == V4_PIXFMT_YVU420SP)
-        headSize *= 3;
-        headSize >>= 1;
-    return bufSize + headSize;
-}
-
 void v4_system_deinit(void)
 {
-    v4_isp.fnExit(_v4_vi_pipe);
-    v4_isp.fnUnregisterAWB(_v4_vi_pipe, &v4_ae_lib);
-    v4_isp.fnUnregisterAE(_v4_vi_pipe, &v4_awb_lib);
-
-    v4_isp_drv.obj->pfnUnRegisterCallback(_v4_vi_pipe, &v4_ae_lib, &v4_awb_lib);
-
-    v4_vi.fnDisableDevice(_v4_vi_dev);
-
-    v4_vi.fnStopPipe(_v4_vi_pipe);
-    v4_vi.fnDestroyPipe(_v4_vi_pipe);
-
-    v4_vi.fnDisableChannel(_v4_vi_pipe, _v4_vi_chn);
-
-    v4_sensor_deconfig();
-
     v4_sys.fnExit();
     v4_vb.fnExit();
 
     v4_sensor_deinit();
 }
 
-int v4_system_init(char *snrConfig, char mirror, char flip)
+int v4_system_init(char *snrConfig)
 {
     int ret;
 
@@ -801,20 +866,18 @@ int v4_system_init(char *snrConfig, char mirror, char flip)
     v4_sys.fnExit();
     v4_vb.fnExit();
 
-    unsigned int alignWidth = 8;
     {
         v4_vb_pool pool;
-        unsigned long long vencSize =  v4_system_calculate_block(
-            v4_config.isp.size.width, v4_config.isp.size.height, 
-            V4_PIXFMT_YVU420SP, alignWidth);
-
-        memset(&pool, 0, sizeof(pool));
+        memset(&pool, 0, sizeof(pool)); 
+        
         pool.count = 2;
-        pool.comm[0].blockSize = v4_vb_virawbuffer(v4_config.isp.size.width,
+        pool.comm[0].blockSize = v4_buffer_calculate_vi(v4_config.isp.size.width,
             v4_config.isp.size.height, V4_PIXFMT_RGB_BAYER_8BPP + v4_config.mipi.prec,
-            V4_COMPR_NONE, alignWidth);
+            V4_COMPR_NONE, 8);
         pool.comm[0].blockCnt = 3;
-        pool.comm[1].blockSize = vencSize;
+        pool.comm[1].blockSize = v4_buffer_calculate_venc(
+            v4_config.isp.size.width, v4_config.isp.size.height, 
+            V4_PIXFMT_YVU420SP, 8);
         pool.comm[1].blockCnt = 2;
 
         if (ret = v4_vb.fnConfigPool(&pool))
@@ -824,94 +887,6 @@ int v4_system_init(char *snrConfig, char mirror, char flip)
         return ret;
 
     if (ret = v4_sys.fnInit())
-        return ret;
-
-    {
-        v4_sys_oper mode[4];
-        v4_sys.fnGetViVpssMode((v4_sys_oper*)mode);
-        mode[_v4_vi_dev] = V4_SYS_OPER_VIOFF_VPSSON;
-        if (ret = v4_sys.fnSetViVpssMode((v4_sys_oper*)mode))
-            return ret;
-    }
-
-    if (ret = v4_sensor_config())
-        return ret;
-
-    if (ret = v4_vi.fnSetDeviceConfig(_v4_vi_dev, &v4_config.videv))
-        return ret;
-    if (ret = v4_vi.fnEnableDevice(_v4_vi_dev))
-        return ret;
-
-    {
-        v4_vi_bind bind;
-        bind.num = 1;
-        bind.pipeId[0] = _v4_vi_pipe;
-        if (ret = v4_vi.fnBindPipe(_v4_vi_dev, &bind))
-            return ret;
-    }
-
-    {
-        v4_vi_pipe pipe;
-        pipe.bypass = 0;
-        pipe.yuvSkipOn = 0;
-        pipe.ispBypassOn = 0;
-        pipe.maxSize.width = v4_config.isp.capt.width;
-        pipe.maxSize.height = v4_config.isp.capt.height;
-        pipe.pixFmt = V4_PIXFMT_RGB_BAYER_8BPP + v4_config.mipi.prec;
-        pipe.compress = V4_COMPR_NONE;
-        pipe.prec = v4_config.mipi.prec;
-        pipe.nRedOn = 0;
-        pipe.nRed.pixFmt = V4_PIXFMT_YVU420SP;
-        pipe.nRed.prec = V4_PREC_8BPP;
-        pipe.nRed.srcRfrOrChn0 = 0;
-        pipe.nRed.compress = V4_COMPR_NONE;
-        pipe.sharpenOn = 1;
-        pipe.srcFps = -1;
-        pipe.dstFps = -1;
-        pipe.discProPic = 0;
-        if (ret = v4_vi.fnCreatePipe(_v4_vi_pipe, &pipe))
-            return ret;
-    }
-    if (ret = v4_vi.fnStartPipe(_v4_vi_pipe))
-        return ret;
-
-    {
-        v4_vi_chn channel;
-        channel.size.width = v4_config.isp.capt.width;
-        channel.size.height = v4_config.isp.capt.height;
-        channel.pixFmt = V4_PIXFMT_YVU420SP;
-        channel.dynRange = V4_HDR_SDR8;
-        channel.videoFmt = 0;
-        channel.compress = V4_COMPR_NONE;
-        channel.mirror = mirror;
-        channel.flip = flip;
-        channel.depth = 0;
-        channel.srcFps = v4_config.isp.framerate;
-        channel.dstFps = v4_config.isp.framerate;
-        if (ret = v4_vi.fnSetChannelConfig(_v4_vi_pipe, _v4_vi_chn, &channel))
-            return ret;
-    }
-    if (ret = v4_vi.fnEnableChannel(_v4_vi_pipe, _v4_vi_chn))
-        return ret;
-
-    {
-        v4_isp_bus bus;
-        bus.i2c = 0;
-        if (ret = v4_isp_drv.obj->pfnSetBusInfo(_v4_vi_pipe, bus))
-            return ret;
-    }
-    if (ret = v4_isp_drv.obj->pfnRegisterCallback(_v4_vi_pipe, &v4_ae_lib, &v4_awb_lib))
-        return ret;
-    
-    if (ret = v4_isp.fnRegisterAE(_v4_vi_pipe, &v4_ae_lib))
-        return ret;
-    if (ret = v4_isp.fnRegisterAWB(_v4_vi_pipe, &v4_awb_lib))
-        return ret;
-    if (ret = v4_isp.fnMemInit(_v4_vi_pipe))
-        return ret;
-    if (ret = v4_isp.fnSetDeviceConfig(_v4_vi_pipe, &v4_config.isp))
-        return ret;
-    if (ret = v4_isp.fnInit(_v4_vi_pipe))
         return ret;
 
     return EXIT_SUCCESS;

@@ -3,16 +3,6 @@
 #include "v4_common.h"
 
 typedef enum {
-    V4_VI_INPUT_VUVU,
-    V4_VI_INPUT_UVUV,
-    V4_VI_INPUT_UYVY,
-    V4_VI_INPUT_VYUY,
-    V4_VI_INPUT_YUYV,
-    V4_VI_INPUT_YVYU,
-    V4_VI_INPUT_END
-} v4_vi_input;
-
-typedef enum {
 	V4_VI_INTF_BT656,
 	V4_VI_INTF_BT656_PACKED_YUV,
 	V4_VI_INTF_BT601,
@@ -37,6 +27,16 @@ typedef enum {
     V4_VI_REPHASE_BINNING1_3,
     V4_VI_REPHASE_END
 } v4_vi_rephase;
+
+typedef enum {
+    V4_VI_SEQ_VUVU,
+    V4_VI_SEQ_UVUV,
+    V4_VI_SEQ_UYVY,
+    V4_VI_SEQ_VYUY,
+    V4_VI_SEQ_YUYV,
+    V4_VI_SEQ_YVYU,
+    V4_VI_SEQ_END
+} v4_vi_seq;
 
 typedef enum {
     V4_VI_WORK_1MULTIPLEX,
@@ -116,7 +116,7 @@ typedef struct {
     unsigned int cmpntMask[2];
     int progressiveOn;
     int adChn[4];
-    v4_vi_input input;
+    v4_vi_seq seq;
     v4_vi_sync sync;
     int rgbModeOn;
     int dataRevOn;

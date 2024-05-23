@@ -114,7 +114,8 @@ int create_vpss_chn(char index, short width, short height, char framerate, char 
             app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_I6F:  return i6f_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
-        case HAL_PLATFORM_V4:   return v4_channel_create(index, width, height, framerate);
+        case HAL_PLATFORM_V4:   return v4_channel_create(index, width, height,
+            app_config.mirror, app_config.flip, framerate);
     }
 }
 
@@ -184,12 +185,31 @@ int start_sdk() {
         case HAL_PLATFORM_I6E:  ret = i6_system_init(); break;
         case HAL_PLATFORM_I6C:  ret = i6c_system_init(); break;
         case HAL_PLATFORM_I6F:  ret = i6f_system_init(); break;
-        case HAL_PLATFORM_V4:   ret = v4_system_init(
-            app_config.sensor_config, app_config.mirror, 
-            app_config.flip); break;
+        case HAL_PLATFORM_V4:   ret = v4_system_init(app_config.sensor_config); break;
     }
     if (ret) {
         fprintf(stderr, "System initialization failed with %#x!\n%s\n",
+            ret, errstr(ret));
+        return EXIT_FAILURE;
+    }
+
+    short width = MAX(app_config.mp4_width, app_config.mjpeg_width);
+    short height = MAX(app_config.mp4_height, app_config.mjpeg_height);
+    short framerate = MAX(app_config.mp4_fps, app_config.mjpeg_fps);
+
+    switch (plat) {
+        case HAL_PLATFORM_I6: 
+        case HAL_PLATFORM_I6B0:
+        case HAL_PLATFORM_I6E:  ret = i6_pipeline_create(0, width,
+            height, framerate); break;
+        case HAL_PLATFORM_I6C:  ret = i6c_pipeline_create(0, width,
+            height, framerate); break;
+        case HAL_PLATFORM_I6F:  ret = i6f_pipeline_create(0, width,
+            height, framerate); break;
+        case HAL_PLATFORM_V4:   ret = v4_pipeline_create(); break;
+    }
+    if (ret) {
+        fprintf(stderr, "Pipeline creation failed with %#x!\n%s\n",
             ret, errstr(ret));
         return EXIT_FAILURE;
     }
@@ -214,27 +234,6 @@ int start_sdk() {
         pthread_attr_destroy(&thread_attr);
     }
     usleep(1000);
-
-    short width = MAX(app_config.mp4_width, app_config.mjpeg_width);
-    short height = MAX(app_config.mp4_height, app_config.mjpeg_height);
-    short framerate = MAX(app_config.mp4_fps, app_config.mjpeg_fps);
-
-    switch (plat) {
-        case HAL_PLATFORM_I6: 
-        case HAL_PLATFORM_I6B0:
-        case HAL_PLATFORM_I6E:  ret = i6_pipeline_create(0, width,
-            height, framerate); break;
-        case HAL_PLATFORM_I6C:  ret = i6c_pipeline_create(0, width,
-            height, framerate); break;
-        case HAL_PLATFORM_I6F:  ret = i6f_pipeline_create(0, width,
-            height, framerate); break;
-        case HAL_PLATFORM_V4:   ret = v4_pipeline_create(); break;
-    }
-    if (ret) {
-        fprintf(stderr, "Pipeline creation failed with %#x!\n%s\n",
-            ret, errstr(ret));
-        return EXIT_FAILURE;
-    }
 
     if (app_config.mp4_enable) {
         int index = take_next_free_channel(true);

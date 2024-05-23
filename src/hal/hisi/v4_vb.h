@@ -73,7 +73,7 @@ static void v4_vb_unload(v4_vb_impl *vb_lib) {
     memset(vb_lib, 0, sizeof(*vb_lib));
 }
 
-inline static unsigned int v4_vb_virawbuffer(
+inline static unsigned int v4_buffer_calculate_vi(
     unsigned int width, unsigned int height, v4_common_pixfmt pixFmt,
 	v4_common_compr compr, unsigned int alignWidth)
 {
@@ -113,4 +113,19 @@ inline static unsigned int v4_vb_virawbuffer(
 	}
 
 	return size;
+}
+
+inline static unsigned int v4_buffer_calculate_venc(short width, short height, v4_common_pixfmt pixFmt,
+    unsigned int alignWidth)
+{
+    unsigned int bufSize = CEILING_2_POWER(width, alignWidth) *
+        CEILING_2_POWER(height, alignWidth) *
+        (pixFmt == V4_PIXFMT_YVU422SP ? 2 : 1.5);
+    unsigned int headSize = 16 * height;
+    if (pixFmt == V4_PIXFMT_YVU422SP || pixFmt >= V4_PIXFMT_RGB_BAYER_8BPP)
+        headSize *= 2;
+    else if (pixFmt == V4_PIXFMT_YVU420SP)
+        headSize *= 3;
+        headSize >>= 1;
+    return bufSize + headSize;
 }

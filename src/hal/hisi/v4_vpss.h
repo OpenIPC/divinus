@@ -7,26 +7,47 @@
 #define V4_VPSS_CHN_NUM     (V4_VPSS_PHY_CHN_NUM + V4_VPSS_EXT_CHN_NUM)
 #define V4_VPSS_GRP_NUM     32
 
+typedef enum {
+    V4_VPSS_NMODE_VIDEO,
+    V4_VPSS_NMODE_SNAP,
+    V4_VPSS_NMODE_SPATIAL,
+    V4_VPSS_NMODE_ENHANCE,
+    V4_VPSS_NMODE_END
+} v4_vpss_nmode;
+
 typedef struct {
-    int sharpenOn;
-    int borderOn;
-    int mirrorOn;
-    int flipOn;
+    int chnAutoOn;
+    v4_common_dim dest;
+    int videoFmt;
+    v4_common_pixfmt pixFmt;
+    v4_common_hdr hdr;
+    v4_common_compr compress;
     int srcFps;
     int dstFps;
-    v4_common_bord border;
+    int mirror;
+    int flip;
+    // Accepts values from 0-8
+    unsigned int depth;
+    // Accepts values from 0-2 (none, auto, manual)
+    int aspectRatio;
+    unsigned int aspectBgCol;
+    v4_common_rect aspectRect;
 } v4_vpss_chn;
+
+typedef struct {
+    v4_vpss_nmode mode;
+    v4_common_compr compress;
+    int motionCompOn;
+} v4_vpss_nred;
 
 typedef struct {
     v4_common_dim dest;
     v4_common_pixfmt pixFmt;
-    int imgEnhOn;
-    int dciOn;
-    int noiseRedOn;
-    int histOn;
-    // Accepts values from 0-2 (auto, off, on)
-    int deintMode;
-    int sharpenOn;
+    v4_common_hdr hdr;
+    int srcFps;
+    int dstFps;
+    int nRedOn;
+    v4_vpss_nred nRed;
 } v4_vpss_grp;
 
 typedef struct {
