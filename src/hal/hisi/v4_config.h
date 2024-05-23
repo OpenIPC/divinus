@@ -305,7 +305,7 @@ static enum ConfigError v4_parse_config_isp(
         ini, "isp_image", "isp_framerate", 0, INT_MAX, &value);
     if (err != CONFIG_OK)
         return err;
-    else isp->framerate = value;
+    else isp->framerate = value * 1.0f;
     {
         const char *possible_values[] = {
             "BAYER_RGGB", "BAYER_GRBG", "BAYER_GBRG", "BAYER_BGGR"};
@@ -402,6 +402,8 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
             config->input_mode = V4_SNR_INPUT_MIPI;
     }
 
+    config->videv.rgbModeOn = 1;
+
     if (config->input_mode == V4_SNR_INPUT_MIPI) {
         // [mipi]
         {
@@ -427,7 +429,7 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
         err = v4_parse_config_lvds(&ini, "lvds", &config->lvds);
         if (err != CONFIG_OK)
             goto RET_ERR;
-    }
+    } else config->videv.rgbModeOn = 0;   
 
     // [isp_image]
     err = v4_parse_config_isp(&ini, "isp_image", &config->isp);

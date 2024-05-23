@@ -746,12 +746,6 @@ void *v4_video_thread(void)
 int v4_system_calculate_block(short width, short height, v4_common_pixfmt pixFmt,
     unsigned int alignWidth)
 {
-    if (alignWidth & 0b10001111) {
-        fprintf(stderr, "[v4_sys] Alignment width (%d) "
-            "is invalid!\n", alignWidth);
-        return -1;
-    }
-
     unsigned int bufSize = CEILING_2_POWER(width, alignWidth) *
         CEILING_2_POWER(height, alignWidth) *
         (pixFmt == V4_PIXFMT_YVU422SP ? 2 : 1.5);
@@ -766,11 +760,11 @@ int v4_system_calculate_block(short width, short height, v4_common_pixfmt pixFmt
 
 void v4_system_deinit(void)
 {
-    v4_isp.fnExit(_v4_isp_dev);
-    v4_isp.fnUnregisterAWB(_v4_isp_dev, &v4_ae_lib);
-    v4_isp.fnUnregisterAE(_v4_isp_dev, &v4_awb_lib);
+    v4_isp.fnExit(_v4_vi_pipe);
+    v4_isp.fnUnregisterAWB(_v4_vi_pipe, &v4_ae_lib);
+    v4_isp.fnUnregisterAE(_v4_vi_pipe, &v4_awb_lib);
 
-    v4_isp_drv.obj->pfnUnRegisterCallback(_v4_isp_dev, &v4_ae_lib, &v4_awb_lib);
+    v4_isp_drv.obj->pfnUnRegisterCallback(_v4_vi_pipe, &v4_ae_lib, &v4_awb_lib);
 
     v4_vi.fnDisableDevice(_v4_vi_dev);
 
@@ -807,7 +801,7 @@ int v4_system_init(char *snrConfig, char mirror, char flip)
     v4_sys.fnExit();
     v4_vb.fnExit();
 
-    unsigned int alignWidth = 16;
+    unsigned int alignWidth = 8;
     {
         v4_vb_pool pool;
         unsigned long long vencSize =  v4_system_calculate_block(
@@ -871,7 +865,7 @@ int v4_system_init(char *snrConfig, char mirror, char flip)
         pipe.nRed.prec = V4_PREC_8BPP;
         pipe.nRed.srcRfrOrChn0 = 0;
         pipe.nRed.compress = V4_COMPR_NONE;
-        pipe.sharpenOn = 0;
+        pipe.sharpenOn = 1;
         pipe.srcFps = -1;
         pipe.dstFps = -1;
         pipe.discProPic = 0;
@@ -892,8 +886,8 @@ int v4_system_init(char *snrConfig, char mirror, char flip)
         channel.mirror = mirror;
         channel.flip = flip;
         channel.depth = 0;
-        channel.srcFps = -1;
-        channel.dstFps = -1;
+        channel.srcFps = v4_config.isp.framerate;
+        channel.dstFps = v4_config.isp.framerate;
         if (ret = v4_vi.fnSetChannelConfig(_v4_vi_pipe, _v4_vi_chn, &channel))
             return ret;
     }
@@ -903,21 +897,21 @@ int v4_system_init(char *snrConfig, char mirror, char flip)
     {
         v4_isp_bus bus;
         bus.i2c = 0;
-        if (ret = v4_isp_drv.obj->pfnSetBusInfo(_v4_isp_dev, bus))
+        if (ret = v4_isp_drv.obj->pfnSetBusInfo(_v4_vi_pipe, bus))
             return ret;
     }
-    if (ret = v4_isp_drv.obj->pfnRegisterCallback(_v4_isp_dev, &v4_ae_lib, &v4_awb_lib))
+    if (ret = v4_isp_drv.obj->pfnRegisterCallback(_v4_vi_pipe, &v4_ae_lib, &v4_awb_lib))
         return ret;
     
-    if (ret = v4_isp.fnRegisterAE(_v4_isp_dev, &v4_ae_lib))
+    if (ret = v4_isp.fnRegisterAE(_v4_vi_pipe, &v4_ae_lib))
         return ret;
-    if (ret = v4_isp.fnRegisterAWB(_v4_isp_dev, &v4_awb_lib))
+    if (ret = v4_isp.fnRegisterAWB(_v4_vi_pipe, &v4_awb_lib))
         return ret;
-    if (ret = v4_isp.fnMemInit(_v4_isp_dev))
+    if (ret = v4_isp.fnMemInit(_v4_vi_pipe))
         return ret;
-    if (ret = v4_isp.fnSetDeviceConfig(_v4_isp_dev, &v4_config.isp))
+    if (ret = v4_isp.fnSetDeviceConfig(_v4_vi_pipe, &v4_config.isp))
         return ret;
-    if (ret = v4_isp.fnInit(_v4_isp_dev))
+    if (ret = v4_isp.fnInit(_v4_vi_pipe))
         return ret;
 
     return EXIT_SUCCESS;

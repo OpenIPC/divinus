@@ -49,16 +49,16 @@ typedef struct {
 } v4_isp_init;
 
 typedef struct {
-    int (*pfnRegisterCallback)(int device, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
-    int (*pfnUnRegisterCallback)(int device, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
-    int (*pfnSetBusInfo)(int device, v4_isp_bus unSNSBusInfo);
-    int (*pfnSetBusExInfo)(int device, char *address);
-    void (*pfnStandby)(int device);
-    void (*pfnRestart)(int device);
-    void (*pfnMirrorFlip)(int device, v4_isp_dir mode);
-    int (*pfnWriteReg)(int device, int addr, int data);
-    int (*pfnReadReg)(int device, int addr);
-    int (*pfnSetInit)(int device, v4_isp_init *config);
+    int (*pfnRegisterCallback)(int pipe, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
+    int (*pfnUnRegisterCallback)(int pipe, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
+    int (*pfnSetBusInfo)(int pipe, v4_isp_bus unSNSBusInfo);
+    int (*pfnSetBusExInfo)(int pipe, char *address);
+    void (*pfnStandby)(int pipe);
+    void (*pfnRestart)(int pipe);
+    void (*pfnMirrorFlip)(int pipe, v4_isp_dir mode);
+    int (*pfnWriteReg)(int pipe, int addr, int data);
+    int (*pfnReadReg)(int pipe, int addr);
+    int (*pfnSetInit)(int pipe, v4_isp_init *config);
 } v4_isp_obj;
 
 typedef struct {
@@ -70,17 +70,17 @@ typedef struct {
     void *handle, *handleDehaze, *handleDrc, *handleLdci, *handleIrAuto, *handleAwb, 
         *handleGokeAwb, *handleAe, *handleGokeAe,  *handleGoke;
 
-    int (*fnExit)(int device);
-    int (*fnInit)(int device);
-    int (*fnMemInit)(int device);
-    int (*fnRun)(int device);
+    int (*fnExit)(int pipe);
+    int (*fnInit)(int pipe);
+    int (*fnMemInit)(int pipe);
+    int (*fnRun)(int pipe);
 
-    int (*fnSetDeviceConfig)(int device, v4_isp_dev *config);
+    int (*fnSetDeviceConfig)(int pipe, v4_isp_dev *config);
 
-    int (*fnRegisterAE)(int device, v4_isp_alg *library);
-    int (*fnRegisterAWB)(int device, v4_isp_alg *library);
-    int (*fnUnregisterAE)(int device, v4_isp_alg *library);
-    int (*fnUnregisterAWB)(int device, v4_isp_alg *library);
+    int (*fnRegisterAE)(int pipe, v4_isp_alg *library);
+    int (*fnRegisterAWB)(int pipe, v4_isp_alg *library);
+    int (*fnUnregisterAE)(int pipe, v4_isp_alg *library);
+    int (*fnUnregisterAWB)(int pipe, v4_isp_alg *library);
 } v4_isp_impl;
 
 static int v4_isp_load(v4_isp_impl *isp_lib) {
@@ -105,55 +105,55 @@ static int v4_isp_load(v4_isp_impl *isp_lib) {
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnExit = (int(*)(int device))
+    if (!(isp_lib->fnExit = (int(*)(int pipe))
         dlsym(isp_lib->handle, "HI_MPI_ISP_Exit"))) {
         fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_ISP_Exit!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnInit = (int(*)(int device))
+    if (!(isp_lib->fnInit = (int(*)(int pipe))
         dlsym(isp_lib->handle, "HI_MPI_ISP_Init"))) {
         fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_ISP_Init!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnMemInit = (int(*)(int device))
+    if (!(isp_lib->fnMemInit = (int(*)(int pipe))
         dlsym(isp_lib->handle, "HI_MPI_ISP_MemInit"))) {
         fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_ISP_MemInit!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnRun = (int(*)(int device))
+    if (!(isp_lib->fnRun = (int(*)(int pipe))
         dlsym(isp_lib->handle, "HI_MPI_ISP_Run"))) {
         fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_ISP_Run!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnSetDeviceConfig = (int(*)(int device, v4_isp_dev *config))
+    if (!(isp_lib->fnSetDeviceConfig = (int(*)(int pipe, v4_isp_dev *config))
         dlsym(isp_lib->handle, "HI_MPI_ISP_SetPubAttr"))) {
         fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_ISP_SetPubAttr!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnRegisterAE = (int(*)(int device, v4_isp_alg *library))
+    if (!(isp_lib->fnRegisterAE = (int(*)(int pipe, v4_isp_alg *library))
         dlsym(isp_lib->handleAe, "HI_MPI_AE_Register"))) {
         fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_AE_Register!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnRegisterAWB = (int(*)(int device, v4_isp_alg *library))
+    if (!(isp_lib->fnRegisterAWB = (int(*)(int pipe, v4_isp_alg *library))
         dlsym(isp_lib->handleAwb, "HI_MPI_AWB_Register"))) {
         fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_AWB_Register!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnUnregisterAE = (int(*)(int device, v4_isp_alg *library))
+    if (!(isp_lib->fnUnregisterAE = (int(*)(int pipe, v4_isp_alg *library))
         dlsym(isp_lib->handleAe, "HI_MPI_AE_UnRegister"))) {
         fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_AE_UnRegister!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnUnregisterAWB = (int(*)(int device, v4_isp_alg *library))
+    if (!(isp_lib->fnUnregisterAWB = (int(*)(int pipe, v4_isp_alg *library))
         dlsym(isp_lib->handleAwb, "HI_MPI_AWB_UnRegister"))) {
         fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_AWB_UnRegister!\n");
         return EXIT_FAILURE;
