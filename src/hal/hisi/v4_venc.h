@@ -253,7 +253,7 @@ typedef struct {
     unsigned char __attribute__((aligned (4)))*data;
     unsigned int __attribute__((aligned (4)))length;
     unsigned long long timestamp;
-    char endFrame;
+    int endFrame;
     v4_venc_nalu naluType;
     unsigned int offset;
     unsigned int packNum;
@@ -309,6 +309,11 @@ typedef struct {
 } v4_venc_strminfo_mjpg;
 
 typedef struct {
+    unsigned int size;
+    unsigned int updAttrCnt;
+} v4_venc_strminfo_pres;
+
+typedef struct {
     int sseOn;
     unsigned int sseVal;
 } v4_venc_sseinfo;
@@ -332,19 +337,24 @@ typedef struct {
 } v4_venc_strmadvinfo_mjpg;
 
 typedef struct {
-    v4_venc_pack __attribute__((aligned (4)))*packet;
-    unsigned int __attribute__((aligned (4)))count;
+
+} v4_venc_strmadvinfo_pres;
+
+typedef struct {
+    v4_venc_pack __attribute__((aligned(4)))*packet;
+    unsigned int __attribute__((aligned(4)))count;
     unsigned int sequence;
     union {
         v4_venc_strminfo_h264 h264Info;
         v4_venc_strminfo_mjpg mjpgInfo;
         v4_venc_strminfo_h265 h265Info;
-        unsigned int proresInfo[2];
+        v4_venc_strminfo_pres proresInfo;
     };
     union {
         v4_venc_strmadvinfo_h26x h264aInfo;
         v4_venc_strmadvinfo_mjpg mjpgaInfo;
         v4_venc_strmadvinfo_h26x h265aInfo;
+        v4_venc_strmadvinfo_pres proresaInfo;
     };
 } v4_venc_strm;
 
@@ -443,8 +453,8 @@ static int v4_venc_load(v4_venc_impl *venc_lib) {
     }
 
     if (!(venc_lib->fnGetStream = (int(*)(int channel, v4_venc_strm *stream, unsigned int timeout))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_ReleaseStream"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_ReleaseStream!\n");
+        dlsym(venc_lib->handle, "HI_MPI_VENC_GetStream"))) {
+        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_GetStream!\n");
         return EXIT_FAILURE;
     }
 

@@ -252,7 +252,7 @@ int start_sdk() {
             config.codec = app_config.mp4_codecH265 ? 
                 HAL_VIDCODEC_H265 : HAL_VIDCODEC_H264;
             config.mode = HAL_VIDMODE_CBR;
-            config.profile = HAL_VIDPROFILE_BASELINE;
+            config.profile = app_config.mp4_profile;
             config.gop = app_config.mp4_fps * 2;
             config.framerate = app_config.mp4_fps;
             config.bitrate = app_config.mp4_bitrate;
@@ -357,7 +357,7 @@ int start_sdk() {
         pthread_attr_destroy(&thread_attr);
     }
 
-    if (!access(app_config.sensor_config, 0) && !sleep(1))
+    if (!access(app_config.sensor_config, 0) || !sleep(1))
         switch (plat) {
             case HAL_PLATFORM_I6: 
             case HAL_PLATFORM_I6B0:

@@ -255,6 +255,9 @@ int v4_pipeline_create(void)
         return ret;
     if (ret = v4_isp.fnMemInit(_v4_vi_pipe))
         return ret;
+
+    v4_config.isp.capt.x = 0;
+    v4_config.isp.capt.y = 0;
     if (ret = v4_isp.fnSetDeviceConfig(_v4_vi_pipe, &v4_config.isp))
         return ret;
     if (ret = v4_isp.fnInit(_v4_vi_pipe))
