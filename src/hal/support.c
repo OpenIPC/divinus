@@ -1,7 +1,5 @@
 #include "support.h"
 
-extern void* __real_mmap();
-
 void *isp_thread = NULL;
 void *venc_thread = NULL;
 
@@ -34,7 +32,7 @@ bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
 
     volatile char *mapped_area;
     if (offset != loaded_offset) {
-        mapped_area = __real_mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, offset);
+        mapped_area = mmap64(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, offset);
         if (mapped_area == MAP_FAILED) {
             fprintf(stderr, "hal_registry mmap error: %s (%d)\n",
                     strerror(errno), errno);
