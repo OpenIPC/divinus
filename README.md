@@ -1,11 +1,17 @@
 ![OpenIPC logo][logo]
 
-## divinus
-**_divinus is a new open source, multi-platform streamer_**
+## Divinus
+**_Divinus is a new open source, multi-platform streamer_**
 
-### Brief description of construction principles
+### Inner workings
 
-The information is being compiled.
+This project strives to adopt a KISS "keep it simple, stupid!" structure while being as portable as can be.
+
+Compared to most streamer software solutions available to this day, it attaches to the application-specific peripherals of a system-on-a-chip using an easy to understand HAL platform (hardware abstraction layer) proper to each chip series it supports.
+
+Since it is exclusively using dynamic linking, its executable remains particularly compact and can be run on a multitude of environments, including in a tethered context (e.g. running from a temporary filesystem on read-only systems).
+
+In spite of these design choices, Divinus boasts numerous features that cater to a wide range of uses you will be able to make of it.
 
 
 ### Supported hardware and features
