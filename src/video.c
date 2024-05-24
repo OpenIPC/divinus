@@ -355,7 +355,7 @@ int start_sdk() {
         pthread_attr_destroy(&thread_attr);
     }
 
-    if (!access(app_config.sensor_config, 0) || !sleep(1))
+    if (!access(app_config.sensor_config, 0) ^ sleep(1))
         switch (plat) {
             case HAL_PLATFORM_I6: 
             case HAL_PLATFORM_I6B0:

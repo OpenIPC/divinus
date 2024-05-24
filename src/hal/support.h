@@ -1,5 +1,6 @@
 #include "types.h"
 #include "hisi/v4_hal.h"
+#include "inge/tx_hal.h"
 #include "sstar/i6_hal.h"
 #include "sstar/i6c_hal.h"
 #include "sstar/i6f_hal.h"
@@ -18,6 +19,9 @@ extern hal_platform plat;
 
 extern void *v4_encoder_thread(void);
 extern hal_chnstate v4_state[V4_VENC_CHN_NUM];
+
+//extern void *tx_encoder_thread(void);
+//extern hal_chnstate tx_state[TX_VENC_CHN_NUM];
 
 extern void *i6_encoder_thread(void);
 extern hal_chnstate i6_state[I6_VENC_CHN_NUM];

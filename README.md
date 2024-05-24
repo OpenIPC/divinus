@@ -28,6 +28,8 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | infinity6e[^6]          | ↻            | ✔️           | ✔️          | ✗            | ✔️                 |
 | infinity6c[^7]          | ↻            | ✔️           | ✔️          | ✗            | ✔️                 |
 | infinity6f[^8]          | ↻            | ✔️           | ✔️          | ✗            | ✔️                 |
+| T2X series              | ↻            | ↻            | ↻           | ✗            | ↻                  |
+| T3X series              | ↻            | ↻            | ↻           | ✗            | ↻                  |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
