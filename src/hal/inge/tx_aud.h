@@ -92,7 +92,7 @@ static int tx_aud_load(tx_aud_impl *aud_lib) {
         return EXIT_FAILURE;
     }
 
-    if (!(aud_lib->fnSetVolume = (int(*)(int device, int channel, int dbLevel))
+    if (!(aud_lib->fnSetVolume = (int(*)(int device, int channel, int *dbLevel))
         dlsym(aud_lib->handle, "IMP_AI_SetVol"))) {
         fprintf(stderr, "[tx_aud] Failed to acquire symbol IMP_AI_SetVol!\n");
         return EXIT_FAILURE;

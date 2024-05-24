@@ -45,13 +45,13 @@ static int tx_isp_load(tx_isp_impl *isp_lib) {
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnExit = (int(*)(int channel, tx_fs_chn *config))
+    if (!(isp_lib->fnExit = (int(*)(void))
         dlsym(isp_lib->handle, "IMP_ISP_Close"))) {
         fprintf(stderr, "[tx_isp] Failed to acquire symbol IMP_ISP_Close!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(isp_lib->fnInit = (int(*)(int channel))
+    if (!(isp_lib->fnInit = (int(*)(void))
         dlsym(isp_lib->handle, "IMP_ISP_Open"))) {
         fprintf(stderr, "[tx_isp] Failed to acquire symbol IMP_ISP_Open!\n");
         return EXIT_FAILURE;
