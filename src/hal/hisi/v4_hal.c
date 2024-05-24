@@ -118,15 +118,15 @@ int v4_channel_bind(char index)
     return EXIT_SUCCESS;
 }
 
-int v4_channel_create(char index, short width, short height, char mirror, char flip, char framerate)
+int v4_channel_create(char index, char mirror, char flip, char framerate)
 {
     int ret;
 
     {
         v4_vpss_chn channel;
         memset(&channel, 0, sizeof(channel));
-        channel.dest.width = width;
-        channel.dest.height = height;
+        channel.dest.width = v4_config.isp.capt.width;
+        channel.dest.height = v4_config.isp.capt.height;
         channel.pixFmt = V4_PIXFMT_YVU420SP;
         channel.hdr = V4_HDR_SDR8;
         channel.srcFps = v4_config.isp.framerate;
@@ -402,7 +402,6 @@ int v4_region_setbitmap(int handle, hal_bitmap *bitmap)
 int v4_sensor_config(void) {
     int fd;
     v4_snr_dev config;
-    //memset(&config, 0, sizeof(config));
     config.device = 0;
     config.input = v4_config.input_mode;
     config.rect.width = v4_config.isp.capt.width;
@@ -494,9 +493,8 @@ int v4_video_create(char index, hal_vidconfig *config)
     int ret;
     v4_venc_chn channel;
     memset(&channel, 0, sizeof(channel));
-    if (config->codec == HAL_VIDCODEC_JPG)
-        channel.attrib.codec = V4_VENC_CODEC_JPEGE;
-    else if (config->codec == HAL_VIDCODEC_MJPG) {
+    channel.gop.mode = V4_VENC_GOPMODE_NORMALP;
+    if (config->codec == HAL_VIDCODEC_JPG || config->codec == HAL_VIDCODEC_MJPG) {
         channel.attrib.codec = V4_VENC_CODEC_MJPG;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
@@ -517,7 +515,6 @@ int v4_video_create(char index, hal_vidconfig *config)
         }
     } else if (config->codec == HAL_VIDCODEC_H265) {
         channel.attrib.codec = V4_VENC_CODEC_H265;
-        channel.gop.mode = V4_VENC_GOPMODE_NORMALP;
         channel.gop.normalP.ipQualDelta = config->gop / config->framerate;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
@@ -545,7 +542,6 @@ int v4_video_create(char index, hal_vidconfig *config)
         }
     } else if (config->codec == HAL_VIDCODEC_H264) {
         channel.attrib.codec = V4_VENC_CODEC_H264;
-        channel.gop.mode = V4_VENC_GOPMODE_NORMALP;
         channel.gop.normalP.ipQualDelta = config->gop / config->framerate;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
@@ -575,7 +571,8 @@ int v4_video_create(char index, hal_vidconfig *config)
     channel.attrib.maxPic.width = config->width;
     channel.attrib.maxPic.height = config->height;
     channel.attrib.bufSize = ALIGN_UP(config->height * config->width * 3 / 4, 64);
-    channel.attrib.profile = config->profile;
+    if (channel.attrib.codec == V4_VENC_CODEC_H264)
+        channel.attrib.profile = MAX(config->profile, 2);
     channel.attrib.byFrame = 1;
     channel.attrib.pic.width = config->width;
     channel.attrib.pic.height = config->height;
@@ -641,23 +638,6 @@ int v4_video_snapshot_grab(char index, short width, short height,
 
     if (ret = v4_channel_bind(index)) {
         fprintf(stderr, "[v4_venc] Binding the encoder channel "
-            "%d failed with %#x!\n", index, ret);
-        goto abort;
-    }
-    return ret;
-
-    v4_venc_jpg param;
-    memset(&param, 0, sizeof(param));
-    if (ret = v4_venc.fnGetJpegParam(index, &param)) {
-        fprintf(stderr, "[v4_venc] Reading the JPEG settings "
-            "%d failed with %#x!\n", index, ret);
-        goto abort;
-    }
-    return ret;
-        return ret;
-    param.quality = quality;
-    if (ret = v4_venc.fnSetJpegParam(index, &param)) {
-        fprintf(stderr, "[v4_venc] Writing the JPEG settings "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }

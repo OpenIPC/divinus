@@ -114,8 +114,8 @@ int create_vpss_chn(char index, short width, short height, char framerate, char 
             app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_I6F:  return i6f_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
-        case HAL_PLATFORM_V4:   return v4_channel_create(index, width, height,
-            app_config.mirror, app_config.flip, framerate);
+        case HAL_PLATFORM_V4:   return v4_channel_create(index, app_config.mirror,
+            app_config.flip, framerate);
     }
 }
 
@@ -283,12 +283,10 @@ int start_sdk() {
     }
 
     if (app_config.mjpeg_enable) {
-        unsigned int width = app_config.mjpeg_width;
-        unsigned int height = app_config.mjpeg_height;
-
         int index = take_next_free_channel(true);
     
-        if (ret = create_vpss_chn(index, width, height, app_config.mjpeg_fps, 1)) {
+        if (ret = create_vpss_chn(index, app_config.mjpeg_width, app_config.mjpeg_height,
+            app_config.mjpeg_fps, 1)) {
             fprintf(stderr, 
                 "Creating channel %d failed with %#x!\n%s\n", 
                 index, ret, errstr(ret));
