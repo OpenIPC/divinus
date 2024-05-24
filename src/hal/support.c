@@ -1,7 +1,5 @@
 #include "support.h"
 
-extern void* __real_mmap();
-
 void *isp_thread = NULL;
 void *venc_thread = NULL;
 
@@ -34,7 +32,7 @@ bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
 
     volatile char *mapped_area;
     if (offset != loaded_offset) {
-        mapped_area = __real_mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, offset);
+        mapped_area = mmap64(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, offset);
         if (mapped_area == MAP_FAILED) {
             fprintf(stderr, "hal_registry mmap error: %s (%d)\n",
                     strerror(errno), errno);
@@ -86,9 +84,16 @@ void hal_identify(void) {
                 venc_thread = i6f_video_thread;
                 return;
         }
-    else if (!access("/proc/jz", 0)) {
-        plat = HAL_PLATFORM_TX;
-    }
+    else if (!access("/proc/jz", 0) && 
+        hal_registry(0x1300002C, &val, OP_READ))
+        switch ((val >> 12) & 0xFF) {
+            case 0x21:
+                plat = HAL_PLATFORM_T21;
+                return;
+            case 0x31:
+                plat = HAL_PLATFORM_T31;
+                return;
+        }
 
     if (file = fopen("/proc/iomem", "r"))
         while (fgets(line, 200, file))

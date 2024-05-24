@@ -17,6 +17,7 @@ jobs:
 
       - name: Build
         run: |
-          sh build.sh divinus-musl
-          sh build.sh divinus-muslhf
-          sh build.sh divinus-glibc
+          sh build.sh arm-musl
+          sh build.sh arm-muslhf
+          sh build.sh arm-glibc
+          sh build.sh mips-musl

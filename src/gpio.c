@@ -12,6 +12,7 @@ void gpio_deinit(void) {
     fd_gpio = 0;
 }
 
+#ifdef __arm__
 int gpio_init(void) {
     while (*path++) {
         if (access(*path, 0)) continue;
@@ -79,3 +80,16 @@ int gpio_write(char pin, bool value) {
     close(req.fd);
     return EXIT_SUCCESS;
 }
+#else
+int gpio_init(void) {
+    return EXIT_SUCCESS;
+}
+
+int gpio_read(char pin, bool *value) {
+    return EXIT_SUCCESS;
+}
+
+int gpio_write(char pin, bool value) {
+    return EXIT_SUCCESS;
+}
+#endif

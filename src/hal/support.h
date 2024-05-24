@@ -34,3 +34,5 @@ extern hal_chnstate i6f_state[I6F_VENC_CHN_NUM];
 
 bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op);
 void hal_identify(void);
+
+void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off);
