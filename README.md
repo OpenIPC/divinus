@@ -18,22 +18,25 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 
 | SoC Family              | Audio Stream | JPEG Snapshot | RTSP Stream | Motion Detect | On-Screen Display* |
 |-------------------------|:------------:|:-------------:|:-----------:|:-------------:|:------------------:|
-| Hi3516AV300/CV500/DV300 | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
-| Hi3516DV200             | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
-| Hi3516EV200/300         | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
-| Hi3518EV300             | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
-| GK7605V100              | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
-| GK7205V200/300          | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
-| GK7202V300              | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
+| Hi3516CV500[^1]         | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
+| Hi3516EV200[^2]         | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
+| GK7205V200[^3]          | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
 | Hi3519AV100             | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
 | Hi3559AV100             | ✗            | ✔️           | ✔️          | ✗            | ✔️                 |
-| infinity6/6b0/6e        | ↻            | ✔️           | ✔️          | ✗            | ✔️                 |
-| infinity6c              | ↻            | ✔️           | ✔️          | ✗            | ✔️                 |
-| infinity6f              | ↻            | ✔️           | ✔️          | ✗            | ✔️                 |
+| infinity6/6b0/6e[^4]    | ↻            | ✔️           | ✔️          | ✗            | ✔️                 |
+| infinity6c[^5]          | ↻            | ✔️           | ✔️          | ✗            | ✔️                 |
+| infinity6f[^6]          | ↻            | ✔️           | ✔️          | ✗            | ✔️                 |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
 _* At the moment, only text overlays are handled, eventually bitmaps, matricial formats and covers are to follow_
+
+[^1]: Hi3516AV300, Hi3516CV500 and Hi3516DV300
+[^2]: Hi3516DV200, Hi3516EV200/300 and Hi3518EV300
+[^3]: GK7202V300, GK7205V200/300 and GK7605V100
+[^4]: SSC323, SSC325(D/DE) and SSC327(D/DE/Q) // SSC333/35/37(DE) // SSC30K\[D/Q\], SSC336\[D/Q\], SSC338\[D/G/Q\] and SSC339G
+[^5]: SSC377(D/DE/QE) or SSC378\[DE/QE\]
+[^6]: SSC379G
 
 
 ### Technical support and donations
