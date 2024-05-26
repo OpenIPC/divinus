@@ -25,6 +25,10 @@ typedef struct {
 	unsigned short powUpPin;
 } tx_isp_snr;
 
+static tx_isp_snr tx_sensors[] = {
+    { .name = "sc2335", .spiMode = 0, .i2c.type = "sc2335", .i2c.addr = 0x30,
+      .rstPin = 18, .powDownPin = -1, .powUpPin = -1 }
+};
 
 typedef struct {
     void *handle;

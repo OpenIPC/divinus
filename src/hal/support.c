@@ -86,6 +86,9 @@ void hal_identify(void) {
                 venc_thread = i6f_video_thread;
                 return;
         }
+    else if (!access("/proc/jz", 0)) {
+        plat = HAL_PLATFORM_TX;
+    }
 
     if (file = fopen("/proc/iomem", "r"))
         while (fgets(line, 200, file))

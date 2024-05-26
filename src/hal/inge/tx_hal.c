@@ -10,6 +10,8 @@ tx_venc_impl tx_venc;
 hal_chnstate tx_state[TX_VENC_CHN_NUM] = {0};
 int (*tx_venc_cb)(char, hal_vidstream*);
 
+tx_isp_snr _tx_isp_snr;
+
 void tx_hal_deinit(void)
 {
     tx_venc_unload(&tx_venc);
@@ -36,6 +38,59 @@ int tx_hal_init(void)
     return ret;
     if (ret = tx_venc_load(&tx_venc))
     return ret;
+
+    return EXIT_SUCCESS;
+}
+
+int tx_pipeline_create(short width, short height, char framerate)
+{
+
+}
+
+void tx_pipeline_destroy()
+{
+    
+}
+
+void tx_system_deinit(void)
+{
+    tx_sys.fnExit();
+
+    tx_isp.fnDisableSensor();
+    tx_isp.fnDeleteSensor(&_tx_isp_snr);
+    tx_isp.fnExit();
+}
+
+int tx_system_init(char *sensor)
+{
+    int ret;
+
+    {
+        tx_sys_ver version;
+        if (ret = tx_sys.fnGetVersion(&version))
+            return ret;
+        printf("App built with headers v%s\n", TX_SYS_API);
+        puts(version.version);
+    }
+
+    for (char i = 0; i < sizeof(tx_sensors) / sizeof(*tx_sensors); i++) {
+        if (strcmp(sensor, tx_sensors[i].name)) continue;
+        _tx_isp_snr = tx_sensors[i];
+        ret = 0;
+        break;
+    }
+    if (ret)
+        return EXIT_FAILURE;
+
+    if (ret = tx_isp.fnInit())
+        return ret;
+    if (ret = tx_isp.fnAddSensor(&_tx_isp_snr))
+        return ret;
+    if (ret = tx_isp.fnEnableSensor())
+        return ret;
+
+    if (ret = tx_sys.fnInit())
+        return ret;
 
     return EXIT_SUCCESS;
 }

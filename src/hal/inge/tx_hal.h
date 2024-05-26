@@ -9,3 +9,14 @@
 #include "tx_venc.h"
 
 extern char keepRunning;
+
+extern int (*tx_venc_cb)(char, hal_vidstream*);
+
+void tx_hal_deinit(void);
+int tx_hal_init(void);
+
+int tx_pipeline_create(short width, short height, char framerate);
+void tx_pipeline_destroy(void);
+
+void tx_system_deinit(void);
+int tx_system_init(char *sensor);
