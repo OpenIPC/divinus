@@ -8,7 +8,7 @@ toolchain() {
 		tar -xf $1.tgz -C toolchain/$1 --strip-components=1 || exit 1
 		rm -f $1.tgz
 	fi
-	GCC=$PWD/toolchain/$1/bin/$2-linux-gcc
+	make -C src -B CC=$PWD/toolchain/$1/bin/$2-linux-gcc OPT="$OPT $3"
 }
 
 if [ "$2" = "debug" ]; then
@@ -19,17 +19,12 @@ fi
 
 if [ "$1" = "arm-musl" ]; then
 	toolchain cortex_a7_thumb2-gcc13-musl-4_9 arm
-	make -C src -B CC=$GCC OPT="$OPT"
 elif [ "$1" = "arm-muslhf" ]; then
 	toolchain cortex_a7_thumb2_hf-gcc13-musl-4_9 arm
-	make -C src -B CC=$GCC OPT="$OPT"
 elif [ "$1" = "arm-glibc" ]; then
-	toolchain cortex_a7_thumb2_hf-gcc13-glibc-4_9 arm
-	make -C src -B CC=$GCC OPT="$OPT -lm"
+	toolchain cortex_a7_thumb2_hf-gcc13-glibc-4_9 arm -lm
 elif [ "$1" = "mips-musl" ]; then
 	toolchain mips_xburst-gcc13-musl-3_10 mipsel
-	make -C src -B CC=$GCC OPT="$OPT"
 else
 	echo "Usage: $0 [arm-musl|arm-muslhf|arm-glibc|mips-musl]"
-	exit 1
 fi
