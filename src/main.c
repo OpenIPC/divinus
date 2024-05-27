@@ -29,6 +29,10 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Divinus for infinity6e\n"); break;
         case HAL_PLATFORM_I6F:
             fprintf(stderr, "Divinus for infinity6f\n"); break;
+        case HAL_PLATFORM_T21:
+            fprintf(stderr, "Divinus for ingenic t21\n"); break;
+        case HAL_PLATFORM_T31:
+            fprintf(stderr, "Divinus for ingenic t31\n"); break;
         case HAL_PLATFORM_V4:
             fprintf(stderr, "Divinus for hisi-gen4\n"); break;
         default:

@@ -16,9 +16,10 @@ float __expf_finite(float x) { return expf(x); }
 int __fgetc_unlocked(FILE *stream) { return fgetc(stream); }
 double __log_finite(double x) { return log(x); }
 
-void* mmap(void *start, size_t len, int prot, int flags, int fd, uint32_t off) {
+void *mmap(void *start, size_t len, int prot, int flags, int fd, uint32_t off) {
     return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, off >> 12);
 }
-void* __wrap_mmap(void *start, size_t len, int prot, int flags, int fd, uint32_t off) {
-    return mmap(start, len, prot, flags, fd, off);
+
+void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off) {
+    return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, off >> 12);
 }
