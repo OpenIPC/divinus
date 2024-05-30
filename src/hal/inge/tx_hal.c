@@ -12,6 +12,8 @@ int (*tx_venc_cb)(char, hal_vidstream*);
 
 tx_isp_snr _tx_isp_snr;
 
+char _tx_fs_chn = 0;
+
 void tx_hal_deinit(void)
 {
     tx_venc_unload(&tx_venc);
@@ -44,12 +46,27 @@ int tx_hal_init(void)
 
 int tx_pipeline_create(short width, short height, char framerate)
 {
+    int ret;
 
+    {
+        tx_fs_chn channel = {
+            .dest = { .width = width, .height = height },
+            .fpsDen = framerate, .fpsNum = 1
+        };
+
+        if (ret = tx_fs.fnCreateChannel(_tx_fs_chn, &channel))
+            return ret;
+    }
 }
 
 void tx_pipeline_destroy()
 {
-    
+    tx_fs.fnDestroyChannel(_tx_fs_chn);
+}
+
+void *tx_video_thread(void)
+{
+
 }
 
 void tx_system_deinit(void)
