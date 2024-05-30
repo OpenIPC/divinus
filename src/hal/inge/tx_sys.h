@@ -70,14 +70,14 @@ static int tx_sys_load(tx_sys_impl *sys_lib) {
     }
 
     if (!(sys_lib->fnBind = (int(*)(tx_sys_bind *source, tx_sys_bind *dest))
-        dlsym(sys_lib->handle, "HI_MPI_SYS_Bind"))) {
-        fprintf(stderr, "[tx_sys] Failed to acquire symbol HI_MPI_SYS_Bind!\n");
+        dlsym(sys_lib->handle, "IMP_System_Bind"))) {
+        fprintf(stderr, "[tx_sys] Failed to acquire symbol IMP_System_Bind!\n");
         return EXIT_FAILURE;
     }
 
     if (!(sys_lib->fnUnbind = (int(*)(tx_sys_bind *source, tx_sys_bind *dest))
-        dlsym(sys_lib->handle, "HI_MPI_SYS_UnBind"))) {
-        fprintf(stderr, "[tx_sys] Failed to acquire symbol HI_MPI_SYS_UnBind!\n");
+        dlsym(sys_lib->handle, "IMP_System_UnBind"))) {
+        fprintf(stderr, "[tx_sys] Failed to acquire symbol IMP_System_UnBind!\n");
         return EXIT_FAILURE;
     }
 

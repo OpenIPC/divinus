@@ -91,8 +91,8 @@ int tx_system_init(char *sensor)
     }
 
     for (char i = 0; i < sizeof(tx_sensors) / sizeof(*tx_sensors); i++) {
-        if (strcmp(sensor, tx_sensors[i].name)) continue;
-        _tx_isp_snr = tx_sensors[i];
+        if (strcmp(tx_sensors[i].name, sensor)) continue;
+        memcpy(&_tx_isp_snr, &tx_sensors[i], sizeof(tx_isp_snr));
         ret = 0;
         break;
     }
