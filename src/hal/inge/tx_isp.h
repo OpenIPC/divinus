@@ -2,6 +2,11 @@
 
 #include "tx_common.h"
 
+typedef enum {
+    TX_ISP_COMM_I2C = 1,
+    TX_ISP_COMM_SPI,
+} tx_isp_comm;
+
 typedef struct {
     char type[20];
     int addr;
@@ -15,7 +20,7 @@ typedef struct {
 
 typedef struct {
 	char name[32];
-	int spiMode;
+	tx_isp_comm mode;
 	union {
 		tx_isp_i2c i2c;
 		tx_isp_spi spi;
@@ -26,7 +31,7 @@ typedef struct {
 } tx_isp_snr;
 
 static tx_isp_snr tx_sensors[] = {
-    { .name = "sc2335", .spiMode = 0, .i2c.type = "sc2335", .i2c.addr = 0x30 }
+    { .name = "sc2335", .mode = TX_ISP_COMM_I2C, .i2c.type = "sc2335", .i2c.addr = 0x30 }
 };
 
 typedef struct {
