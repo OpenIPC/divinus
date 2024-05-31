@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hal/config.h"
+#include "hal/support.h"
 
 struct AppConfig {
     // [system]

@@ -53,10 +53,12 @@ enum ConfigError parse_app_config(void) {
     enum ConfigError err;
     find_sections(&ini);
 
-    err = parse_param_value(
-        &ini, "system", "sensor_config", app_config.sensor_config);
-    if (err != CONFIG_OK)
-        goto RET_ERR;
+    if (plat != HAL_PLATFORM_TX) {
+        err = parse_param_value(
+            &ini, "system", "sensor_config", app_config.sensor_config);
+        if (err != CONFIG_OK)
+            goto RET_ERR;
+    }
     int port;
     err = parse_int(&ini, "system", "web_port", 1, INT_MAX, &port);
     if (err != CONFIG_OK)

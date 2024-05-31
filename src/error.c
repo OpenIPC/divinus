@@ -8,8 +8,6 @@ char *errstr(int error) {
 
     switch (plat) {
         case HAL_PLATFORM_I6:
-        case HAL_PLATFORM_I6B0:
-        case HAL_PLATFORM_I6E:
             level = (error >> 12) & 0xF;
             error = error & 0xFF000FFF | (level > 0 ? (4 << 13) : 0);
             switch (module) {

@@ -6,6 +6,7 @@ void *venc_thread = NULL;
 char chnCount = 0;
 hal_chnstate *chnState = NULL;
 hal_platform plat = HAL_PLATFORM_UNK;
+char series[16] = "unknown";
 
 bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
     static int mem_fd;
@@ -64,9 +65,10 @@ void hal_identify(void) {
             case 0xEF: // Macaron (6)
             case 0xF1: // Pudding (6E)
             case 0xF2: // Ispahan (6B0)
-                plat = val == 0xF1 ? HAL_PLATFORM_I6E : 
-                    val == 0xF2 ? HAL_PLATFORM_I6B0 : 
-                    HAL_PLATFORM_I6;
+                plat = HAL_PLATFORM_I6;
+                strcpy(series, val == 0xEF ? "infinity6" :
+                    val == 0xF1 ? "infinity6e" :
+                    val == 0xF2 ? "infinity6b0" : "unknown");
                 chnCount = I6_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6_state;
                 venc_thread = i6_video_thread;
@@ -89,8 +91,8 @@ void hal_identify(void) {
         switch ((val >> 12) & 0xFF) {
             case 0x21:
             case 0x31:
-                plat = val == 0x21 ? HAL_PLATFORM_T21 :
-                    HAL_PLATFORM_T31;
+                strcpy(series, val == 0x21 ? "T21" :
+                    val == 0x31 ? "T31" : "unknown");
                 chnCount = TX_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)tx_state;
                 venc_thread = tx_video_thread;
@@ -122,6 +124,17 @@ void hal_identify(void) {
     }
 
     plat = HAL_PLATFORM_V4;
+    sprintf(series, "%s%X", 
+        ((val >> 28) == 0x7) ? "GK" : "Hi", val);
+    if (series[6] == '0') {
+        series[6] = 'V';
+    } else {
+        series[8] = series[7];
+        series[7] = 'V';
+        series[9] = series[8];
+        series[10] = series[9];
+        series[11] = '\0';
+    }
     chnCount = V4_VENC_CHN_NUM;
     chnState = (hal_chnstate*)v4_state;
     isp_thread = v4_image_thread;

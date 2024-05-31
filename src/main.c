@@ -20,25 +20,20 @@ int main(int argc, char *argv[]) {
     hal_identify();
     switch (plat) {
         case HAL_PLATFORM_I6:
-            fprintf(stderr, "Divinus for infinity6\n"); break;
-        case HAL_PLATFORM_I6B0:
-            fprintf(stderr, "Divinus for infinity6b0\n"); break;
+            fprintf(stderr, "Divinus for infinity6(b0/e)\n"); break;
         case HAL_PLATFORM_I6C:
             fprintf(stderr, "Divinus for infinity6c\n"); break;
-        case HAL_PLATFORM_I6E:
-            fprintf(stderr, "Divinus for infinity6e\n"); break;
         case HAL_PLATFORM_I6F:
             fprintf(stderr, "Divinus for infinity6f\n"); break;
-        case HAL_PLATFORM_T21:
-            fprintf(stderr, "Divinus for ingenic t21\n"); break;
-        case HAL_PLATFORM_T31:
-            fprintf(stderr, "Divinus for ingenic t31\n"); break;
+        case HAL_PLATFORM_TX:
+            fprintf(stderr, "Divinus for ingenic t-series\n"); break;
         case HAL_PLATFORM_V4:
             fprintf(stderr, "Divinus for hisi-gen4\n"); break;
         default:
             fprintf(stderr, "Unsupported chip family! Quitting...\n");
             return EXIT_FAILURE;
     }
+    fprintf(stderr, "Chip series: %s\n", series);
 
     if (parse_app_config() != CONFIG_OK) {
         fprintf(stderr, "Can't load app config 'divinus.yaml'\n");
