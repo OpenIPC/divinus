@@ -2,10 +2,8 @@
 
 #include "v4_common.h"
 
-#define V4_VPSS_PHY_CHN_NUM	3
-#define V4_VPSS_EXT_CHN_NUM 8
-#define V4_VPSS_CHN_NUM     (V4_VPSS_PHY_CHN_NUM + V4_VPSS_EXT_CHN_NUM)
-#define V4_VPSS_GRP_NUM     32
+#define V4_VPSS_CHN_NUM 6
+#define V4_VPSS_GRP_NUM 8
 
 typedef enum {
     V4_VPSS_NMODE_VIDEO,
