@@ -359,7 +359,7 @@ int start_sdk() {
         pthread_attr_destroy(&thread_attr);
     }
 
-    if (!access(app_config.sensor_config, 0) && sleep(1))
+    if (!access(app_config.sensor_config, 0) && !sleep(1))
         switch (plat) {
             case HAL_PLATFORM_I6: 
             case HAL_PLATFORM_I6B0:
@@ -406,6 +406,8 @@ int stop_sdk() {
         case HAL_PLATFORM_I6E:  i6_system_deinit(); break;
         case HAL_PLATFORM_I6C:  i6c_system_deinit(); break;
         case HAL_PLATFORM_I6F:  i6f_system_deinit(); break;
+        case HAL_PLATFORM_T21:
+        case HAL_PLATFORM_T31:  tx_system_deinit(); break;
         case HAL_PLATFORM_V4:   v4_system_deinit(); break;  
     }
 
@@ -419,6 +421,8 @@ int stop_sdk() {
         case HAL_PLATFORM_I6E:  i6_hal_deinit(); break;
         case HAL_PLATFORM_I6C:  i6c_hal_deinit(); break;
         case HAL_PLATFORM_I6F:  i6f_hal_deinit(); break;
+        case HAL_PLATFORM_T21:
+        case HAL_PLATFORM_T31:  tx_hal_deinit(); break;
         case HAL_PLATFORM_V4:   v4_hal_deinit(); break;
     }
 
