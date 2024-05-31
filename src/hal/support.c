@@ -75,12 +75,14 @@ void hal_identify(void) {
                 return;
             case 0xF9:
                 plat = HAL_PLATFORM_I6C;
+                strcpy(series, "infinity6c");
                 chnCount = I6C_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6c_state;
                 venc_thread = i6c_video_thread;
                 return;
             case 0xFB:
                 plat = HAL_PLATFORM_I6F;
+                strcpy(series, "infinity6f");
                 chnCount = I6F_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6f_state;
                 venc_thread = i6f_video_thread;
@@ -91,6 +93,7 @@ void hal_identify(void) {
         switch ((val >> 12) & 0xFF) {
             case 0x21:
             case 0x31:
+                plat = HAL_PLATFORM_TX;
                 strcpy(series, val == 0x21 ? "T21" :
                     val == 0x31 ? "T31" : "unknown");
                 chnCount = TX_VENC_CHN_NUM;
