@@ -32,7 +32,6 @@ enum ConfigError find_sections(struct IniConfig *ini) {
         ini->sections[section_index].pos = section_pos;
         section_index++;
     }
-
     regfree(&regex);
     return CONFIG_OK;
 }
@@ -51,7 +50,6 @@ enum ConfigError section_pos(
             return CONFIG_OK;
         }
     }
-
     return CONFIG_SECTION_NOT_FOUND;
 }
 
@@ -62,7 +60,12 @@ enum ConfigError parse_param_value(
     int end_pos = 0;
     if (strlen(section) > 0) {
         enum ConfigError err = section_pos(ini, section, &start_pos, &end_pos);
-        if (err != CONFIG_OK)
+        if (err == CONFIG_SECTION_NOT_FOUND) {
+            printf(
+                "Section '%s' doesn't exists in config '%s'.\n", section,
+                ini->path);
+            return err;
+        } else if (err != CONFIG_OK)
             return err;
     }
 
@@ -86,6 +89,7 @@ enum ConfigError parse_param_value(
 
     int res = sprintf(param_value, "%.*s", (int)(m[1].rm_eo - m[1].rm_so),
         ini->str + start_pos + m[1].rm_so);
+    // if (res <= 0 ) { return -1; }
     param_value[res] = 0;
     return CONFIG_OK;
 }
@@ -302,36 +306,4 @@ enum ConfigError read_sensor_from_proc_cmdline(char *sensor_type) {
         sensor_type, "%.*s", (int)(m[1].rm_eo - m[1].rm_so),
         cmdline + m[1].rm_so);
     return CONFIG_OK;
-}
-
-bool open_config(struct IniConfig *ini, const char *path) {
-    FILE *file = fopen(path, "rb");
-    if (!file) {
-        printf("Can't open file %s\n", path);
-        return false;
-    }
-
-    fseek(file, 0, SEEK_END);
-    size_t length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    ini->str = malloc(length + 1);
-    if (!ini->str) {
-        printf("Can't allocate buf in parse_sensor_config\n");
-        fclose(file);
-        return false;
-    }
-
-    size_t n = fread(ini->str, 1, length, file);
-    if (n != length) {
-        printf("Can't read all file %s\n", path);
-        fclose(file);
-        free(ini->str);
-        return false;
-    }
-
-    fclose(file);
-    ini->str[length] = 0;
-
-    return true;
 }

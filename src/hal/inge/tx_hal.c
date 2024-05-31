@@ -90,35 +90,17 @@ int tx_system_init(void)
         puts(version.version);
     }
 
-    const char *sensor = getenv("SENSOR");
-    if (!sensor)
-        printf("Cannot find sensor variable\n");
-
-    char buf[128];
-    sprintf(buf, "/etc/sensor/%s.yaml", sensor);
-
-    struct IniConfig ini;
-    memset(&ini, 0, sizeof(ini));
-    if (!open_config(&ini, buf))
-        return EXIT_FAILURE;
-
-    find_sections(&ini);
-
-    ret = parse_int(&ini, "sensor", "address", 0, INT_MAX, &_tx_isp_snr.i2c.addr);
-    if (ret != CONFIG_OK)
-        return ret;
-
-    ret = parse_param_value(&ini, "sensor", "bus", buf);
-    if (ret != CONFIG_OK)
-        return ret;
-
-    if (!strcmp(buf, "i2c"))
-        _tx_isp_snr.mode = TX_ISP_COMM_I2C;
-    else
-        _tx_isp_snr.mode = TX_ISP_COMM_SPI;
-
-    if (ret)
-        return EXIT_FAILURE;
+    {
+        const char *sensor = getenv("SENSOR");
+        for (char i = 0; i < sizeof(tx_sensors) / sizeof(*tx_sensors); i++) {
+            if (strcmp(tx_sensors[i].name, sensor)) continue;
+            memcpy(&_tx_isp_snr, &tx_sensors[i], sizeof(tx_isp_snr));
+            ret = 0;
+            break;
+        }
+        if (ret)
+            return EXIT_FAILURE;
+    }
 
     if (ret = tx_isp.fnInit())
         return ret;

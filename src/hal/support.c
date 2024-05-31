@@ -88,10 +88,12 @@ void hal_identify(void) {
         hal_registry(0x1300002C, &val, OP_READ))
         switch ((val >> 12) & 0xFF) {
             case 0x21:
-                plat = HAL_PLATFORM_T21;
-                return;
             case 0x31:
-                plat = HAL_PLATFORM_T31;
+                plat = val == 0x21 ? HAL_PLATFORM_T21 :
+                    HAL_PLATFORM_T31;
+                chnCount = TX_VENC_CHN_NUM;
+                chnState = (hal_chnstate*)tx_state;
+                venc_thread = tx_video_thread;
                 return;
         }
 

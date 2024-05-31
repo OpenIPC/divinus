@@ -178,6 +178,8 @@ int start_sdk() {
         case HAL_PLATFORM_I6E:  i6_venc_cb = save_stream; break;
         case HAL_PLATFORM_I6C:  i6c_venc_cb = save_stream; break;
         case HAL_PLATFORM_I6F:  i6f_venc_cb = save_stream; break;
+        case HAL_PLATFORM_T21:
+        case HAL_PLATFORM_T31:  tx_venc_cb = save_stream; break;
         case HAL_PLATFORM_V4:   v4_venc_cb = save_stream; break;
     }
 
@@ -209,6 +211,9 @@ int start_sdk() {
         case HAL_PLATFORM_I6C:  ret = i6c_pipeline_create(0, width,
             height, framerate); break;
         case HAL_PLATFORM_I6F:  ret = i6f_pipeline_create(0, width,
+            height, framerate); break;
+        case HAL_PLATFORM_T21:
+        case HAL_PLATFORM_T31:  ret = tx_pipeline_create(width, 
             height, framerate); break;
         case HAL_PLATFORM_V4:   ret = v4_pipeline_create(); break;
     }
@@ -359,7 +364,7 @@ int start_sdk() {
         pthread_attr_destroy(&thread_attr);
     }
 
-    if (!access(app_config.sensor_config, 0) ^ sleep(1))
+    if (!access(app_config.sensor_config, 0) && !sleep(1))
         switch (plat) {
             case HAL_PLATFORM_I6: 
             case HAL_PLATFORM_I6B0:
@@ -394,6 +399,8 @@ int stop_sdk() {
         case HAL_PLATFORM_I6E:  i6_pipeline_destroy(); break;
         case HAL_PLATFORM_I6C:  i6c_pipeline_destroy(); break;
         case HAL_PLATFORM_I6F:  i6f_pipeline_destroy(); break;
+        case HAL_PLATFORM_T21:
+        case HAL_PLATFORM_T31:  tx_pipeline_destroy(); break;   
         case HAL_PLATFORM_V4:   v4_pipeline_destroy(); break;   
     }
 
@@ -406,6 +413,8 @@ int stop_sdk() {
         case HAL_PLATFORM_I6E:  i6_system_deinit(); break;
         case HAL_PLATFORM_I6C:  i6c_system_deinit(); break;
         case HAL_PLATFORM_I6F:  i6f_system_deinit(); break;
+        case HAL_PLATFORM_T21:
+        case HAL_PLATFORM_T31:  tx_system_deinit(); break;
         case HAL_PLATFORM_V4:   v4_system_deinit(); break;  
     }
 
@@ -419,6 +428,8 @@ int stop_sdk() {
         case HAL_PLATFORM_I6E:  i6_hal_deinit(); break;
         case HAL_PLATFORM_I6C:  i6c_hal_deinit(); break;
         case HAL_PLATFORM_I6F:  i6f_hal_deinit(); break;
+        case HAL_PLATFORM_T21:
+        case HAL_PLATFORM_T31:  tx_hal_deinit(); break;
         case HAL_PLATFORM_V4:   v4_hal_deinit(); break;
     }
 

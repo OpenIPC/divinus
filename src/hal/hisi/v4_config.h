@@ -5,6 +5,7 @@
 #include "v4_snr.h"
 #include "v4_vi.h"
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -331,8 +332,34 @@ static enum ConfigError v4_parse_sensor_config(char *path, v4_config_impl *confi
     enum ConfigError err;
 
     // load config file to string
-    if (!open_config(&ini, path))
-        return (enum ConfigError)-1;
+    ini.str = NULL;
+    {
+        FILE *file = fopen(path, "rb");
+        if (!file) {
+            printf("Can't open file %s\n", path);
+            return (enum ConfigError)-1;
+        }
+
+        fseek(file, 0, SEEK_END);
+        size_t length = (size_t)ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        ini.str = (char*)malloc(length + 1);
+        if (!ini.str) {
+            printf("Can't allocate buf in parse_sensor_config\n");
+            fclose(file);
+            return (enum ConfigError)-1;
+        }
+        size_t n = fread(ini.str, 1, length, file);
+        if (n != length) {
+            printf("Can't read all file %s\n", path);
+            fclose(file);
+            free(ini.str);
+            return (enum ConfigError)-1;
+        }
+        fclose(file);
+        ini.str[length] = 0;
+    }
 
     find_sections(&ini);
 
