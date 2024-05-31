@@ -73,8 +73,11 @@ int tx_audio_init(void)
     
     if (ret = tx_aud.fnEnableChannel(_tx_aud_dev, _tx_aud_chn))
         return ret;
-    if (ret = tx_aud.fnSetVolume(_tx_aud_dev, _tx_aud_chn, 0xF6))
-            return ret;
+    {
+        int dbLevel = 0xF6;
+        if (ret = tx_aud.fnSetVolume(_tx_aud_dev, _tx_aud_chn, &dbLevel))
+                return ret;
+    }
     
     return EXIT_SUCCESS;
 }
@@ -114,7 +117,7 @@ int tx_region_create(int *handle, char group, hal_rect rect)
     region.rect.p1.y = rect.y + rect.height - 1;
     region.data.picture = NULL;
 
-    if (ret = tx_osd.fnGetRegionConfig(&handle, &regionCurr)) {
+    if (ret = tx_osd.fnGetRegionConfig(*handle, &regionCurr)) {
         fprintf(stderr, "[tx_osd] Creating region %d...\n", group);
         if (ret = tx_osd.fnCreateRegion(&region))
             return ret;
@@ -122,11 +125,11 @@ int tx_region_create(int *handle, char group, hal_rect rect)
         regionCurr.rect.p1.x - regionCurr.rect.p0.x != rect.width) {
         fprintf(stderr, "[tx_osd] Parameters are different, recreating "
             "region %d...\n", group);
-        if (ret = tx_osd.fnSetRegionConfig(&handle, &region))
+        if (ret = tx_osd.fnSetRegionConfig(*handle, &region))
             return ret;
     }
 
-    if (tx_osd.fnGetGroupConfig(&handle, group, &attribCurr))
+    if (tx_osd.fnGetGroupConfig(*handle, group, &attribCurr))
         fprintf(stderr, "[tx_osd] Attaching region %d...\n", group);
 
     memset(&attrib, 0, sizeof(attrib));
@@ -134,7 +137,7 @@ int tx_region_create(int *handle, char group, hal_rect rect)
     attrib.alphaOn = 1;
     attrib.fgAlpha = 255;
 
-    tx_osd.fnRegisterRegion(&handle, group, &attrib);
+    tx_osd.fnRegisterRegion(*handle, group, &attrib);
     tx_osd.fnStartGroup(group);
 
     return ret;
@@ -143,19 +146,19 @@ int tx_region_create(int *handle, char group, hal_rect rect)
 void tx_region_destroy(int *handle, char group)
 {
     tx_osd.fnStopGroup(group);
-    tx_osd.fnUnregisterRegion(&handle, group);
+    tx_osd.fnUnregisterRegion(*handle, group);
 }
 
 int tx_region_setbitmap(int *handle, hal_bitmap *bitmap)
 {
     tx_osd_rgn region;
-    tx_osd.fnGetRegionConfig(&handle, &region);
+    tx_osd.fnGetRegionConfig(*handle, &region);
     region.type = TX_OSD_TYPE_PIC;
     region.rect.p1.x = region.rect.p0.x + bitmap->dim.width - 1;
     region.rect.p1.y = region.rect.p0.y + bitmap->dim.height - 1;
     region.pixFmt = TX_PIXFMT_RGB555LE;
     region.data.picture = bitmap->data;    
-    return tx_osd.fnSetRegionConfig(&handle, &region);
+    return tx_osd.fnSetRegionConfig(*handle, &region);
 }
 
 void *tx_video_thread(void)
