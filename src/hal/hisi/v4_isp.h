@@ -47,17 +47,7 @@ typedef struct {
 } v4_isp_impl;
 
 static int v4_isp_load(v4_isp_impl *isp_lib) {
-    if (!access("/usr/lib/libisp.so", 0) &&
-        !(isp_lib->handle = dlopen("libisp.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-        !(isp_lib->handleAe = dlopen("lib_hiae.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-        !(isp_lib->handleAwb = dlopen("lib_hiawb.so", RTLD_LAZY | RTLD_GLOBAL))) {
-
-        fprintf(stderr, "[v4_isp] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
-
-    if (!access("/usr/lib/libgk_isp.so", 0) &&
-         (!(isp_lib->handleAe = dlopen("lib_hiae.so", RTLD_LAZY | RTLD_GLOBAL)) ||
+    if ((!(isp_lib->handleAe = dlopen("lib_hiae.so", RTLD_LAZY | RTLD_GLOBAL)) ||
          !(isp_lib->handleAwb = dlopen("lib_hiawb.so", RTLD_LAZY | RTLD_GLOBAL)) ||
          !(isp_lib->handleLdci = dlopen("lib_hildci.so", RTLD_LAZY | RTLD_GLOBAL)) ||
          !(isp_lib->handleDehaze = dlopen("lib_hidehaze.so", RTLD_LAZY | RTLD_GLOBAL)) ||
@@ -74,7 +64,6 @@ static int v4_isp_load(v4_isp_impl *isp_lib) {
          !(isp_lib->handleDrc = dlopen("libdrc.so", RTLD_LAZY | RTLD_GLOBAL)) ||
          !(isp_lib->handleDehaze = dlopen("libdehaze.so", RTLD_LAZY | RTLD_GLOBAL)) ||
          !(isp_lib->handle = dlopen("libhi_isp.so", RTLD_LAZY | RTLD_GLOBAL)))) {
-
         fprintf(stderr, "[v4_isp] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
