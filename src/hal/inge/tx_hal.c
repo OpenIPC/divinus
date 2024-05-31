@@ -15,6 +15,7 @@ tx_isp_snr _tx_isp_snr;
 char _tx_aud_chn = 0;
 char _tx_aud_dev = 0;
 char _tx_fs_chn = 0;
+char _tx_osd_grp = 0;
 
 void tx_hal_deinit(void)
 {
@@ -89,7 +90,8 @@ int tx_pipeline_create(short width, short height, char framerate)
     {
         tx_fs_chn channel = {
             .dest = { .width = width, .height = height },
-            .fpsDen = framerate, .fpsNum = 1
+            .fpsDen = framerate, .fpsNum = 1,
+            .pixFmt = TX_PIXFMT_NV12
         };
 
         if (ret = tx_fs.fnCreateChannel(_tx_fs_chn, &channel))
@@ -117,10 +119,11 @@ int tx_region_create(int *handle, char group, hal_rect rect)
     region.rect.p1.y = rect.y + rect.height - 1;
     region.data.picture = NULL;
 
-    if (ret = tx_osd.fnGetRegionConfig(*handle, &regionCurr)) {
+    if (tx_osd.fnGetRegionConfig(*handle, &regionCurr)) {
         fprintf(stderr, "[tx_osd] Creating region %d...\n", group);
-        if (ret = tx_osd.fnCreateRegion(&region))
+        if ((ret = tx_osd.fnCreateRegion(&region)) < 0)
             return ret;
+        else *handle = ret;
     } else if (regionCurr.rect.p1.y - regionCurr.rect.p0.y != rect.height || 
         regionCurr.rect.p1.x - regionCurr.rect.p0.x != rect.width) {
         fprintf(stderr, "[tx_osd] Parameters are different, recreating "
@@ -137,6 +140,7 @@ int tx_region_create(int *handle, char group, hal_rect rect)
     attrib.alphaOn = 1;
     attrib.fgAlpha = 255;
 
+    tx_osd.fnCreateGroup(group);
     tx_osd.fnRegisterRegion(*handle, group, &attrib);
     tx_osd.fnStartGroup(group);
 
@@ -147,6 +151,8 @@ void tx_region_destroy(int *handle, char group)
 {
     tx_osd.fnStopGroup(group);
     tx_osd.fnUnregisterRegion(*handle, group);
+    tx_osd.fnDestroyGroup(group);
+    *handle = -1;
 }
 
 int tx_region_setbitmap(int *handle, hal_bitmap *bitmap)
@@ -187,35 +193,21 @@ int tx_system_init(void)
         puts(version.version);
     }
 
-    const char *sensor = getenv("SENSOR");
-    if (!sensor)
-        printf("Cannot find sensor variable\n");
-
-    char buf[128];
-    sprintf(buf, "/etc/sensor/%s.yaml", sensor);
-
-    struct IniConfig ini;
-    memset(&ini, 0, sizeof(ini));
-    if (!open_config(&ini, buf))
-        return EXIT_FAILURE;
-
-    find_sections(&ini);
-
-    ret = parse_int(&ini, "sensor", "address", 0, INT_MAX, &_tx_isp_snr.i2c.addr);
-    if (ret != CONFIG_OK)
-        return EXIT_FAILURE;
-
-    ret = parse_param_value(&ini, "sensor", "bus", buf);
-    if (ret != CONFIG_OK)
-        return EXIT_FAILURE;
-
-    strcpy(_tx_isp_snr.name, sensor);
-    strcpy(_tx_isp_snr.i2c.type, sensor);
-
-    if (!strcmp(buf, "i2c"))
-        _tx_isp_snr.mode = TX_ISP_COMM_I2C;
-    else
-        _tx_isp_snr.mode = TX_ISP_COMM_SPI;
+    {
+        const char *sensor = getenv("SENSOR");
+        for (char i = 0; i < sizeof(tx_sensors) / sizeof(*tx_sensors); i++) {
+            if (strcmp(tx_sensors[i].name, sensor)) continue;
+            memcpy(&_tx_isp_snr, &tx_sensors[i], sizeof(tx_isp_snr));
+            if (tx_sensors[i].mode == TX_ISP_COMM_I2C)
+                memcpy(&_tx_isp_snr.i2c.type, &tx_sensors[i].name, strlen(tx_sensors[i].name));
+            else if (tx_sensors[i].mode == TX_ISP_COMM_SPI)
+                memcpy(&_tx_isp_snr.spi.alias, &tx_sensors[i].name, strlen(tx_sensors[i].name));
+            ret = 0;
+            break;
+        }
+        if (ret)
+            return EXIT_FAILURE;
+    }
 
     if (ret = tx_isp.fnInit())
         return ret;
