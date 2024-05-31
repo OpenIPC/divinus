@@ -27,7 +27,7 @@ typedef struct {
 } tx_sys_ver;
 
 typedef struct {
-    void *handle;
+    void *handle, *handleAlog, *handleSysutils;
     
     int (*fnExit)(void);
     int (*fnGetChipName)(const char *chip);
@@ -40,7 +40,9 @@ typedef struct {
 } tx_sys_impl;
 
 static int tx_sys_load(tx_sys_impl *sys_lib) {
-    if (!(sys_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL))) {
+    if (!(sys_lib->handleSysutils = dlopen("libsysutils.so", RTLD_LAZY | RTLD_GLOBAL)) ||
+        !(sys_lib->handleAlog = dlopen("libalog.so", RTLD_LAZY | RTLD_GLOBAL)) ||
+        !(sys_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[tx_sys] Failed to load library!\nError: %s\n", dlerror());
         return EXIT_FAILURE;
     }
@@ -87,5 +89,9 @@ static int tx_sys_load(tx_sys_impl *sys_lib) {
 static void tx_sys_unload(tx_sys_impl *sys_lib) {
     if (sys_lib->handle) dlclose(sys_lib->handle);
     sys_lib->handle = NULL;
+    if (sys_lib->handleAlog) dlclose(sys_lib->handleAlog);
+    sys_lib->handleAlog = NULL;
+    if (sys_lib->handleSysutils) dlclose(sys_lib->handleSysutils);
+    sys_lib->handleSysutils = NULL;
     memset(sys_lib, 0, sizeof(*sys_lib));
 }
