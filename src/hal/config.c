@@ -5,12 +5,12 @@ enum ConfigError find_sections(struct IniConfig *ini) {
         ini->sections[i].pos = -1;
 
     regex_t regex;
-    if (compile_regex(&regex, "^(\\w+):") < 0) {
+    if (compile_regex(&regex, REG_SECTION) < 0) {
         printf("compile_regex error\n");
         return CONFIG_REGEX_ERROR;
     };
 
-    size_t n_matches = 2;
+    size_t n_matches = 4;
     regmatch_t m[n_matches];
 
     int section_pos = 0;
@@ -22,8 +22,11 @@ enum ConfigError find_sections(struct IniConfig *ini) {
         if (match != 0)
             break;
 
+        int i = 2;
+        if (m[i].rm_eo - m[i].rm_so == 0)
+            i++;
         int len = sprintf(ini->sections[section_index].name, "%.*s",
-            (int)(m[1].rm_eo - m[1].rm_so), ini->str + section_pos + m[1].rm_so);
+            (int)(m[i].rm_eo - m[i].rm_so), ini->str + section_pos + m[i].rm_so);
         ini->sections[section_index].name[len] = 0;
         section_pos = section_pos + (int)m[1].rm_eo;
         ini->sections[section_index].pos = section_pos;
@@ -65,14 +68,14 @@ enum ConfigError parse_param_value(
 
     regex_t regex;
     char reg_buf[128];
-    ssize_t reg_buf_len = sprintf(reg_buf, "^\\s+%s:\\s+(.*)", param_name);
+    ssize_t reg_buf_len = sprintf(reg_buf, REG_PARAM, param_name);
     reg_buf[reg_buf_len] = 0;
     if (compile_regex(&regex, reg_buf) < 0) {
         printf("compile_regex error\n");
         return CONFIG_REGEX_ERROR;
     };
 
-    size_t n_matches = 2; // We have 1 capturing group + the whole match group
+    size_t n_matches = 2;
     regmatch_t m[n_matches];
     int match = regexec(&regex, ini->str + start_pos, n_matches, m, 0);
     regfree(&regex);
@@ -81,8 +84,7 @@ enum ConfigError parse_param_value(
         return CONFIG_PARAM_NOT_FOUND;
     }
 
-    int res = sprintf(
-        param_value, "%.*s", (int)(m[1].rm_eo - m[1].rm_so),
+    int res = sprintf(param_value, "%.*s", (int)(m[1].rm_eo - m[1].rm_so),
         ini->str + start_pos + m[1].rm_so);
     param_value[res] = 0;
     return CONFIG_OK;

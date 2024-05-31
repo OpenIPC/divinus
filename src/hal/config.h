@@ -10,6 +10,9 @@
 #include "tools.h"
 
 #define MAX_SECTIONS 16
+#define REG_SECTION "^([[:space:]]*\\[(\\w+)\\][[:space:]]|(\\w+):)"
+#define REG_PARAM "^[[:space:]]*%s[[:space:]]*[=:][[:space:]]*(.[^#;\n]*)[[:space:]]"
+
 struct IniConfig {
     char *str;
     struct Section {
