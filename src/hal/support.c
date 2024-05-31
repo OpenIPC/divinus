@@ -94,8 +94,10 @@ void hal_identify(void) {
             case 0x21:
             case 0x31:
                 plat = HAL_PLATFORM_TX;
-                strcpy(series, val == 0x21 ? "T21" :
-                    val == 0x31 ? "T31" : "unknown");
+                strcpy(series, 
+                    ((val >> 12) & 0xFF) == 0x21 ? "T21" :
+                    ((val >> 12) & 0xFF) == 0x31 ? "T31" :
+                    "unknown");
                 chnCount = TX_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)tx_state;
                 venc_thread = tx_video_thread;
