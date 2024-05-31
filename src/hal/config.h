@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -10,7 +11,6 @@
 
 #define MAX_SECTIONS 16
 struct IniConfig {
-    char path[256];
     char *str;
     struct Section {
         char name[64];
@@ -57,3 +57,5 @@ enum ConfigError parse_uint32(
     struct IniConfig *ini, const char *section, const char *param_name,
     const unsigned int min, const unsigned int max, unsigned int *value);
 enum ConfigError read_sensor_from_proc_cmdline(char *sensor_type);
+
+bool open_config(struct IniConfig *ini, const char *path);
