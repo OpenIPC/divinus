@@ -7,7 +7,7 @@
 
 struct AppConfig app_config;
 
-enum ConfigError parse_app_config(void) {
+enum ConfigError parse_app_config(const char *path) {
     memset(&app_config, 0, sizeof(struct AppConfig));
 
     app_config.sensor_config[0] = 0;
@@ -43,11 +43,40 @@ enum ConfigError parse_app_config(void) {
     struct IniConfig ini;
     memset(&ini, 0, sizeof(struct IniConfig));
 
-    if (!open_config(&ini, "./divinus.yaml") &&
-            !open_config(&ini, "/etc/divinus.yaml")) {
-        printf("Can't find config divinus.yaml in:\n"
-            "    ./divinus.yaml\n    /etc/divinus.yaml\n");
-        return -1;
+    // load config file to string
+    ini.str = NULL;
+    {
+        char config_path[50];
+        FILE *file = fopen("./divinus.ini", "rb");
+        if (!file) {
+            file = fopen("/etc/divinus.ini", "rb");
+            if (!file) {
+                printf(
+                    "Can't find config divinus.ini in:\n"
+                    "    ./divinus.ini\n    /etc/divinus.ini\n");
+                return -1;
+            }
+        }
+
+        fseek(file, 0, SEEK_END);
+        size_t length = (size_t)ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        ini.str = malloc(length + 1);
+        if (!ini.str) {
+            printf("Can't allocate buf in parse_app_config\n");
+            fclose(file);
+            return -1;
+        }
+        size_t n = fread(ini.str, 1, length, file);
+        if (n != length) {
+            printf("Can't read all file %s\n", path);
+            fclose(file);
+            free(ini.str);
+            return -1;
+        }
+        fclose(file);
+        ini.str[length] = 0;
     }
 
     enum ConfigError err;
@@ -58,7 +87,8 @@ enum ConfigError parse_app_config(void) {
     if (err != CONFIG_OK)
         goto RET_ERR;
     int port;
-    err = parse_int(&ini, "system", "web_port", 1, INT_MAX, &port);
+    err =
+        parse_int(&ini, "system", "web_port", 1, INT_MAX, &port);
     if (err != CONFIG_OK)
         goto RET_ERR;
     app_config.web_port = (unsigned short)port;

@@ -65,4 +65,5 @@ struct AppConfig {
 };
 
 extern struct AppConfig app_config;
-enum ConfigError parse_app_config(void);
+
+enum ConfigError parse_app_config(const char *path);
