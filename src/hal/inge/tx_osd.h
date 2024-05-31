@@ -38,7 +38,7 @@ typedef struct {
 
 typedef struct {
     int show;
-    tx_common_pnt pos;
+    tx_common_pnt point;
     float scaleX, scaleY;
     int alphaOn;
     int fgAlpha;
@@ -51,6 +51,7 @@ typedef struct {
     
     int (*fnCreateRegion)(tx_osd_rgn *config);
     int (*fnDestroyRegion)(int handle);
+    int (*fnGetRegionConfig)(int handle, tx_osd_rgn *config);
     int (*fnRegisterRegion)(int handle, int group, tx_osd_grp *config);
     int (*fnSetRegionConfig)(int handle, tx_osd_rgn *config);
     int (*fnUnregisterRegion)(int handle, int group);
@@ -59,6 +60,8 @@ typedef struct {
     int (*fnCreateGroup)(int group);
     int (*fnDestroyGroup)(int group);
     int (*fnGetGroupConfig)(int handle, int group, tx_osd_grp *config);
+    int (*fnStartGroup)(int group);
+    int (*fnStopGroup)(int group);
 } tx_osd_impl;
 
 static int tx_osd_load(tx_osd_impl *osd_lib) {
@@ -76,6 +79,12 @@ static int tx_osd_load(tx_osd_impl *osd_lib) {
     if (!(osd_lib->fnDestroyRegion = (int(*)(int handle))
         dlsym(osd_lib->handle, "IMP_OSD_DestroyRgn"))) {
         fprintf(stderr, "[tx_osd] Failed to acquire symbol IMP_OSD_DestroyRgn!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(osd_lib->fnGetRegionConfig = (int(*)(int handle, tx_osd_rgn *config))
+        dlsym(osd_lib->handle, "IMP_OSD_GetRgnAttr"))) {
+        fprintf(stderr, "[tx_osd] Failed to acquire symbol IMP_OSD_GetRgnAttr!\n");
         return EXIT_FAILURE;
     }
 
@@ -120,6 +129,19 @@ static int tx_osd_load(tx_osd_impl *osd_lib) {
         fprintf(stderr, "[tx_osd] Failed to acquire symbol IMP_OSD_GetGrpRgnAttr!\n");
         return EXIT_FAILURE;
     }
+
+    if (!(osd_lib->fnStartGroup = (int(*)(int group))
+        dlsym(osd_lib->handle, "IMP_OSD_Start"))) {
+        fprintf(stderr, "[tx_osd] Failed to acquire symbol IMP_OSD_Start!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(osd_lib->fnStopGroup = (int(*)(int group))
+        dlsym(osd_lib->handle, "IMP_OSD_Stop"))) {
+        fprintf(stderr, "[tx_osd] Failed to acquire symbol IMP_OSD_Stop!\n");
+        return EXIT_FAILURE;
+    }
+
 
     return EXIT_SUCCESS;
 }
