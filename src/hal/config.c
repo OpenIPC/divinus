@@ -5,12 +5,12 @@ enum ConfigError find_sections(struct IniConfig *ini) {
         ini->sections[i].pos = -1;
 
     regex_t regex;
-    if (compile_regex(
-            &regex, "^[[:space:]]*\\[([a-zA-Z0-9_]+)\\][[:space:]]*") < 0) {
+    if (compile_regex(&regex, REG_SECTION) < 0) {
         printf("compile_regex error\n");
         return CONFIG_REGEX_ERROR;
     };
-    size_t n_matches = 2; // We have 1 capturing group + the whole match group
+
+    size_t n_matches = 4;
     regmatch_t m[n_matches];
 
     int section_pos = 0;
@@ -21,15 +21,18 @@ enum ConfigError find_sections(struct IniConfig *ini) {
         int match = regexec(&regex, ini->str + section_pos, n_matches, m, 0);
         if (match != 0)
             break;
-        int len = sprintf(
-            ini->sections[section_index].name, "%.*s",
-            (int)(m[1].rm_eo - m[1].rm_so),
-            ini->str + section_pos + m[1].rm_so);
+
+        int i = 2;
+        if (m[i].rm_eo - m[i].rm_so == 0)
+            i++;
+        int len = sprintf(ini->sections[section_index].name, "%.*s",
+            (int)(m[i].rm_eo - m[i].rm_so), ini->str + section_pos + m[i].rm_so);
         ini->sections[section_index].name[len] = 0;
         section_pos = section_pos + (int)m[1].rm_eo;
         ini->sections[section_index].pos = section_pos;
         section_index++;
     }
+
     regfree(&regex);
     return CONFIG_OK;
 }
@@ -48,6 +51,7 @@ enum ConfigError section_pos(
             return CONFIG_OK;
         }
     }
+
     return CONFIG_SECTION_NOT_FOUND;
 }
 
@@ -58,26 +62,20 @@ enum ConfigError parse_param_value(
     int end_pos = 0;
     if (strlen(section) > 0) {
         enum ConfigError err = section_pos(ini, section, &start_pos, &end_pos);
-        if (err == CONFIG_SECTION_NOT_FOUND) {
-            printf(
-                "Section '%s' doesn't exists in config '%s'.\n", section,
-                ini->path);
-            return err;
-        } else if (err != CONFIG_OK)
+        if (err != CONFIG_OK)
             return err;
     }
 
     regex_t regex;
     char reg_buf[128];
-    ssize_t reg_buf_len = sprintf(
-        reg_buf, "^[[:space:]]*%s[[:space:]]*=[[:space:]]*(.[^[:space:];]*)",
-        param_name);
+    ssize_t reg_buf_len = sprintf(reg_buf, REG_PARAM, param_name);
     reg_buf[reg_buf_len] = 0;
     if (compile_regex(&regex, reg_buf) < 0) {
         printf("compile_regex error\n");
         return CONFIG_REGEX_ERROR;
     };
-    size_t n_matches = 2; // We have 1 capturing group + the whole match group
+
+    size_t n_matches = 2;
     regmatch_t m[n_matches];
     int match = regexec(&regex, ini->str + start_pos, n_matches, m, 0);
     regfree(&regex);
@@ -85,10 +83,9 @@ enum ConfigError parse_param_value(
         printf("Can't find '%s' in section '%s'.\n", param_name, section);
         return CONFIG_PARAM_NOT_FOUND;
     }
-    int res = sprintf(
-        param_value, "%.*s", (int)(m[1].rm_eo - m[1].rm_so),
+
+    int res = sprintf(param_value, "%.*s", (int)(m[1].rm_eo - m[1].rm_so),
         ini->str + start_pos + m[1].rm_so);
-    // if (res <= 0 ) { return -1; }
     param_value[res] = 0;
     return CONFIG_OK;
 }
@@ -109,6 +106,7 @@ enum ConfigError parse_enum(
     if (*end) {
         res = strtol(param_value, &end, 16);
     }
+
     if (!*end) {
         *(int *)enum_value = res;
         return CONFIG_OK;
@@ -130,6 +128,7 @@ enum ConfigError parse_enum(
         printf("'%s', ", possible_values[i]);
     return CONFIG_ENUM_INCORRECT_STRING;
 }
+
 enum ConfigError parse_bool(
     struct IniConfig *ini, const char *section, const char *param_name,
     bool *bool_value) {
@@ -279,30 +278,34 @@ enum ConfigError parse_uint32(
     return CONFIG_OK;
 }
 
-enum ConfigError read_sensor_from_proc_cmdline(char *sensor_type) {
-    FILE *file = fopen("/proc/cmdline", "r");
-    if (!file)
-        return CONFIG_CANT_OPEN_PROC_CMDLINE;
-    char cmdline[5 * 1024];
-    fread(cmdline, 1, 5 * 1024, file);
-    fclose(file);
-
-    regex_t regex;
-    if (compile_regex(
-            &regex, "[[:space:]]*sensor=([[:alnum:]_]+)[[:space:]]*") < 0) {
-        printf("compile_regex error\n");
-        return CONFIG_REGEX_ERROR;
-    };
-    size_t n_matches = 2; // We have 1 capturing group + the whole match group
-    regmatch_t m[n_matches];
-    int match = regexec(&regex, cmdline, n_matches, m, 0);
-    if (match != 0) {
-        regfree(&regex);
-        printf("Can't parse sensor=xxxx from cmdline: \n'%s'\n", cmdline);
-        return CONFIG_REGEX_ERROR;
+bool open_config(struct IniConfig *ini, const char *path) {
+    FILE *file = fopen(path, "rb");
+    if (!file) {
+        printf("Can't open file %s\n", path);
+        return false;
     }
-    sprintf(
-        sensor_type, "%.*s", (int)(m[1].rm_eo - m[1].rm_so),
-        cmdline + m[1].rm_so);
-    return CONFIG_OK;
+
+    fseek(file, 0, SEEK_END);
+    size_t length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    ini->str = malloc(length + 1);
+    if (!ini->str) {
+        printf("Can't allocate buf in parse_sensor_config\n");
+        fclose(file);
+        return false;
+    }
+
+    size_t n = fread(ini->str, 1, length, file);
+    if (n != length) {
+        printf("Can't read all file %s\n", path);
+        fclose(file);
+        free(ini->str);
+        return false;
+    }
+
+    fclose(file);
+    ini->str[length] = 0;
+
+    return true;
 }

@@ -8,6 +8,8 @@
 #include "tx_sys.h"
 #include "tx_venc.h"
 
+#include "../config.h"
+
 extern char keepRunning;
 
 extern hal_chnstate tx_state[TX_VENC_CHN_NUM];
