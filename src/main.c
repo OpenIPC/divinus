@@ -40,8 +40,8 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
     }
 
-    if (parse_app_config("./divinus.ini") != CONFIG_OK) {
-        fprintf(stderr, "Can't load app config './divinus.ini'\n");
+    if (parse_app_config() != CONFIG_OK) {
+        fprintf(stderr, "Can't load app config 'divinus.yaml'\n");
         return EXIT_FAILURE;
     }
 
