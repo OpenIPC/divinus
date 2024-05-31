@@ -211,8 +211,10 @@ int tx_system_init(void)
 
     if (ret = tx_isp.fnInit())
         return ret;
+
     if (ret = tx_isp.fnAddSensor(&_tx_isp_snr))
         return ret;
+
     if (ret = tx_isp.fnEnableSensor())
         return ret;
 
