@@ -246,6 +246,12 @@ int v4_pipeline_create(void)
         if (ret = v4_snr_drv.obj->pfnSetBusInfo(_v4_vi_pipe, bus))
             return ret;
     }
+
+    if (!v4_isp.handleGoke) {
+        strcpy(v4_ae_lib.libName, "hisi_ae_lib");
+        strcpy(v4_awb_lib.libName, "hisi_awb_lib");
+    }
+
     if (ret = v4_snr_drv.obj->pfnRegisterCallback(_v4_vi_pipe, &v4_ae_lib, &v4_awb_lib))
         return ret;
     
@@ -411,7 +417,6 @@ int v4_sensor_config(void) {
         memcpy(&config.mipi, &v4_config.mipi, sizeof(v4_snr_mipi));
     else if (config.input == V4_SNR_INPUT_LVDS)
         memcpy(&config.lvds, &v4_config.lvds, sizeof(v4_snr_lvds));
-
 
     if (!access(v4_snr_endp, F_OK))
         fd = open(v4_snr_endp, O_RDWR);
