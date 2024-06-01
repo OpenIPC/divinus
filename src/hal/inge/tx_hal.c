@@ -16,6 +16,7 @@ char _tx_aud_chn = 0;
 char _tx_aud_dev = 0;
 char _tx_fs_chn = 0;
 char _tx_osd_grp = 0;
+char _tx_venc_grp = 0;
 
 void tx_hal_deinit(void)
 {
@@ -83,7 +84,7 @@ int tx_audio_init(void)
     return EXIT_SUCCESS;
 }
 
-int tx_pipeline_create(short width, short height, char framerate)
+int tx_pipeline_create(short width, short height, char framerate, char regionOn)
 {
     int ret;
 
@@ -97,10 +98,62 @@ int tx_pipeline_create(short width, short height, char framerate)
         if (ret = tx_fs.fnCreateChannel(_tx_fs_chn, &channel))
             return ret;
     }
+
+    if (ret = tx_venc.fnCreateGroup(_tx_venc_grp))
+        return ret;
+
+    if (regionOn) {
+        {
+            tx_sys_bind source = { .device = TX_SYS_DEV_FS, .group = 0, .port = 0 };
+            tx_sys_bind dest = { .device = TX_SYS_DEV_OSD, .group = 0, .port = 0 };
+            if (ret = tx_sys.fnBind(&source, &dest))
+                return ret;
+        }
+
+        {
+            tx_sys_bind source = { .device = TX_SYS_DEV_OSD, .group = 0, .port = 0 };
+            tx_sys_bind dest = { .device = TX_SYS_DEV_ENC, .group = 0, .port = 0 };
+            if (ret = tx_sys.fnBind(&source, &dest))
+                return ret;
+        }
+
+    } else {
+        tx_sys_bind source = { .device = TX_SYS_DEV_FS, .group = 0, .port = 0 };
+        tx_sys_bind dest = { .device = TX_SYS_DEV_ENC, .group = 0, .port = 0 };   
+        if (ret = tx_sys.fnBind(&source, &dest))
+            return ret;    
+    }
+
+    if (ret = tx_fs.fnEnableChannel(_tx_fs_chn))
+        return ret;
+
+    return EXIT_SUCCESS;
 }
 
-void tx_pipeline_destroy()
+void tx_pipeline_destroy(char regionOn)
 {
+    tx_fs.fnDisableChannel(_tx_fs_chn);
+
+    if (regionOn) {
+        {
+            tx_sys_bind source = { .device = TX_SYS_DEV_OSD, .group = 0, .port = 0 };
+            tx_sys_bind dest = { .device = TX_SYS_DEV_ENC, .group = 0, .port = 0 };
+            tx_sys.fnUnbind(&source, &dest);
+        }
+
+        {
+            tx_sys_bind source = { .device = TX_SYS_DEV_FS, .group = 0, .port = 0 };
+            tx_sys_bind dest = { .device = TX_SYS_DEV_OSD, .group = 0, .port = 0 };
+            tx_sys.fnUnbind(&source, &dest);
+        }
+    } else {
+        tx_sys_bind source = { .device = TX_SYS_DEV_FS, .group = 0, .port = 0 };
+        tx_sys_bind dest = { .device = TX_SYS_DEV_ENC, .group = 0, .port = 0 };   
+        tx_sys.fnUnbind(&source, &dest);    
+    }
+
+    tx_venc.fnDestroyGroup(_tx_venc_grp);
+
     tx_fs.fnDestroyChannel(_tx_fs_chn);
 }
 
@@ -165,6 +218,99 @@ int tx_region_setbitmap(int *handle, hal_bitmap *bitmap)
     region.pixFmt = TX_PIXFMT_RGB555LE;
     region.data.picture = bitmap->data;    
     return tx_osd.fnSetRegionConfig(*handle, &region);
+}
+
+int tx_video_create(char index, hal_vidconfig *config)
+{
+    int ret;
+    tx_venc_chn channel;
+    memset(&channel, 0, sizeof(channel));
+    channel.gop.mode = TX_VENC_GOPMODE_NORMAL;
+    channel.gop.length = config->gop / config->framerate;
+    channel.rate.fpsDen = config->framerate;
+    channel.rate.fpsNum = 1;
+    switch (config->codec) {
+        case HAL_VIDCODEC_JPG:
+            channel.attrib.profile = TX_VENC_PROF_MJPG;
+            break;
+        case HAL_VIDCODEC_MJPG:
+            channel.attrib.profile = TX_VENC_PROF_MJPG;
+            break;
+        case HAL_VIDCODEC_H265:
+            channel.attrib.profile = TX_VENC_PROF_H265_MAIN;
+            break;
+        case HAL_VIDCODEC_H264:
+            switch (config->profile) {
+                case HAL_VIDPROFILE_BASELINE: channel.attrib.profile = TX_VENC_PROF_H264_BASE; break;
+                case HAL_VIDPROFILE_MAIN: channel.attrib.profile = TX_VENC_PROF_H264_MAIN; break;
+                default: channel.attrib.profile = TX_VENC_PROF_H264_HIGH; break;
+            }
+            break;
+        default: TX_ERROR("This codec is not supported by the hardware!");
+
+    }
+    switch (config->mode) {
+        case HAL_VIDMODE_CBR:
+            channel.rate.mode = TX_VENC_RATEMODE_CBR;
+            channel.rate.cbr = (tx_venc_rate_cbr){ .tgtBitrate = config->bitrate }; break;
+        case HAL_VIDMODE_VBR:
+            channel.rate.mode = TX_VENC_RATEMODE_VBR;
+            channel.rate.vbr = (tx_venc_rate_vbr){ .maxBitrate = MAX(config->bitrate, 
+            config->maxBitrate) }; break;
+        case HAL_VIDMODE_QP:
+            channel.rate.mode = TX_VENC_RATEMODE_QP;
+            channel.rate.qpModeQual = config->maxQual; break;
+        case HAL_VIDMODE_AVBR:
+            channel.rate.mode = TX_VENC_RATEMODE_AVBR;
+            channel.rate.avbr = (tx_venc_rate_xvbr){ .maxBitrate = config->bitrate }; break;
+        default:
+            TX_ERROR("Video encoder does not support this mode!");
+    }
+    channel.attrib.width = config->width;
+    channel.attrib.height = config->height;
+    channel.attrib.picFmt = (config->codec == HAL_VIDCODEC_JPG || config->codec == HAL_VIDCODEC_MJPG) ?
+        TX_VENC_PICFMT_422_8BPP : TX_VENC_PICFMT_420_8BPP;
+
+    if (ret = tx_venc.fnCreateChannel(index, &channel))
+        return ret;
+
+    {
+        int count = -1;
+        if (config->codec != HAL_VIDCODEC_JPG && 
+            (ret = tx_venc.fnStartReceiving(index)))
+            return ret;
+    }
+    
+    tx_state[index].payload = config->codec;
+
+    return EXIT_SUCCESS;
+}
+
+int tx_video_destroy(char index)
+{
+    int ret;
+
+    tx_state[index].payload = HAL_VIDCODEC_UNSPEC;
+
+    if (ret = tx_venc.fnStopReceiving(index))
+        return ret;
+
+    if (ret = tx_venc.fnDestroyChannel(index))
+        return ret;
+
+    return EXIT_SUCCESS;
+}
+
+int tx_video_destroy_all(void)
+{
+    int ret;
+
+    for (char i = 0; i < TX_VENC_CHN_NUM; i++)
+        if (tx_state[i].enable)
+            if (ret = tx_video_destroy(i))
+                return ret;
+
+    return EXIT_SUCCESS;
 }
 
 void *tx_video_thread(void)

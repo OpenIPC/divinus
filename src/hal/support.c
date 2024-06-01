@@ -89,20 +89,20 @@ void hal_identify(void) {
                 return;
         }
     else if (!access("/proc/jz", 0) && 
-        hal_registry(0x1300002C, &val, OP_READ))
-        switch ((val >> 12) & 0xFF) {
-            case 0x21:
-            case 0x31:
+        hal_registry(0x1300002C, &val, OP_READ)) {
+        char gen = (val >> 12) & 0xFF;
+        switch (gen) {
+            case 0x21: 
+            case 0x30: case 0x31:
+            case 0x40: case 0x41:
                 plat = HAL_PLATFORM_TX;
-                strcpy(series, 
-                    ((val >> 12) & 0xFF) == 0x21 ? "T21" :
-                    ((val >> 12) & 0xFF) == 0x31 ? "T31" :
-                    "unknown");
+                sprintf(series, "T%X", gen);
                 chnCount = TX_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)tx_state;
                 venc_thread = tx_video_thread;
                 return;
         }
+    }
 
     if (file = fopen("/proc/iomem", "r"))
         while (fgets(line, 200, file))
