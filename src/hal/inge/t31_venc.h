@@ -271,6 +271,8 @@ typedef struct {
 
 typedef struct {
     void *handle;
+
+    int (*fnSetDefaults)(t31_venc_chn *config, t31_venc_prof profile, t31_venc_ratemode ratemode, unsigned short width, unsigned short height, unsigned int fpsNum, unsigned int fpsDen, unsigned int gopLength, int maxSameSenceCnt, int initialQp, unsigned int tgtBitrate);
     
     int (*fnCreateGroup)(int group);
     int (*fnDestroyGroup)(int group);
@@ -294,6 +296,12 @@ typedef struct {
 static int t31_venc_load(t31_venc_impl *venc_lib) {
     if (!(venc_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[t31_venc] Failed to load library!\nError: %s\n", dlerror());
+        return EXIT_FAILURE;
+    }
+
+    if (!(venc_lib->fnSetDefaults = (int(*)(t31_venc_chn *config, t31_venc_prof profile, t31_venc_ratemode ratemode, unsigned short width, unsigned short height, unsigned int fpsNum, unsigned int fpsDen, unsigned int gopLength, int maxSameSenceCnt, int initialQp, unsigned int tgtBitrate))
+        dlsym(venc_lib->handle, "IMP_Encoder_SetDefaultParam"))) {
+        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_SetDefaultParam!\n");
         return EXIT_FAILURE;
     }
 
