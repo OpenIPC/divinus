@@ -1,7 +1,9 @@
 #include "gpio.h"
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 8, 0)
 const char *paths[] = {"/dev/gpiochip0", "/sys/class/gpio/gpiochip0"};
 const char **path = paths;
+
 int fd_gpio = 0;
 
 char gpio_count = 0;
@@ -12,7 +14,6 @@ void gpio_deinit(void) {
     fd_gpio = 0;
 }
 
-#ifdef __arm__
 int gpio_init(void) {
     while (*path++) {
         if (access(*path, 0)) continue;
@@ -81,6 +82,10 @@ int gpio_write(char pin, bool value) {
     return EXIT_SUCCESS;
 }
 #else
+void gpio_deinit(void) {
+
+}
+
 int gpio_init(void) {
     return EXIT_SUCCESS;
 }
