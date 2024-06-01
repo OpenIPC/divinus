@@ -92,14 +92,12 @@ void hal_identify(void) {
         hal_registry(0x1300002C, &val, OP_READ)) {
         char gen = (val >> 12) & 0xFF;
         switch (gen) {
-            case 0x21: 
-            case 0x30: case 0x31:
-            case 0x40: case 0x41:
-                plat = HAL_PLATFORM_TX;
+            case 0x31:
+                plat = HAL_PLATFORM_T31;
                 sprintf(series, "T%X", gen);
-                chnCount = TX_VENC_CHN_NUM;
-                chnState = (hal_chnstate*)tx_state;
-                venc_thread = tx_video_thread;
+                chnCount = T31_VENC_CHN_NUM;
+                chnState = (hal_chnstate*)t31_state;
+                venc_thread = t31_video_thread;
                 return;
         }
     }

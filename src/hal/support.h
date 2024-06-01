@@ -1,6 +1,6 @@
 #include "types.h"
 #include "hisi/v4_hal.h"
-#include "inge/tx_hal.h"
+#include "inge/t31_hal.h"
 #include "sstar/i6_hal.h"
 #include "sstar/i6c_hal.h"
 #include "sstar/i6f_hal.h"
@@ -21,8 +21,8 @@ extern char series[16];
 extern void *v4_video_thread(void);
 extern hal_chnstate v4_state[V4_VENC_CHN_NUM];
 
-extern void *tx_video_thread(void);
-extern hal_chnstate tx_state[TX_VENC_CHN_NUM];
+extern void *t31_video_thread(void);
+extern hal_chnstate t31_state[T31_VENC_CHN_NUM];
 
 extern void *i6_video_thread(void);
 extern hal_chnstate i6_state[I6_VENC_CHN_NUM];
