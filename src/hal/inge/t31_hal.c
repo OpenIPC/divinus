@@ -114,11 +114,11 @@ int t31_channel_create(char index, short width, short height, char framerate)
     {
         t31_fs_chn channel = {
             .dest = { .width = width, .height = height }, .pixFmt = T31_PIXFMT_NV12,
-            .crop = { .enable = 1, .left = 0, .top = 0,  .width = _t31_snr_dim.width, 
+            .crop = { .enable = 0, .left = 0, .top = 0,  .width = _t31_snr_dim.width, 
                 .height = _t31_snr_dim.height },
             .scale = { .enable = (_t31_snr_dim.width != width || _t31_snr_dim.height != height) 
                 ? 1 : 0, .width = width, .height = height },
-            .fpsDen = framerate, .fpsNum = 1, .bufCount = 2, .phyOrExtChn = 0,  
+            .fpsDen = framerate, .fpsNum = 1, .bufCount = 1, .phyOrExtChn = 0,  
         };
 
         if (ret = t31_fs.fnCreateChannel(index, &channel))
@@ -251,18 +251,26 @@ int t31_video_create(char index, hal_vidconfig *config)
         case HAL_VIDMODE_CBR:
             channel.rate.mode = T31_VENC_RATEMODE_CBR;
             channel.rate.cbr = (t31_venc_rate_cbr){ .tgtBitrate = MAX(config->bitrate,
-                config->maxBitrate) }; break;
+                config->maxBitrate), .initQual = -1, .minQual = 34, .maxQual = 51,
+                .ipDelta = -1, .pbDelta = -1, .options = T31_VENC_RCOPT_SCN_CHG_RES | 
+                T31_VENC_RCOPT_SC_PREVENTION, .maxPicSize = MAX(config->bitrate,
+                config->maxBitrate) / 4 * 3 }; break;
         case HAL_VIDMODE_VBR:
             channel.rate.mode = T31_VENC_RATEMODE_VBR;
             channel.rate.vbr = (t31_venc_rate_vbr){ .tgtBitrate = config->bitrate, 
-                .maxBitrate = config->maxBitrate }; break;
+                .maxBitrate = config->maxBitrate, .initQual = -1, .minQual = 34, .maxQual = 51,
+                .ipDelta = -1, .pbDelta = -1, .options = T31_VENC_RCOPT_SCN_CHG_RES | 
+                T31_VENC_RCOPT_SC_PREVENTION , .maxPicSize = config->maxBitrate }; break;
         case HAL_VIDMODE_QP:
             channel.rate.mode = T31_VENC_RATEMODE_QP;
             channel.rate.qpModeQual = config->maxQual; break;
         case HAL_VIDMODE_AVBR:
             channel.rate.mode = T31_VENC_RATEMODE_AVBR;
             channel.rate.avbr = (t31_venc_rate_xvbr){ .tgtBitrate  = config->bitrate, 
-                .maxBitrate = config->maxBitrate }; break;
+                .maxBitrate = config->maxBitrate,  .initQual = -1, .minQual = 34, .maxQual = 51,
+                .ipDelta = -1, .pbDelta = -1, .options = T31_VENC_RCOPT_SCN_CHG_RES | 
+                T31_VENC_RCOPT_SC_PREVENTION, .maxPicSize = config->maxBitrate,
+                .maxPsnr = 42 }; break;
         default:
             T31_ERROR("Video encoder does not support this mode!");
     }
