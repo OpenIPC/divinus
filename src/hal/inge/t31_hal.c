@@ -89,13 +89,13 @@ int t31_channel_bind(char index)
 
     {
         t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = index, .port = 0 };
-        t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = 0 };
+        t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         if (ret = t31_sys.fnBind(&source, &dest))
             return ret;
     }
 
     {
-        t31_sys_bind source = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = 0 };
+        t31_sys_bind source = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         t31_sys_bind dest = { .device = T31_SYS_DEV_ENC, .group = index, .port = 0 };
         if (ret = t31_sys.fnBind(&source, &dest))
             return ret;
@@ -114,8 +114,6 @@ int t31_channel_create(char index, short width, short height, char framerate)
     {
         t31_fs_chn channel = {
             .dest = { .width = width, .height = height }, .pixFmt = T31_PIXFMT_NV12,
-            .crop = { .enable = 0, .left = 0, .top = 0,  .width = _t31_snr_dim.width, 
-                .height = _t31_snr_dim.height },
             .scale = { .enable = (_t31_snr_dim.width != width || _t31_snr_dim.height != height) 
                 ? 1 : 0, .width = width, .height = height },
             .fpsDen = framerate, .fpsNum = 1, .bufCount = 1, .phyOrExtChn = 0,  
@@ -145,14 +143,14 @@ int t31_channel_unbind(char index)
     t31_fs.fnDisableChannel(index);
 
     {
-        t31_sys_bind source = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = 0 };
+        t31_sys_bind source = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         t31_sys_bind dest = { .device = T31_SYS_DEV_ENC, .group = index, .port = 0 };
         t31_sys.fnUnbind(&source, &dest);
     }
 
     {
         t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = index, .port = 0 };
-        t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = 0 };
+        t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         t31_sys.fnUnbind(&source, &dest);
     }
 
@@ -253,14 +251,13 @@ int t31_video_create(char index, hal_vidconfig *config)
             channel.rate.cbr = (t31_venc_rate_cbr){ .tgtBitrate = MAX(config->bitrate,
                 config->maxBitrate), .initQual = -1, .minQual = 34, .maxQual = 51,
                 .ipDelta = -1, .pbDelta = -1, .options = T31_VENC_RCOPT_SCN_CHG_RES | 
-                T31_VENC_RCOPT_SC_PREVENTION, .maxPicSize = MAX(config->bitrate,
-                config->maxBitrate) / 4 * 3 }; break;
+                T31_VENC_RCOPT_SC_PREVENTION, .maxPicSize = config->width }; break;
         case HAL_VIDMODE_VBR:
             channel.rate.mode = T31_VENC_RATEMODE_VBR;
             channel.rate.vbr = (t31_venc_rate_vbr){ .tgtBitrate = config->bitrate, 
                 .maxBitrate = config->maxBitrate, .initQual = -1, .minQual = 34, .maxQual = 51,
                 .ipDelta = -1, .pbDelta = -1, .options = T31_VENC_RCOPT_SCN_CHG_RES | 
-                T31_VENC_RCOPT_SC_PREVENTION , .maxPicSize = config->maxBitrate }; break;
+                T31_VENC_RCOPT_SC_PREVENTION, .maxPicSize = config->width }; break;
         case HAL_VIDMODE_QP:
             channel.rate.mode = T31_VENC_RATEMODE_QP;
             channel.rate.qpModeQual = config->maxQual; break;
@@ -269,8 +266,7 @@ int t31_video_create(char index, hal_vidconfig *config)
             channel.rate.avbr = (t31_venc_rate_xvbr){ .tgtBitrate  = config->bitrate, 
                 .maxBitrate = config->maxBitrate,  .initQual = -1, .minQual = 34, .maxQual = 51,
                 .ipDelta = -1, .pbDelta = -1, .options = T31_VENC_RCOPT_SCN_CHG_RES | 
-                T31_VENC_RCOPT_SC_PREVENTION, .maxPicSize = config->maxBitrate,
-                .maxPsnr = 42 }; break;
+                T31_VENC_RCOPT_SC_PREVENTION, .maxPicSize = config->width, .maxPsnr = 42 }; break;
         default:
             T31_ERROR("Video encoder does not support this mode!");
     }
@@ -285,12 +281,9 @@ int t31_video_create(char index, hal_vidconfig *config)
     if (ret = t31_venc.fnRegisterChannel(index, index))
         return ret;
 
-    {
-        int count = -1;
-        if (config->codec != HAL_VIDCODEC_JPG && 
-            (ret = t31_venc.fnStartReceiving(index)))
-            return ret;
-    }
+    if (config->codec != HAL_VIDCODEC_JPG && 
+        (ret = t31_venc.fnStartReceiving(index)))
+        return ret;
     
     t31_state[index].payload = config->codec;
 

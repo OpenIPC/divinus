@@ -31,34 +31,34 @@ typedef struct {
 } t31_isp_snr;
 
 static t31_common_dim t31_dims[] = {
-    { .height = 1920, .width = 1080 }, // c23a98
-    { .height = 2560, .width = 1440 }, // c4390
-    { .height = 1280, .width = 720 },  // gc1034
-    { .height = 1920, .width = 1080 }, // gc2053
-    { .height = 2560, .width = 1440 }, // gc4653
-    { .height = 1920, .width = 1080 }, // imx307
-    { .height = 1920, .width = 1080 }, // imx327
-    { .height = 2592, .width = 1944 }, // imx335
-    { .height = 1920, .width = 1080 }, // jxf23
-    { .height = 1920, .width = 1080 }, // jxf37
-    { .height = 1280, .width = 720 },  // jxh62
-    { .height = 2592, .width = 1944 }, // jxk03
-    { .height = 2560, .width = 1920 }, // jxk05
-    { .height = 2304, .width = 1296 }, // jxq03
-    { .height = 1920, .width = 1080 }, // os02k10
-    { .height = 2560, .width = 1440 }, // os04b10
-    { .height = 2592, .width = 1944 }, // os05a10
-    { .height = 2592, .width = 1944 }, // ov5648
-    { .height = 1920, .width = 1080 }, // sc2232h
-    { .height = 1920, .width = 1080 }, // sc2235
-    { .height = 1920, .width = 1080 }, // sc2239
-    { .height = 1920, .width = 1080 }, // sc2310
-    { .height = 1920, .width = 1080 }, // sc2315
-    { .height = 1920, .width = 1080 }, // sc2335
-    { .height = 2304, .width = 1296 }, // sc3235
-    { .height = 2304, .width = 1296 }, // sc3335
-    { .height = 2560, .width = 1440 }, // sc4335
-    { .height = 2560, .width = 1920 }  // sc5235
+    { .width = 1920, .height = 1080 }, // c23a98
+    { .width = 2560, .height = 1440 }, // c4390
+    { .width = 1280, .height = 720 },  // gc1034
+    { .width = 1920, .height = 1080 }, // gc2053
+    { .width = 2560, .height = 1440 }, // gc4653
+    { .width = 1920, .height = 1080 }, // imx307
+    { .width = 1920, .height = 1080 }, // imx327
+    { .width = 2592, .height = 1944 }, // imx335
+    { .width = 1920, .height = 1080 }, // jxf23
+    { .width = 1920, .height = 1080 }, // jxf37
+    { .width = 1280, .height = 720 },  // jxh62
+    { .width = 2592, .height = 1944 }, // jxk03
+    { .width = 2560, .height = 1920 }, // jxk05
+    { .width = 2304, .height = 1296 }, // jxq03
+    { .width = 1920, .height = 1080 }, // os02k10
+    { .width = 2560, .height = 1440 }, // os04b10
+    { .width = 2592, .height = 1944 }, // os05a10
+    { .width = 2592, .height = 1944 }, // ov5648
+    { .width = 1920, .height = 1080 }, // sc2232h
+    { .width = 1920, .height = 1080 }, // sc2235
+    { .width = 1920, .height = 1080 }, // sc2239
+    { .width = 1920, .height = 1080 }, // sc2310
+    { .width = 1920, .height = 1080 }, // sc2315
+    { .width = 1920, .height = 1080 }, // sc2335
+    { .width = 2304, .height = 1296 }, // sc3235
+    { .width = 2304, .height = 1296 }, // sc3335
+    { .width = 2560, .height = 1440 }, // sc4335
+    { .width = 2560, .height = 1920 }  // sc5235
 };
 
 static t31_isp_snr t31_sensors[] = {
