@@ -110,6 +110,8 @@ int create_vpss_chn(char index, short width, short height, char framerate, char 
             app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_I6F: return i6f_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
+        case HAL_PLATFORM_TX:  return tx_channel_create(index, width, height,
+            framerate);
         case HAL_PLATFORM_V4:  return v4_channel_create(index, app_config.mirror,
             app_config.flip, framerate);
     }
@@ -120,6 +122,7 @@ int bind_vpss_venc(char index, char framerate, char jpeg) {
         case HAL_PLATFORM_I6:  return i6_channel_bind(index, framerate, jpeg);
         case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate, jpeg);
         case HAL_PLATFORM_I6F: return i6f_channel_bind(index, framerate, jpeg);
+        case HAL_PLATFORM_TX:  return tx_channel_bind(index);
         case HAL_PLATFORM_V4:  return v4_channel_bind(index);
     }
 }
@@ -129,6 +132,7 @@ int unbind_vpss_venc(char index, char jpeg) {
         case HAL_PLATFORM_I6:  return i6_channel_unbind(index);
         case HAL_PLATFORM_I6C: return i6c_channel_unbind(index, jpeg);
         case HAL_PLATFORM_I6F: return i6f_channel_unbind(index, jpeg);
+        case HAL_PLATFORM_TX:  return tx_channel_unbind(index);
         case HAL_PLATFORM_V4:  return v4_channel_unbind(index);
     }
 }
@@ -191,8 +195,6 @@ int start_sdk() {
             height, framerate); break;
         case HAL_PLATFORM_I6F: ret = i6f_pipeline_create(0, width,
             height, framerate); break;
-        case HAL_PLATFORM_TX:  ret = tx_pipeline_create(width, 
-            height, framerate, app_config.osd_enable); break;
         case HAL_PLATFORM_V4:  ret = v4_pipeline_create(); break;
     }
     if (ret) {
@@ -369,8 +371,7 @@ int stop_sdk() {
     switch (plat) {
         case HAL_PLATFORM_I6:  i6_pipeline_destroy(); break;
         case HAL_PLATFORM_I6C: i6c_pipeline_destroy(); break;
-        case HAL_PLATFORM_I6F: i6f_pipeline_destroy(); break;
-        case HAL_PLATFORM_TX:  tx_pipeline_destroy(app_config.osd_enable); break;   
+        case HAL_PLATFORM_I6F: i6f_pipeline_destroy(); break; 
         case HAL_PLATFORM_V4:  v4_pipeline_destroy(); break;   
     }
 

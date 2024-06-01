@@ -21,12 +21,13 @@ int tx_hal_init(void);
 void tx_audio_deinit(void);
 int tx_audio_init(void);
 
-int tx_pipeline_create(short width, short height, char framerate,
-    char regionOn);
-void tx_pipeline_destroy(char regionOn);
+int tx_channel_bind(char index);
+int tx_channel_create(char index, short width, short height, char framerate);
+void tx_channel_destroy(char index);
+int tx_channel_unbind(char index);
 
-int tx_region_create(int *handle, char group, hal_rect rect);
-void tx_region_destroy(int *handle, char group);
+int tx_region_create(int *handle, hal_rect rect);
+void tx_region_destroy(int *handle);
 int tx_region_setbitmap(int *handle, hal_bitmap *bitmap);
 
 int tx_video_create(char index, hal_vidconfig *config);

@@ -11,12 +11,11 @@ hal_chnstate tx_state[TX_VENC_CHN_NUM] = {0};
 int (*tx_venc_cb)(char, hal_vidstream*);
 
 tx_isp_snr _tx_isp_snr;
+tx_common_dim _tx_snr_dim;
 
 char _tx_aud_chn = 0;
 char _tx_aud_dev = 0;
-char _tx_fs_chn = 0;
 char _tx_osd_grp = 0;
-char _tx_venc_grp = 0;
 
 void tx_hal_deinit(void)
 {
@@ -84,80 +83,81 @@ int tx_audio_init(void)
     return EXIT_SUCCESS;
 }
 
-int tx_pipeline_create(short width, short height, char framerate, char regionOn)
+int tx_channel_bind(char index)
 {
     int ret;
 
     {
-        tx_fs_chn channel = {
-            .dest = { .width = width, .height = height },
-            .fpsDen = framerate, .fpsNum = 1,
-            .pixFmt = TX_PIXFMT_NV12
-        };
-
-        if (ret = tx_fs.fnCreateChannel(_tx_fs_chn, &channel))
+        tx_sys_bind source = { .device = TX_SYS_DEV_FS, .group = index, .port = 0 };
+        tx_sys_bind dest = { .device = TX_SYS_DEV_OSD, .group = _tx_osd_grp, .port = 0 };
+        if (ret = tx_sys.fnBind(&source, &dest))
             return ret;
     }
 
-    if (ret = tx_venc.fnCreateGroup(_tx_venc_grp))
-        return ret;
-
-    if (regionOn) {
-        {
-            tx_sys_bind source = { .device = TX_SYS_DEV_FS, .group = 0, .port = 0 };
-            tx_sys_bind dest = { .device = TX_SYS_DEV_OSD, .group = 0, .port = 0 };
-            if (ret = tx_sys.fnBind(&source, &dest))
-                return ret;
-        }
-
-        {
-            tx_sys_bind source = { .device = TX_SYS_DEV_OSD, .group = 0, .port = 0 };
-            tx_sys_bind dest = { .device = TX_SYS_DEV_ENC, .group = 0, .port = 0 };
-            if (ret = tx_sys.fnBind(&source, &dest))
-                return ret;
-        }
-
-    } else {
-        tx_sys_bind source = { .device = TX_SYS_DEV_FS, .group = 0, .port = 0 };
-        tx_sys_bind dest = { .device = TX_SYS_DEV_ENC, .group = 0, .port = 0 };   
+    {
+        tx_sys_bind source = { .device = TX_SYS_DEV_OSD, .group = _tx_osd_grp, .port = 0 };
+        tx_sys_bind dest = { .device = TX_SYS_DEV_ENC, .group = index, .port = 0 };
         if (ret = tx_sys.fnBind(&source, &dest))
-            return ret;    
+            return ret;
     }
 
-    if (ret = tx_fs.fnEnableChannel(_tx_fs_chn))
+    if (ret = tx_fs.fnEnableChannel(index))
         return ret;
 
     return EXIT_SUCCESS;
 }
 
-void tx_pipeline_destroy(char regionOn)
+int tx_channel_create(char index, short width, short height, char framerate)
 {
-    tx_fs.fnDisableChannel(_tx_fs_chn);
+    int ret;
 
-    if (regionOn) {
-        {
-            tx_sys_bind source = { .device = TX_SYS_DEV_OSD, .group = 0, .port = 0 };
-            tx_sys_bind dest = { .device = TX_SYS_DEV_ENC, .group = 0, .port = 0 };
-            tx_sys.fnUnbind(&source, &dest);
-        }
+    {
+        tx_fs_chn channel = {
+            .dest = { .width = _tx_snr_dim.width, .height = _tx_snr_dim.height },
+            .scale = { .enable = 1, .width = width, .height = height },
+            .fpsDen = framerate, .fpsNum = 1,
+            .pixFmt = TX_PIXFMT_NV12
+        };
 
-        {
-            tx_sys_bind source = { .device = TX_SYS_DEV_FS, .group = 0, .port = 0 };
-            tx_sys_bind dest = { .device = TX_SYS_DEV_OSD, .group = 0, .port = 0 };
-            tx_sys.fnUnbind(&source, &dest);
-        }
-    } else {
-        tx_sys_bind source = { .device = TX_SYS_DEV_FS, .group = 0, .port = 0 };
-        tx_sys_bind dest = { .device = TX_SYS_DEV_ENC, .group = 0, .port = 0 };   
-        tx_sys.fnUnbind(&source, &dest);    
+        if (ret = tx_fs.fnCreateChannel(index, &channel))
+            return ret;
     }
 
-    tx_venc.fnDestroyGroup(_tx_venc_grp);
+    if (ret = tx_venc.fnCreateGroup(index))
+        return ret;
 
-    tx_fs.fnDestroyChannel(_tx_fs_chn);
+    return EXIT_SUCCESS;
 }
 
-int tx_region_create(int *handle, char group, hal_rect rect)
+void tx_channel_destroy(char index)
+{
+    tx_venc.fnDestroyGroup(index);
+
+    tx_fs.fnDestroyChannel(index);
+}
+
+int tx_channel_unbind(char index)
+{
+    int ret;
+
+    tx_fs.fnDisableChannel(index);
+
+    {
+        tx_sys_bind source = { .device = TX_SYS_DEV_OSD, .group = _tx_osd_grp, .port = 0 };
+        tx_sys_bind dest = { .device = TX_SYS_DEV_ENC, .group = index, .port = 0 };
+        tx_sys.fnUnbind(&source, &dest);
+    }
+
+    {
+        tx_sys_bind source = { .device = TX_SYS_DEV_FS, .group = index, .port = 0 };
+        tx_sys_bind dest = { .device = TX_SYS_DEV_OSD, .group = _tx_osd_grp, .port = 0 };
+        tx_sys.fnUnbind(&source, &dest);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int tx_region_create(int *handle, hal_rect rect)
 {
     int ret;
 
@@ -173,38 +173,34 @@ int tx_region_create(int *handle, char group, hal_rect rect)
     region.data.picture = NULL;
 
     if (tx_osd.fnGetRegionConfig(*handle, &regionCurr)) {
-        fprintf(stderr, "[tx_osd] Creating region %d...\n", group);
+        fprintf(stderr, "[tx_osd] Creating region...\n", _tx_osd_grp);
         if ((ret = tx_osd.fnCreateRegion(&region)) < 0)
             return ret;
         else *handle = ret;
     } else if (regionCurr.rect.p1.y - regionCurr.rect.p0.y != rect.height || 
         regionCurr.rect.p1.x - regionCurr.rect.p0.x != rect.width) {
         fprintf(stderr, "[tx_osd] Parameters are different, recreating "
-            "region %d...\n", group);
+            "region...\n", _tx_osd_grp);
         if (ret = tx_osd.fnSetRegionConfig(*handle, &region))
             return ret;
     }
 
-    if (tx_osd.fnGetGroupConfig(*handle, group, &attribCurr))
-        fprintf(stderr, "[tx_osd] Attaching region %d...\n", group);
+    if (tx_osd.fnGetGroupConfig(*handle, _tx_osd_grp, &attribCurr))
+        fprintf(stderr, "[tx_osd] Attaching region...\n", _tx_osd_grp);
 
     memset(&attrib, 0, sizeof(attrib));
     attrib.show = 1;
     attrib.alphaOn = 1;
     attrib.fgAlpha = 255;
-
-    tx_osd.fnCreateGroup(group);
-    tx_osd.fnRegisterRegion(*handle, group, &attrib);
-    tx_osd.fnStartGroup(group);
+    
+    tx_osd.fnRegisterRegion(*handle, _tx_osd_grp, &attrib);
 
     return ret;
 }
 
-void tx_region_destroy(int *handle, char group)
+void tx_region_destroy(int *handle)
 {
-    tx_osd.fnStopGroup(group);
-    tx_osd.fnUnregisterRegion(*handle, group);
-    tx_osd.fnDestroyGroup(group);
+    tx_osd.fnUnregisterRegion(*handle, _tx_osd_grp);
     *handle = -1;
 }
 
@@ -252,17 +248,19 @@ int tx_video_create(char index, hal_vidconfig *config)
     switch (config->mode) {
         case HAL_VIDMODE_CBR:
             channel.rate.mode = TX_VENC_RATEMODE_CBR;
-            channel.rate.cbr = (tx_venc_rate_cbr){ .tgtBitrate = config->bitrate }; break;
+            channel.rate.cbr = (tx_venc_rate_cbr){ .tgtBitrate = MAX(config->bitrate,
+                config->maxBitrate) }; break;
         case HAL_VIDMODE_VBR:
             channel.rate.mode = TX_VENC_RATEMODE_VBR;
-            channel.rate.vbr = (tx_venc_rate_vbr){ .maxBitrate = MAX(config->bitrate, 
-            config->maxBitrate) }; break;
+            channel.rate.vbr = (tx_venc_rate_vbr){ .tgtBitrate = config->bitrate, 
+                .maxBitrate = config->maxBitrate }; break;
         case HAL_VIDMODE_QP:
             channel.rate.mode = TX_VENC_RATEMODE_QP;
             channel.rate.qpModeQual = config->maxQual; break;
         case HAL_VIDMODE_AVBR:
             channel.rate.mode = TX_VENC_RATEMODE_AVBR;
-            channel.rate.avbr = (tx_venc_rate_xvbr){ .maxBitrate = config->bitrate }; break;
+            channel.rate.avbr = (tx_venc_rate_xvbr){ .tgtBitrate  = config->bitrate, 
+                .maxBitrate = config->maxBitrate }; break;
         default:
             TX_ERROR("Video encoder does not support this mode!");
     }
@@ -320,6 +318,8 @@ void *tx_video_thread(void)
 
 void tx_system_deinit(void)
 {
+    tx_osd.fnDestroyGroup(_tx_osd_grp);
+
     tx_sys.fnExit();
 
     tx_isp.fnDisableSensor();
@@ -348,6 +348,7 @@ int tx_system_init(void)
                 memcpy(&_tx_isp_snr.i2c.type, &tx_sensors[i].name, strlen(tx_sensors[i].name));
             else if (tx_sensors[i].mode == TX_ISP_COMM_SPI)
                 memcpy(&_tx_isp_snr.spi.alias, &tx_sensors[i].name, strlen(tx_sensors[i].name));
+            _tx_snr_dim = tx_dims[i];
             ret = 0;
             break;
         }
@@ -365,6 +366,9 @@ int tx_system_init(void)
         return ret;
 
     if (ret = tx_sys.fnInit())
+        return ret;
+
+    if (ret = tx_osd.fnCreateGroup(_tx_osd_grp))
         return ret;
 
     return EXIT_SUCCESS;

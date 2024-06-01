@@ -30,10 +30,6 @@ int v4_audio_init(void);
 
 int v4_channel_bind(char index);
 int v4_channel_create(char index, char mirror, char flip, char framerate);
-void v4_channel_disable(char index);
-int v4_channel_enabled(char index);
-int v4_channel_in_mainloop(char index);
-int v4_channel_next(char mainLoop);
 int v4_channel_unbind(char index);
 
 void *v4_image_thread(void);
