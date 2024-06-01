@@ -82,19 +82,60 @@ int gpio_write(char pin, bool value) {
     return EXIT_SUCCESS;
 }
 #else
-void gpio_deinit(void) {
-
-}
+void gpio_deinit(void) {}
 
 int gpio_init(void) {
     return EXIT_SUCCESS;
 }
 
+static inline int gpio_direction(char pin, char *mode) {
+    char path[40];
+    sprintf(path, "/sys/class/gpio/gpio%d/direction", pin);
+    FILE *fd = fopen(path, "w");
+    if (!fd) return EXIT_FAILURE;
+    fwrite(mode, 1, sizeof(mode), fd);
+    fclose(fd);
+}
+
+static inline int gpio_export(char pin, bool create) {
+    char path[40];
+    FILE *fd = fopen(create ? "/sys/class/gpio/export" :
+       "/sys/class/gpio/unexport" , "w");
+    if (!fd) return EXIT_FAILURE;
+    fprintf(fd, "%d", pin);
+    fclose(fd);
+}
+
 int gpio_read(char pin, bool *value) {
+    if (!gpio_export(pin, true)) return EXIT_FAILURE;
+    if (!gpio_direction(pin, "in")) return EXIT_FAILURE;
+
+    char path[40];
+    sprintf(path, "/sys/class/gpio/gpio%d/value", pin);
+    FILE *fd = fopen(path, "r");
+    if (!fd) return EXIT_FAILURE;
+    *value = fgetc(fd) == '1';
+    fclose(fd);
+
+    if (!gpio_direction(pin, "out")) return EXIT_FAILURE;
+    if (!gpio_export(pin, false)) return EXIT_FAILURE;
+
     return EXIT_SUCCESS;
 }
 
 int gpio_write(char pin, bool value) {
+    if (!gpio_export(pin, true)) return EXIT_FAILURE;
+    if (!gpio_direction(pin, "out")) return EXIT_FAILURE;
+
+    char path[40];
+    sprintf(path, "/sys/class/gpio/gpio%d/value", pin);
+    FILE *fd = fopen(path, "w");
+    if (!fd) return EXIT_FAILURE;
+    fprintf(fd, "%c", value ? "1" : "0");
+    fclose(fd);
+
+    if (!gpio_export(pin, false)) return EXIT_FAILURE;
+
     return EXIT_SUCCESS;
 }
 #endif
