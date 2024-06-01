@@ -532,8 +532,7 @@ int i6_video_destroy(char index)
 
     i6_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
-    if (ret = i6_venc.fnStopReceiving(index))
-        return ret;
+    i6_venc.fnStopReceiving(index);
 
     {
         unsigned int device;

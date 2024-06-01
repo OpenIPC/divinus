@@ -604,8 +604,7 @@ int v4_video_destroy(char index)
 
     v4_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
-    if (ret = v4_venc.fnStopReceiving(index))
-        return ret;
+    v4_venc.fnStopReceiving(index);
 
     {
         v4_sys_bind source = { .module = V4_SYS_MOD_VPSS, 

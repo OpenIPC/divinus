@@ -113,10 +113,12 @@ int tx_channel_create(char index, short width, short height, char framerate)
 
     {
         tx_fs_chn channel = {
-            .dest = { .width = _tx_snr_dim.width, .height = _tx_snr_dim.height },
-            .scale = { .enable = 1, .width = width, .height = height },
-            .fpsDen = framerate, .fpsNum = 1,
-            .pixFmt = TX_PIXFMT_NV12
+            .dest = { .width = width, .height = height }, .pixFmt = TX_PIXFMT_NV12,
+            .crop = { .enable = 1, .left = 0, .top = 0,  .width = _tx_snr_dim.width, 
+                .height = _tx_snr_dim.height },
+            .scale = { .enable = (_tx_snr_dim.width != width || _tx_snr_dim.height != height) 
+                ? 1 : 0, .width = width, .height = height },
+            .fpsDen = framerate, .fpsNum = 1, .bufCount = 2, .phyOrExtChn = 0,  
         };
 
         if (ret = tx_fs.fnCreateChannel(index, &channel))
@@ -191,7 +193,7 @@ int tx_region_create(int *handle, hal_rect rect)
     memset(&attrib, 0, sizeof(attrib));
     attrib.show = 1;
     attrib.alphaOn = 1;
-    attrib.fgAlpha = 255;
+    attrib.fgAlpha = 128;
     
     tx_osd.fnRegisterRegion(*handle, _tx_osd_grp, &attrib);
 
@@ -272,6 +274,9 @@ int tx_video_create(char index, hal_vidconfig *config)
     if (ret = tx_venc.fnCreateChannel(index, &channel))
         return ret;
 
+    if (ret = tx_venc.fnRegisterChannel(index, index))
+        return ret;
+
     {
         int count = -1;
         if (config->codec != HAL_VIDCODEC_JPG && 
@@ -290,7 +295,9 @@ int tx_video_destroy(char index)
 
     tx_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
-    if (ret = tx_venc.fnStopReceiving(index))
+    tx_venc.fnStopReceiving(index);
+
+    if (ret = tx_venc.fnUnregisterChannel(index))
         return ret;
 
     if (ret = tx_venc.fnDestroyChannel(index))
@@ -313,7 +320,103 @@ int tx_video_destroy_all(void)
 
 void *tx_video_thread(void)
 {
+    int ret;
+    int maxFd = 0;
 
+    for (int i = 0; i < TX_VENC_CHN_NUM; i++) {
+        if (!tx_state[i].enable) continue;
+        if (!tx_state[i].mainLoop) continue;
+
+        ret = tx_venc.fnGetDescriptor(i);
+        if (ret < 0) {
+            fprintf(stderr, "[tx_venc] Getting the encoder descriptor failed with %#x!\n", ret);
+            return NULL;
+        }
+        tx_state[i].fileDesc = ret;
+
+        if (maxFd <= tx_state[i].fileDesc)
+            maxFd = tx_state[i].fileDesc;
+    }
+
+    tx_venc_stat stat;
+    tx_venc_strm stream;
+    struct timeval timeout;
+    fd_set readFds;
+
+    while (keepRunning) {
+        FD_ZERO(&readFds);
+        for(int i = 0; i < TX_VENC_CHN_NUM; i++) {
+            if (!tx_state[i].enable) continue;
+            if (!tx_state[i].mainLoop) continue;
+            FD_SET(tx_state[i].fileDesc, &readFds);
+        }
+
+        timeout.tv_sec = 2;
+        timeout.tv_usec = 0;
+        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
+        if (ret < 0) {
+            fprintf(stderr, "[tx_venc] Select operation failed!\n");
+            break;
+        } else if (ret == 0) {
+            fprintf(stderr, "[tx_venc] Main stream loop timed out!\n");
+            continue;
+        } else {
+            for (int i = 0; i < TX_VENC_CHN_NUM; i++) {
+                if (!tx_state[i].enable) continue;
+                if (!tx_state[i].mainLoop) continue;
+                if (FD_ISSET(tx_state[i].fileDesc, &readFds)) {
+                    memset(&stream, 0, sizeof(stream));
+                    
+                    if (ret = tx_venc.fnQuery(i, &stat)) {
+                        fprintf(stderr, "[tx_venc] Querying the encoder channel "
+                            "%d failed with %#x!\n", i, ret);
+                        break;
+                    }
+
+                    if (!stat.curPacks) {
+                        fprintf(stderr, "[tx_venc] Current frame is empty, skipping it!\n");
+                        continue;
+                    }
+
+                    stream.packet = (tx_venc_pack*)malloc(
+                        sizeof(tx_venc_pack) * stat.curPacks);
+                    if (!stream.packet) {
+                        fprintf(stderr, "[tx_venc] Memory allocation on channel %d failed!\n", i);
+                        break;
+                    }
+                    stream.count = stat.curPacks;
+
+                    if (ret = tx_venc.fnGetStream(i, &stream, stat.curPacks)) {
+                        fprintf(stderr, "[tx_venc] Getting the stream on "
+                            "channel %d failed with %#x!\n", i, ret);
+                        break;
+                    }
+
+                    if (tx_venc_cb) {
+                        hal_vidstream outStrm;
+                        hal_vidpack outPack[stat.curPacks];
+                        outStrm.count = stream.count;
+                        outStrm.seq = stream.sequence;
+                        for (int j = 0; j < stat.curPacks; j++) {
+                            outPack[j].data = (unsigned char*)stream.addr + stream.packet[j].offset;
+                            outPack[j].length = stream.packet[j].length;
+                            outPack[j].offset = stream.packet[j].offset;
+                        }
+                        outStrm.pack = outPack;
+                        (*tx_venc_cb)(i, &outStrm);
+                    }
+
+                    if (ret = tx_venc.fnFreeStream(i, &stream)) {
+                        fprintf(stderr, "[tx_venc] Releasing the stream on "
+                            "channel %d failed with %#x!\n", i, ret);
+                    }
+                    free(stream.packet);
+                    stream.packet = NULL;
+                }
+            }
+        }
+    }
+    fprintf(stderr, "[tx_venc] Shutting down encoding thread...\n");
 }
 
 void tx_system_deinit(void)

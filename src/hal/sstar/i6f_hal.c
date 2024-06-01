@@ -595,8 +595,7 @@ int i6f_video_destroy(char index, char jpeg)
 
     i6f_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
-    if (ret = i6f_venc.fnStopReceiving(device, index))
-        return ret;
+    i6f_venc.fnStopReceiving(device, index);
 
     {
         i6f_sys_bind source = { .module = I6F_SYS_MOD_SCL, 
