@@ -17,7 +17,15 @@ jobs:
 
       - name: Build
         run: |
-          sh build.sh arm-musl
-          sh build.sh arm-muslhf
-          sh build.sh arm-glibc
-          sh build.sh mips-musl
+          list="arm-musl arm-muslhf arm-glibc mips-musl"
+          for lib in $list; do
+            sh build.sh $lib
+            mv divinus divinus-$lib
+          done
+
+      - name: Upload
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          files: divinus-*
