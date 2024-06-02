@@ -1,4 +1,5 @@
 #include "types.h"
+#include "hisi/v3_hal.h"
 #include "hisi/v4_hal.h"
 #include "inge/t31_hal.h"
 #include "sstar/i6_hal.h"
