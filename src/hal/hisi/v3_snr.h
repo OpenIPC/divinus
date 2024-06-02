@@ -113,4 +113,11 @@ typedef struct {
     };
 } v3_snr_dev;
 
+typedef struct {
+    void *handle;
+
+    int (*fnRegisterCallback)(void);
+    int (*fnUnRegisterCallback)(void);
+} v3_snr_drv_impl;
+
 static const char v3_snr_endp[] = {"/dev/hi_mipi"};

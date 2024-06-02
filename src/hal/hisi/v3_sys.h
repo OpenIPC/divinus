@@ -60,16 +60,6 @@ typedef enum {
     V3_SYS_MOD_END
 } v3_sys_mod;
 
-typedef enum {
-	V3_SYS_OPER_VIOFF_VPSSOFF,
-	V3_SYS_OPER_VIOFF_VPSSON,
-	V3_SYS_OPER_VION_VPSSOFF,
-	V3_SYS_OPER_VION_VPSSON,
-	V3_SYS_OPER_VIPARA_VPSSOFF,
-	V3_SYS_OPER_VIPARA_VPSSPARA,
-	V3_SYS_OPER_END
-} v3_sys_oper;
-
 typedef struct {
     v3_sys_mod module;
     int device;

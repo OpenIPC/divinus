@@ -371,6 +371,7 @@ typedef struct {
 
     int (*fnQuery)(int channel, v3_venc_stat* stats);
 
+    int (*fnStartReceiving)(int channel);
     int (*fnStartReceivingEx)(int channel, int *count);
     int (*fnStopReceiving)(int channel);
 } v3_venc_impl;
@@ -453,9 +454,15 @@ static int v3_venc_load(v3_venc_impl *venc_lib) {
         return EXIT_FAILURE;
     }
 
+    if (!(venc_lib->fnStartReceiving = (int(*)(int channel))
+        dlsym(venc_lib->handle, "HI_MPI_VENC_StartRecvPic"))) {
+        fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_StartRecvPic!\n");
+        return EXIT_FAILURE;
+    }
+
     if (!(venc_lib->fnStartReceivingEx = (int(*)(int channel, int *count))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_StartRecvFrame"))) {
-        fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_StartRecvFrame!\n");
+        dlsym(venc_lib->handle, "HI_MPI_VENC_StartRecvPicEx"))) {
+        fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_StartRecvPicEx!\n");
         return EXIT_FAILURE;
     }
 

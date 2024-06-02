@@ -18,6 +18,9 @@ extern hal_chnstate *chnState;
 extern hal_platform plat;
 extern char series[16];
 
+extern void *v3_video_thread(void);
+extern hal_chnstate v3_state[V4_VENC_CHN_NUM];
+
 extern void *v4_video_thread(void);
 extern hal_chnstate v4_state[V4_VENC_CHN_NUM];
 

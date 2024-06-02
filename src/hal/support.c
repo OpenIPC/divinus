@@ -126,7 +126,6 @@ void hal_identify(void) {
         val |= (SCSYSID[i] & 0xFF) << i * 8;
     }
 
-    plat = HAL_PLATFORM_V4;
     sprintf(series, "%s%X", 
         ((val >> 28) == 0x7) ? "GK" : "Hi", val);
     if (series[6] == '0') {
@@ -138,6 +137,7 @@ void hal_identify(void) {
         series[10] = series[9];
         series[11] = '\0';
     }
+    plat = HAL_PLATFORM_V4;
     chnCount = V4_VENC_CHN_NUM;
     chnState = (hal_chnstate*)v4_state;
     isp_thread = v4_image_thread;
