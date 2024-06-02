@@ -28,7 +28,7 @@ char *errstr(int error) {
                 case I6_SYS_MOD_AO:
                     error |= (V4_SYS_MOD_AO << 16); break;
                 case I6_SYS_MOD_LDC:
-                    error |= (V4_SYS_MOD_FISHEYE << 16); break;
+                    error |= (V4_SYS_MOD_GDC << 16); break;
                 case I6_SYS_MOD_CIPHER:
                     error |= (0x4D << 16); break;
                 case I6_SYS_MOD_IVE:
@@ -58,7 +58,7 @@ char *errstr(int error) {
                 case I6C_SYS_MOD_AO:
                     error |= (V4_SYS_MOD_AO << 16); break;
                 case I6C_SYS_MOD_LDC:
-                    error |= (V4_SYS_MOD_FISHEYE << 16); break;
+                    error |= (V4_SYS_MOD_GDC << 16); break;
                 case I6C_SYS_MOD_CIPHER:
                     error |= (0x4D << 16); break;
                 case I6C_SYS_MOD_IVE:
@@ -88,7 +88,7 @@ char *errstr(int error) {
                 case I6F_SYS_MOD_AO:
                     error |= (V4_SYS_MOD_AO << 16); break;
                 case I6F_SYS_MOD_LDC:
-                    error |= (V4_SYS_MOD_FISHEYE << 16); break;
+                    error |= (V4_SYS_MOD_GDC << 16); break;
                 case I6F_SYS_MOD_CIPHER:
                     error |= (0x4D << 16); break;
                 case I6F_SYS_MOD_IVE:

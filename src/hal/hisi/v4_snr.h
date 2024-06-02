@@ -94,7 +94,7 @@ typedef struct {
     int dataBeOn;
     int syncBeOn;
     // Value -1 signifies a lane is disabled
-    short laneId[4];
+    short laneId[V4_SNR_LVDS_LANE_NUM];
     /* Each lane has two virtual channel, each has four params
        If syncSavOn is false: SOF, EOF, SOL, EOL
        If syncSavOn is true: invalid sav, invalid eav, valid sav, valid eav  */
@@ -105,9 +105,9 @@ typedef struct {
     v4_common_prec prec;
     v4_snr_mwdr mode;
     // Value -1 signifies a lane is disabled
-    short laneId[4];
+    short laneId[V4_SNR_MIPI_LANE_NUM];
     union {
-        short wdrVcType[2];
+        short wdrVcType[V4_SNR_WDR_VC_NUM];
     };
 } v4_snr_mipi;
 

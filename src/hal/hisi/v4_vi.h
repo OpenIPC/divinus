@@ -179,19 +179,19 @@ static int v4_vi_load(v4_vi_impl *vi_lib) {
         return EXIT_FAILURE;
     }
 
-    if (!(vi_lib->fnDisableChannel = (int(*)(int pipe, int device))
+    if (!(vi_lib->fnDisableChannel = (int(*)(int pipe, int channel))
         dlsym(vi_lib->handle, "HI_MPI_VI_DisableChn"))) {
         fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_DisableChn!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(vi_lib->fnEnableChannel = (int(*)(int pipe, int device))
+    if (!(vi_lib->fnEnableChannel = (int(*)(int pipe, int channel))
         dlsym(vi_lib->handle, "HI_MPI_VI_EnableChn"))) {
         fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_EnableChn!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(vi_lib->fnSetChannelConfig = (int(*)(int pipe, int device, v4_vi_chn *config))
+    if (!(vi_lib->fnSetChannelConfig = (int(*)(int pipe, int channel, v4_vi_chn *config))
         dlsym(vi_lib->handle, "HI_MPI_VI_SetChnAttr"))) {
         fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_SetChnAttr!\n");
         return EXIT_FAILURE;
