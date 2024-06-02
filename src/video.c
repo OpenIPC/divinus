@@ -98,6 +98,7 @@ void set_grayscale(bool active) {
         case HAL_PLATFORM_I6:  i6_channel_grayscale(active); break;
         case HAL_PLATFORM_I6C: i6c_channel_grayscale(active); break;
         case HAL_PLATFORM_I6F: i6f_channel_grayscale(active); break;
+        case HAL_PLATFORM_T31: t31_channel_grayscale(active); break;
     }
     pthread_mutex_unlock(&mutex);
 }
@@ -142,6 +143,7 @@ int disable_venc_chn(char index, char jpeg) {
         case HAL_PLATFORM_I6:  return i6_video_destroy(index);
         case HAL_PLATFORM_I6C: return i6c_video_destroy(index, jpeg);
         case HAL_PLATFORM_I6F: return i6f_video_destroy(index, jpeg);
+        case HAL_PLATFORM_T31: return t31_video_destroy(index);
         case HAL_PLATFORM_V4:  return v4_video_destroy(index);
     }    
     return 0;
@@ -154,7 +156,7 @@ int start_sdk() {
         case HAL_PLATFORM_I6:  ret = i6_hal_init(); break;
         case HAL_PLATFORM_I6C: ret = i6c_hal_init(); break;
         case HAL_PLATFORM_I6F: ret = i6f_hal_init(); break;
-        case HAL_PLATFORM_T31:  ret = t31_hal_init(); break;
+        case HAL_PLATFORM_T31: ret = t31_hal_init(); break;
         case HAL_PLATFORM_V4:  ret = v4_hal_init(); break;
     }
     if (ret) {

@@ -123,17 +123,17 @@ int t31_channel_create(char index, short width, short height, char framerate)
             return ret;
     }
 
-    if (ret = t31_venc.fnCreateGroup(index))
-        return ret;
-
     return EXIT_SUCCESS;
 }
 
 void t31_channel_destroy(char index)
 {
-    t31_venc.fnDestroyGroup(index);
-
     t31_fs.fnDestroyChannel(index);
+}
+
+int t31_channel_grayscale(char enable)
+{
+    return t31_isp.fnSetRunningMode(enable & 1);
 }
 
 int t31_channel_unbind(char index)
@@ -223,9 +223,18 @@ int t31_video_create(char index, hal_vidconfig *config)
     t31_venc_prof profile;
     t31_venc_ratemode ratemode;
 
+    switch (config->mode) {
+        case HAL_VIDMODE_CBR: ratemode = T31_VENC_RATEMODE_CBR; break;
+        case HAL_VIDMODE_VBR: ratemode = T31_VENC_RATEMODE_VBR; break;
+        case HAL_VIDMODE_QP: ratemode = T31_VENC_RATEMODE_QP; break;
+        case HAL_VIDMODE_AVBR: ratemode = T31_VENC_RATEMODE_AVBR; break;
+        default: T31_ERROR("Video encoder does not support this mode!");
+    }
     switch (config->codec) {
         case HAL_VIDCODEC_JPG:
-        case HAL_VIDCODEC_MJPG: profile = T31_VENC_PROF_MJPG; break;
+        case HAL_VIDCODEC_MJPG:
+            profile = T31_VENC_PROF_MJPG;
+            break;
         case HAL_VIDCODEC_H265: profile = T31_VENC_PROF_H265_MAIN; break;
         case HAL_VIDCODEC_H264:
             switch (config->profile) {
@@ -235,13 +244,6 @@ int t31_video_create(char index, hal_vidconfig *config)
             } break;
         default: T31_ERROR("This codec is not supported by the hardware!");
     }
-    switch (config->mode) {
-        case HAL_VIDMODE_CBR: ratemode = T31_VENC_RATEMODE_CBR; break;
-        case HAL_VIDMODE_VBR: ratemode = T31_VENC_RATEMODE_VBR; break;
-        case HAL_VIDMODE_QP: ratemode = T31_VENC_RATEMODE_QP; break;
-        case HAL_VIDMODE_AVBR: ratemode = T31_VENC_RATEMODE_AVBR; break;
-        default: T31_ERROR("Video encoder does not support this mode!");
-    }
 
     memset(&channel, 0, sizeof(channel));
     t31_venc.fnSetDefaults(&channel, profile, ratemode, config->width, config->height, 
@@ -249,23 +251,26 @@ int t31_video_create(char index, hal_vidconfig *config)
 
     switch (channel.rate.mode) {
         case T31_VENC_RATEMODE_CBR:
-            channel.rate.cbr = (t31_venc_rate_cbr){ .tgtBitrate = MAX(config->bitrate,
-                config->maxBitrate), .minQual = 34, .maxQual = 51, .ipDelta = -1, .pbDelta = -1, 
+            channel.rate.cbr = (t31_venc_rate_cbr){ .tgtBitrate = MAX(config->bitrate, config->maxBitrate), 
+                .initQual = -1, .minQual = 34, .maxQual = 51, .ipDelta = -1, .pbDelta = -1,
                 .options = T31_VENC_RCOPT_SCN_CHG_RES | T31_VENC_RCOPT_SC_PREVENTION,
                 .maxPicSize = config->width }; break;
         case T31_VENC_RATEMODE_VBR:
             channel.rate.vbr = (t31_venc_rate_vbr){ .maxBitrate = config->maxBitrate,
-                .minQual = 34, .maxQual = 51, .ipDelta = -1, .pbDelta = -1, 
+                .initQual = -1, .minQual = 34, .maxQual = 51, .ipDelta = -1, .pbDelta = -1,
                 .options = T31_VENC_RCOPT_SCN_CHG_RES | T31_VENC_RCOPT_SC_PREVENTION,
                 .maxPicSize = config->width }; break;
         case T31_VENC_RATEMODE_QP:
             channel.rate.qpModeQual = config->maxQual; break;
         case T31_VENC_RATEMODE_AVBR:
             channel.rate.avbr = (t31_venc_rate_xvbr){ .maxBitrate = config->maxBitrate,
-                .minQual = 34, .maxQual = 51, .ipDelta = -1, .pbDelta = -1,
+                .initQual = -1, .minQual = 34, .maxQual = 51, .ipDelta = -1, .pbDelta = -1,
                 .options = T31_VENC_RCOPT_SCN_CHG_RES | T31_VENC_RCOPT_SC_PREVENTION,
                 .maxPicSize = config->width, .maxPsnr = 42 }; break;
     }
+
+    if (ret = t31_venc.fnCreateGroup(index))
+        return ret;
 
     if (ret = t31_venc.fnCreateChannel(index, &channel))
         return ret;
@@ -294,6 +299,9 @@ int t31_video_destroy(char index)
         return ret;
 
     if (ret = t31_venc.fnDestroyChannel(index))
+        return ret;
+
+    if (ret = t31_venc.fnDestroyGroup(index))
         return ret;
 
     return EXIT_SUCCESS;
@@ -414,6 +422,7 @@ void *t31_video_thread(void)
 
 void t31_system_deinit(void)
 {
+    t31_osd.fnStopGroup(_t31_osd_grp);
     t31_osd.fnDestroyGroup(_t31_osd_grp);
 
     t31_sys.fnExit();
@@ -454,17 +463,22 @@ int t31_system_init(void)
 
     if (ret = t31_isp.fnInit())
         return ret;
-
     if (ret = t31_isp.fnAddSensor(&_t31_isp_snr))
         return ret;
-
     if (ret = t31_isp.fnEnableSensor())
         return ret;
 
     if (ret = t31_sys.fnInit())
         return ret;
 
+    if (ret = t31_isp.fnEnableTuning())
+        return ret;
+    if (ret = t31_isp.fnSetRunningMode(0))
+        return ret;
+
     if (ret = t31_osd.fnCreateGroup(_t31_osd_grp))
+        return ret;
+    if (ret = t31_osd.fnStartGroup(_t31_osd_grp))
         return ret;
 
     return EXIT_SUCCESS;

@@ -94,10 +94,12 @@ static t31_isp_snr t31_sensors[] = {
 
 typedef struct {
     void *handle;
-    
+
+    int (*fnEnableTuning)(void);
     int (*fnExit)(void);
     int (*fnInit)(void);
     int (*fnLoadConfig)(char *path);
+    int (*fnSetRunningMode)(int nightOn);
 
     int (*fnAddSensor)(t31_isp_snr *sensor);
     int (*fnDeleteSensor)(t31_isp_snr *sensor);
@@ -108,6 +110,12 @@ typedef struct {
 static int t31_isp_load(t31_isp_impl *isp_lib) {
     if (!(isp_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL))) {
         fprintf(stderr, "[t31_isp] Failed to load library!\nError: %s\n", dlerror());
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->fnEnableTuning = (int(*)(void))
+        dlsym(isp_lib->handle, "IMP_ISP_EnableTuning"))) {
+        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_EnableTuning!\n");
         return EXIT_FAILURE;
     }
 
@@ -128,6 +136,12 @@ static int t31_isp_load(t31_isp_impl *isp_lib) {
         fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_SetDefaultBinPath!\n");
         return EXIT_FAILURE;
     }
+
+    if (!(isp_lib->fnSetRunningMode = (int(*)(int nightOn))
+        dlsym(isp_lib->handle, "IMP_ISP_Tuning_SetISPRunningMode"))) {
+        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Tuning_SetISPRunningMode!\n");
+        return EXIT_FAILURE;
+    } 
 
     if (!(isp_lib->fnAddSensor = (int(*)(t31_isp_snr *sensor))
         dlsym(isp_lib->handle, "IMP_ISP_AddSensor"))) {

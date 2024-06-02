@@ -24,6 +24,7 @@ int t31_audio_init(void);
 int t31_channel_bind(char index);
 int t31_channel_create(char index, short width, short height, char framerate);
 void t31_channel_destroy(char index);
+int t31_channel_grayscale(char enable);
 int t31_channel_unbind(char index);
 
 int t31_region_create(int *handle, hal_rect rect);

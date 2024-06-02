@@ -240,8 +240,8 @@ typedef struct {
         t31_venc_rate_xvbr cvbr;
         t31_venc_rate_xvbr avbr;
     };
-    unsigned int fpsDen;
     unsigned int fpsNum;
+    unsigned int fpsDen;
 } t31_venc_rate;
 
 typedef struct {
