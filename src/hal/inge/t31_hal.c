@@ -340,7 +340,6 @@ void *t31_video_thread(void)
     }
 
     t31_venc_stat stat;
-    t31_venc_strm stream;
     struct timeval timeout;
     fd_set readFds;
 
@@ -366,28 +365,9 @@ void *t31_video_thread(void)
                 if (!t31_state[i].enable) continue;
                 if (!t31_state[i].mainLoop) continue;
                 if (FD_ISSET(t31_state[i].fileDesc, &readFds)) {
-                    memset(&stream, 0, sizeof(stream));
-                    
-                    if (ret = t31_venc.fnQuery(i, &stat)) {
-                        fprintf(stderr, "[t31_venc] Querying the encoder channel "
-                            "%d failed with %#x!\n", i, ret);
-                        break;
-                    }
+                    t31_venc_strm stream;
 
-                    if (!stat.curPacks) {
-                        fprintf(stderr, "[t31_venc] Current frame is empty, skipping it!\n");
-                        continue;
-                    }
-
-                    stream.packet = (t31_venc_pack*)malloc(
-                        sizeof(t31_venc_pack) * stat.curPacks);
-                    if (!stream.packet) {
-                        fprintf(stderr, "[t31_venc] Memory allocation on channel %d failed!\n", i);
-                        break;
-                    }
-                    stream.count = stat.curPacks;
-
-                    if (ret = t31_venc.fnGetStream(i, &stream, stat.curPacks)) {
+                    if (ret = t31_venc.fnGetStream(i, &stream, 0)) {
                         fprintf(stderr, "[t31_venc] Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;
@@ -395,14 +375,14 @@ void *t31_video_thread(void)
 
                     if (t31_venc_cb) {
                         hal_vidstream outStrm;
-                        hal_vidpack outPack[stat.curPacks];
-                        outStrm.count = stream.count;
+                        hal_vidpack outPack[1];
+                        outStrm.count = 1;
                         outStrm.seq = stream.sequence;
-                        for (int j = 0; j < stat.curPacks; j++) {
-                            outPack[j].data = (unsigned char*)stream.addr + stream.packet[j].offset;
-                            outPack[j].length = stream.packet[j].length;
-                            outPack[j].offset = stream.packet[j].offset;
-                        }
+                        outPack[0].data = (unsigned char*)(stream.addr);
+                        outPack[0].offset = 0;
+                        outPack[0].length = 0;
+                        for (int j = 0; j < stream.count; j++)
+                            outPack[0].length += stream.packet[j].length;
                         outStrm.pack = outPack;
                         (*t31_venc_cb)(i, &outStrm);
                     }
@@ -411,8 +391,6 @@ void *t31_video_thread(void)
                         fprintf(stderr, "[t31_venc] Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
-                    free(stream.packet);
-                    stream.packet = NULL;
                 }
             }
         }
