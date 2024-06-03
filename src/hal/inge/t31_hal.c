@@ -157,6 +157,11 @@ int t31_channel_unbind(char index)
     return EXIT_SUCCESS;
 }
 
+int t31_config_load(char *path)
+{
+    return t31_isp.fnLoadConfig(path);
+}
+
 int t31_region_create(int *handle, hal_rect rect)
 {
     int ret;
@@ -247,7 +252,7 @@ int t31_video_create(char index, hal_vidconfig *config)
 
     memset(&channel, 0, sizeof(channel));
     t31_venc.fnSetDefaults(&channel, profile, ratemode, config->width, config->height, 
-        config->framerate, 1, config->gop, 2, -1, config->bitrate);
+        config->framerate, 1, config->gop, config->gop / config->framerate, -1, config->bitrate);
 
     switch (channel.rate.mode) {
         case T31_VENC_RATEMODE_CBR:

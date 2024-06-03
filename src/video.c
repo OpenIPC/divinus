@@ -272,6 +272,8 @@ int start_sdk() {
                     index, ret, errstr(ret));
                 return EXIT_FAILURE;
             }
+
+            set_mp4_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps);
         }
 
         if (ret = bind_vpss_venc(index, app_config.mp4_fps, 0)) {
@@ -360,6 +362,7 @@ int start_sdk() {
             case HAL_PLATFORM_I6:  i6_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_I6C: i6c_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_I6F: i6f_config_load(app_config.sensor_config); break;    
+            case HAL_PLATFORM_T31: t31_config_load(app_config.sensor_config); break;
         }
 
     fprintf(stderr, "SDK has started successfully!\n");
