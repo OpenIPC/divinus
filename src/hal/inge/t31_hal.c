@@ -88,7 +88,7 @@ int t31_channel_bind(char index)
     int ret;
 
     {
-        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = index, .port = 0 };
+        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = index ^ 1, .port = 0 };
         t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         if (ret = t31_sys.fnBind(&source, &dest))
             return ret;
@@ -101,7 +101,7 @@ int t31_channel_bind(char index)
             return ret;
     }
 
-    if (ret = t31_fs.fnEnableChannel(index))
+    if (ret = t31_fs.fnEnableChannel(index ^ 1))
         return ret;
 
     return EXIT_SUCCESS;
@@ -119,8 +119,8 @@ int t31_channel_create(char index, short width, short height, char framerate)
             .fpsNum = framerate, .fpsDen = 1, 
             .bufCount = 2, .phyOrExtChn = 0,  
         };
-
-        if (ret = t31_fs.fnCreateChannel(index, &channel))
+    
+        if (ret = t31_fs.fnCreateChannel(index ^ 1, &channel))
             return ret;
     }
 
@@ -141,7 +141,7 @@ int t31_channel_unbind(char index)
 {
     int ret;
 
-    t31_fs.fnDisableChannel(index);
+    t31_fs.fnDisableChannel(index ^ 1);
 
     {
         t31_sys_bind source = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
@@ -150,7 +150,7 @@ int t31_channel_unbind(char index)
     }
 
     {
-        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = index, .port = 0 };
+        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = index ^ 1, .port = 0 };
         t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         t31_sys.fnUnbind(&source, &dest);
     }
@@ -167,10 +167,23 @@ int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate
 {
     int ret;
 
-    if (ret = t31_isp.fnInit())
-        return ret;
     {
-        const char *sensor = getenv("SENSOR");
+        char *sensor, sensorName[50];
+        FILE *sensorInfo = fopen("/proc/jz/sinfo/info", "r");
+        if (!fgets(sensorName, 50, sensorInfo))
+            fprintf(stderr, "[t31_hal] Couldn't determine the sensor name from sinfo module!\n");
+        else {
+            sensor = strstr(sensorName, ":");
+            if (!sensor++) goto sensor_from_env;
+            sensor[strlen(sensor) - 1] = '\0';
+            goto sensor_found;
+        }
+        fclose(sensorInfo);
+
+sensor_from_env:
+        sensor = getenv("SENSOR");
+
+sensor_found:
         for (char i = 0; i < sizeof(t31_sensors) / sizeof(*t31_sensors); i++) {
             if (strcmp(t31_sensors[i].name, sensor)) continue;
             memcpy(&_t31_isp_snr, &t31_sensors[i], sizeof(t31_isp_snr));
@@ -185,6 +198,8 @@ int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate
         if (ret)
             return EXIT_FAILURE;
     }
+    if (ret = t31_isp.fnInit())
+        return ret;
     if (ret = t31_isp.fnAddSensor(&_t31_isp_snr))
         return ret;
     if (ret = t31_isp.fnEnableSensor())
