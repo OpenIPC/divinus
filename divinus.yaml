@@ -9,6 +9,7 @@ system:
 isp:
   mirror: false
   flip: false
+  antiflicker: 60
 
 osd:
   enable: true
