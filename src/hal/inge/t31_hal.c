@@ -116,7 +116,8 @@ int t31_channel_create(char index, short width, short height, char framerate)
             .dest = { .width = width, .height = height }, .pixFmt = T31_PIXFMT_NV12,
             .scale = { .enable = (_t31_snr_dim.width != width || _t31_snr_dim.height != height) 
                 ? 1 : 0, .width = width, .height = height },
-            .fpsNum = framerate, .fpsDen = 1, .bufCount = 2, .phyOrExtChn = 0,  
+            .fpsNum = framerate, .fpsDen = 1, 
+            .bufCount = _t31_snr_dim.width > 1920 ? 2 : 1, .phyOrExtChn = 0,  
         };
 
         if (ret = t31_fs.fnCreateChannel(index, &channel))
@@ -162,7 +163,7 @@ int t31_config_load(char *path)
     return t31_isp.fnLoadConfig(path);
 }
 
-int t31_pipeline_create(char mirror, char flip)
+int t31_pipeline_create(char mirror, char flip, char framerate)
 {
     int ret;
 
@@ -192,9 +193,11 @@ int t31_pipeline_create(char mirror, char flip)
         return ret;
     if (ret = t31_isp.fnSetRunningMode(0))
         return ret;
-    if (ret = t31_isp.fnSetAntiFlicker(T31_ISP_FLICK_50HZ))
+    if (ret = t31_isp.fnSetAntiFlicker(T31_ISP_FLICK_60HZ))
         return ret;
     if (ret = t31_isp.fnSetFlip((mirror ? 1 : 0) | (flip ? 2 : 0)))
+        return ret;
+    if (ret = t31_isp.fnSetFramerate(framerate, 1))
         return ret;
 
     if (ret = t31_osd.fnCreateGroup(_t31_osd_grp))

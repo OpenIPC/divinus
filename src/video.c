@@ -206,7 +206,7 @@ int start_sdk() {
         case HAL_PLATFORM_I6F: ret = i6f_pipeline_create(0, width,
             height, framerate); break;
         case HAL_PLATFORM_T31: ret = t31_pipeline_create(
-            app_config.mirror, app_config.flip); break;
+            app_config.mirror, app_config.flip, framerate); break;
         case HAL_PLATFORM_V3:  ret = v3_pipeline_create(); break;
         case HAL_PLATFORM_V4:  ret = v4_pipeline_create(); break;
     }

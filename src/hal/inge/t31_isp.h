@@ -107,6 +107,7 @@ typedef struct {
     int (*fnLoadConfig)(char *path);
     int (*fnSetAntiFlicker)(t31_isp_flick mode);
     int (*fnSetFlip)(int mode);
+    int (*fnSetFramerate)(unsigned int fpsNum, unsigned int fpsDen);
     int (*fnSetRunningMode)(int nightOn);
 
     int (*fnAddSensor)(t31_isp_snr *sensor);
@@ -154,6 +155,12 @@ static int t31_isp_load(t31_isp_impl *isp_lib) {
     if (!(isp_lib->fnSetFlip = (int(*)(int mode))
         dlsym(isp_lib->handle, "IMP_ISP_Tuning_SetHVFLIP"))) {
         fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Tuning_SetHVFLIP!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->fnSetFramerate = (int(*)(unsigned int fpsNum, unsigned int fpsDen))
+        dlsym(isp_lib->handle, "IMP_ISP_Tuning_SetSensorFPS"))) {
+        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Tuning_SetSensorFPS!\n");
         return EXIT_FAILURE;
     }
 
