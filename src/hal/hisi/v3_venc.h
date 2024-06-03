@@ -412,6 +412,12 @@ static int v3_venc_load(v3_venc_impl *venc_lib) {
         return EXIT_FAILURE;
     }
 
+    if (!(venc_lib->fnSetColorToGray = (int(*)(int channel, int *active))
+        dlsym(venc_lib->handle, "HI_MPI_VENC_SetColor2Grey"))) {
+        fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_SetColor2Grey!\n");
+        return EXIT_FAILURE;
+    }
+
     if (!(venc_lib->fnFreeDescriptor = (int(*)(int channel))
         dlsym(venc_lib->handle, "HI_MPI_VENC_CloseFd"))) {
         fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_CloseFd!\n");

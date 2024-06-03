@@ -30,6 +30,7 @@ int v3_audio_init(void);
 
 int v3_channel_bind(char index);
 int v3_channel_create(char index, char mirror, char flip, char framerate);
+int v3_channel_grayscale(char enable);
 int v3_channel_unbind(char index);
 
 void *v3_image_thread(void);

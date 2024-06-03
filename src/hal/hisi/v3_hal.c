@@ -135,6 +135,19 @@ int v3_channel_create(char index, char mirror, char flip, char framerate)
     return EXIT_SUCCESS;
 }
 
+int v3_channel_grayscale(char enable)
+{
+    int ret;
+    int active = enable;
+
+    for (char i = 0; i < V3_VENC_CHN_NUM; i++)
+        if (v3_state[i].enable)
+            if (ret = v3_venc.fnSetColorToGray(i, &active))
+                return ret;
+
+    return EXIT_SUCCESS;
+}
+
 int v3_channel_unbind(char index)
 {
     int ret;
