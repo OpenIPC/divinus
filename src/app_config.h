@@ -55,6 +55,7 @@ struct AppConfig {
     // [isp]
     bool mirror;
     bool flip;
+    int antiflicker;
 
     // [night_mode]
     bool night_mode_enable;

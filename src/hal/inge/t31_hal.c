@@ -163,7 +163,7 @@ int t31_config_load(char *path)
     return t31_isp.fnLoadConfig(path);
 }
 
-int t31_pipeline_create(char mirror, char flip, char framerate)
+int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate)
 {
     int ret;
 
@@ -193,8 +193,15 @@ int t31_pipeline_create(char mirror, char flip, char framerate)
         return ret;
     if (ret = t31_isp.fnSetRunningMode(0))
         return ret;
-    if (ret = t31_isp.fnSetAntiFlicker(T31_ISP_FLICK_60HZ))
-        return ret;
+    {
+        t31_isp_flick mode = T31_ISP_FLICK_OFF;
+        if (antiflicker >= 60)
+            mode = T31_ISP_FLICK_60HZ;
+        else if (antiflicker >= 50)
+            mode = T31_ISP_FLICK_50HZ;
+        if (ret = t31_isp.fnSetAntiFlicker(mode))
+            return ret;
+    }
     if (ret = t31_isp.fnSetFlip((mirror ? 1 : 0) | (flip ? 2 : 0)))
         return ret;
     if (ret = t31_isp.fnSetFramerate(framerate, 1))

@@ -32,6 +32,7 @@ enum ConfigError parse_app_config(void) {
 
     app_config.mirror = false;
     app_config.flip = false;
+    app_config.antiflicker = 0;
 
     app_config.night_mode_enable = false;
     app_config.ir_sensor_pin = 999;
@@ -123,6 +124,7 @@ enum ConfigError parse_app_config(void) {
     err = parse_bool(&ini, "isp", "flip", &app_config.flip);
     if (err != CONFIG_OK)
         goto RET_ERR;
+    parse_int(&ini, "isp", "antiflicker", -1, 60, &app_config.antiflicker);
 
     err = parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
     if (err != CONFIG_OK)
