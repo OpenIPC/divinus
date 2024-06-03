@@ -117,7 +117,7 @@ int t31_channel_create(char index, short width, short height, char framerate)
             .scale = { .enable = (_t31_snr_dim.width != width || _t31_snr_dim.height != height) 
                 ? 1 : 0, .width = width, .height = height },
             .fpsNum = framerate, .fpsDen = 1, 
-            .bufCount = _t31_snr_dim.width > 1920 ? 2 : 1, .phyOrExtChn = 0,  
+            .bufCount = 2, .phyOrExtChn = 0,  
         };
 
         if (ret = t31_fs.fnCreateChannel(index, &channel))

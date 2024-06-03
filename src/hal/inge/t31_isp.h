@@ -60,6 +60,7 @@ static t31_common_dim t31_dims[] = {
     { .width = 1920, .height = 1080 }, // sc2239
     { .width = 1920, .height = 1080 }, // sc2310
     { .width = 1920, .height = 1080 }, // sc2315
+    { .width = 1920, .height = 1080 }, // sc2332
     { .width = 1920, .height = 1080 }, // sc2335
     { .width = 2304, .height = 1296 }, // sc3235
     { .width = 2304, .height = 1296 }, // sc3335
@@ -91,6 +92,7 @@ static t31_isp_snr t31_sensors[] = {
     { .name = "sc2239",  .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x30 },
     { .name = "sc2310",  .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x30 },
     { .name = "sc2315e", .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x30 },
+    { .name = "sc2332",  .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x30 },
     { .name = "sc2335",  .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x30 },
     { .name = "sc3235",  .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x30 },
     { .name = "sc3335",  .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x30 },
