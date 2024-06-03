@@ -90,11 +90,23 @@ void hal_identify(void) {
         }
     else if (!access("/proc/jz", 0) && 
         hal_registry(0x1300002C, &val, OP_READ)) {
+        unsigned int type;
+        hal_registry(0x13540238, &type, OP_READ);
         char gen = (val >> 12) & 0xFF;
         switch (gen) {
             case 0x31:
                 plat = HAL_PLATFORM_T31;
-                sprintf(series, "T%X", gen);
+                switch (type >> 16) {
+                    case 0x2222: sprintf(series, "T31X");  break;
+                    case 0x3333: sprintf(series, "T31L");  break;
+                    case 0x4444: sprintf(series, "T31A");  break;
+                    case 0x5555: sprintf(series, "T31ZL"); break;
+                    case 0x6666: sprintf(series, "T31ZX"); break;
+                    case 0xcccc: sprintf(series, "T31AL"); break;
+                    case 0xdddd: sprintf(series, "T31ZC"); break;
+                    case 0xeeee: sprintf(series, "T31LC"); break;
+                    default:     sprintf(series, "T31N");  break;
+                }
                 chnCount = T31_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)t31_state;
                 venc_thread = t31_video_thread;
