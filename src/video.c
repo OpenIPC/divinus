@@ -205,6 +205,8 @@ int start_sdk() {
             height, framerate); break;
         case HAL_PLATFORM_I6F: ret = i6f_pipeline_create(0, width,
             height, framerate); break;
+        case HAL_PLATFORM_T31: ret = t31_pipeline_create(
+            app_config.mirror, app_config.flip); break;
         case HAL_PLATFORM_V3:  ret = v3_pipeline_create(); break;
         case HAL_PLATFORM_V4:  ret = v4_pipeline_create(); break;
     }
@@ -287,8 +289,8 @@ int start_sdk() {
     if (app_config.mjpeg_enable) {
         int index = take_next_free_channel(true);
     
-        if (ret = create_vpss_chn(index, app_config.mjpeg_width, app_config.mjpeg_height,
-            app_config.mjpeg_fps, 1)) {
+        if (ret = create_vpss_chn(index, app_config.mjpeg_width, 
+            app_config.mjpeg_height, app_config.mjpeg_fps, 1)) {
             fprintf(stderr, 
                 "Creating channel %d failed with %#x!\n%s\n", 
                 index, ret, errstr(ret));
@@ -389,6 +391,7 @@ int stop_sdk() {
         case HAL_PLATFORM_I6:  i6_pipeline_destroy(); break;
         case HAL_PLATFORM_I6C: i6c_pipeline_destroy(); break;
         case HAL_PLATFORM_I6F: i6f_pipeline_destroy(); break;
+        case HAL_PLATFORM_T31: t31_pipeline_destroy(); break;
         case HAL_PLATFORM_V3:  v3_pipeline_destroy(); break;
         case HAL_PLATFORM_V4:  v4_pipeline_destroy(); break;
     }

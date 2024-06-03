@@ -29,6 +29,9 @@ int t31_channel_unbind(char index);
 
 int t31_config_load(char *path);
 
+int t31_pipeline_create(char mirror, char flip);
+void t31_pipeline_destroy(void);
+
 int t31_region_create(int *handle, hal_rect rect);
 void t31_region_destroy(int *handle);
 int t31_region_setbitmap(int *handle, hal_bitmap *bitmap);

@@ -7,6 +7,12 @@ typedef enum {
     T31_ISP_COMM_SPI,
 } t31_isp_comm;
 
+typedef enum {
+    T31_ISP_FLICK_OFF,
+    T31_ISP_FLICK_50HZ,
+    T31_ISP_FLICK_60HZ
+} t31_isp_flick;
+
 typedef struct {
     char type[20];
     int addr;
@@ -99,6 +105,8 @@ typedef struct {
     int (*fnExit)(void);
     int (*fnInit)(void);
     int (*fnLoadConfig)(char *path);
+    int (*fnSetAntiFlicker)(t31_isp_flick mode);
+    int (*fnSetFlip)(int mode);
     int (*fnSetRunningMode)(int nightOn);
 
     int (*fnAddSensor)(t31_isp_snr *sensor);
@@ -137,11 +145,23 @@ static int t31_isp_load(t31_isp_impl *isp_lib) {
         return EXIT_FAILURE;
     }
 
+    if (!(isp_lib->fnSetAntiFlicker = (int(*)(t31_isp_flick mode))
+        dlsym(isp_lib->handle, "IMP_ISP_Tuning_SetAntiFlickerAttr"))) {
+        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Tuning_SetAntiFlickerAttr!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->fnSetFlip = (int(*)(int mode))
+        dlsym(isp_lib->handle, "IMP_ISP_Tuning_SetHVFLIP"))) {
+        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Tuning_SetHVFLIP!\n");
+        return EXIT_FAILURE;
+    }
+
     if (!(isp_lib->fnSetRunningMode = (int(*)(int nightOn))
         dlsym(isp_lib->handle, "IMP_ISP_Tuning_SetISPRunningMode"))) {
         fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Tuning_SetISPRunningMode!\n");
         return EXIT_FAILURE;
-    } 
+    }
 
     if (!(isp_lib->fnAddSensor = (int(*)(t31_isp_snr *sensor))
         dlsym(isp_lib->handle, "IMP_ISP_AddSensor"))) {

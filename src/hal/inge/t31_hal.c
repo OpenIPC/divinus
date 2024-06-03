@@ -116,7 +116,7 @@ int t31_channel_create(char index, short width, short height, char framerate)
             .dest = { .width = width, .height = height }, .pixFmt = T31_PIXFMT_NV12,
             .scale = { .enable = (_t31_snr_dim.width != width || _t31_snr_dim.height != height) 
                 ? 1 : 0, .width = width, .height = height },
-            .fpsNum = framerate, .fpsDen = 1, .bufCount = 1, .phyOrExtChn = 0,  
+            .fpsNum = framerate, .fpsDen = 1, .bufCount = width > 1920 ? 2 : 1, .phyOrExtChn = 0,  
         };
 
         if (ret = t31_fs.fnCreateChannel(index, &channel))
@@ -160,6 +160,59 @@ int t31_channel_unbind(char index)
 int t31_config_load(char *path)
 {
     return t31_isp.fnLoadConfig(path);
+}
+
+int t31_pipeline_create(char mirror, char flip)
+{
+    int ret;
+
+    if (ret = t31_isp.fnInit())
+        return ret;
+    {
+        const char *sensor = getenv("SENSOR");
+        for (char i = 0; i < sizeof(t31_sensors) / sizeof(*t31_sensors); i++) {
+            if (strcmp(t31_sensors[i].name, sensor)) continue;
+            memcpy(&_t31_isp_snr, &t31_sensors[i], sizeof(t31_isp_snr));
+            if (t31_sensors[i].mode == T31_ISP_COMM_I2C)
+                memcpy(&_t31_isp_snr.i2c.type, &t31_sensors[i].name, strlen(t31_sensors[i].name));
+            else if (t31_sensors[i].mode == T31_ISP_COMM_SPI)
+                memcpy(&_t31_isp_snr.spi.alias, &t31_sensors[i].name, strlen(t31_sensors[i].name));
+            _t31_snr_dim = t31_dims[i];
+            ret = 0;
+            break;
+        }
+        if (ret)
+            return EXIT_FAILURE;
+    }
+    if (ret = t31_isp.fnAddSensor(&_t31_isp_snr))
+        return ret;
+    if (ret = t31_isp.fnEnableSensor())
+        return ret;
+    if (ret = t31_isp.fnEnableTuning())
+        return ret;
+    if (ret = t31_isp.fnSetRunningMode(0))
+        return ret;
+    if (ret = t31_isp.fnSetAntiFlicker(T31_ISP_FLICK_50HZ))
+        return ret;
+    if (ret = t31_isp.fnSetFlip((mirror ? 1 : 0) | (flip ? 2 : 0)))
+        return ret;
+
+    if (ret = t31_osd.fnCreateGroup(_t31_osd_grp))
+        return ret;
+    if (ret = t31_osd.fnStartGroup(_t31_osd_grp))
+        return ret;
+
+    return EXIT_SUCCESS;
+}
+
+void t31_pipeline_destroy(void)
+{
+    t31_osd.fnStopGroup(_t31_osd_grp);
+    t31_osd.fnDestroyGroup(_t31_osd_grp);
+
+    t31_isp.fnDisableSensor();
+    t31_isp.fnDeleteSensor(&_t31_isp_snr);
+    t31_isp.fnExit();
 }
 
 int t31_region_create(int *handle, hal_rect rect)
@@ -380,9 +433,23 @@ void *t31_video_thread(void)
 
                     if (t31_venc_cb) {
                         hal_vidstream outStrm;
-                        hal_vidpack outPack[1];
-                        outStrm.count = 1;
+                        hal_vidpack outPack[stream.count];
+                        memset(outPack, 0, sizeof(outPack));
+                        outStrm.count = stream.count;
                         outStrm.seq = stream.sequence;
+                        for (int j = 0; j < stream.count; j++) {
+                            t31_venc_pack *pack = &stream.packet[j];
+                            if (!pack->length) continue;
+                            outPack[j].offset = 0;
+                            unsigned int remain = stream.length - pack->offset;
+                            if (remain < pack->length) {
+                                outPack[j].data = (unsigned char*)(stream.addr);
+                                outPack[j].length = pack->length - remain;
+                            } else {
+                                outPack[j].data = (unsigned char*)(stream.addr + pack->offset);
+                                outPack[j].length = pack->length;
+                            }
+                        }
                         outPack[0].data = (unsigned char*)(stream.addr);
                         outPack[0].offset = 0;
                         outPack[0].length = 0;
@@ -405,14 +472,7 @@ void *t31_video_thread(void)
 
 void t31_system_deinit(void)
 {
-    t31_osd.fnStopGroup(_t31_osd_grp);
-    t31_osd.fnDestroyGroup(_t31_osd_grp);
-
     t31_sys.fnExit();
-
-    t31_isp.fnDisableSensor();
-    t31_isp.fnDeleteSensor(&_t31_isp_snr);
-    t31_isp.fnExit();
 }
 
 int t31_system_init(void)
@@ -427,41 +487,7 @@ int t31_system_init(void)
         puts(version.version);
     }
 
-    {
-        const char *sensor = getenv("SENSOR");
-        for (char i = 0; i < sizeof(t31_sensors) / sizeof(*t31_sensors); i++) {
-            if (strcmp(t31_sensors[i].name, sensor)) continue;
-            memcpy(&_t31_isp_snr, &t31_sensors[i], sizeof(t31_isp_snr));
-            if (t31_sensors[i].mode == T31_ISP_COMM_I2C)
-                memcpy(&_t31_isp_snr.i2c.type, &t31_sensors[i].name, strlen(t31_sensors[i].name));
-            else if (t31_sensors[i].mode == T31_ISP_COMM_SPI)
-                memcpy(&_t31_isp_snr.spi.alias, &t31_sensors[i].name, strlen(t31_sensors[i].name));
-            _t31_snr_dim = t31_dims[i];
-            ret = 0;
-            break;
-        }
-        if (ret)
-            return EXIT_FAILURE;
-    }
-
-    if (ret = t31_isp.fnInit())
-        return ret;
-    if (ret = t31_isp.fnAddSensor(&_t31_isp_snr))
-        return ret;
-    if (ret = t31_isp.fnEnableSensor())
-        return ret;
-
     if (ret = t31_sys.fnInit())
-        return ret;
-
-    if (ret = t31_isp.fnEnableTuning())
-        return ret;
-    if (ret = t31_isp.fnSetRunningMode(0))
-        return ret;
-
-    if (ret = t31_osd.fnCreateGroup(_t31_osd_grp))
-        return ret;
-    if (ret = t31_osd.fnStartGroup(_t31_osd_grp))
         return ret;
 
     return EXIT_SUCCESS;
