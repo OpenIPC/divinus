@@ -126,7 +126,7 @@ void hal_identify(void) {
 
     switch (val) {
         case 0x12040000:
-        case 0x120a0000:
+        case 0x120a0000: val = 0x12020000; break;
         case 0x12100000:
             val = 0x12020000;
             v3series = 1;

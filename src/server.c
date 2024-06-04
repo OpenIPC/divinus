@@ -716,45 +716,6 @@ void *server_thread(void *vargp) {
             close_socket_fd(client_fd);
             continue;
         }
-    
-        if (equals(uri, "/api/time"))
-        {
-            struct timespec t;
-            if (!empty(query))
-            {
-                char *remain;
-                while (query) {
-                    char *value = split(&query, "&");
-                    if (!value || !*value) continue;
-                    unescape_uri(value);
-                    char *key = split(&value, "=");
-                    if (!key || !*key || !value || !*value) continue;
-                    if (app_config.osd_enable && equals(key, "fmt"))
-                        strncpy(timefmt, value, 32);
-                    else if (equals(key, "ts")) {
-                        long result = strtol(value, &remain, 10);
-                        if (remain == value) continue;
-                        t.tv_sec = result;
-                        clock_settime(CLOCK_REALTIME, &t);
-                    }
-                }
-                if (app_config.osd_enable)
-                    for (char id = 0; id < MAX_OSD; id++)
-                        if (strstr(osds[id].text, "$t"))
-                            osds[id].updt = 1;
-            }
-            clock_gettime(CLOCK_REALTIME, &t);
-            int respLen = sprintf(response,
-                "HTTP/1.1 200 OK\r\n" \
-                "Content-Type: application/json;charset=UTF-8\r\n" \
-                "Connection: close\r\n" \
-                "\r\n" \
-                "{\"fmt\":\"%s\",\"ts\":%d}",
-                timefmt, t.tv_sec);
-            send_to_fd(client_fd, response, respLen);
-            close_socket_fd(client_fd);
-            continue;
-        }
 
         if (app_config.web_enable_static && send_file(client_fd, uri))
             continue;

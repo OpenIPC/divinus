@@ -93,6 +93,7 @@ typedef struct {
     unsigned char *data;
     unsigned int length;
     unsigned int offset;
+    unsigned long long timestamp;
 } hal_vidpack;
 
 typedef struct {

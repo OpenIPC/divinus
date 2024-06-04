@@ -12,9 +12,9 @@
 #include "server.h"
 #include "video.h"
 
-#include "rtsp/ringfifo.h"
-#include "rtsp/rtputils.h"
-#include "rtsp/rtspservice.h"
+#include "lib/rtsp/rtsp_server.h"
+
+rtsp_handle rtspHandle;
 
 int main(int argc, char *argv[]) {
     hal_identify();
@@ -44,20 +44,9 @@ int main(int argc, char *argv[]) {
 
     start_server();
 
-    int mainFd;
     if (app_config.rtsp_enable) {
-        ring_malloc(app_config.mp4_width * app_config.mp4_height);
-        signal(SIGINT, rtsp_interrupt);
+        rtspHandle = rtsp_create(16, 2);
         fprintf(stderr, "RTSP server started, listening for clients...\n");
-        
-        mainFd = tcp_listen(SERVER_RTSP_PORT_DEFAULT);
-        if (rtsp_init_schedule() == RTSP_ERR_FATAL) {
-            fprintf(stderr,
-                "Can't start scheduler,\n"
-                "Server is aborting.\n");
-            return EXIT_SUCCESS;
-        }
-        rtsp_portpool_init(RTP_DEFAULT_PORT);
     }
 
     if (start_sdk())
@@ -71,18 +60,13 @@ int main(int argc, char *argv[]) {
 
     if (app_config.osd_enable)
         start_region_handler();
-        
+
+    while (keepRunning) {};
+
     if (app_config.rtsp_enable) {
-        struct timespec ts = {2, 0};
-        while (keepRunning) {
-            nanosleep(&ts, NULL);
-            rtsp_eventloop(mainFd);
-        }
-        ring_free();
-        rtsp_deinit_schedule();
+        rtsp_finish(rtspHandle);
         printf("RTSP server has closed!\n");
-    } else 
-        while (keepRunning) sleep(1);
+    }
 
     if (app_config.osd_enable)
         stop_region_handler();

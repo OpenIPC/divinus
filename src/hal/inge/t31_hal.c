@@ -466,6 +466,7 @@ void *t31_video_thread(void)
                             t31_venc_pack *pack = &stream.packet[j];
                             if (!pack->length) continue;
                             outPack[j].offset = 0;
+                            outPack[j].timestamp = pack->timestamp;
                             unsigned int remain = stream.length - pack->offset;
                             if (remain < pack->length) {
                                 outPack[j].data = (unsigned char*)(stream.addr);

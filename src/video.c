@@ -10,9 +10,6 @@
 #include "error.h"
 #include "http_post.h"
 #include "jpeg.h"
-#include "rtsp/ringfifo.h"
-#include "rtsp/rtputils.h"
-#include "rtsp/rtspservice.h"
 #include "server.h"
 
 pthread_mutex_t mutex;
@@ -30,8 +27,17 @@ int save_stream(char index, hal_vidstream *stream) {
                     chnState[index].payload == HAL_VIDCODEC_H265 ? 1 : 0);
                 send_h26x_to_client(index, stream);
             }
-            if (app_config.rtsp_enable)
-                put_h264_data_to_buffer(stream);
+            if (app_config.rtsp_enable) {
+                for (int i = 0; i < stream->count; i++) {
+                    struct timeval tv = { 
+                        .tv_sec = stream->pack[i].timestamp / 1000000,
+                        .tv_usec = stream->pack[i].timestamp % 1000000 };
+                    //struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
+                    //(void)gettimeofday(&tv, NULL);
+                    rtp_send_h264(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
+                        stream->pack[i].length - stream->pack[i].offset, &tv);
+                }
+            }
             break;
         case HAL_VIDCODEC_MJPG:
             if (app_config.mjpeg_enable) {

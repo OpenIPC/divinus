@@ -2,6 +2,10 @@
 
 #include "common.h"
 
+#include "lib/rtsp/rtsp_server.h"
+
+extern rtsp_handle rtspHandle;
+
 int start_sdk();
 int stop_sdk();
 

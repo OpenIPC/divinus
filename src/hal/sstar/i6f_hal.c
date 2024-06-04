@@ -837,6 +837,7 @@ void *i6f_video_thread(void)
                             outPack[j].data = stream.packet[j].data;
                             outPack[j].length = stream.packet[j].length;
                             outPack[j].offset = stream.packet[j].offset;
+                            outPack[j].timestamp = stream.packet[j].timestamp;
                         }
                         outStrm.pack = outPack;
                         (*i6f_venc_cb)(i, &outStrm);

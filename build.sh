@@ -12,7 +12,7 @@ toolchain() {
 }
 
 if [ "$2" = "debug" ]; then
-	OPT="-gdwarf-3"
+	OPT="-DDEBUG -gdwarf-3"
 else
 	OPT="-Os -s"
 fi
