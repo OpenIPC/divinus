@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-#include "lib/rtsp/rtsp_server.h"
+#include "rtsp/rtsp_server.h"
 
 extern rtsp_handle rtspHandle;
 

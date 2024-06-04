@@ -12,7 +12,7 @@
 #include "server.h"
 #include "video.h"
 
-#include "lib/rtsp/rtsp_server.h"
+#include "rtsp/rtsp_server.h"
 
 rtsp_handle rtspHandle;
 

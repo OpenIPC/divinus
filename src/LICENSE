@@ -1,4 +1,4 @@
-The following software is included in this product: @tomolt/libschrift.
+The following software is included in this product under src/lib: @tomolt/libschrift.
 A copy of the original source code may be downloaded from git+https://github.com/tomolt/libschrift.
 It contains the following license and notice below:
 
@@ -20,7 +20,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ---
 
-The following software is included in this product: @ykst/librtsp.
+The following software is included in this product under src/rtsp: @ykst/librtsp.
 A copy of the original source code may be downloaded from git+https://github.com/ykst/librtsp.
 It contains the following license and notice below:
 
