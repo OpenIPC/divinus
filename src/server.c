@@ -702,7 +702,7 @@ void *server_thread(void *vargp) {
                     else if (equals(key, "opal")) {
                         short result = strtol(value, &remain, 10);
                         if (remain != value)
-                            osds[id].opal = result;
+                            osds[id].opal = result & 0xFF;
                     }
                     else if (equals(key, "posx")) {
                         short result = strtol(value, &remain, 10);

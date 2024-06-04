@@ -332,10 +332,11 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
         regionCurr.size.width != region.size.width) {
         fprintf(stderr, "[i6_rgn] Parameters are different, recreating "
             "region %d...\n", handle);
-        channel.port = 1;
-        i6_rgn.fnDetachChannel(handle, &channel);
-        channel.port = 0;
-        i6_rgn.fnDetachChannel(handle, &channel);
+        for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
+            if (!i6_state[i].enable) continue;
+            channel.port = i;
+            i6_rgn.fnDetachChannel(handle, &channel);
+        }
         i6_rgn.fnDestroyRegion(handle);
         if (ret = i6_rgn.fnCreateRegion(handle, &region))
             return ret;
@@ -343,13 +344,15 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
 
     if (i6_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
         fprintf(stderr, "[i6_rgn] Attaching region %d...\n", handle);
-    else if (attribCurr.point.x != rect.x || attribCurr.point.x != rect.y) {
-        fprintf(stderr, "[i6_rgn] Position has changed, reattaching "
+    else if (attribCurr.point.x != rect.x || attribCurr.point.x != rect.y ||
+        attribCurr.osd.bgFgAlpha[1] != opacity) {
+        fprintf(stderr, "[i6_rgn] Parameters are different, reattaching "
             "region %d...\n", handle);
-        channel.port = 1;
-        i6_rgn.fnDetachChannel(handle, &channel);
-        channel.port = 0;
-        i6_rgn.fnDetachChannel(handle, &channel);
+        for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
+            if (!i6_state[i].enable) continue;
+            channel.port = i;
+            i6_rgn.fnDetachChannel(handle, &channel);
+        }
     }
 
     memset(&attrib, 0, sizeof(attrib));
@@ -361,10 +364,11 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
     attrib.osd.bgFgAlpha[0] = 0;
     attrib.osd.bgFgAlpha[1] = opacity;
 
-    channel.port = 0;
-    i6_rgn.fnAttachChannel(handle, &channel, &attrib);
-    channel.port = 1;
-    i6_rgn.fnAttachChannel(handle, &channel, &attrib);
+    for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
+        if (!i6_state[i].enable) continue;
+        channel.port = i;
+        i6_rgn.fnAttachChannel(handle, &channel, &attrib);
+    }
 
     return ret;
 }

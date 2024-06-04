@@ -416,10 +416,11 @@ int i6c_region_create(char handle, hal_rect rect, short opacity)
         regionCurr.size.width != region.size.width) {
         fprintf(stderr, "[i6c_rgn] Parameters are different, recreating "
             "region %d...\n", handle);
-        channel.port = 1;
-        i6c_rgn.fnDetachChannel(0, handle, &channel);
-        channel.port = 0;
-        i6c_rgn.fnDetachChannel(0, handle, &channel);
+        for (char i = 0; i < I6C_VENC_CHN_NUM; i++) {
+            if (!i6c_state[i].enable) continue;
+            channel.port = i;
+            i6c_rgn.fnDetachChannel(0, handle, &channel);
+        }
         i6c_rgn.fnDestroyRegion(0, handle);
         if (ret = i6c_rgn.fnCreateRegion(0, handle, &region))
             return ret;
@@ -427,13 +428,15 @@ int i6c_region_create(char handle, hal_rect rect, short opacity)
 
     if (i6c_rgn.fnGetChannelConfig(0, handle, &channel, &attribCurr))
         fprintf(stderr, "[i6c_rgn] Attaching region %d...\n", handle);
-    else if (attribCurr.point.x != rect.x || attribCurr.point.x != rect.y) {
-        fprintf(stderr, "[i6c_rgn] Position has changed, reattaching "
+    else if (attribCurr.point.x != rect.x || attribCurr.point.x != rect.y ||
+        attribCurr.osd.bgFgAlpha[1] != opacity) {
+        fprintf(stderr, "[i6c_rgn] Parameters are different, reattaching "
             "region %d...\n", handle);
-        channel.port = 1;
-        i6c_rgn.fnDetachChannel(0, handle, &channel);
-        channel.port = 0;
-        i6c_rgn.fnDetachChannel(0, handle, &channel);
+        for (char i = 0; i < I6C_VENC_CHN_NUM; i++) {
+            if (!i6c_state[i].enable) continue;
+            channel.port = i;
+            i6c_rgn.fnDetachChannel(0, handle, &channel);
+        }
     }
 
     memset(&attrib, 0, sizeof(attrib));
@@ -443,12 +446,13 @@ int i6c_region_create(char handle, hal_rect rect, short opacity)
     attrib.osd.layer = 0;
     attrib.osd.constAlphaOn = 0;
     attrib.osd.bgFgAlpha[0] = 0;
-    attrib.osd.bgFgAlpha[1] = opacity;
+    attrib.osd.bgFgAlpha[1] = 255;
 
-    channel.port = 0;
-    i6c_rgn.fnAttachChannel(0, handle, &channel, &attrib);
-    channel.port = 1;
-    i6c_rgn.fnAttachChannel(0, handle, &channel, &attrib);
+    for (char i = 0; i < I6C_VENC_CHN_NUM; i++) {
+        if (!i6c_state[i].enable) continue;
+        channel.port = i;
+        i6c_rgn.fnAttachChannel(0, handle, &channel, &attrib);
+    }
 
     return ret;
 }
