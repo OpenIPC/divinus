@@ -16,21 +16,21 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 
 ### Supported hardware and features
 
-| SoC Family              | Audio Stream | JPEG Snapshot | MP4 Stream | RTSP Stream | Motion Detect | On-Screen Display* |
-|-------------------------|:------------:|:-------------:|:----------:|:-----------:|:-------------:|:------------------:|
-| Hi3516CV300[^1]         | ↻            | ↻            | ↻          | ↻           | ✗            | ↻                  |
-| Hi3516CV500[^2]         | ↻            | ✔️           | ✔️         | ✔️          | ✗            | ✔️                 |
-| Hi3516EV200[^3]         | ↻            | ✔️           | ✔️         | ✔️          | ✗            | ✔️                 |
-| GK7205V200[^4]          | ↻            | ✔️           | ✔️         | ✔️          | ✗            | ✔️                 |
-| Hi3519V100[^5]          | ↻            | ↻            | ↻          | ↻           | ✗            | ↻                  |
-| Hi3519AV100             | ↻            | ✔️           | ✔️         | ✔️          | ✗            | ✔️                 |
-| Hi3559AV100             | ↻            | ✔️           | ✔️         | ✔️          | ✗            | ✔️                 |
-| infinity6[^6]           | ↻            | ✔️           | ✔️         | ✔️          | ✗            | ✔️                 |
-| infinity6b0[^7]         | ↻            | ✔️           | ✔️         | ✔️          | ✗            | ✔️                 |
-| infinity6e[^8]          | ↻            | ✔️           | ✔️         | ✔️          | ✗            | ✔️                 |
-| infinity6c[^9]          | ↻            | ✔️           | ✔️         | ✔️          | ✗            | ✔️                 |
-| infinity6f[^10]         | ↻            | ✔️           | ✔️         | ✔️          | ✗            | ✔️                 |
-| T31 series              | ↻            | ↻            | ✔️         | ✔️          | ✗            | ✔️                 |
+| SoC Family              | Audio Stream | JPEG Snapshot | fMP4 Stream | RTSP Stream | Motion Detect | On-Screen Display* |
+|-------------------------|:------------:|:-------------:|:-----------:|:-----------:|:-------------:|:------------------:|
+| Hi3516CV300[^1]         | ↻            | ↻            | ↻           | ↻           | ✗            | ↻                  |
+| Hi3516CV500[^2]         | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
+| Hi3516EV200[^3]         | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
+| GK7205V200[^4]          | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
+| Hi3519V100[^5]          | ↻            | ↻            | ↻           | ↻           | ✗            | ↻                  |
+| Hi3519AV100             | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
+| Hi3559AV100             | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
+| infinity6[^6]           | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
+| infinity6b0[^7]         | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
+| infinity6e[^8]          | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
+| infinity6c[^9]          | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
+| infinity6f[^10]         | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
+| T31 series              | ↻            | ↻            | ✔️          | ✔️          | ✗            | ✔️                 |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
@@ -46,6 +46,15 @@ _* At the moment, only text overlays are handled, eventually bitmaps, matricial 
 [^8]: SSC30K\[D/Q\], SSC336\[D/Q\], SSC338\[D/G/Q\] and SSC339G
 [^9]: SSC377(D/DE/QE) or SSC378\[DE/QE\]
 [^10]: SSC379G
+
+
+### Roadmap
+
+- [ ] Audio stream (G.711 over RTSP, industry-supported lossy codec for MP4)
+- [ ] Bitmap handling (ARGB1555, decoding matricial and more pixel formats later on)
+- [ ] Assorted WebUI to handle media reconfiguration and live preview
+- [ ] Motion detection reimplementation
+- [ ] Hardware support improvement (older SoCs, general usage chips)
 
 
 ### Technical support and donations

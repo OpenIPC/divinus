@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     start_server();
 
     if (app_config.rtsp_enable) {
-        rtspHandle = rtsp_create(16, 2);
+        rtspHandle = rtsp_create(RTSP_MAXIMUM_CONNECTIONS, 2);
         fprintf(stderr, "RTSP server started, listening for clients...\n");
     }
 
