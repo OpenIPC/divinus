@@ -351,7 +351,7 @@ int v4_region_create(char handle, hal_rect rect, short opacity)
     region.overlay.size.height = rect.height;
     region.overlay.canvas = handle;
 
-    if (ret = v4_rgn.fnGetRegionConfig(handle, &regionCurr)) {
+    if (v4_rgn.fnGetRegionConfig(handle, &regionCurr)) {
         fprintf(stderr, "[v4_rgn] Creating region %d...\n", handle);
         if (ret = v4_rgn.fnCreateRegion(handle, &region))
             return ret;
@@ -385,7 +385,7 @@ int v4_region_create(char handle, hal_rect rect, short opacity)
 
     v4_rgn.fnAttachChannel(handle, &channel, &attrib);
 
-    return ret;
+    return EXIT_SUCCESS;
 }
 
 void v4_region_destroy(char handle)

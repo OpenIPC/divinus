@@ -396,7 +396,7 @@ void i6c_pipeline_destroy(void)
 
 int i6c_region_create(char handle, hal_rect rect, short opacity)
 {
-    int ret;
+    int ret = EXIT_SUCCESS;
 
     i6c_sys_bind channel = { .module = I6C_SYS_MOD_SCL,
         .device = _i6c_scl_dev, .channel = _i6c_scl_chn };
@@ -408,7 +408,7 @@ int i6c_region_create(char handle, hal_rect rect, short opacity)
     region.size.width = rect.width;
     region.size.height = rect.height;
 
-    if (ret = i6c_rgn.fnGetRegionConfig(0, handle, &regionCurr)) {
+    if (i6c_rgn.fnGetRegionConfig(0, handle, &regionCurr)) {
         fprintf(stderr, "[i6c_rgn] Creating region %d...\n", handle);
         if (ret = i6c_rgn.fnCreateRegion(0, handle, &region))
             return ret;
@@ -446,7 +446,7 @@ int i6c_region_create(char handle, hal_rect rect, short opacity)
     attrib.osd.layer = 0;
     attrib.osd.constAlphaOn = 0;
     attrib.osd.bgFgAlpha[0] = 0;
-    attrib.osd.bgFgAlpha[1] = 255;
+    attrib.osd.bgFgAlpha[1] = opacity;
 
     for (char i = 0; i < I6C_VENC_CHN_NUM; i++) {
         if (!i6c_state[i].enable) continue;
@@ -454,7 +454,7 @@ int i6c_region_create(char handle, hal_rect rect, short opacity)
         i6c_rgn.fnAttachChannel(0, handle, &channel, &attrib);
     }
 
-    return ret;
+    return EXIT_SUCCESS;
 }
 
 void i6c_region_deinit(void)

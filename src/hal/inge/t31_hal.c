@@ -280,7 +280,7 @@ int t31_region_create(int *handle, hal_rect rect, short opacity)
     
     t31_osd.fnRegisterRegion(*handle, _t31_osd_grp, &attrib);
 
-    return ret;
+    return EXIT_SUCCESS;
 }
 
 void t31_region_destroy(int *handle)

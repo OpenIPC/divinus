@@ -385,7 +385,7 @@ int i6f_region_create(char handle, hal_rect rect, short opacity)
     region.size.width = rect.width;
     region.size.height = rect.height;
 
-    if (ret = i6f_rgn.fnGetRegionConfig(0, handle, &regionCurr)) {
+    if (i6f_rgn.fnGetRegionConfig(0, handle, &regionCurr)) {
         fprintf(stderr, "[i6f_rgn] Creating region %d...\n", handle);
         if (ret = i6f_rgn.fnCreateRegion(0, handle, &region))
             return ret;
@@ -431,7 +431,7 @@ int i6f_region_create(char handle, hal_rect rect, short opacity)
         i6f_rgn.fnAttachChannel(0, handle, &channel, &attrib);
     }
 
-    return ret;
+    return EXIT_SUCCESS;
 }
 
 void i6f_region_deinit(void)

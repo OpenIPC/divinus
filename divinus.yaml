@@ -44,11 +44,11 @@ http_post:
   password: <yout pass>
 
 rtsp:
-  enable: false
+  enable: true
 
 mp4:
-  enable: false
-  codec: H265
+  enable: true
+  codec: H264
   width: 3840
   height: 2160
   fps: 20

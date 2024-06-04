@@ -152,22 +152,6 @@ void text_dim_rendered(double *margin, double *height, double *width, const char
     *width = MAX(*width, lwidth) + 2 * *margin;
 }
 
-hal_dim text_measure_rendered(const char *font, double size, const char *text)
-{
-    text_load_font(&sft, font, size, &lmtx);
-
-    double margin, height, width;
-    text_dim_rendered(&margin, &height, &width, text);
-	// Some platforms operate with a coarse pixel size of 2x2
-	// and rounding up is required for a sufficient canvas size
-    hal_dim dim = { .height = CEILING(height), .width = CEILING(width) };
-    dim.height += dim.height & 1;
-    dim.width += dim.width & 1;
-
-    sft_freefont(sft.font);
-    return dim;
-}
-
 hal_bitmap text_create_rendered(const char *font, double size, const char *text, int color)
 {
     text_load_font(&sft, font, size, &lmtx);
