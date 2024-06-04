@@ -276,7 +276,7 @@ void v3_pipeline_destroy(void)
     v3_sensor_deconfig();
 }
 
-int v3_region_create(char handle, hal_rect rect)
+int v3_region_create(char handle, hal_rect rect, short opacity)
 {
     int ret;
 
@@ -317,7 +317,8 @@ int v3_region_create(char handle, hal_rect rect)
     memset(&attrib, 0, sizeof(attrib));
     attrib.show = 1;
     attrib.type = V3_RGN_TYPE_OVERLAY;
-    attrib.overlay.fgAlpha = 255;
+    attrib.overlay.bgAlpha = 0;
+    attrib.overlay.fgAlpha = opacity;
     attrib.overlay.point.x = rect.x;
     attrib.overlay.point.y = rect.y;
     attrib.overlay.layer = 7;

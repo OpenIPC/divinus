@@ -37,7 +37,7 @@ void *v4_image_thread(void);
 int v4_pipeline_create(void);
 void v4_pipeline_destroy(void);
 
-int v4_region_create(char handle, hal_rect rect);
+int v4_region_create(char handle, hal_rect rect, short opacity);
 void v4_region_destroy(char handle);
 int v4_region_setbitmap(int handle, hal_bitmap *bitmap);
 

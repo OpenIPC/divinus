@@ -240,7 +240,7 @@ void t31_pipeline_destroy(void)
     t31_isp.fnExit();
 }
 
-int t31_region_create(int *handle, hal_rect rect)
+int t31_region_create(int *handle, hal_rect rect, short opacity)
 {
     int ret;
 
@@ -274,7 +274,7 @@ int t31_region_create(int *handle, hal_rect rect)
     memset(&attrib, 0, sizeof(attrib));
     attrib.show = 1;
     attrib.alphaOn = 1;
-    attrib.fgAlpha = 255;
+    attrib.fgAlpha = opacity;
     
     t31_osd.fnRegisterRegion(*handle, _t31_osd_grp, &attrib);
 

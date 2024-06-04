@@ -310,7 +310,7 @@ void i6_pipeline_destroy(void)
     i6_snr.fnDisable(_i6_snr_index);
 }
 
-int i6_region_create(char handle, hal_rect rect)
+int i6_region_create(char handle, hal_rect rect, short opacity)
 {
     int ret;
 
@@ -359,7 +359,7 @@ int i6_region_create(char handle, hal_rect rect)
     attrib.osd.layer = 0;
     attrib.osd.constAlphaOn = 0;
     attrib.osd.bgFgAlpha[0] = 0;
-    attrib.osd.bgFgAlpha[1] = 255;
+    attrib.osd.bgFgAlpha[1] = opacity;
 
     channel.port = 0;
     i6_rgn.fnAttachChannel(handle, &channel, &attrib);

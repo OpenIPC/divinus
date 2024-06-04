@@ -109,6 +109,7 @@ void *region_thread(void)
     {
         osds[id].hand = -1;
         osds[id].color = DEF_COLOR;
+        osds[id].opal = DEF_OPAL;
         osds[id].size = DEF_SIZE;
         osds[id].posx = DEF_POSX;
         osds[id].posy = DEF_POSY + (DEF_SIZE * 3 / 2) * id;
@@ -138,27 +139,27 @@ void *region_thread(void)
                             .x = osds[id].posx, .y = osds[id].posy };
                         switch (plat) {
                             case HAL_PLATFORM_I6:
-                                i6_region_create(id, rect);
+                                i6_region_create(id, rect, osds[id].opal);
                                 i6_region_setbitmap(id, &bitmap);
                                 break;
                             case HAL_PLATFORM_I6C:
-                                i6c_region_create(id, rect);
+                                i6c_region_create(id, rect, osds[id].opal);
                                 i6c_region_setbitmap(id, &bitmap);
                                 break;
                             case HAL_PLATFORM_I6F:
-                                i6f_region_create(id, rect);
+                                i6f_region_create(id, rect, osds[id].opal);
                                 i6f_region_setbitmap(id, &bitmap);
                                 break;
                             case HAL_PLATFORM_T31:
-                                t31_region_create(&osds[id].hand, rect);
+                                t31_region_create(&osds[id].hand, rect, osds[id].opal);
                                 t31_region_setbitmap(&osds[id].hand, &bitmap);
                                 break;
                             case HAL_PLATFORM_V3:
-                                v3_region_create(id, rect);
+                                v3_region_create(id, rect, osds[id].opal);
                                 v3_region_setbitmap(id, &bitmap);
                                 break;
                             case HAL_PLATFORM_V4:
-                                v4_region_create(id, rect);
+                                v4_region_create(id, rect, osds[id].opal);
                                 v4_region_setbitmap(id, &bitmap);
                                 break;
                         }

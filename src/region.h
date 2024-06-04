@@ -6,6 +6,7 @@
 
 #define DEF_COLOR 0xFFFF
 #define DEF_FONT "UbuntuMono-Regular"
+#define DEF_OPAL 255
 #define DEF_POSX 16
 #define DEF_POSY 16
 #define DEF_SIZE 32.0f
@@ -27,7 +28,7 @@ extern int sysinfo (struct sysinfo *__info);
 typedef struct {
     double size;
     int hand, color;
-    short posx, posy;
+    short opal, posx, posy;
     char updt;
     char font[32];
     char text[80];

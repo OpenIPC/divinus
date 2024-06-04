@@ -38,7 +38,7 @@ void *v3_image_thread(void);
 int v3_pipeline_create(void);
 void v3_pipeline_destroy(void);
 
-int v3_region_create(char handle, hal_rect rect);
+int v3_region_create(char handle, hal_rect rect, short opacity);
 void v3_region_destroy(char handle);
 int v3_region_setbitmap(int handle, hal_bitmap *bitmap);
 
