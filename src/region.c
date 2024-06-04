@@ -108,9 +108,10 @@ void *region_thread(void)
     for (char id = 0; id < MAX_OSD; id++)
     {
         osds[id].hand = -1;
+        osds[id].color = DEF_COLOR;
         osds[id].size = DEF_SIZE;
         osds[id].posx = DEF_POSX;
-        osds[id].posy = DEF_POSY;
+        osds[id].posy = DEF_POSY + (DEF_SIZE * 3 / 2) * id;
         osds[id].updt = 0;
         strcpy(osds[id].font, DEF_FONT);
         osds[id].text[0] = '\0';
@@ -132,7 +133,7 @@ void *region_thread(void)
                     char *font;
                     asprintf(&font, "/usr/share/fonts/truetype/%s.ttf", osds[id].font);
                     if (!access(font, F_OK)) {
-                        hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out);
+                        hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color);
                         hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
                             .x = osds[id].posx, .y = osds[id].posy };
                         switch (plat) {

@@ -14,5 +14,5 @@
         return EXIT_FAILURE; \
     } while (0)
 
-hal_bitmap text_create_rendered(const char *font, double size, const char *text);
+hal_bitmap text_create_rendered(const char *font, double size, const char *text, int color);
 hal_dim text_measure_rendered(const char *font, double size, const char *text);

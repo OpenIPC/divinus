@@ -168,13 +168,13 @@ hal_dim text_measure_rendered(const char *font, double size, const char *text)
     return dim;
 }
 
-hal_bitmap text_create_rendered(const char *font, double size, const char *text)
+hal_bitmap text_create_rendered(const char *font, double size, const char *text, int color)
 {
     text_load_font(&sft, font, size, &lmtx);
 
     double margin, height, width;
     text_dim_rendered(&margin, &height, &width, text);
-    text_new_rendered(&canvas, width, height, 0);
+    text_new_rendered(&canvas, CEILING(width), CEILING(height), 0);
 
     unsigned cps[strlen(text) + 1];
     int n = utf8_to_utf32(text, cps, strlen(text) + 1);
@@ -198,12 +198,12 @@ hal_bitmap text_create_rendered(const char *font, double size, const char *text)
         SFT_GMetrics mtx;
         SFT_Kerning kerning;
         text_load_glyph(&sft, cp, &gid, &mtx);
-        text_new_rendered(&image, mtx.minWidth, mtx.minHeight, 0x7FFF);
+        text_new_rendered(&image, mtx.minWidth, mtx.minHeight, 0);
         sft_render(&sft, gid, image);
         sft_kerning(&sft, ogid, gid, &kerning);
         x += kerning.xShift;
         text_copy_rendered(&canvas, &image, x + mtx.leftSideBearing,
-            y + mtx.yOffset, 0xFFFF);
+            y + mtx.yOffset, color);
         x += mtx.advanceWidth;
         free(image.pixels);
         ogid = gid;

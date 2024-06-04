@@ -376,8 +376,7 @@ int v4_region_create(char handle, hal_rect rect)
     memset(&attrib, 0, sizeof(attrib));
     attrib.show = 1;
     attrib.type = V4_RGN_TYPE_OVERLAY;
-    attrib.overlay.bgAlpha = 0;
-    attrib.overlay.fgAlpha = 128;
+    attrib.overlay.fgAlpha = 255;
     attrib.overlay.point.x = rect.x;
     attrib.overlay.point.y = rect.y;
     attrib.overlay.layer = 7;

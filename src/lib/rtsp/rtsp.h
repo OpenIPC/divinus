@@ -74,9 +74,6 @@ struct connection_item_t {
     int server_rtp_fd;
     int cseq;
 
-    //FILE *fp_rtcp_write;
-    //FILE *fp_rtcp_read;
-    //FILE *fp_rtp_write;
     FILE *fp_tcp_read;
     FILE *fp_tcp_write;
     enum __connection_state_e con_state;

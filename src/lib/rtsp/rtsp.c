@@ -429,7 +429,7 @@ static int __message_proc_sock(struct list_t *e, void *p)
                 case __METHOD_RECORDING: __method_record(con, h);break;
                 case __METHOD_TEARDOWN: __method_teardown(con, h);break;
                 case __METHOD_NONE: 
-                    /* state DISCONNECTED connections should be gabage collected immediately.
+                    /* state DISCONNECTED connections should be garbage collected immediately.
                        but sending thread might watches the connection right now.
                        so the connection might live at here */
                     ASSERT(con->con_state == __CON_S_DISCONNECTED, return FAILURE); 
@@ -587,7 +587,6 @@ static inline int __bind_rtp(struct connection_item_t *con )
     /* reset socket */
     if (con->server_rtp_fd != 0) {
         CLOSE(con->server_rtp_fd);
-        //FCLOSE(con->fp_rtp_write);
         con->server_rtp_fd = 0;
     }
     /* setup serve rsocket */

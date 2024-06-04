@@ -683,6 +683,13 @@ void *server_thread(void *vargp) {
                     unescape_uri(value);
                     char *key = split(&value, "=");
                     if (!key || !*key || !value || !*value) continue;
+                    if (equals(key, "color")) {
+                        char base = 16;
+                        if (strlen(value) > 1 && value[1] == 'x') base = 0;
+                        short result = strtol(value, &remain, base);
+                        if (remain != value)
+                            osds[id].color = result;
+                    }
                     if (equals(key, "font"))
                         strcpy(osds[id].font, !empty(value) ? value : DEF_FONT);
                     else if (equals(key, "text"))
@@ -710,8 +717,8 @@ void *server_thread(void *vargp) {
                 "Content-Type: application/json;charset=UTF-8\r\n" \
                 "Connection: close\r\n" \
                 "\r\n" \
-                "{\"id\":%d,\"pos\":[%d,%d],\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\"}", 
-                id, osds[id].posx, osds[id].posy, osds[id].font, osds[id].size, osds[id].text);
+                "{\"id\":%d,\"color\":%#x,\"pos\":[%d,%d],\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\"}", 
+                id, osds[id].color, osds[id].posx, osds[id].posy, osds[id].font, osds[id].size, osds[id].text);
             send_to_fd(client_fd, response, respLen);
             close_socket_fd(client_fd);
             continue;

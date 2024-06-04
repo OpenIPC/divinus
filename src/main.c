@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     if (app_config.osd_enable)
         start_region_handler();
 
-    while (keepRunning) {};
+    while (keepRunning) sleep(1);
 
     if (app_config.rtsp_enable) {
         rtsp_finish(rtspHandle);

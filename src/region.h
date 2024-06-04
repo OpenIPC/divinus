@@ -4,6 +4,7 @@
 #include "hal/support.h"
 #include "text.h"
 
+#define DEF_COLOR 0xFFFF
 #define DEF_FONT "UbuntuMono-Regular"
 #define DEF_POSX 16
 #define DEF_POSY 16
@@ -25,7 +26,7 @@ extern int sysinfo (struct sysinfo *__info);
 
 typedef struct {
     double size;
-    int hand;
+    int hand, color;
     short posx, posy;
     char updt;
     char font[32];

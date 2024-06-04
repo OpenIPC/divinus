@@ -248,7 +248,7 @@ int t31_region_create(int *handle, hal_rect rect)
     t31_osd_grp attrib, attribCurr;
 
     region.type = T31_OSD_TYPE_PIC;
-    region.pixFmt = T31_PIXFMT_RGB555LE;
+    region.pixFmt = T31_PIXFMT_BGR555LE;
     region.rect.p0.x = rect.x;
     region.rect.p0.y = rect.y;
     region.rect.p1.x = rect.x + rect.width - 1;
@@ -274,7 +274,7 @@ int t31_region_create(int *handle, hal_rect rect)
     memset(&attrib, 0, sizeof(attrib));
     attrib.show = 1;
     attrib.alphaOn = 1;
-    attrib.fgAlpha = 128;
+    attrib.fgAlpha = 255;
     
     t31_osd.fnRegisterRegion(*handle, _t31_osd_grp, &attrib);
 
@@ -294,7 +294,7 @@ int t31_region_setbitmap(int *handle, hal_bitmap *bitmap)
     region.type = T31_OSD_TYPE_PIC;
     region.rect.p1.x = region.rect.p0.x + bitmap->dim.width - 1;
     region.rect.p1.y = region.rect.p0.y + bitmap->dim.height - 1;
-    region.pixFmt = T31_PIXFMT_RGB555LE;
+    region.pixFmt = T31_PIXFMT_BGR555LE;
     region.data.picture = bitmap->data;    
     return t31_osd.fnSetRegionConfig(*handle, &region);
 }
