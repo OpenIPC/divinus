@@ -266,6 +266,8 @@ int t31_region_create(int *handle, hal_rect rect, short opacity)
             "region...\n", _t31_osd_grp);
         if (ret = t31_osd.fnSetRegionConfig(*handle, &region))
             return ret;
+        if (ret = t31_osd.fnUnregisterRegion(*handle, _t31_osd_grp))
+            return ret;
     }
 
     if (t31_osd.fnGetGroupConfig(*handle, _t31_osd_grp, &attribCurr))
