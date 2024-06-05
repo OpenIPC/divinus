@@ -826,7 +826,7 @@ void *i6f_video_thread(void)
                     }
                     stream.count = stat.curPacks;
 
-                    if (ret = i6f_venc.fnGetStream(device, i, &stream, stat.curPacks)) {
+                    if (ret = i6f_venc.fnGetStream(device, i, &stream, 40)) {
                         fprintf(stderr, "[i6f_venc] Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;
@@ -834,14 +834,38 @@ void *i6f_video_thread(void)
 
                     if (i6f_venc_cb) {
                         hal_vidstream outStrm;
-                        hal_vidpack outPack[stat.curPacks];
+                        hal_vidpack outPack[stream.count];
                         outStrm.count = stream.count;
                         outStrm.seq = stream.sequence;
-                        for (int j = 0; j < stat.curPacks; j++) {
-                            outPack[j].data = stream.packet[j].data;
-                            outPack[j].length = stream.packet[j].length;
-                            outPack[j].offset = stream.packet[j].offset;
-                            outPack[j].timestamp = stream.packet[j].timestamp;
+                        for (int j = 0; j < stream.count; j++) {
+                            i6f_venc_pack *pack = &stream.packet[j];
+                            outPack[j].data = pack->data;
+                            outPack[j].length = pack->length;
+                            outPack[j].naluCnt = pack->packNum;
+                            switch (i6f_state[i].payload) {
+                                case HAL_VIDCODEC_H264:
+                                    for (char k = 0; k < outPack[j].naluCnt; k++) {
+                                        outPack[j].nalu[k].length =
+                                            pack->packetInfo[k].length;
+                                        outPack[j].nalu[k].offset =
+                                            pack->packetInfo[k].offset;
+                                        outPack[j].nalu[k].type =
+                                            pack->packetInfo[k].packType.h264Nalu;
+                                    }
+                                    break;
+                                case HAL_VIDCODEC_H265:
+                                    for (char k = 0; k < outPack[j].naluCnt; k++) {
+                                        outPack[j].nalu[k].length =
+                                            pack->packetInfo[k].length;
+                                        outPack[j].nalu[k].offset =
+                                            pack->packetInfo[k].offset;
+                                        outPack[j].nalu[k].type =
+                                            pack->packetInfo[k].packType.h265Nalu;
+                                    }
+                                    break;
+                            }
+                            outPack[j].offset = pack->offset;
+                            outPack[j].timestamp = pack->timestamp;
                         }
                         outStrm.pack = outPack;
                         (*i6f_venc_cb)(i, &outStrm);

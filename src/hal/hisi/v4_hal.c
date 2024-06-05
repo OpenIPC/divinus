@@ -797,7 +797,7 @@ void *v4_video_thread(void)
                     }
                     stream.count = stat.curPacks;
 
-                    if (ret = v4_venc.fnGetStream(i, &stream, stat.curPacks)) {
+                    if (ret = v4_venc.fnGetStream(i, &stream, 40)) {
                         fprintf(stderr, "[v4_venc] Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;
@@ -805,14 +805,26 @@ void *v4_video_thread(void)
 
                     if (v4_venc_cb) {
                         hal_vidstream outStrm;
-                        hal_vidpack outPack[stat.curPacks];
+                        hal_vidpack outPack[stream.count];
                         outStrm.count = stream.count;
                         outStrm.seq = stream.sequence;
-                        for (int j = 0; j < stat.curPacks; j++) {
-                            outPack[j].data = stream.packet[j].data;
-                            outPack[j].length = stream.packet[j].length;
-                            outPack[j].offset = stream.packet[j].offset;
-                            outPack[j].timestamp = stream.packet[j].timestamp;
+                        for (int j = 0; j < stream.count; j++) {
+                            v4_venc_pack *pack = &stream.packet[j];
+                            outPack[j].naluCnt = 1;
+                            outPack[j].nalu[0].length = pack->length;
+                            outPack[j].nalu[0].offset = pack->offset;
+                            switch (v4_state[i].payload) {
+                                case HAL_VIDCODEC_H264:
+                                    outPack[j].nalu[0].type = pack->naluType.h264Nalu;
+                                    break;
+                                case HAL_VIDCODEC_H265:
+                                    outPack[j].nalu[0].type = pack->naluType.h265Nalu;
+                                    break;
+                            }
+                            outPack[j].data = pack->data;
+                            outPack[j].length = pack->length;
+                            outPack[j].offset = pack->offset;
+                            outPack[j].timestamp = pack->timestamp;
                         }
                         outStrm.pack = outPack;
                         (*v4_venc_cb)(i, &outStrm);

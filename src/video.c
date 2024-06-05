@@ -32,8 +32,6 @@ int save_stream(char index, hal_vidstream *stream) {
                     struct timeval tv = { 
                         .tv_sec = stream->pack[i].timestamp / 1000000,
                         .tv_usec = stream->pack[i].timestamp % 1000000 };
-                    //struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
-                    //(void)gettimeofday(&tv, NULL);
                     rtp_send_h264(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
                         stream->pack[i].length - stream->pack[i].offset, &tv);
                 }

@@ -90,8 +90,16 @@ typedef struct {
 } hal_vidconfig;
 
 typedef struct {
+    unsigned int length;
+    unsigned int offset;
+    int type;
+} hal_vidnalu;
+
+typedef struct {
     unsigned char *data;
     unsigned int length;
+    int naluCnt;
+    hal_vidnalu nalu[8];
     unsigned int offset;
     unsigned long long timestamp;
 } hal_vidpack;

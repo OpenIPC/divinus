@@ -64,16 +64,6 @@ void send_h26x_to_client(unsigned char index, const void *p) {
         unsigned int pack_len = pack->length - pack->offset;
         unsigned char *pack_data = pack->data + pack->offset;
 
-        ssize_t nal_start = 3;
-        if (!nal_chk3(pack_data, 0)) {
-            ++nal_start;
-            if (!nal_chk4(pack_data, 0))
-                continue;
-        }
-
-        struct NAL nal;
-        nal_parse_header(&nal, (pack_data + nal_start)[0]);
-
         pthread_mutex_lock(&client_fds_mutex);
         for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
             if (client_fds[i].socket_fd < 0)
@@ -81,28 +71,32 @@ void send_h26x_to_client(unsigned char index, const void *p) {
             if (client_fds[i].type != STREAM_H26X)
                 continue;
 
-            if (client_fds[i].nalCnt == 0 &&
-                (nal.unit_type != NalUnitType_SPS ||
-                 nal.unit_type != NalUnitType_SPS_HEVC))
-                continue;
-
-            printf("NAL: %s send to %d\n", nal_type_to_str(nal.unit_type), i);
-
-            static char len_buf[50];
-            ssize_t len_size = sprintf(len_buf, "%zX\r\n", (ssize_t)pack_len);
-            if (send_to_client(i, len_buf, len_size) < 0)
-                continue; // send <SIZE>\r\n
-            if (send_to_client(i, pack_data, pack_len) < 0)
-                continue; // send <DATA>
-            if (send_to_client(i, "\r\n", 2) < 0)
-                continue; // send \r\n
-
-            client_fds[i].nalCnt++;
-            if (client_fds[i].nalCnt == 300) {
-                char end[] = "0\r\n\r\n";
-                if (send_to_client(i, end, sizeof(end)) < 0)
+            for (char j = 0; j < pack->naluCnt; j++) {
+                if (client_fds[i].nalCnt == 0 &&
+                    pack->nalu[j].type != NalUnitType_SPS &&
+                    pack->nalu[j].type != NalUnitType_SPS_HEVC)
                     continue;
-                free_client(i);
+
+#ifdef DEBUG
+                printf("NAL: %s send to %d\n", nal_type_to_str(pack->nalu[j].type), i);
+#endif
+
+                static char len_buf[50];
+                ssize_t len_size = sprintf(len_buf, "%zX\r\n", pack->nalu[j].length);
+                if (send_to_client(i, len_buf, len_size) < 0)
+                    continue; // send <SIZE>\r\n
+                if (send_to_client(i, pack_data + pack->nalu[j].offset, pack->nalu[j].length) < 0)
+                    continue; // send <DATA>
+                if (send_to_client(i, "\r\n", 2) < 0)
+                    continue; // send \r\n
+
+                client_fds[i].nalCnt++;
+                if (client_fds[i].nalCnt == 300) {
+                    char end[] = "0\r\n\r\n";
+                    if (send_to_client(i, end, sizeof(end)) < 0)
+                        continue;
+                    free_client(i);
+                }
             }
         }
         pthread_mutex_unlock(&client_fds_mutex);
@@ -117,43 +111,24 @@ void send_mp4_to_client(unsigned char index, const void *p, char isH265) {
         unsigned int pack_len = pack->length - pack->offset;
         unsigned char *pack_data = pack->data + pack->offset;
 
-        ssize_t nal_start = 3;
-        if (!nal_chk3(pack_data, 0)) {
-            ++nal_start;
-            if (!nal_chk4(pack_data, 0))
-                continue;
-        }
+        for (char j = 0; j < pack->naluCnt; j++) {
+#ifdef DEBUG
+            printf("NAL: %s received in packet %d\n", nal_type_to_str(pack->nalu[j].type), i);
+            printf("     starts at %p, ends at %p\n", pack_data + pack->nalu[j].offset, pack_data + pack->nalu[j].length);
+#endif
 
-        struct NAL nal;
-        nal.isH265 = isH265 & 1;
-        unsigned char *nal_end = pack_data + pack_len;
-        while (nal_end - pack_data > nal_start) {
-            unsigned char *bound = memstr(
-                pack_data += nal_start,
-                nal_start == 3 ? "\x00\x00\x01" : "\x00\x00\x00\x01",
-                nal_end - pack_data - nal_start, nal_start
-            );
-            size_t size = (bound ? bound : nal_end) - pack_data;
-            nal_parse_header(&nal, pack_data[0]);
-
-            if (!nal.isH265 && nal.unit_type == NalUnitType_SPS && size >= 4 && size <= UINT16_MAX)
-                set_sps(pack_data, size, 0);
-            else if (nal.isH265 && nal.unit_type == NalUnitType_SPS_HEVC && size >= 4 && size <= UINT16_MAX)
-                set_sps(pack_data, size, 1);
-            else if (!nal.isH265 && nal.unit_type == NalUnitType_PPS && size <= UINT16_MAX)
-                set_pps(pack_data, size, 0);
-            else if (nal.isH265 && nal.unit_type == NalUnitType_PPS_HEVC && size <= UINT16_MAX)
-                set_pps(pack_data, size, 1);
-            else if (nal.unit_type == NalUnitType_VPS_HEVC && size >= 4 && size <= UINT16_MAX)
-                set_vps(pack_data, size);
-            else if (!nal.isH265 && nal.unit_type == NalUnitType_CodedSliceIdr)
-                set_slice(pack_data, size, 1);
-            else if (nal.isH265 && nal.unit_type == NalUnitType_CodedSliceAux)
-                set_slice(pack_data, size, 1);
-            else if (nal.unit_type == NalUnitType_CodedSliceNonIdr)
-                set_slice(pack_data, pack_len, 0);
-
-            pack_data += size;
+            if ((pack->nalu[j].type == NalUnitType_SPS || pack->nalu[j].type == NalUnitType_SPS_HEVC) 
+                && pack->nalu[j].length >= 4 && pack->nalu[j].length <= UINT16_MAX)
+                set_sps(pack_data + pack->nalu[j].offset, pack->nalu[j].length, isH265);
+            else if ((pack->nalu[j].type == NalUnitType_PPS || pack->nalu[j].type == NalUnitType_PPS_HEVC)
+                && pack->nalu[j].length <= UINT16_MAX)
+                set_pps(pack_data + pack->nalu[j].offset, pack->nalu[j].length, isH265);
+            else if (pack->nalu[j].type == NalUnitType_VPS_HEVC && pack->nalu[j].length <= UINT16_MAX)
+                set_vps(pack_data + pack->nalu[j].offset, pack->nalu[j].length);
+            else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux)
+                set_slice(pack_data + pack->nalu[j].offset, pack->nalu[j].length, isH265);
+            else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr)
+                set_slice(pack_data + pack->nalu[j].offset, pack->nalu[j].length, isH265);
         }
 
         static enum BufError err;
@@ -554,9 +529,9 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        // if h264 stream is requested add client_fd socket to client_fds array
-        // and send h264 stream with http_thread
-        if (equals(uri, "/video.264")) {
+        // if h26x stream is requested add client_fd socket to client_fds array
+        // and send h26x stream with http_thread
+        if (equals(uri, "/video.264") || equals(uri, "/video.265")) {
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Type: "
                         "application/octet-stream\r\nTransfer-Encoding: "
