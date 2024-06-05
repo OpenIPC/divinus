@@ -39,6 +39,8 @@ int t31_region_setbitmap(int *handle, hal_bitmap *bitmap);
 int t31_video_create(char index, hal_vidconfig *config);
 int t31_video_destroy(char index);
 int t31_video_destroy_all(void);
+int t31_video_snapshot_grab(char index, short width, short height, 
+    char quality, hal_jpegdata *jpeg);
 void *t31_video_thread(void);
 
 void t31_system_deinit(void);

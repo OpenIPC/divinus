@@ -21,10 +21,12 @@ bool jpeg_module_init = false;
 
 pthread_mutex_t jpeg_mutex;
 
-int jpeg_init() {
+int jpeg_init() {  
     int ret;
 
     pthread_mutex_lock(&jpeg_mutex);
+
+    if (app_config.mjpeg_enable) goto mjpeg_active;
 
     jpeg_index = take_next_free_channel(false);
 
@@ -42,12 +44,13 @@ int jpeg_init() {
         config.height = app_config.jpeg_height;
         config.codec = HAL_VIDCODEC_JPG;
         config.mode = HAL_VIDMODE_QP;
-        config.minQual = app_config.jpeg_qfactor;
+        config.minQual = config.maxQual = app_config.jpeg_qfactor;
 
         switch (plat) {
             case HAL_PLATFORM_I6:  ret = i6_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_I6F: ret = i6f_video_create(jpeg_index, &config); break;
+            case HAL_PLATFORM_T31: ret = t31_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_V3:  ret = v3_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_V4:  ret = v4_video_create(jpeg_index, &config); break;
             default: 
@@ -64,6 +67,7 @@ int jpeg_init() {
         }
     }
 
+mjpeg_active:
     jpeg_module_init = true;
     pthread_mutex_unlock(&jpeg_mutex);
     printf(tag "Module initialization completed!\n");
@@ -73,7 +77,23 @@ int jpeg_init() {
 
 void jpeg_deinit() {
     pthread_mutex_lock(&jpeg_mutex);
+
+    if (app_config.mjpeg_enable) goto mjpeg_active;
+
+    switch (plat) {
+        case HAL_PLATFORM_I6:  i6_video_destroy(jpeg_index); break;
+        case HAL_PLATFORM_I6C: i6c_video_destroy(jpeg_index, 1); break;
+        case HAL_PLATFORM_I6F: i6f_video_destroy(jpeg_index, 1); break;
+        case HAL_PLATFORM_T31: t31_video_destroy(jpeg_index); break;
+        case HAL_PLATFORM_V3:  v3_video_destroy(jpeg_index); break;
+        case HAL_PLATFORM_V4:  v4_video_destroy(jpeg_index); break;
+        default: 
+            pthread_mutex_unlock(&jpeg_mutex);
+            return;    
+    }
     disable_venc_chn(jpeg_index, 1);
+
+mjpeg_active:
     jpeg_module_init = false;
     pthread_mutex_unlock(&jpeg_mutex);
 }
@@ -95,6 +115,8 @@ int jpeg_get(short width, short height, char quality, char grayscale,
             quality, grayscale, jpeg); break;
         case HAL_PLATFORM_I6F: ret = i6f_video_snapshot_grab(jpeg_index, width, height, 
             quality, grayscale, jpeg); break;
+        case HAL_PLATFORM_T31: ret = t31_video_snapshot_grab(app_config.mjpeg_enable ? 
+            -1 : jpeg_index, width, height, quality, jpeg); break;
         case HAL_PLATFORM_V3:  ret = v3_video_snapshot_grab(jpeg_index, width, height,
             quality, jpeg); break;
         case HAL_PLATFORM_V4:  ret = v4_video_snapshot_grab(jpeg_index, width, height,

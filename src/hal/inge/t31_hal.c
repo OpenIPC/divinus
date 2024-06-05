@@ -317,9 +317,7 @@ int t31_video_create(char index, hal_vidconfig *config)
     }
     switch (config->codec) {
         case HAL_VIDCODEC_JPG:
-        case HAL_VIDCODEC_MJPG:
-            profile = T31_VENC_PROF_MJPG;
-            break;
+        case HAL_VIDCODEC_MJPG: profile = T31_VENC_PROF_MJPG; break;
         case HAL_VIDCODEC_H265: profile = T31_VENC_PROF_H265_MAIN; break;
         case HAL_VIDCODEC_H264:
             switch (config->profile) {
@@ -330,28 +328,35 @@ int t31_video_create(char index, hal_vidconfig *config)
         default: T31_ERROR("This codec is not supported by the hardware!");
     }
 
+    if (profile == T31_VENC_PROF_MJPG) {
+        config->framerate = config->gop = 1;
+        if (ratemode == T31_VENC_RATEMODE_QP) {
+            config->minQual = config->minQual * (48 - 3) / 99 + 3;
+            config->maxQual = config->maxQual * (48 - 3) / 99 + 3;
+        } else config->minQual = config->maxQual = 42;
+    }
+
     memset(&channel, 0, sizeof(channel));
     t31_venc.fnSetDefaults(&channel, profile, ratemode, config->width, config->height, 
-        config->framerate, 1, config->gop, config->gop / config->framerate, -1, config->bitrate);
+        config->framerate, 1, config->gop, config->gop / config->framerate, -1, 0);
 
     switch (channel.rate.mode) {
         case T31_VENC_RATEMODE_CBR:
             channel.rate.cbr = (t31_venc_rate_cbr){ .tgtBitrate = MAX(config->bitrate, config->maxBitrate), 
-                .initQual = -1, .minQual = 34, .maxQual = 51, .ipDelta = -1, .pbDelta = -1,
-                .options = T31_VENC_RCOPT_SCN_CHG_RES | T31_VENC_RCOPT_SC_PREVENTION,
-                .maxPicSize = config->width }; break;
+                .initQual = -1, .minQual = 34, .maxQual = 48, .ipDelta = -1, .pbDelta = -1,
+                .options = T31_VENC_RCOPT_SCN_CHG_RES | T31_VENC_RCOPT_SC_PREVENTION }; break;
         case T31_VENC_RATEMODE_VBR:
-            channel.rate.vbr = (t31_venc_rate_vbr){ .maxBitrate = config->maxBitrate,
-                .initQual = -1, .minQual = 34, .maxQual = 51, .ipDelta = -1, .pbDelta = -1,
-                .options = T31_VENC_RCOPT_SCN_CHG_RES | T31_VENC_RCOPT_SC_PREVENTION,
-                .maxPicSize = config->width }; break;
+            channel.rate.vbr = (t31_venc_rate_vbr){ .tgtBitrate = config->bitrate,
+                .maxBitrate = config->maxBitrate, .initQual = -1, .minQual = 34, .maxQual = 48,
+                .ipDelta = -1, .pbDelta = -1, .options = T31_VENC_RCOPT_SCN_CHG_RES |
+                T31_VENC_RCOPT_SC_PREVENTION }; break;
         case T31_VENC_RATEMODE_QP:
-            channel.rate.qpModeQual = config->maxQual; break;
+            channel.rate.qpModeQual = MAX(config->minQual, config->maxQual); break;
         case T31_VENC_RATEMODE_AVBR:
-            channel.rate.avbr = (t31_venc_rate_xvbr){ .maxBitrate = config->maxBitrate,
-                .initQual = -1, .minQual = 34, .maxQual = 51, .ipDelta = -1, .pbDelta = -1,
-                .options = T31_VENC_RCOPT_SCN_CHG_RES | T31_VENC_RCOPT_SC_PREVENTION,
-                .maxPicSize = config->width, .maxPsnr = 42 }; break;
+            channel.rate.avbr = (t31_venc_rate_xvbr){ .tgtBitrate = config->bitrate, .maxBitrate = 
+                config->maxBitrate, .initQual = -1, .minQual = config->minQual, .maxQual = config->maxQual,
+                .ipDelta = -1, .pbDelta = -1, .options = T31_VENC_RCOPT_SCN_CHG_RES |
+                T31_VENC_RCOPT_SC_PREVENTION, .maxPsnr = 42 }; break;
     }
 
     if (ret = t31_venc.fnCreateGroup(index))
@@ -402,6 +407,114 @@ int t31_video_destroy_all(void)
                 return ret;
 
     return EXIT_SUCCESS;
+}
+
+int t31_video_snapshot_grab(char index, short width, short height, 
+    char quality, hal_jpegdata *jpeg)
+{
+    int ret, fd;
+    char mjpeg = 0;
+
+    if (index == -1) {
+        fprintf(stderr, "[t31_venc] Snapshot falling back to the MJPEG channel,"
+            " its resolution will be used in place\n");
+        for (char i = 0; i < T31_VENC_CHN_NUM; i++) {
+            if (!t31_state[i].enable) continue; 
+            if (t31_state[i].payload != HAL_VIDCODEC_MJPG) continue;
+            fd = t31_state[i].fileDesc;
+            index = i;
+            mjpeg = 1;
+        }
+        return EXIT_FAILURE;
+    }
+
+    if (!mjpeg) {
+        if (ret = t31_channel_bind(index)) {
+            fprintf(stderr, "[t31_venc] Binding the encoder channel "
+                "%d failed with %#x!\n", index, ret);
+            goto abort;
+        }
+
+        if (t31_venc.fnStartReceiving(index)) {
+            fprintf(stderr, "[t31_venc] Requesting one frame "
+                "%d failed with %#x!\n", index, ret);
+            goto abort;
+        }
+
+        fd = t31_venc.fnGetDescriptor(index);
+    }
+
+    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+    fd_set readFds;
+    FD_ZERO(&readFds);
+    FD_SET(fd, &readFds);
+    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
+    if (ret < 0) {
+        fprintf(stderr, "[t31_venc] Select operation failed!\n");
+        goto abort;
+    } else if (ret == 0) {
+        fprintf(stderr, "[t31_venc] Capture stream timed out!\n");
+        goto abort;
+    }
+
+    if (FD_ISSET(fd, &readFds)) {
+        t31_venc_stat stat;
+        if (t31_venc.fnQuery(index, &stat)) {
+            fprintf(stderr, "[t31_venc] Querying the encoder channel "
+                "%d failed with %#x!\n", index, ret);
+            goto abort;
+        }
+
+        if (!stat.curPacks) {
+            fprintf(stderr, "[t31_venc] Current frame is empty, skipping it!\n");
+            goto abort;
+        }
+
+        t31_venc_strm strm;
+        memset(&strm, 0, sizeof(strm));
+        strm.packet = (t31_venc_pack*)malloc(sizeof(t31_venc_pack) * stat.curPacks);
+        if (!strm.packet) {
+            fprintf(stderr, "[t31_venc] Memory allocation on channel %d failed!\n", index);
+            goto abort;
+        }
+        strm.count = stat.curPacks;
+
+        if (ret = t31_venc.fnGetStream(index, &strm, 0)) {
+            fprintf(stderr, "[t31_venc] Getting the stream on "
+                "channel %d failed with %#x!\n", index, ret);
+            free(strm.packet);
+            strm.packet = NULL;
+            goto abort;
+        }
+
+        {
+            jpeg->jpegSize = 0;
+            for (unsigned int i = 0; i < strm.count; i++) {
+                t31_venc_pack *pack = &strm.packet[i];
+                unsigned int packLen = pack->length - pack->offset;
+                unsigned char *packData = (unsigned char*)(strm.addr + pack->offset);
+
+                unsigned int newLen = jpeg->jpegSize + packLen;
+                if (newLen > jpeg->length) {
+                    jpeg->data = realloc(jpeg->data, newLen);
+                    jpeg->length = newLen;
+                }
+                memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
+                jpeg->jpegSize += packLen;
+            }
+        }
+
+abort:
+        t31_venc.fnFreeStream(index, &strm);
+    }
+
+    if (!mjpeg) {
+        t31_venc.fnStopReceiving(index);
+
+        t31_channel_unbind(index);
+    }
+
+    return ret;
 }
 
 void *t31_video_thread(void)

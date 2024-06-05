@@ -30,7 +30,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | infinity6e[^8]          | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
 | infinity6c[^9]          | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
 | infinity6f[^10]         | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
-| T31 series              | ↻            | ↻            | ✔️          | ✔️          | ✗            | ✔️                 |
+| T31 series              | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                 |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 

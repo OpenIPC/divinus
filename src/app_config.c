@@ -147,7 +147,7 @@ enum ConfigError parse_app_config(void) {
                 app_config.mp4_codecH265 = false;
         }
         {
-            const char *possible_values[] = {"CBR", "VBR", "QP", "AVBR"};
+            const char *possible_values[] = {"CBR", "VBR", "QP", "ABR", "AVBR"};
             const int count = sizeof(possible_values) / sizeof(const char *);
             int val = 0;
             parse_enum(
