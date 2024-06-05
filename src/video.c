@@ -258,7 +258,7 @@ int start_sdk() {
             config.height = app_config.mp4_height;
             config.codec = app_config.mp4_codecH265 ? 
                 HAL_VIDCODEC_H265 : HAL_VIDCODEC_H264;
-            config.mode = HAL_VIDMODE_CBR;
+            config.mode = app_config.mp4_mode;
             config.profile = app_config.mp4_profile;
             config.gop = app_config.mp4_fps * 2;
             config.framerate = app_config.mp4_fps;
@@ -307,7 +307,7 @@ int start_sdk() {
             config.width = app_config.mjpeg_width;
             config.height = app_config.mjpeg_height;
             config.codec = HAL_VIDCODEC_MJPG;
-            config.mode = HAL_VIDMODE_CBR;
+            config.mode = app_config.mjpeg_mode;
             config.framerate = app_config.mjpeg_fps;
             config.bitrate = app_config.mjpeg_bitrate;
 

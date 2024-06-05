@@ -146,6 +146,15 @@ enum ConfigError parse_app_config(void) {
             else
                 app_config.mp4_codecH265 = false;
         }
+        {
+            const char *possible_values[] = {"CBR", "VBR", "QP", "AVBR"};
+            const int count = sizeof(possible_values) / sizeof(const char *);
+            int val = 0;
+            parse_enum(
+                &ini, "mp4", "mode", (void *)&val,
+                possible_values, count, 0);
+            app_config.mp4_mode = val;
+        }
         err = parse_int(
             &ini, "mp4", "width", 160, INT_MAX, &app_config.mp4_width);
         if (err != CONFIG_OK)
@@ -190,6 +199,15 @@ enum ConfigError parse_app_config(void) {
     if (err != CONFIG_OK)
         goto RET_ERR;
     if (app_config.mjpeg_enable) {
+        {
+            const char *possible_values[] = {"CBR", "VBR", "QP"};
+            const int count = sizeof(possible_values) / sizeof(const char *);
+            int val = 0;
+            parse_enum(
+                &ini, "mjpeg", "mode", (void *)&val,
+                possible_values, count, 0);
+            app_config.mjpeg_mode = val;
+        }
         err = parse_int(
             &ini, "mjpeg", "width", 160, INT_MAX, &app_config.mjpeg_width);
         if (err != CONFIG_OK)

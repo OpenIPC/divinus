@@ -49,6 +49,7 @@ rtsp:
 mp4:
   enable: true
   codec: H264
+  mode: CBR
   width: 3840
   height: 2160
   fps: 20
@@ -63,6 +64,7 @@ jpeg:
 
 mjpeg:
   enable: true
+  mode: CBR
   width: 3840
   height: 2160
   fps: 20

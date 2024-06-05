@@ -1,12 +1,5 @@
 #include "tools.h"
 
-char *memstr(char *haystack, char *needle, int size, char needlesize)
-{
-	for (char *p = haystack; p <= (haystack - needlesize + size); p++)
-		if (!memcmp(p, needle, needlesize)) return p;
-	return NULL;
-}
-
 const char *get_extension(const char *path) {
     const char *dot = strrchr(path, '.');
     if (!dot || dot == path)
