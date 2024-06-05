@@ -467,8 +467,6 @@ void *t31_video_thread(void)
                         for (int j = 0; j < stream.count; j++) {
                             t31_venc_pack *pack = &stream.packet[j];
                             if (!pack->length) continue;
-                            outPack[j].offset = 0;
-                            outPack[j].timestamp = pack->timestamp;
                             unsigned int remain = stream.length - pack->offset;
                             if (remain < pack->length) {
                                 outPack[j].data = (unsigned char*)(stream.addr);
@@ -479,7 +477,7 @@ void *t31_video_thread(void)
                             }
                             outPack[j].naluCnt = 1;
                             outPack[j].nalu[0].length = outPack[j].length;
-                            outPack[j].nalu[0].offset = outPack[j].offset;
+                            outPack[j].nalu[0].offset = 0;
                             switch (t31_state[i].payload) {
                                 case HAL_VIDCODEC_H264:
                                     outPack[j].nalu[0].type = pack->naluType.h264Nalu;
@@ -488,6 +486,8 @@ void *t31_video_thread(void)
                                     outPack[j].nalu[0].type = pack->naluType.h265Nalu;
                                     break;
                             }
+                            outPack[j].offset = 0;
+                            outPack[j].timestamp = pack->timestamp;
                         }
                         outStrm.pack = outPack;
                         (*t31_venc_cb)(i, &outStrm);

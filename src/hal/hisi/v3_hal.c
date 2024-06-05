@@ -755,6 +755,8 @@ void *v3_video_thread(void)
                         outStrm.seq = stream.sequence;
                         for (int j = 0; j < stream.count; j++) {
                             v3_venc_pack *pack = &stream.packet[j];
+                            outPack[j].data = pack->data;
+                            outPack[j].length = pack->length;
                             outPack[j].naluCnt = 1;
                             outPack[j].nalu[0].length = pack->length;
                             outPack[j].nalu[0].offset = pack->offset;
@@ -766,8 +768,6 @@ void *v3_video_thread(void)
                                     outPack[j].nalu[0].type = pack->naluType.h265Nalu;
                                     break;
                             }
-                            outPack[j].data = pack->data;
-                            outPack[j].length = pack->length;
                             outPack[j].offset = pack->offset;
                             outPack[j].timestamp = pack->timestamp;
                         }
