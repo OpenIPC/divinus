@@ -393,9 +393,9 @@ int send_image_html(const int client_fd) {
     return 1;
 }
 
-#define MAX_REQSIZE 8192
-char request[MAX_REQSIZE], response[256];
-char *method, *payload, *prot, *query, *uri;
+#define REQSIZE 512 * 1024
+char response[256];
+char *method, *payload, *prot, *request, *query, *uri;
 int paysize, received, total = 0;
 
 typedef struct {
@@ -477,7 +477,8 @@ void parse_request(int client_fd, char *request) {
     paysize = t2 ? atol(t2) : (total - (t - request));
 
     while (t2 && total < paysize) {
-        if ((received = recv(client_fd, request + total, MAX_REQSIZE - total, 0)) < 0) {
+        received = recv(client_fd, request + total, REQSIZE - total, 0);
+        if (received < 0) {
             fputs(tag "recv() error\n", stderr);
             break;
         } else if (!received) {
@@ -487,7 +488,8 @@ void parse_request(int client_fd, char *request) {
         total += received;
     }
     
-    if (!t) payload = t = strtok(NULL, "\r\n");
+    if (!t)
+        payload = t = strtok(NULL, "\r\n");
 }
 
 void *server_thread(void *vargp) {
@@ -510,6 +512,8 @@ void *server_thread(void *vargp) {
     }
     listen(server_fd, 128);
 
+    request = malloc(REQSIZE);
+
     while (keepRunning) {
         // waiting for a new connection
         int client_fd = accept(server_fd, NULL, NULL);
@@ -517,7 +521,7 @@ void *server_thread(void *vargp) {
             break;
 
         total = 0;
-        received = recv(client_fd, request + total, MAX_REQSIZE - total, 0);
+        received = recv(client_fd, request + total, REQSIZE - total, 0);
         if (received < 0)
             fputs(tag "recv() error\n", stderr);           
         else if (!received)
@@ -782,6 +786,10 @@ void *server_thread(void *vargp) {
             client_fd, response2, sizeof(response2) - 1); // zero ending string!
         close_socket_fd(client_fd);
     }
+
+    if (request)
+        free(request);
+
     close_socket_fd(server_fd);
     printf(tag "Thread has exited\n");
     return NULL;
@@ -819,7 +827,7 @@ int start_server() {
         pthread_attr_init(&thread_attr);
         size_t stacksize;
         pthread_attr_getstacksize(&thread_attr, &stacksize);
-        size_t new_stacksize = app_config.web_server_thread_stack_size;
+        size_t new_stacksize = app_config.web_server_thread_stack_size + REQSIZE;
         if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
             printf(tag "Can't set stack size %zu\n", new_stacksize);
         }
