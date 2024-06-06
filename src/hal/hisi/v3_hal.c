@@ -1,4 +1,3 @@
-#ifdef __arm__
 #include "v3_hal.h"
 
 v3_isp_alg      v3_ae_lib = { .id = 0, .libName = "ae_lib" };
@@ -841,4 +840,3 @@ int v3_system_init(char *snrConfig)
 
     return EXIT_SUCCESS;
 }
-#endif

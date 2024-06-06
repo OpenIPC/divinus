@@ -7,7 +7,6 @@ char *errstr(int error) {
     int module = (error >> 16) & 0xFF;
 
     switch (plat) {
-#ifdef __arm__
         case HAL_PLATFORM_I6:
             level = (error >> 12) & 0xF;
             error = error & 0xFF000FFF | (level > 0 ? (4 << 13) : 0);
@@ -98,7 +97,6 @@ char *errstr(int error) {
                     error |= (module << 16); break;
             }
             break;
-#endif
     }
 
     switch (error) {

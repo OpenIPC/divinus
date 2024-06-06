@@ -99,13 +99,11 @@ void region_fill_formatted(char* str)
 
 void *region_thread(void)
 {
-#ifdef __arm__
     switch (plat) {
         case HAL_PLATFORM_I6:  i6_region_init(); break;
         case HAL_PLATFORM_I6C: i6c_region_init(); break;
         case HAL_PLATFORM_I6F: i6f_region_init(); break;
     }
-#endif
 
     for (char id = 0; id < MAX_OSD; id++)
     {
@@ -140,7 +138,6 @@ void *region_thread(void)
                         hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
                             .x = osds[id].posx, .y = osds[id].posy };
                         switch (plat) {
-#if defined(__arm__)
                             case HAL_PLATFORM_I6:
                                 i6_region_create(id, rect, osds[id].opal);
                                 i6_region_setbitmap(id, &bitmap);
@@ -161,12 +158,10 @@ void *region_thread(void)
                                 v4_region_create(id, rect, osds[id].opal);
                                 v4_region_setbitmap(id, &bitmap);
                                 break;
-#elif defined(__mips__)
                             case HAL_PLATFORM_T31:
                                 t31_region_create(&osds[id].hand, rect, osds[id].opal);
                                 t31_region_setbitmap(&osds[id].hand, &bitmap);
                                 break;
-#endif
                         }
                         free(bitmap.data);
                     }
@@ -175,15 +170,12 @@ void *region_thread(void)
             else if (empty(osds[id].text) && osds[id].updt)
             {
                 switch (plat) {
-#if defined(__arm__)
                     case HAL_PLATFORM_I6:  i6_region_destroy(id); break;
                     case HAL_PLATFORM_I6C: i6c_region_destroy(id); break;
                     case HAL_PLATFORM_I6F: i6f_region_destroy(id); break;
                     case HAL_PLATFORM_V3:  v3_region_destroy(id); break;
                     case HAL_PLATFORM_V4:  v4_region_destroy(id); break;
-#elif defined(__mips__)
                     case HAL_PLATFORM_T31: t31_region_destroy(&osds[id].hand); break;
-#endif
                 }
             }
             osds[id].updt = 0;
@@ -192,11 +184,9 @@ void *region_thread(void)
     }
 
     switch (plat) {
-#ifdef __arm__
         case HAL_PLATFORM_I6:  i6_region_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_region_deinit(); break;
         case HAL_PLATFORM_I6F: i6f_region_deinit(); break;
-#endif
     }
 }
 

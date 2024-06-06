@@ -1,5 +1,3 @@
-#ifdef __arm__
-
 int (*fnISP_AlgRegisterDehaze)(int);
 int (*fnISP_AlgRegisterDrc)(int);
 int (*fnISP_AlgRegisterLdci)(int);
@@ -17,5 +15,3 @@ int ISP_AlgRegisterLdci(int pipeId) {
 int MPI_ISP_IrAutoRunOnce(int pipeId, void *irAttr) {
     return fnMPI_ISP_IrAutoRunOnce(pipeId, irAttr);
 }
-
-#endif
