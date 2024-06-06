@@ -633,7 +633,7 @@ int i6f_video_destroy_all(void)
     return EXIT_SUCCESS;
 }
 
-int i6f_video_snapshot_grab(char index, char quality, char grayscale, hal_jpegdata *jpeg)
+int i6f_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 {
     int ret;
     char device = 
@@ -663,8 +663,6 @@ int i6f_video_snapshot_grab(char index, char quality, char grayscale, hal_jpegda
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
-
-    i6f_channel_grayscale(grayscale);
 
     unsigned int count = 1;
     if (i6f_venc.fnStartReceivingEx(device, index, &count)) {

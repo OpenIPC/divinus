@@ -103,6 +103,7 @@ void set_grayscale(bool active) {
         case HAL_PLATFORM_I6C: i6c_channel_grayscale(active); break;
         case HAL_PLATFORM_I6F: i6f_channel_grayscale(active); break;
         case HAL_PLATFORM_V3:  v3_channel_grayscale(active); break;
+        case HAL_PLATFORM_V4:  v4_channel_grayscale(active); break;
         case HAL_PLATFORM_T31: t31_channel_grayscale(active); break;
     }
     pthread_mutex_unlock(&mutex);

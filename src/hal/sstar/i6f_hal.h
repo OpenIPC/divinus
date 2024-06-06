@@ -37,7 +37,7 @@ int i6f_region_setbitmap(int handle, hal_bitmap *bitmap);
 int i6f_video_create(char index, hal_vidconfig *config);
 int i6f_video_destroy(char index, char jpeg);
 int i6f_video_destroy_all(void);
-int i6f_video_snapshot_grab(char index, char quality, char grayscale, hal_jpegdata *jpeg);
+int i6f_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg);
 void *i6f_video_thread(void);
 
 void i6f_system_deinit(void);

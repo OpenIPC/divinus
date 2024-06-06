@@ -261,6 +261,17 @@ typedef struct {
 } v4_venc_pack;
 
 typedef struct {
+    int grayscaleOn;
+    unsigned int prio;
+    unsigned int maxStrmCnt;
+    unsigned int wakeFrmCnt;
+    int cropOn;
+    v4_common_rect crop;
+    int srcFps;
+    int dstFps;
+} v4_venc_para;
+
+typedef struct {
     unsigned int leftPics;
     unsigned int leftBytes;
     unsigned int leftFrames;
@@ -363,9 +374,11 @@ typedef struct {
 
     int (*fnCreateChannel)(int channel, v4_venc_chn *config);
     int (*fnGetChannelConfig)(int channel, v4_venc_chn *config);
+    int (*fnGetChannelParam)(int channel, v4_venc_para *config);
     int (*fnDestroyChannel)(int channel);
     int (*fnResetChannel)(int channel);
     int (*fnSetChannelConfig)(int channel, v4_venc_chn *config);
+    int (*fnSetChannelParam)(int channel, v4_venc_para *config);
     int (*fnSetColorToGray)(int channel, int *active);
 
     int (*fnFreeDescriptor)(int channel);
@@ -410,6 +423,12 @@ static int v4_venc_load(v4_venc_impl *venc_lib) {
         return EXIT_FAILURE;
     }
 
+    if (!(venc_lib->fnGetChannelParam = (int(*)(int channel, v4_venc_para *config))
+        dlsym(venc_lib->handle, "HI_MPI_VENC_GetChnParam"))) {
+        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_GetChnParam!\n");
+        return EXIT_FAILURE;
+    }
+
     if (!(venc_lib->fnResetChannel = (int(*)(int channel))
         dlsym(venc_lib->handle, "HI_MPI_VENC_ResetChn"))) {
         fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_ResetChn!\n");
@@ -419,6 +438,12 @@ static int v4_venc_load(v4_venc_impl *venc_lib) {
     if (!(venc_lib->fnSetChannelConfig = (int(*)(int channel, v4_venc_chn *config))
         dlsym(venc_lib->handle, "HI_MPI_VENC_SetChnAttr"))) {
         fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_SetChnAttr!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(venc_lib->fnSetChannelParam = (int(*)(int channel, v4_venc_para *config))
+        dlsym(venc_lib->handle, "HI_MPI_VENC_SetChnParam"))) {
+        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_SetChnParam!\n");
         return EXIT_FAILURE;
     }
 

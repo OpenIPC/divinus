@@ -140,6 +140,23 @@ int v4_channel_create(char index, char mirror, char flip, char framerate)
     return EXIT_SUCCESS;
 }
 
+int v4_channel_grayscale(char enable)
+{
+    int ret;
+
+    for (char i = 0; i < V4_VENC_CHN_NUM; i++) {
+        v4_venc_para param;
+        if (!v4_state[i].enable) continue;
+        if (ret = v4_venc.fnGetChannelParam(i, &param))
+            return ret;
+        param.grayscaleOn = enable;
+        if (ret = v4_venc.fnSetChannelParam(i, &param))
+            return ret;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 int v4_channel_unbind(char index)
 {
     int ret;
