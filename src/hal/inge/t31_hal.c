@@ -409,8 +409,7 @@ int t31_video_destroy_all(void)
     return EXIT_SUCCESS;
 }
 
-int t31_video_snapshot_grab(char index, short width, short height, 
-    char quality, hal_jpegdata *jpeg)
+int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 {
     int ret, fd;
     char mjpeg = 0;

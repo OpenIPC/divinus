@@ -49,8 +49,7 @@ int v4_sensor_init(char *name, char *obj);
 int v4_video_create(char index, hal_vidconfig *config);
 int v4_video_destroy(char index);
 int v4_video_destroy_all(void);
-int v4_video_snapshot_grab(char index, short width, short height, 
-    char quality, hal_jpegdata *jpeg);
+int v4_video_snapshot_grab(char index, hal_jpegdata *jpeg);
 void *v4_video_thread(void);
 
 int v4_system_calculate_block(short width, short height, v4_common_pixfmt pixFmt,

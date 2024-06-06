@@ -109,18 +109,16 @@ int jpeg_get(short width, short height, char quality, char grayscale,
     int ret;
 
     switch (plat) {
-        case HAL_PLATFORM_I6:  ret = i6_video_snapshot_grab(jpeg_index, width, height, 
-            quality, grayscale, jpeg); break;
-        case HAL_PLATFORM_I6C: ret = i6c_video_snapshot_grab(jpeg_index, width, height, 
-            quality, grayscale, jpeg); break;
-        case HAL_PLATFORM_I6F: ret = i6f_video_snapshot_grab(jpeg_index, width, height, 
-            quality, grayscale, jpeg); break;
+        case HAL_PLATFORM_I6:  ret = i6_video_snapshot_grab(jpeg_index, quality,
+            grayscale, jpeg); break;
+        case HAL_PLATFORM_I6C: ret = i6c_video_snapshot_grab(jpeg_index, quality,
+            grayscale, jpeg); break;
+        case HAL_PLATFORM_I6F: ret = i6f_video_snapshot_grab(jpeg_index, quality,
+            grayscale, jpeg); break;
         case HAL_PLATFORM_T31: ret = t31_video_snapshot_grab(app_config.mjpeg_enable ? 
-            -1 : jpeg_index, width, height, quality, jpeg); break;
-        case HAL_PLATFORM_V3:  ret = v3_video_snapshot_grab(jpeg_index, width, height,
-            quality, jpeg); break;
-        case HAL_PLATFORM_V4:  ret = v4_video_snapshot_grab(jpeg_index, width, height,
-            quality, jpeg); break;
+            -1 : jpeg_index, jpeg); break;
+        case HAL_PLATFORM_V3:  ret = v3_video_snapshot_grab(jpeg_index, jpeg); break;
+        case HAL_PLATFORM_V4:  ret = v4_video_snapshot_grab(jpeg_index, jpeg); break;
     }
     if (ret) {
         if (jpeg->data)

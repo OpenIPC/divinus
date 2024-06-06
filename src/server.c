@@ -1,5 +1,7 @@
 #include "server.h"
 
+#define tag "[server] "
+
 char keepRunning = 1;
 
 enum StreamType { STREAM_H26X, STREAM_JPEG, STREAM_MJPEG, STREAM_MP4 };
@@ -251,7 +253,7 @@ void *send_jpeg_thread(void *vargp) {
     struct jpegtask task = *((struct jpegtask *)vargp);
     hal_jpegdata jpeg = {0};
     printf(
-        "Requesting a JPEG snapshot (%ux%u, qfactor %u, color2Gray %d)...\n",
+        tag "Requesting a JPEG snapshot (%ux%u, qfactor %u, color2Gray %d)...\n",
         task.width, task.height, task.qfactor, task.color2Gray);
     int ret =
         jpeg_get(task.width, task.height, task.qfactor, task.color2Gray, &jpeg);
@@ -266,7 +268,7 @@ void *send_jpeg_thread(void *vargp) {
         close_socket_fd(task.client_fd);
         return NULL;
     }
-    printf("JPEG snapshot has been received!\n");
+    printf(tag "JPEG snapshot has been received!\n");
     char buf[1024];
     int buf_len = sprintf(
         buf,
@@ -278,7 +280,7 @@ void *send_jpeg_thread(void *vargp) {
     send_to_fd(task.client_fd, "\r\n", 2);
     close_socket_fd(task.client_fd);
     free(jpeg.data);
-    printf("JPEG snapshot has been sent!\n");
+    printf(tag "JPEG snapshot has been sent!\n");
     return NULL;
 }
 
@@ -432,7 +434,7 @@ void parse_request(char *request) {
     uri = strtok(NULL, " \t");
     prot = strtok(NULL, " \t\r\n");
 
-    fprintf(stderr, "[server]\x1b[32m New request: (%s) %s\x1b[0m\n", method, uri);
+    fprintf(stderr, tag "\x1b[32m New request: (%s) %s\x1b[0m\n", method, uri);
 
     if (query = strchr(uri, '?'))
         *query++ = '\0';
@@ -473,7 +475,7 @@ void *server_thread(void *vargp) {
     int enable = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) <
         0) {
-        printf("Web server error: setsockopt(SO_REUSEADDR) failed");
+        printf(tag "setsockopt(SO_REUSEADDR) failed");
         fflush(stdout);
     }
     struct sockaddr_in server;
@@ -482,7 +484,7 @@ void *server_thread(void *vargp) {
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     int res = bind(server_fd, (struct sockaddr *)&server, sizeof(server));
     if (res != 0) {
-        printf("Web server error: %s (%d)\n", strerror(errno), errno);
+        printf(tag "%s (%d)\n", strerror(errno), errno);
         keepRunning = 0;
         close_socket_fd(server_fd);
         return NULL;
@@ -594,7 +596,7 @@ void *server_thread(void *vargp) {
                 task.width = app_config.jpeg_width;
                 task.height = app_config.jpeg_height;
                 task.qfactor = app_config.jpeg_qfactor;
-                task.color2Gray = 3;
+                task.color2Gray = 0;
 
                 if (!empty(query)) {
                     char *remain;
@@ -633,12 +635,12 @@ void *server_thread(void *vargp) {
                 pthread_attr_getstacksize(&thread_attr, &stacksize);
                 size_t new_stacksize = 16 * 1024;
                 if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-                    printf("Error:  Can't set stack size %ld\n", new_stacksize);
+                    printf("[jpeg] Can't set stack size %ld\n", new_stacksize);
                 }
                 pthread_create(
                     &thread_id, &thread_attr, send_jpeg_thread, (void *)&task);
                 if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-                    printf("Error:  Can't set stack size %ld\n", stacksize);
+                    printf("[jpeg] Can't set stack size %ld\n", stacksize);
                 }
                 pthread_attr_destroy(&thread_attr);
             }
@@ -714,12 +716,12 @@ void *server_thread(void *vargp) {
         close_socket_fd(client_fd);
     }
     close_socket_fd(server_fd);
-    printf("Shutdown server thread\n");
+    printf(tag "Thread has exited\n");
     return NULL;
 }
 
 void sig_handler(int signo) {
-    printf("Graceful shutdown...\n");
+    printf(tag "Graceful shutdown...\n");
     keepRunning = 0;
 }
 void epipe_handler(int signo) { printf("EPIPE\n"); }
@@ -752,12 +754,12 @@ int start_server() {
         pthread_attr_getstacksize(&thread_attr, &stacksize);
         size_t new_stacksize = app_config.web_server_thread_stack_size;
         if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-            printf("Can't set stack size %zu\n", new_stacksize);
+            printf(tag "Can't set stack size %zu\n", new_stacksize);
         }
         pthread_create(
             &server_thread_id, &thread_attr, server_thread, (void *)&server_fd);
         if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-            printf("Can't set stack size %zu\n", stacksize);
+            printf(tag "Can't set stack size %zu\n", stacksize);
         }
         pthread_attr_destroy(&thread_attr);
     }
@@ -773,6 +775,6 @@ int stop_server() {
     pthread_join(server_thread_id, NULL);
 
     pthread_mutex_destroy(&client_fds_mutex);
-    printf("Shutting down server...\n");
+    printf(tag "Shutting down server...\n");
     return EXIT_SUCCESS;
 }

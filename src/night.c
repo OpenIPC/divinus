@@ -7,7 +7,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#define tag "[night]: "
+#define tag "[night] "
 
 static bool night_mode = false;
 pthread_t nightPid = 0;

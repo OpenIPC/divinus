@@ -571,8 +571,7 @@ int i6_video_destroy_all(void)
     return EXIT_SUCCESS;
 }
 
-int i6_video_snapshot_grab(char index, short width, short height, 
-    char quality, char grayscale, hal_jpegdata *jpeg)
+int i6_video_snapshot_grab(char index, char quality, char grayscale, hal_jpegdata *jpeg)
 {
     int ret;
 

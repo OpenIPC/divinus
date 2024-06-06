@@ -636,8 +636,7 @@ int v4_video_destroy_all(void)
     return EXIT_SUCCESS;
 }
 
-int v4_video_snapshot_grab(char index, short width, short height, 
-    char quality, hal_jpegdata *jpeg)
+int v4_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 {
     int ret;
 
