@@ -1,3 +1,4 @@
+#ifdef __arm__
 #include "i6c_hal.h"
 
 i6c_aud_impl  i6c_aud;
@@ -946,3 +947,4 @@ int i6c_system_init(void)
 
     return EXIT_SUCCESS;
 }
+#endif
