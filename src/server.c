@@ -395,7 +395,8 @@ int send_image_html(const int client_fd) {
 
 #define MAX_REQSIZE 8192
 char request[MAX_REQSIZE], response[256];
-char *method, *prot, *query, *uri;
+char *method, *payload, *prot, *query, *uri;
+int paysize, received, total = 0;
 
 typedef struct {
     char *name, *value;
@@ -429,7 +430,18 @@ char *split(char **input, char *sep) {
     return (curr);
 }
 
-void parse_request(char *request) {
+char *request_header(const char *name)
+{
+    header_t *h = reqhdr;
+    for (; h->name; h++)
+        if (!strcmp(h->name, name))
+            return h->value;
+    return NULL;
+}
+
+header_t *request_headers(void) { return reqhdr; }
+
+void parse_request(int client_fd, char *request) {
     method = strtok(request, " \t\r\n");
     uri = strtok(NULL, " \t");
     prot = strtok(NULL, " \t\r\n");
@@ -442,6 +454,7 @@ void parse_request(char *request) {
         query = uri - 1;
 
     header_t *h = reqhdr;
+    char *t, *t2;
     while (h < reqhdr + 16)
     {
         char *k, *v, *e;
@@ -457,24 +470,30 @@ void parse_request(char *request) {
         if (e[1] == '\r' && e[2] == '\n')
             break;
     }
-}
 
-char *request_header(const char *name)
-{
-    header_t *h = reqhdr;
-    for (; h->name; h++)
-        if (!strcmp(h->name, name))
-            return h->value;
-    return NULL;
-}
+    t = strtok(NULL, "\r\n");
+    payload = t;
+    t2 = request_header("Content-Length");
+    paysize = t2 ? atol(t2) : (total - (t - request));
 
-header_t *request_headers(void) { return reqhdr; }
+    while (t2 && total < paysize) {
+        if ((received = recv(client_fd, request + total, MAX_REQSIZE - total, 0)) < 0) {
+            fputs(tag "recv() error\n", stderr);
+            break;
+        } else if (!received) {
+            fputs(tag "Client disconnected unexpectedly\n", stderr);
+            break;
+        }
+        total += received;
+    }
+    
+    if (!t) payload = t = strtok(NULL, "\r\n");
+}
 
 void *server_thread(void *vargp) {
     int server_fd = *((int *)vargp);
     int enable = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) <
-        0) {
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
         printf(tag "setsockopt(SO_REUSEADDR) failed");
         fflush(stdout);
     }
@@ -497,8 +516,17 @@ void *server_thread(void *vargp) {
         if (client_fd == -1)
             break;
 
-        recv(client_fd, request, MAX_REQSIZE, 0);
-        parse_request(request);
+        total = 0;
+        received = recv(client_fd, request + total, MAX_REQSIZE - total, 0);
+        if (received < 0)
+            fputs(tag "recv() error\n", stderr);           
+        else if (!received)
+            fputs(tag "Client disconnected unexpectedly\n", stderr); 
+        total += received;
+
+        if (total <= 0) continue;
+
+        parse_request(client_fd, request);
 
         if (equals(uri, "/exit")) {
             // exit
@@ -648,10 +676,49 @@ void *server_thread(void *vargp) {
         }
 
         if (app_config.osd_enable && starts_with(uri, "/api/osd/") &&
-            uri[9] && uri[9] >= '0' && uri[9] <= (MAX_OSD - 1 + '0'))
-        {
+            uri[9] && uri[9] >= '0' && uri[9] <= (MAX_OSD - 1 + '0')) {
             char id = uri[9] - '0';
-            if (!empty(query))
+            if (equals(method, "POST")) {
+                int respLen;
+                char *type = request_header("Content-Type");
+                if (starts_with(type, "multipart/form-data")) {
+                    char *bound = strstr(type, "boundary=") + strlen("boundary=");
+                    char *payloadb = strstr(payload, bound) + strlen(bound) + 2;
+                    payloadb = strstr(payloadb, "\r\n\r\n") + 4;
+
+                    void *payloade = memstr(payloadb, bound, 
+                        paysize - (payloadb - payload), strlen(bound));
+                    // TODO: Manage the case where payloade returns 0
+                    payloade -= 4;
+
+                    char path[32];
+                    sprintf(path, "/tmp/osd%d.bmp", id);
+                    FILE *img = fopen(path, "wb");
+                    fwrite(payloadb, sizeof(char), (char*)payloade - payloadb, img);
+                    fclose(img);
+
+                    strcpy(osds[id].text, "");
+                    osds[id].updt = 1;
+
+                    respLen = sprintf(response,
+                        "HTTP/1.1 200 OK\r\n" \
+                        "Connection: close\r\n" \
+                        "\r\n" \
+                    );
+                } else {
+                    respLen = sprintf(response,
+                        "HTTP/1.1 415 Unsupported Media Type\r\n" \
+                        "Content-Type: text/plain\r\n" \
+                        "Connection: close\r\n" \
+                        "\r\n" \
+                        "The payload must be presented as multipart/form-data.\r\n" \
+                    );
+                }
+                send_to_fd(client_fd, response, respLen);
+                close_socket_fd(client_fd);
+                continue;
+            }
+            else if (!empty(query))
             {
                 char *remain;
                 while (query) {

@@ -290,7 +290,7 @@ int v3_region_create(char handle, hal_rect rect, short opacity)
     region.overlay.pixFmt = V3_PIXFMT_ARGB1555;
     region.overlay.size.width = rect.width;
     region.overlay.size.height = rect.height;
-    region.overlay.canvas = handle;
+    region.overlay.canvas = handle + 1;
 
     if (v3_rgn.fnGetRegionConfig(handle, &regionCurr)) {
         fprintf(stderr, "[v3_rgn] Creating region %d...\n", handle);
@@ -318,7 +318,7 @@ int v3_region_create(char handle, hal_rect rect, short opacity)
     attrib.show = 1;
     attrib.type = V3_RGN_TYPE_OVERLAY;
     attrib.overlay.bgAlpha = 0;
-    attrib.overlay.fgAlpha = opacity;
+    attrib.overlay.fgAlpha = opacity >> 1;
     attrib.overlay.point.x = rect.x;
     attrib.overlay.point.y = rect.y;
     attrib.overlay.layer = 7;

@@ -7,6 +7,8 @@
 #include <string.h>
 #include <stdio.h>
 
+char *memstr(char *haystack, char *needle, int size, char needlesize);
+
 const char *get_extension(const char *path);
 const char *get_mimetype(const char *path);
 
