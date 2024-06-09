@@ -498,8 +498,8 @@ int v4_sensor_init(char *name, char *obj)
     char* dirs[] = {"%s", "./%s", "/usr/lib/sensors/%s"};
     char **dir = dirs;
 
-    while (*dir++) {
-        sprintf(path, *dir, name);
+    while (*dir) {
+        sprintf(path, *dir++, name);
         if (v4_snr_drv.handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL))
             break;
     } if (!v4_snr_drv.handle)

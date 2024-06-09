@@ -408,9 +408,9 @@ int v3_sensor_init(char *name, char *obj)
     char* dirs[] = {"%s", "./%s", "/usr/lib/sensors/%s"};
     char **dir = dirs;
 
-    while (*dir++) {
-        sprintf(path, *dir, name);
-        if (v3_snr_drv.handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL))
+    while (*dir) {
+        sprintf(path, *dir++, name);
+        if (v3_snr_drv.handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL))
             break;
     } if (!v3_snr_drv.handle)
         V3_ERROR("Failed to load the sensor driver");
