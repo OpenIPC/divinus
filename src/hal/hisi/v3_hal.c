@@ -816,25 +816,29 @@ int v3_system_init(char *snrConfig)
     v3_vb.fnExit();
 
     {
+        int alignWidth = 16;
         v3_vb_pool pool;
+
         memset(&pool, 0, sizeof(pool)); 
         
         pool.count = 2;
         pool.comm[0].blockSize = v3_buffer_calculate_vi(v3_config.isp.capt.width,
             v3_config.isp.capt.height, V3_PIXFMT_RGB_BAYER_8BPP + v3_config.mipi.prec,
-            V3_COMPR_NONE, 16);
+            V3_COMPR_NONE, alignWidth);
         pool.comm[0].blockCnt = 3;
         pool.comm[1].blockSize = v3_buffer_calculate_venc(
             v3_config.isp.capt.width, v3_config.isp.capt.height, 
-            V3_PIXFMT_YUV420SP, 16);
+            V3_PIXFMT_YUV420SP, alignWidth);
         pool.comm[1].blockCnt = 2;
 
         if (ret = v3_vb.fnConfigPool(&pool))
             return ret;
+        if (ret = v3_vb.fnInit())
+            return ret;
+        
+        if (ret = v3_sys.fnSetAlignment(&alignWidth))
+            return ret;
     }
-    if (ret = v3_vb.fnInit())
-        return ret;
-
     if (ret = v3_sys.fnInit())
         return ret;
 
