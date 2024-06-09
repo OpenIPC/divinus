@@ -455,8 +455,8 @@ static int v3_venc_load(v3_venc_impl *venc_lib) {
     }
 
     if (!(venc_lib->fnQuery = (int(*)(int channel, v3_venc_stat *stats))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_QueryStatus"))) {
-        fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_QueryStatus!\n");
+        dlsym(venc_lib->handle, "HI_MPI_VENC_Query"))) {
+        fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_Query!\n");
         return EXIT_FAILURE;
     }
 
@@ -473,7 +473,7 @@ static int v3_venc_load(v3_venc_impl *venc_lib) {
     }
 
     if (!(venc_lib->fnStopReceiving = (int(*)(int channel))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_StopRecvFrame"))) {
+        dlsym(venc_lib->handle, "HI_MPI_VENC_StopRecvPic"))) {
         fprintf(stderr, "[v3_venc] Failed to acquire symbol HI_MPI_VENC_StopRecvPic!\n");
         return EXIT_FAILURE;
     }

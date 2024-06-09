@@ -23,8 +23,10 @@ elif [ "$1" = "arm-muslhf" ]; then
 	toolchain cortex_a7_thumb2_hf-gcc13-musl-4_9 arm
 elif [ "$1" = "arm-glibc" ]; then
 	toolchain cortex_a7_thumb2_hf-gcc13-glibc-4_9 arm -lm
+elif [ "$1" = "arm9-musl" ]; then
+	toolchain arm926t-gcc13-musl-4_9 arm
 elif [ "$1" = "mips-musl" ]; then
 	toolchain mips_xburst-gcc13-musl-3_10 mipsel
 else
-	echo "Usage: $0 [arm-musl|arm-muslhf|arm-glibc|mips-musl]"
+	echo "Usage: $0 [arm-musl|arm-muslhf|arm-glibc|arm9-musl|mips-musl]"
 fi
