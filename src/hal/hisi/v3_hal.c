@@ -117,7 +117,7 @@ int v3_channel_bind(char index)
     return EXIT_SUCCESS;
 }
 
-int v3_channel_create(char index, char mirror, char flip, char framerate)
+int v3_channel_create(char index, short width, short height, char mirror, char flip, char framerate)
 {
     int ret;
 
@@ -129,6 +129,17 @@ int v3_channel_create(char index, char mirror, char flip, char framerate)
         channel.mirror = mirror;
         channel.flip = flip;
         if (ret = v3_vpss.fnSetChannelConfig(_v3_vpss_grp, index, &channel))
+            return ret;
+    }
+    {
+        v3_vpss_mode mode;
+        mode.userModeOn = 1;
+        mode.dest.width = width;
+        mode.dest.height = height;
+        mode.doubleOn = 0;
+        mode.pixFmt = V3_PIXFMT_YUV420SP;
+        mode.compress = V3_COMPR_NONE;
+        if (ret = v3_vpss.fnSetChannelMode(_v3_vpss_grp, index, &mode))
             return ret;
     }
 
@@ -233,10 +244,13 @@ int v3_pipeline_create(void)
     {
         v3_vpss_grp group;
         memset(&group, 0, sizeof(group));
-        group.dest.width = v3_config.isp.capt.width;
-        group.dest.height = v3_config.isp.capt.height;
+        group.dest.width = v3_config.vichn.capt.width ? 
+            v3_config.vichn.capt.width : v3_config.videv.rect.width;
+        group.dest.height = v3_config.vichn.capt.height ? 
+            v3_config.vichn.capt.height : v3_config.videv.rect.height;
         group.pixFmt = V3_PIXFMT_YUV420SP;
         group.nredOn = 1;
+        group.interlMode = v3_config.videv.progressiveOn ? 1 : 2;
         if (ret = v3_vpss.fnCreateGroup(_v3_vpss_grp, &group))
             return ret;
     }
@@ -439,6 +453,7 @@ int v3_video_create(char index, hal_vidconfig *config)
     int ret;
     v3_venc_chn channel;
     v3_venc_attr_h26x *attrib;
+    memset(&channel, 0, sizeof(channel));
 
     if (config->codec == HAL_VIDCODEC_JPG) {
         channel.attrib.codec = V3_VENC_CODEC_JPEGE;
@@ -534,9 +549,9 @@ int v3_video_create(char index, hal_vidconfig *config)
                 V3_ERROR("H.264 encoder does not support this mode!");
         }
     } else V3_ERROR("This codec is not supported by the hardware!");
-    attrib->maxPic.width = ALIGN_BACK(config->width, 16);
-    attrib->maxPic.height = ALIGN_BACK(config->height, 16);
-    attrib->bufSize = ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
+    attrib->maxPic.width = config->width;
+    attrib->maxPic.height = config->height;
+    attrib->bufSize = config->height * config->width;
     attrib->profile = config->profile;
     attrib->byFrame = 1;
     attrib->pic.width = config->width;
@@ -832,17 +847,19 @@ int v3_system_init(char *snrConfig)
 
         memset(&pool, 0, sizeof(pool)); 
         
-        pool.count = 2;
-        pool.comm[0].blockSize = v3_buffer_calculate_vi(v3_config.isp.capt.width,
-            v3_config.isp.capt.height, V3_PIXFMT_RGB_BAYER_8BPP + v3_config.mipi.prec,
-            V3_COMPR_NONE, alignWidth);
-        pool.comm[0].blockCnt = 3;
-        pool.comm[1].blockSize = v3_buffer_calculate_venc(
-            v3_config.isp.capt.width, v3_config.isp.capt.height, 
+        pool.count = 1;
+        pool.comm[0].blockSize = v3_buffer_calculate_venc(
+            v3_config.vichn.capt.width ? 
+                v3_config.vichn.capt.width : v3_config.videv.rect.width,
+            v3_config.vichn.capt.height ? 
+                v3_config.vichn.capt.height : v3_config.videv.rect.height,
             V3_PIXFMT_YUV420SP, alignWidth);
-        pool.comm[1].blockCnt = 2;
+        pool.comm[0].blockCnt = 3;
 
         if (ret = v3_vb.fnConfigPool(&pool))
+            return ret;
+        v3_vb_supl supl = V3_VB_JPEG_MASK;
+        if (ret = v3_vb.fnConfigSupplement(&supl))
             return ret;
         if (ret = v3_vb.fnInit())
             return ret;

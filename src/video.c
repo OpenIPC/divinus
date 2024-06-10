@@ -117,8 +117,8 @@ int create_vpss_chn(char index, short width, short height, char framerate, char 
             app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_I6F: return i6f_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
-        case HAL_PLATFORM_V3:  return v3_channel_create(index, app_config.mirror,
-            app_config.flip, framerate);
+        case HAL_PLATFORM_V3:  return v3_channel_create(index, width, height,
+            app_config.mirror, app_config.flip, framerate);
         case HAL_PLATFORM_V4:  return v4_channel_create(index, app_config.mirror,
             app_config.flip, framerate);
         case HAL_PLATFORM_T31: return t31_channel_create(index, width, height,

@@ -28,6 +28,14 @@ typedef struct {
 } v3_vpss_grp;
 
 typedef struct {
+    int userModeOn;
+    v3_common_dim dest;
+    int doubleOn;
+    v3_common_pixfmt pixFmt;
+    v3_common_compr compress;
+} v3_vpss_mode;
+
+typedef struct {
     void *handle;
 
     int (*fnCreateGroup)(int group, v3_vpss_grp *config);
@@ -40,6 +48,7 @@ typedef struct {
     int (*fnDisableChannel)(int group, int channel);
     int (*fnEnableChannel)(int group, int channel);
     int (*fnSetChannelConfig)(int group, int channel, v3_vpss_chn *config);
+    int (*fnSetChannelMode)(int group, int channel, v3_vpss_mode *config);
 } v3_vpss_impl;
 
 static int v3_vpss_load(v3_vpss_impl *vpss_lib) {
@@ -99,6 +108,12 @@ static int v3_vpss_load(v3_vpss_impl *vpss_lib) {
     if (!(vpss_lib->fnSetChannelConfig = (int(*)(int group, int channel, v3_vpss_chn *config))
         dlsym(vpss_lib->handle, "HI_MPI_VPSS_SetChnAttr"))) {
         fprintf(stderr, "[v3_vpss] Failed to acquire symbol HI_MPI_VPSS_SetChnAttr!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(vpss_lib->fnSetChannelMode = (int(*)(int group, int channel, v3_vpss_mode *config))
+        dlsym(vpss_lib->handle, "HI_MPI_VPSS_SetChnMode"))) {
+        fprintf(stderr, "[v3_vpss] Failed to acquire symbol HI_MPI_VPSS_SetChnMode!\n");
         return EXIT_FAILURE;
     }
     
