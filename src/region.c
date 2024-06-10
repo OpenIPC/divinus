@@ -96,6 +96,63 @@ void region_fill_formatted(char* str)
     strncpy(str, out, 80);
 }
 
+static inline int region_open_bitmap(char *path, FILE *file)
+{
+    unsigned short type;
+
+    if (!path)
+        REGION_ERROR("Filename is empty!\n");
+    if (!(file = fopen(path, "rb")))
+        REGION_ERROR("Opening the bitmap failed!\n");
+    if (fread(&type, 1, sizeof(type), file) != sizeof(type))
+        REGION_ERROR("Reading the bitmap failed!\n");
+    if (type != 0x4d42)
+        REGION_ERROR("Only bitmap files are currently supported!\n");
+
+    return EXIT_SUCCESS;
+}
+
+int region_parse_bitmap(FILE *file, bitmapfile *bmpFile, bitmapinfo *bmpInfo)
+{
+    if (fread(bmpFile, 1, sizeof(bitmapfile), file) != sizeof(bitmapfile))
+        REGION_ERROR("Extracting the bitmap file header failed!\n");
+    if (fread(bmpInfo, 1, sizeof(bitmapinfo), file) != sizeof(bitmapinfo))
+        REGION_ERROR("Extracting the bitmap info failed!\n");
+
+    if (bmpInfo->bitCount / 8 < 2)
+        REGION_ERROR("Indexed or <4bpp bitmaps are not supported!\n");
+    if (bmpInfo->height < 0)
+        REGION_ERROR("Flipped bitmaps are not supported!\n");
+
+    return EXIT_SUCCESS;
+}
+
+int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
+{
+    bitmapfile bmpFile;
+    bitmapinfo bmpInfo;
+    FILE *file;
+
+    if (region_open_bitmap(path, file))
+        return EXIT_FAILURE;
+
+    if (region_parse_bitmap(file, &bmpFile, &bmpInfo))
+        REGION_ERROR("Bitmap file \"%s\" cannot be processed!\n", path);
+
+    if (!(bitmap->data = malloc(2 * bmpInfo.width * bmpInfo.height)))
+        REGION_ERROR("Allocating the bitmap memory failed!\n");
+
+    if (fseek(file, bmpFile.offBits, 0))
+        REGION_ERROR("Navigating to the bitmap image data failed!\n");
+
+    for (int h = 0; h < bmpInfo.height; h++) {
+        for (int w = 0; w < bmpInfo.width; w++) {
+            switch (bmpInfo.bitCount) {
+
+            }
+        }
+    }
+}
 
 void *region_thread(void)
 {

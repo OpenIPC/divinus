@@ -106,7 +106,8 @@ void *i6_audio_thread(void)
 {
     int ret;
 
-    i6_aud_frm frame, echoFrame;
+    i6_aud_frm frame;
+    i6_aud_efrm echoFrame;
 
     while (keepRunning) {
         if ((ret = i6_aud.fnGetFrame(_i6_aud_dev, _i6_aud_chn, 

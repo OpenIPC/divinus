@@ -110,7 +110,8 @@ void *i6f_audio_thread(void)
 {
     int ret;
 
-    i6f_aud_frm frame, echoFrame;
+    i6f_aud_frm frame;
+    i6f_aud_efrm echoFrame;
 
     while (keepRunning) {
         if ((ret = i6f_aud.fnGetFrame(_i6f_aud_dev, _i6f_aud_chn, 

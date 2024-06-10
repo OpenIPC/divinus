@@ -23,7 +23,37 @@
 #include <pthread.h>
 #include <time.h>
 
+#define REGION_ERROR(x, ...) \
+    do { \
+        fprintf(stderr, "[region] \033[31m"); \
+        fprintf(stderr, (x), ##__VA_ARGS__); \
+        fprintf(stderr, "\033[0m"); \
+        return EXIT_FAILURE; \
+    } while (0)
+
 extern int sysinfo (struct sysinfo *__info);
+
+typedef struct {
+    unsigned int size;
+    unsigned short reserved1;
+    unsigned short reserved2;
+    unsigned int offBits;
+} bitmapfile;
+
+typedef struct {
+    unsigned short size;
+    unsigned int width;
+    int height;
+    unsigned short planes;
+    unsigned short bitCount;
+    unsigned int compression;
+    unsigned int sizeImage;
+    unsigned int xPerMeter;
+    unsigned int yPerMeter;
+    unsigned int clrUsed;
+    unsigned int clrImportant;
+    unsigned char bgraColors[4];
+} bitmapinfo;
 
 typedef struct {
     double size;
