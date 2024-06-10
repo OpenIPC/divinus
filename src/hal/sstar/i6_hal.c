@@ -87,7 +87,7 @@ int i6_audio_init(void)
         config.chnNum = 1;
         config.i2s.clock = I6_AUD_CLK_OFF;
         config.i2s.leftJustOn = 0;
-        config.i2s.syncRxClkOn = 0;
+        config.i2s.syncRxClkOn = 1;
         if (ret = i6_aud.fnSetDeviceConfig(_i6_aud_dev, &config))
             return ret;
     }
@@ -100,6 +100,34 @@ int i6_audio_init(void)
             return ret;
 
     return EXIT_SUCCESS;
+}
+
+void *i6_audio_thread(void)
+{
+    int ret;
+
+    i6_aud_frm frame, echoFrame;
+
+    while (keepRunning) {
+        if ((ret = i6_aud.fnGetFrame(_i6_aud_dev, _i6_aud_chn, 
+            &frame, &echoFrame, 100)) & 0xFF == 0xD) {
+            fprintf(stderr, "[i6_aud] Getting the frame failed"
+                " with %#x!\n", ret);
+            break;
+        } else continue;
+
+        if (i6_aud_cb) {
+            hal_audframe outFrame;
+            (i6_aud_cb)(&outFrame);
+        }
+
+        if (ret = i6_aud.fnFreeFrame(_i6_aud_dev, _i6_aud_chn,
+            &frame, &echoFrame)) {
+            fprintf(stderr, "[i6_aud] Releasing the frame failed"
+                " with %#x!\n", ret);
+        }
+    }
+    fprintf(stderr, "[i6_aud] Shutting down encoding thread...\n");
 }
 
 int i6_channel_bind(char index, char framerate, char jpeg)

@@ -106,6 +106,34 @@ int i6f_audio_init(void)
     return EXIT_SUCCESS;
 }
 
+void *i6f_audio_thread(void)
+{
+    int ret;
+
+    i6f_aud_frm frame, echoFrame;
+
+    while (keepRunning) {
+        if ((ret = i6f_aud.fnGetFrame(_i6f_aud_dev, _i6f_aud_chn, 
+            &frame, &echoFrame, 100)) & 0xFF == 0xD) {
+            fprintf(stderr, "[i6f_aud] Getting the frame failed"
+                " with %#x!\n", ret);
+            break;
+        } else continue;
+
+        if (i6f_aud_cb) {
+            hal_audframe outFrame;
+            (i6f_aud_cb)(&outFrame);
+        }
+
+        if (ret = i6f_aud.fnFreeFrame(_i6f_aud_dev, _i6f_aud_chn,
+            &frame, &echoFrame)) {
+            fprintf(stderr, "[i6f_aud] Releasing the frame failed"
+                " with %#x!\n", ret);
+        }
+    }
+    fprintf(stderr, "[i6f_aud] Shutting down encoding thread...\n");
+}
+
 int i6f_channel_bind(char index, char framerate, char jpeg)
 {
     int ret;

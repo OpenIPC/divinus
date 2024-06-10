@@ -18,6 +18,7 @@ int i6f_hal_init(void);
 
 void i6f_audio_deinit(void);
 int i6f_audio_init(void);
+void *i6f_audio_thread(void);
 
 int i6f_channel_bind(char index, char framerate, char jpeg);
 int i6f_channel_create(char index, short width, short height, char mirror, char flip, char jpeg);
