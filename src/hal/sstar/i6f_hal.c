@@ -890,6 +890,8 @@ int i6f_system_init(void)
 {
     int ret;
 
+    if (ret = i6f_sys.fnInit(0))
+        return ret;
     {
         i6f_sys_ver version;
         if (ret = i6f_sys.fnGetVersion(0, &version))
@@ -897,9 +899,6 @@ int i6f_system_init(void)
         printf("App built with headers v%s\n", I6F_SYS_API);
         puts(version.version);
     }
-
-    if (ret = i6f_sys.fnInit(0))
-        return ret;
 
     return EXIT_SUCCESS;
 }
