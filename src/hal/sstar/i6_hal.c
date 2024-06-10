@@ -10,6 +10,7 @@ i6_vif_impl  i6_vif;
 i6_vpe_impl  i6_vpe;
 
 hal_chnstate i6_state[I6_VENC_CHN_NUM] = {0};
+int (*i6_aud_cb)(hal_audframe*);
 int (*i6_venc_cb)(char, hal_vidstream*);
 
 i6_snr_pad _i6_snr_pad;
@@ -80,10 +81,10 @@ int i6_audio_init(void)
         config.bit24On = 0;
         config.intf = I6_AUD_INTF_I2S_SLAVE;
         config.sound = I6_AUD_SND_MONO;
-        config.frmNum = 0;
-        config.packNumPerFrm = 0;
-        config.codecChnNum = 0;
-        config.chnNum = 0;
+        config.frmNum = 40;
+        config.packNumPerFrm = 640;
+        config.codecChnNum = 1;
+        config.chnNum = 1;
         config.i2s.clock = I6_AUD_CLK_OFF;
         config.i2s.leftJustOn = 0;
         config.i2s.syncRxClkOn = 0;

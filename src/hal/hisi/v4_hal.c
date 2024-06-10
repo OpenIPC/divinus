@@ -14,6 +14,7 @@ v4_vi_impl      v4_vi;
 v4_vpss_impl    v4_vpss;
 
 hal_chnstate v4_state[V4_VENC_CHN_NUM] = {0};
+int (*v4_aud_cb)(hal_audframe*);
 int (*v4_venc_cb)(char, hal_vidstream*);
 
 char _v4_aud_chn = 0;
@@ -81,9 +82,9 @@ int v4_audio_init(void)
         config.intf = V4_AUD_INTF_I2S_SLAVE;
         config.stereoOn = 0;
         config.expandOn = 0;
-        config.frmNum = 0;
-        config.packNumPerFrm = 0;
-        config.chnNum = 0;
+        config.frmNum = 40;
+        config.packNumPerFrm = 640;
+        config.chnNum = 1;
         config.syncRxClkOn = 0;
         if (ret = v4_aud.fnSetDeviceConfig(_v4_aud_dev, &config))
             return ret;

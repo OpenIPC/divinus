@@ -10,6 +10,7 @@ i6c_venc_impl i6c_venc;
 i6c_vif_impl  i6c_vif;
 
 hal_chnstate i6c_state[I6C_VENC_CHN_NUM] = {0};
+int (*i6c_aud_cb)(hal_audframe*);
 int (*i6c_venc_cb)(char, hal_vidstream*);
 
 i6c_snr_pad _i6c_snr_pad;
@@ -78,7 +79,7 @@ int i6c_audio_init(void)
     {
         i6c_aud_cnf config;
         config.reserved = 0;
-        config.sound = I6C_AUD_SND_STEREO;
+        config.sound = I6C_AUD_SND_MONO;
         config.rate = 48000;
         config.periodSize = 0x600;
         config.interleavedOn = 1;
@@ -94,7 +95,7 @@ int i6c_audio_init(void)
         config.rate = 48000;
         config.clock = I6C_AUD_CLK_OFF;
         config.syncRxClkOn = 1;
-        config.tdmSlotNum = 2;
+        config.tdmSlotNum = 1;
         if (ret = i6c_aud.fnSetI2SConfig(input, &config))
             return ret;
         if (ret = i6c_aud.fnAttachToDevice(_i6c_aud_dev, &input, 1))

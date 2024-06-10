@@ -12,6 +12,7 @@
 
 extern char keepRunning;
 
+extern int (*i6c_aud_cb)(hal_audframe*);
 extern int (*i6c_venc_cb)(char, hal_vidstream*);
 
 void i6c_hal_deinit(void);

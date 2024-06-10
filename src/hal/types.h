@@ -56,6 +56,15 @@ typedef enum {
 } hal_vidprofile;
 
 typedef struct {
+    unsigned char *data[8];
+    unsigned int length[8];
+    unsigned int seq;
+    unsigned int timestamp;
+    char channelCnt;
+    char interleavedOn;
+} hal_audframe;
+
+typedef struct {
     int fileDesc;
     char enable;
     char mainLoop;

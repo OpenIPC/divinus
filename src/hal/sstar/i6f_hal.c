@@ -10,6 +10,7 @@ i6f_venc_impl i6f_venc;
 i6f_vif_impl  i6f_vif;
 
 hal_chnstate i6f_state[I6F_VENC_CHN_NUM] = {0};
+int (*i6f_aud_cb)(hal_audframe*);
 int (*i6f_venc_cb)(char, hal_vidstream*);
 
 i6f_snr_pad _i6f_snr_pad;
@@ -81,15 +82,15 @@ int i6f_audio_init(void)
         config.rate = 48000;
         config.bit = I6F_AUD_BIT_16;
         config.intf = I6F_AUD_INTF_I2S_SLAVE;
-        config.sound = I6F_AUD_SND_STEREO;
-        config.frmNum = 0;
-        config.packNumPerFrm = 0;
-        config.codecChnNum = 0;
-        config.chnNum = 0;
+        config.sound = I6F_AUD_SND_MONO;
+        config.frmNum = 40;
+        config.packNumPerFrm = 640;
+        config.codecChnNum = 1;
+        config.chnNum = 1;
         config.i2s.clock = I6F_AUD_CLK_OFF;
         config.i2s.leftJustOn = 0;
         config.i2s.syncRxClkOn = 1;
-        config.i2s.tdmSlotNum = 2;
+        config.i2s.tdmSlotNum = 1;
         config.i2s.bit = I6F_AUD_BIT_32;
         if (ret = i6f_aud.fnSetDeviceConfig(_i6f_aud_dev, &config))
             return ret;

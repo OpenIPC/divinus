@@ -8,6 +8,7 @@ t31_sys_impl  t31_sys;
 t31_venc_impl t31_venc;
 
 hal_chnstate t31_state[T31_VENC_CHN_NUM] = {0};
+int (*t31_aud_cb)(hal_audframe*);
 int (*t31_venc_cb)(char, hal_vidstream*);
 
 t31_isp_snr _t31_isp_snr;
@@ -63,9 +64,9 @@ int t31_audio_init(void)
         config.rate = 48000;
         config.bit = T31_AUD_BIT_16;
         config.mode = T31_AUD_SND_MONO;
-        config.frmNum = 0;
-        config.packNumPerFrm = 0;
-        config.chnNum = 0;
+        config.frmNum = 40;
+        config.packNumPerFrm = 640;
+        config.chnNum = 1;
         if (ret = t31_aud.fnSetDeviceConfig(_t31_aud_dev, &config))
             return ret;
     }

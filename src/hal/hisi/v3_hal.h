@@ -20,6 +20,7 @@
 extern char keepRunning;
 
 extern hal_chnstate v3_state[V3_VENC_CHN_NUM];
+extern int (*v3_aud_cb)(hal_audframe*);
 extern int (*v3_venc_cb)(char, hal_vidstream*);
 
 void v3_hal_deinit(void);

@@ -16,7 +16,7 @@ pthread_mutex_t mutex;
 pthread_t ispPid = 0;
 pthread_t vencPid = 0;
 
-int save_stream(char index, hal_vidstream *stream) {
+int save_video_stream(char index, hal_vidstream *stream) {
     int ret;
 
     switch (chnState[index].payload) {
@@ -178,12 +178,12 @@ int start_sdk() {
     }
 
     switch (plat) {
-        case HAL_PLATFORM_I6:  i6_venc_cb = save_stream; break;
-        case HAL_PLATFORM_I6C: i6c_venc_cb = save_stream; break;
-        case HAL_PLATFORM_I6F: i6f_venc_cb = save_stream; break;
-        case HAL_PLATFORM_V3:  v3_venc_cb = save_stream; break;
-        case HAL_PLATFORM_V4:  v4_venc_cb = save_stream; break;
-        case HAL_PLATFORM_T31: t31_venc_cb = save_stream; break;
+        case HAL_PLATFORM_I6:  i6_venc_cb = save_video_stream; break;
+        case HAL_PLATFORM_I6C: i6c_venc_cb = save_video_stream; break;
+        case HAL_PLATFORM_I6F: i6f_venc_cb = save_video_stream; break;
+        case HAL_PLATFORM_V3:  v3_venc_cb = save_video_stream; break;
+        case HAL_PLATFORM_V4:  v4_venc_cb = save_video_stream; break;
+        case HAL_PLATFORM_T31: t31_venc_cb = save_video_stream; break;
     }
 
     switch (plat) {

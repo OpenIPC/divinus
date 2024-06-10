@@ -14,6 +14,7 @@ v3_vi_impl      v3_vi;
 v3_vpss_impl    v3_vpss;
 
 hal_chnstate v3_state[V3_VENC_CHN_NUM] = {0};
+int (*v3_aud_cb)(hal_audframe*);
 int (*v3_venc_cb)(char, hal_vidstream*);
 
 char _v3_aud_chn = 0;
@@ -80,9 +81,9 @@ int v3_audio_init(void)
         config.intf = V3_AUD_INTF_I2S_SLAVE;
         config.stereoOn = 0;
         config.expandOn = 0;
-        config.frmNum = 0;
-        config.packNumPerFrm = 0;
-        config.chnNum = 0;
+        config.frmNum = 40;
+        config.packNumPerFrm = 640;
+        config.chnNum = 1;
         config.syncRxClkOn = 0;
         if (ret = v3_aud.fnSetDeviceConfig(_v3_aud_dev, &config))
             return ret;
