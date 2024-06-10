@@ -42,6 +42,12 @@ extern v3_config_impl v3_config;
 static enum ConfigError v3_parse_config_lvds(
     struct IniConfig *ini, const char *section, v3_snr_lvds *lvds) {
     enum ConfigError err;
+    err = parse_int(ini, section, "img_size_w", 0, INT_MAX, &lvds->dest.width);
+    if (err != CONFIG_OK)
+    return err;
+    err = parse_int(ini, section, "img_size_h", 0, INT_MAX, &lvds->dest.height);
+    if (err != CONFIG_OK)
+    return err;
     {
         const char *possible_values[] = {
             "HI_WDR_MODE_NONE",  "HI_WDR_MODE_2F",     "HI_WDR_MODE_3F",
@@ -104,7 +110,7 @@ static enum ConfigError v3_parse_config_lvds(
         if (err != CONFIG_OK)
             return err;
     }
-    for (int j = 0; j < 32; j++)
+    for (int j = 0; j < 64; j++)
         lvds->syncCode[j] = (unsigned short)synccode[j];
     return CONFIG_OK;
 }
@@ -115,10 +121,10 @@ static enum ConfigError v3_parse_config_videv(
     memset(device, 0, sizeof(*device));
     {
         const char *possible_values[] = {
-            "VI_MODE_BT656",            "VI_MODE_BT601",            
-            "VI_MODE_DIGITAL_CAMERA",   "VI_MODE_INTERLEAVED",
-            "VI_MODE_MIPI",             "VI_MODE_LVDS",
-            "VI_MODE_HISPI"};
+            "VI_MODE_BT656",                "VI_MODE_BT601",            
+            "VI_MODE_DIGITAL_CAMERA",       "VI_MODE_BT1120_STANDARD",
+            "VI_MODE_BT1120_INTERLEAVED",   "VI_MODE_MIPI",
+            "VI_MODE_LVDS",                 "VI_MODE_HISPI"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             ini, section, "input_mod", (void*)&device->intf,

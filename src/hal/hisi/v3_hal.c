@@ -1,8 +1,8 @@
 #include "v3_hal.h"
 
-v3_isp_alg      v3_ae_lib = { .id = 0, .libName = "ae_lib" };
+v3_isp_alg      v3_ae_lib = { .id = 0, .libName = "hisi_ae_lib" };
 v3_aud_impl     v3_aud;
-v3_isp_alg      v3_awb_lib = { .id = 0, .libName = "awb_lib" };
+v3_isp_alg      v3_awb_lib = { .id = 0, .libName = "hisi_awb_lib" };
 v3_config_impl  v3_config;
 v3_isp_impl     v3_isp;
 v3_snr_drv_impl v3_snr_drv;
@@ -190,8 +190,17 @@ int v3_pipeline_create(void)
 
     {
         v3_vi_chn channel;
-        channel.dest.width = v3_config.isp.capt.width;
-        channel.dest.height = v3_config.isp.capt.height;
+        channel.capt.width = v3_config.vichn.capt.width ? 
+            v3_config.vichn.capt.width : v3_config.videv.rect.width;
+        channel.capt.height = v3_config.vichn.capt.height ? 
+            v3_config.vichn.capt.height : v3_config.videv.rect.height;
+        channel.capt.x = 0;
+        channel.capt.y = 0;
+        channel.dest.width = v3_config.vichn.dest.width ? 
+            v3_config.vichn.dest.width : v3_config.videv.rect.width;
+        channel.dest.height = v3_config.vichn.dest.height ? 
+            v3_config.vichn.dest.height : v3_config.videv.rect.height;
+        channel.field = v3_config.vichn.field;
         channel.pixFmt = V3_PIXFMT_YUV420SP;
         channel.compress = V3_COMPR_NONE;
         channel.mirror = 0;
@@ -214,6 +223,8 @@ int v3_pipeline_create(void)
     if (ret = v3_isp.fnMemInit(_v3_vi_dev))
         return ret;
 
+    if (ret = v3_isp.fnSetWDRMode(_v3_vi_dev, &v3_config.mode))
+        return ret;
     if (ret = v3_isp.fnSetDeviceConfig(_v3_vi_dev, &v3_config.isp))
         return ret;
     if (ret = v3_isp.fnInit(_v3_vi_dev))

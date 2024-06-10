@@ -22,6 +22,7 @@ typedef struct {
     int (*fnRun)(int device);
 
     int (*fnSetDeviceConfig)(int device, v3_isp_dev *config);
+    int (*fnSetWDRMode)(int device, v3_common_wdr *mode);
 
     int (*fnRegisterAE)(int device, v3_isp_alg *library);
     int (*fnRegisterAWB)(int device, v3_isp_alg *library);
@@ -64,6 +65,12 @@ static int v3_isp_load(v3_isp_impl *isp_lib) {
     if (!(isp_lib->fnSetDeviceConfig = (int(*)(int device, v3_isp_dev *config))
         dlsym(isp_lib->handle, "HI_MPI_ISP_SetPubAttr"))) {
         fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_ISP_SetPubAttr!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(isp_lib->fnSetWDRMode = (int(*)(int device, v3_common_wdr *mode))
+        dlsym(isp_lib->handle, "HI_MPI_ISP_SetWDRMode"))) {
+        fprintf(stderr, "[v3_isp] Failed to acquire symbol HI_MPI_ISP_SetWDRMode!\n");
         return EXIT_FAILURE;
     }
 
