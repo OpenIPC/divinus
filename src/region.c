@@ -181,7 +181,6 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
         pos += redLen;
         alpha = (*((unsigned int*)start) >> pos) & alphaLen;
         *dest = ((alpha & 1) << 15) | ((red & 31) << 10) | ((green & 31) << 5) | (blue & 31);
-        printf("color: %#x\n", *dest);
         start += bpp;
         dest++;
     }
