@@ -120,6 +120,8 @@ int region_parse_bitmap(FILE **file, bitmapfile *bmpFile, bitmapinfo *bmpInfo)
         REGION_ERROR("Extracting the bitmap info failed!\n");
     if (bmpInfo->bitCount < 24)
         REGION_ERROR("Indexed or <3bpp bitmaps are not supported!\n");
+    if (bmpInfo->compression)
+        REGION_ERROR("Bitfields and compressed modes are not supported!\n");
 
     return EXIT_SUCCESS;
 }

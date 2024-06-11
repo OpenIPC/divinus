@@ -34,7 +34,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
-_* At the moment, only text overlays are handled, eventually bitmaps, matricial formats and covers are to follow_
+_* At the moment, only text and 24-bit/32-bit bitmap overlays are handled, eventually matricial formats and covers are to follow_
 
 [^1]: Hi3516CV300 and Hi3516EV100
 [^2]: Hi3516AV300, Hi3516CV500 and Hi3516DV300
@@ -51,7 +51,6 @@ _* At the moment, only text overlays are handled, eventually bitmaps, matricial 
 ### Roadmap
 
 - [ ] Audio stream (G.711 over RTSP, industry-supported lossy codec for MP4)
-- [ ] Bitmap handling (ARGB1555, decoding matricial and more pixel formats later on)
 - [ ] Assorted WebUI to handle media reconfiguration and live preview
 - [ ] Motion detection reimplementation
 - [ ] Hardware support improvement (older SoCs, general usage chips)
