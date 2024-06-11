@@ -191,6 +191,8 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
 
     bitmap->dim.width = bmpInfo.width;
     bitmap->dim.height = abs(bmpInfo.height);
+
+    return EXIT_SUCCESS;
 }
 
 void *region_thread(void)
@@ -312,8 +314,8 @@ void *region_thread(void)
                         case HAL_PLATFORM_V4:  v4_region_destroy(id); break;
                         case HAL_PLATFORM_T31: t31_region_destroy(&osds[id].hand); break;
                     }
-                osds[id].updt = 0;
             }
+            osds[id].updt = 0;
         }
         sleep(1);
     }
