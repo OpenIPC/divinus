@@ -460,20 +460,21 @@ int v3_video_create(char index, hal_vidconfig *config)
 
     if (config->codec == HAL_VIDCODEC_JPG) {
         channel.attrib.codec = V3_VENC_CODEC_JPEGE;
-        channel.attrib.jpg.maxPic.width = ALIGN_BACK(config->width, 16);
-        channel.attrib.jpg.maxPic.height = ALIGN_BACK(config->height, 16);
-        channel.attrib.jpg.bufSize = 
-            ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
+        channel.attrib.jpg.maxPic.width = config->width;
+        channel.attrib.jpg.maxPic.height = config->height;
+        channel.attrib.jpg.bufSize =
+            config->height * config->width * 2;
         channel.attrib.jpg.byFrame = 1;
         channel.attrib.jpg.pic.width = config->width;
         channel.attrib.jpg.pic.height = config->height;
         channel.attrib.jpg.dcfThumbs = 0;
+        goto attach;
     } else if (config->codec == HAL_VIDCODEC_MJPG) {
         channel.attrib.codec = V3_VENC_CODEC_MJPG;
-        channel.attrib.mjpg.maxPic.width = ALIGN_BACK(config->width, 16);
-        channel.attrib.mjpg.maxPic.height = ALIGN_BACK(config->height, 16);
+        channel.attrib.mjpg.maxPic.width = config->width;
+        channel.attrib.mjpg.maxPic.height = config->height;
         channel.attrib.mjpg.bufSize = 
-            ALIGN_BACK(config->height, 16) * ALIGN_BACK(config->width, 16);
+            config->height * config->width * 2;
         channel.attrib.mjpg.byFrame = 1;
         channel.attrib.mjpg.pic.width = config->width;
         channel.attrib.mjpg.pic.height = config->height;
@@ -481,7 +482,7 @@ int v3_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = V3_VENC_RATEMODE_MJPGCBR;
                 channel.rate.mjpgCbr = (v3_venc_rate_mjpgcbr){ .statTime = 1, .srcFps = config->framerate,
-                    .dstFps = config->framerate, .bitrate = config->bitrate, .avgLvl = 0 }; break;
+                    .dstFps = config->framerate, .bitrate = config->bitrate, .avgLvl = 1 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V3_VENC_RATEMODE_MJPGVBR;
                 channel.rate.mjpgVbr = (v3_venc_rate_mjpgvbr){ .statTime = 1, .srcFps = config->framerate,
@@ -554,7 +555,7 @@ int v3_video_create(char index, hal_vidconfig *config)
     } else V3_ERROR("This codec is not supported by the hardware!");
     attrib->maxPic.width = config->width;
     attrib->maxPic.height = config->height;
-    attrib->bufSize = config->height * config->width;
+    attrib->bufSize = config->height * config->width * 2;
     attrib->profile = config->profile;
     attrib->byFrame = 1;
     attrib->pic.width = config->width;
@@ -857,7 +858,7 @@ int v3_system_init(char *snrConfig)
             v3_config.vichn.capt.height ? 
                 v3_config.vichn.capt.height : v3_config.videv.rect.height,
             V3_PIXFMT_YUV420SP, alignWidth);
-        pool.comm[0].blockCnt = 3;
+        pool.comm[0].blockCnt = 4;
 
         if (ret = v3_vb.fnConfigPool(&pool))
             return ret;
