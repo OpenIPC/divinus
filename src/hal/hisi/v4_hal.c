@@ -830,8 +830,8 @@ void *v4_video_thread(void)
                             outPack[j].data = pack->data;
                             outPack[j].length = pack->length;
                             outPack[j].naluCnt = 1;
-                            outPack[j].nalu[0].length = pack->length;
-                            outPack[j].nalu[0].offset = pack->offset;
+                            outPack[j].nalu[0].length = pack->length - 4;
+                            outPack[j].nalu[0].offset = pack->offset + 4;
                             switch (v4_state[i].payload) {
                                 case HAL_VIDCODEC_H264:
                                     outPack[j].nalu[0].type = pack->naluType.h264Nalu;

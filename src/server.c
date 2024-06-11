@@ -128,9 +128,9 @@ void send_mp4_to_client(unsigned char index, const void *p, char isH265) {
             else if (pack->nalu[j].type == NalUnitType_VPS_HEVC && pack->nalu[j].length <= UINT16_MAX)
                 set_vps(pack_data + pack->nalu[j].offset, pack->nalu[j].length);
             else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux)
-                set_slice(pack_data + pack->nalu[j].offset, pack->nalu[j].length, isH265);
+                set_slice(pack_data + pack->nalu[j].offset, pack->nalu[j].length, 1);
             else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr)
-                set_slice(pack_data + pack->nalu[j].offset, pack->nalu[j].length, isH265);
+                set_slice(pack_data + pack->nalu[j].offset, pack->nalu[j].length, 0);
         }
 
         static enum BufError err;

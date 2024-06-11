@@ -796,9 +796,9 @@ void *i6_video_thread(void)
                                 case HAL_VIDCODEC_H264:
                                     for (char k = 0; k < outPack[j].naluCnt; k++) {
                                         outPack[j].nalu[k].length =
-                                            pack->packetInfo[k].length;
+                                            pack->packetInfo[k].length - 4;
                                         outPack[j].nalu[k].offset =
-                                            pack->packetInfo[k].offset;
+                                            pack->packetInfo[k].offset + 4;
                                         outPack[j].nalu[k].type =
                                             pack->packetInfo[k].packType.h264Nalu;
                                     }
@@ -806,9 +806,9 @@ void *i6_video_thread(void)
                                 case HAL_VIDCODEC_H265:
                                     for (char k = 0; k < outPack[j].naluCnt; k++) {
                                         outPack[j].nalu[k].length =
-                                            pack->packetInfo[k].length;
+                                            pack->packetInfo[k].length - 4;
                                         outPack[j].nalu[k].offset =
-                                            pack->packetInfo[k].offset;
+                                            pack->packetInfo[k].offset + 4;
                                         outPack[j].nalu[k].type =
                                             pack->packetInfo[k].packType.h265Nalu;
                                     }
