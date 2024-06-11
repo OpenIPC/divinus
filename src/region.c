@@ -132,9 +132,10 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     bitmapinfo bmpInfo;
     static FILE *file;
     void *buffer, *start;
-    unsigned int size, alphaMask, redMask, greenMask, blueMask;
+    unsigned int size;
     unsigned short *dest;
-    unsigned char bpp, alpha, alphaLen, red, redLen, green, greenLen, blue, blueLen, pos;
+    unsigned char bpp, alpha, red, green, blue;
+    char pos;
 
     if (region_open_bitmap(path, &file))
         return EXIT_FAILURE;
@@ -174,14 +175,13 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     start = buffer;
     dest = bitmap->data;
     for (int i = 0; i < size; i++) {
-        pos = 32;
-        if (bpp == 3)
+        if ((pos = bmpInfo.bitCount) == 24)
             alpha = 0xFF;
         else
             alpha = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
         red = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
         green = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
-        blue = (*((unsigned int*)start) >> pos) & 0xFF;
+        blue = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
         *dest = ((alpha & 0x80) << 8) | ((red & 0xF8) << 7) | ((green & 0xF8) << 2) | ((blue & 0xF8) >> 3);
         start += bpp;
         dest++;
