@@ -46,9 +46,9 @@ bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
         mapped_area = loaded_area;
 
     if (op & OP_READ)
-        *data = *(volatile uint32_t *)(mapped_area + (addr - offset));
+        *data = *(volatile unsigned int *)(mapped_area + (addr - offset));
     if (op & OP_WRITE)
-        *(volatile uint32_t *)(mapped_area + (addr - offset)) = *data;
+        *(volatile unsigned int *)(mapped_area + (addr - offset)) = *data;
 
     return true;
 }
@@ -59,6 +59,7 @@ void hal_identify(void) {
     char *endMark;
     char line[200] = {0};
 
+#ifdef __arm__
     if (!access("/proc/mi_modules", 0) && 
         hal_registry(0x1F003C00, &val, OP_READ))
         switch (val) {
@@ -88,7 +89,9 @@ void hal_identify(void) {
                 venc_thread = i6f_video_thread;
                 return;
         }
+#endif
 
+#ifdef __mips__
     if (!access("/proc/jz", 0) && 
         hal_registry(0x1300002C, &val, OP_READ)) {
         unsigned int type;
@@ -114,7 +117,9 @@ void hal_identify(void) {
                 return;
         }
     }
+#endif
 
+#ifdef __arm__
     if (file = fopen("/proc/iomem", "r"))
         while (fgets(line, 200, file))
             if (strstr(line, "uart")) {
@@ -170,4 +175,5 @@ void hal_identify(void) {
     chnState = (hal_chnstate*)v4_state;
     isp_thread = v4_image_thread;
     venc_thread = v4_video_thread;
+#endif
 }

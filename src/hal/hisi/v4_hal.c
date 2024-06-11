@@ -1,3 +1,5 @@
+#ifdef __arm__
+
 #include "v4_hal.h"
 
 v4_isp_alg      v4_ae_lib = { .id = 0, .libName = "ae_lib" };
@@ -913,3 +915,5 @@ int v4_system_init(char *snrConfig)
 
     return EXIT_SUCCESS;
 }
+
+#endif

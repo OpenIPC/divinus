@@ -1,3 +1,5 @@
+#ifdef __mips__
+
 #include "t31_hal.h"
 
 t31_aud_impl  t31_aud;
@@ -639,3 +641,5 @@ int t31_system_init(void)
 
     return EXIT_SUCCESS;
 }
+
+#endif

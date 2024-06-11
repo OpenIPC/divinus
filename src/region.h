@@ -31,6 +31,8 @@
         return EXIT_FAILURE; \
     } while (0)
 
+extern char keepRunning;
+
 extern int sysinfo (struct sysinfo *__info);
 
 typedef struct {
