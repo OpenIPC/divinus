@@ -133,9 +133,9 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     bitmapinfo bmpInfo;
     static FILE *file;
     void *buffer, *start;
-    unsigned int stride;
+    unsigned int size;
     unsigned short *dest;
-    unsigned char alpha, alphaLen, red, redLen, 
+    unsigned char bpp, alpha, alphaLen, red, redLen, 
         green, greenLen, blue, blueLen, pos;
 
     if (region_open_bitmap(path, &file))
@@ -150,23 +150,29 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     if (!(bitmap->data = malloc(2 * bmpInfo.width * bmpInfo.height)))
         REGION_ERROR("Allocating the destination buffer failed!\n");
 
-    printf("fmt: %#x\n", bmpInfo.format);
-    stride = bmpInfo.width * bmpInfo.bitCount / 8;
+    if (bmpInfo.bitCount == 32)
+        bmpInfo.format = BITMAP_FMT_RGB8888;
+    else if (bmpInfo.bitCount == 24)
+        bmpInfo.format = BITMAP_FMT_RGB888;
+    
+    bpp = bmpInfo.bitCount / 8;
+    size = bmpInfo.width * bmpInfo.height;
+
     alphaLen = (bmpInfo.format >> 24) & 0xFF;
     redLen = (bmpInfo.format >> 16) & 0xFF;
     greenLen = (bmpInfo.format >> 8) & 0xFF;
     blueLen = bmpInfo.format & 0xFF;
 
-    if (!(buffer = malloc(bmpInfo.height * stride)))
+    if (!(buffer = malloc(size * bpp)))
         REGION_ERROR("Allocating the bitmap input memory failed!\n");
 
-    if (fread(buffer, 1, (unsigned int)(bmpInfo.height * stride), file) != 
-        (unsigned int)(bmpInfo.height * stride))
+    if (fread(buffer, 1, (unsigned int)(size * bpp), file) != 
+        (unsigned int)(size * bpp))
         REGION_ERROR("Reading the bitmap image data failed!\n");
 
     start = buffer;
     dest = bitmap->data;
-    for (int i = 0; i < bmpInfo.height * bmpInfo.height; i++) {
+    for (int i = 0; i < size; i++) {
         blue = *((unsigned int*)start) & blueLen;
         pos += blueLen;
         green = (*((unsigned int*)start) >> pos) & greenLen;
@@ -175,7 +181,8 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
         pos += redLen;
         alpha = (*((unsigned int*)start) >> pos) & alphaLen;
         *dest = ((alpha & 1) << 15) | ((red & 31) << 10) | ((green & 31) << 5) | (blue & 31);
-        start += stride;
+        printf("color: %#x\n", *dest);
+        start += bpp;
         dest++;
     }
     free(buffer);
