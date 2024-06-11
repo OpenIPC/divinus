@@ -132,10 +132,10 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     bitmapfile bmpFile;
     bitmapinfo bmpInfo;
     static FILE *file;
-    void *buffer;
+    void *buffer, *start;
     unsigned int stride;
     unsigned short *dest;
-    unsigned char *start, alpha, alphaLen, red, redLen, 
+    unsigned char alpha, alphaLen, red, redLen, 
         green, greenLen, blue, blueLen, pos;
 
     if (region_open_bitmap(path, &file))
@@ -150,6 +150,7 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     if (!(bitmap->data = malloc(2 * bmpInfo.width * bmpInfo.height)))
         REGION_ERROR("Allocating the destination buffer failed!\n");
 
+    printf("fmt: %#x\n", bmpInfo.format);
     stride = bmpInfo.width * bmpInfo.bitCount / 8;
     alphaLen = (bmpInfo.format >> 24) & 0xFF;
     redLen = (bmpInfo.format >> 16) & 0xFF;
@@ -163,23 +164,21 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
         (unsigned int)(bmpInfo.height * stride))
         REGION_ERROR("Reading the bitmap image data failed!\n");
 
-    start = bitmap->data;
-    dest = buffer;
+    start = buffer;
+    dest = bitmap->data;
     for (int i = 0; i < bmpInfo.height * bmpInfo.height; i++) {
-        pos = 0;
-        blue = (((unsigned short)*start) >> pos) & blueLen;
+        blue = *((unsigned int*)start) & blueLen;
         pos += blueLen;
-        green = (((unsigned short)*start) >> pos) & greenLen;
+        green = (*((unsigned int*)start) >> pos) & greenLen;
         pos += greenLen;
-        red = (((unsigned short)*start) >> pos) & redLen;
+        red = (*((unsigned int*)start) >> pos) & redLen;
         pos += redLen;
-        alpha = (((unsigned short)*start) >> pos) & alphaLen;
+        alpha = (*((unsigned int*)start) >> pos) & alphaLen;
         *dest = ((alpha & 1) << 15) | ((red & 31) << 10) | ((green & 31) << 5) | (blue & 31);
         start += stride;
         dest++;
     }
-
-    bitmap->data = buffer;
+    free(buffer);
 
     fclose(file);
 }
