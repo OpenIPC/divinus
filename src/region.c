@@ -118,11 +118,8 @@ int region_parse_bitmap(FILE **file, bitmapfile *bmpFile, bitmapinfo *bmpInfo)
         REGION_ERROR("Extracting the bitmap file header failed!\n");
     if (fread(bmpInfo, 1, sizeof(bitmapinfo), *file) != sizeof(bitmapinfo))
         REGION_ERROR("Extracting the bitmap info failed!\n");
-
-    if (bmpInfo->bitCount / 8 < 2)
-        REGION_ERROR("Indexed or <4bpp bitmaps are not supported!\n");
-    if (bmpInfo->height < 0)
-        REGION_ERROR("Flipped bitmaps are not supported!\n");
+    if (bmpInfo->bitCount < 24)
+        REGION_ERROR("Indexed or <3bpp bitmaps are not supported!\n");
 
     return EXIT_SUCCESS;
 }
@@ -133,41 +130,24 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     bitmapinfo bmpInfo;
     static FILE *file;
     void *buffer, *start;
-    unsigned int size;
+    unsigned int size, alphaMask, redMask, greenMask, blueMask;
     unsigned short *dest;
-    unsigned char bpp, alpha, alphaLen, alphaMask, red, redLen, redMask,
-        green, greenLen, greenMask, blue, blueLen, blueMask, pos;
+    unsigned char bpp, alpha, alphaLen, red, redLen, green, greenLen, blue, blueLen, pos;
 
     if (region_open_bitmap(path, &file))
         return EXIT_FAILURE;
 
     if (region_parse_bitmap(&file, &bmpFile, &bmpInfo))
         REGION_ERROR("Bitmap file \"%s\" cannot be processed!\n", path);
+    
+    bpp = bmpInfo.bitCount / 8;
+    size = bmpInfo.width * abs(bmpInfo.height);
 
     if (fseek(file, bmpFile.offBits, 0))
         REGION_ERROR("Navigating to the bitmap image data failed!\n");
 
-    if (!(bitmap->data = malloc(2 * bmpInfo.width * bmpInfo.height)))
+    if (!(bitmap->data = malloc(2 * size)))
         REGION_ERROR("Allocating the destination buffer failed!\n");
-
-    if (bmpInfo.bitCount == 32)
-        bmpInfo.format = BITMAP_FMT_RGB8888;
-    else if (bmpInfo.bitCount == 24)
-        bmpInfo.format = BITMAP_FMT_RGB888;
-    
-    bpp = bmpInfo.bitCount / 8;
-    size = bmpInfo.width * bmpInfo.height;
-    bitmap->dim.width = bmpInfo.width;
-    bitmap->dim.height = bmpInfo.height;
-
-    alphaLen = (bmpInfo.format >> 24) & 0xFF;
-    alphaMask = (1 << alphaLen) - 1;
-    redLen = (bmpInfo.format >> 16) & 0xFF;
-    redMask = (1 << redLen) - 1;
-    greenLen = (bmpInfo.format >> 8) & 0xFF;
-    greenMask = (1 << greenLen) - 1;
-    blueLen = bmpInfo.format & 0xFF;
-    blueMask = (1 << blueLen) - 1;
 
     if (!(buffer = malloc(size * bpp)))
         REGION_ERROR("Allocating the bitmap input memory failed!\n");
@@ -176,27 +156,40 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
         (unsigned int)(size * bpp))
         REGION_ERROR("Reading the bitmap image data failed!\n");
 
+    if (bmpInfo.height >= 0) {
+        char *new  = malloc(size * bpp);
+        int stride = bmpInfo.width * bpp;
+        if (!new)
+            REGION_ERROR("Allocating the flipped bitmap memory failed!\n");
+        for (int h = 0; h < bmpInfo.height; h++)
+            memcpy(new + (h * stride),
+                buffer + ((bmpInfo.height - 1) * stride) - (h * stride),
+                stride);
+        free(buffer);
+        buffer = new;
+    }
+
     start = buffer;
     dest = bitmap->data;
     for (int i = 0; i < size; i++) {
-        pos = bmpInfo.bitCount;
-        if (bpp != 3) {
-            pos -= alphaLen;
-            alpha = (*((unsigned int*)start) >> pos) & alphaMask;
-        } else alpha = 0xFF;
-        pos -= redLen;
-        red = (*((unsigned int*)start) >> pos) & redMask;
-        pos -= greenLen;
-        green = (*((unsigned int*)start) >> pos) & greenMask;
-        pos -= blueLen;
-        blue = *((unsigned int*)start) & blueMask;
-        *dest = ((alpha & 1) << 15) | ((red & 31) << 10) | ((green & 31) << 5) | (blue & 31);
+        pos = 32;
+        if (bpp == 3)
+            alpha = 0xFF;
+        else
+            alpha = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
+        red = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
+        green = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
+        blue = (*((unsigned int*)start) >> pos) & 0xFF;
+        *dest = ((alpha & 0x80) << 8) | ((red & 0xF8) << 7) | ((green & 0xF8) << 2) | ((blue & 0xF8) >> 3);
         start += bpp;
         dest++;
     }
     free(buffer);
 
     fclose(file);
+
+    bitmap->dim.width = bmpInfo.width;
+    bitmap->dim.height = abs(bmpInfo.height);
 }
 
 void *region_thread(void)
