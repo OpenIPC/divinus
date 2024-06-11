@@ -148,10 +148,6 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
 
     if (fseek(file, bmpFile.offBits, 0))
         REGION_ERROR("Navigating to the bitmap image data failed!\n");
-
-    if (!(bitmap->data = malloc(2 * size)))
-        REGION_ERROR("Allocating the destination buffer failed!\n");
-
     if (!(buffer = malloc(size * bpp)))
         REGION_ERROR("Allocating the bitmap input memory failed!\n");
 
@@ -171,6 +167,9 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
         free(buffer);
         buffer = new;
     }
+
+    if (!(bitmap->data = malloc(size * 2)))
+        REGION_ERROR("Allocating the destination buffer failed!\n");
 
     start = buffer;
     dest = bitmap->data;
