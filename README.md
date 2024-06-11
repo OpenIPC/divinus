@@ -34,7 +34,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
-_* At the moment, only text and 24-bit/32-bit bitmap overlays are handled, eventually matricial formats and covers are to follow_
+_* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matricial formats and covers are to follow_
 
 [^1]: Hi3516CV300 and Hi3516EV100
 [^2]: Hi3516AV300, Hi3516CV500 and Hi3516DV300
