@@ -442,9 +442,10 @@ char *request_header(const char *name)
 header_t *request_headers(void) { return reqhdr; }
 
 void parse_request(int client_fd, char *request) {
-    method = strtok(request, " \t\r\n");
-    uri = strtok(NULL, " \t");
-    prot = strtok(NULL, " \t\r\n");
+    char *state = NULL;
+    method = strtok_r(request, " \t\r\n", &state);
+    uri = strtok_r(NULL, " \t", &state);
+    prot = strtok_r(NULL, " \t\r\n", &state);
 
     fprintf(stderr, tag "\x1b[32m New request: (%s) %s\x1b[0m\n", method, uri);
 
@@ -454,14 +455,14 @@ void parse_request(int client_fd, char *request) {
         query = uri - 1;
 
     header_t *h = reqhdr;
-    char *t, *t2;
+    char *l;
     while (h < reqhdr + 16)
     {
         char *k, *v, *e;
-        k = strtok(NULL, "\r\n: \t");
+        k = strtok_r(NULL, "\r\n: \t", &state);
         if (!k)
             break;
-        v = strtok(NULL, "\r\n");
+        v = strtok_r(NULL, "\r\n", &state);
         while (*v && *v == ' ' && v++);
         h->name = k;
         h++->value = v;
@@ -471,12 +472,10 @@ void parse_request(int client_fd, char *request) {
             break;
     }
 
-    t = strtok(NULL, "\r\n");
-    payload = t;
-    t2 = request_header("Content-Length");
-    paysize = t2 ? atol(t2) : (total - (t - request));
+    l = request_header("Content-Length");
+    paysize = l ? atol(l) : 0;
 
-    while (t2 && total < paysize) {
+    while (l && total < paysize) {
         received = recv(client_fd, request + total, REQSIZE - total, 0);
         if (received < 0) {
             fputs(tag "recv() error\n", stderr);
@@ -487,9 +486,8 @@ void parse_request(int client_fd, char *request) {
         }
         total += received;
     }
-    
-    if (!t)
-        payload = t = strtok(NULL, "\r\n");
+
+    payload = strtok_r(NULL, "\r\n", &state);
 }
 
 void *server_thread(void *vargp) {
@@ -521,7 +519,7 @@ void *server_thread(void *vargp) {
             break;
 
         total = 0;
-        received = recv(client_fd, request + total, REQSIZE - total, 0);
+        received = recv(client_fd, request, REQSIZE, 0);
         if (received < 0)
             fputs(tag "recv() error\n", stderr);           
         else if (!received)
@@ -682,23 +680,24 @@ void *server_thread(void *vargp) {
         if (app_config.osd_enable && starts_with(uri, "/api/osd/") &&
             uri[9] && uri[9] >= '0' && uri[9] <= (MAX_OSD - 1 + '0')) {
             char id = uri[9] - '0';
+            int respLen;
             if (equals(method, "POST")) {
-                int respLen;
                 char *type = request_header("Content-Type");
                 if (starts_with(type, "multipart/form-data")) {
                     char *bound = strstr(type, "boundary=") + strlen("boundary=");
-                    char *payloadb = strstr(payload, bound) + strlen(bound) + 2;
-                    payloadb = strstr(payloadb, "\r\n\r\n") + 4;
 
-                    void *payloade = memstr(payloadb, bound, 
-                        paysize - (payloadb - payload), strlen(bound));
-                    // TODO: Manage the case where payloade returns 0
-                    payloade -= 4;
+                    char *payloadb = strstr(payload, bound);
+                    payloadb = memstr(payloadb, "\r\n\r\n", total - (payloadb - request), 4);
+                    if (payloadb) payloadb += 4;
+
+                    char *payloade = memstr(payloadb, bound, 
+                        total - (payloadb - request), strlen(bound));
+                    if (payloade) payloade -= 4;
 
                     char path[32];
                     sprintf(path, "/tmp/osd%d.bmp", id);
                     FILE *img = fopen(path, "wb");
-                    fwrite(payloadb, sizeof(char), (char*)payloade - payloadb, img);
+                    fwrite(payloadb, sizeof(char), payloade - payloadb, img);
                     fclose(img);
 
                     strcpy(osds[id].text, "");
@@ -765,7 +764,7 @@ void *server_thread(void *vargp) {
                 }
                 osds[id].updt = 1;
             }
-            int respLen = sprintf(response,
+            respLen = sprintf(response,
                 "HTTP/1.1 200 OK\r\n" \
                 "Content-Type: application/json;charset=UTF-8\r\n" \
                 "Connection: close\r\n" \

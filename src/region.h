@@ -33,6 +33,16 @@
 
 extern int sysinfo (struct sysinfo *__info);
 
+typedef enum _bitmapformat {
+    BITMAP_FMT_RGB444 = 0x040404,
+    BITMAP_FMT_RGB555 = 0x050505,
+    BITMAP_FMT_RGB565 = 0x050605,
+    BITMAP_FMT_RGB888 = 0x080808,
+    BITMAP_FMT_RGB1555 = 0x01050505,
+    BITMAP_FMT_RGB4444 = 0x04040404,
+    BITMAP_FMT_RGB8888 = 0x08080808
+} bitmapformat;
+
 typedef struct {
     unsigned int size;
     unsigned short reserved1;
@@ -52,7 +62,7 @@ typedef struct {
     unsigned int yPerMeter;
     unsigned int clrUsed;
     unsigned int clrImportant;
-    unsigned char bgraColors[4];
+    bitmapformat format;
 } bitmapinfo;
 
 typedef struct {

@@ -96,15 +96,15 @@ void region_fill_formatted(char* str)
     strncpy(str, out, 80);
 }
 
-static inline int region_open_bitmap(char *path, FILE *file)
+static inline int region_open_bitmap(char *path, FILE **file)
 {
     unsigned short type;
 
     if (!path)
         REGION_ERROR("Filename is empty!\n");
-    if (!(file = fopen(path, "rb")))
+    if (!(*file = fopen(path, "rb")))
         REGION_ERROR("Opening the bitmap failed!\n");
-    if (fread(&type, 1, sizeof(type), file) != sizeof(type))
+    if (fread(&type, 1, sizeof(type), *file) != sizeof(type))
         REGION_ERROR("Reading the bitmap failed!\n");
     if (type != 0x4d42)
         REGION_ERROR("Only bitmap files are currently supported!\n");
@@ -112,11 +112,11 @@ static inline int region_open_bitmap(char *path, FILE *file)
     return EXIT_SUCCESS;
 }
 
-int region_parse_bitmap(FILE *file, bitmapfile *bmpFile, bitmapinfo *bmpInfo)
+int region_parse_bitmap(FILE **file, bitmapfile *bmpFile, bitmapinfo *bmpInfo)
 {
-    if (fread(bmpFile, 1, sizeof(bitmapfile), file) != sizeof(bitmapfile))
+    if (fread(bmpFile, 1, sizeof(bitmapfile), *file) != sizeof(bitmapfile))
         REGION_ERROR("Extracting the bitmap file header failed!\n");
-    if (fread(bmpInfo, 1, sizeof(bitmapinfo), file) != sizeof(bitmapinfo))
+    if (fread(bmpInfo, 1, sizeof(bitmapinfo), *file) != sizeof(bitmapinfo))
         REGION_ERROR("Extracting the bitmap info failed!\n");
 
     if (bmpInfo->bitCount / 8 < 2)
@@ -131,27 +131,57 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
 {
     bitmapfile bmpFile;
     bitmapinfo bmpInfo;
-    FILE *file;
+    static FILE *file;
+    void *buffer;
+    unsigned int stride;
+    unsigned short *dest;
+    unsigned char *start, alpha, alphaLen, red, redLen, 
+        green, greenLen, blue, blueLen, pos;
 
-    if (region_open_bitmap(path, file))
+    if (region_open_bitmap(path, &file))
         return EXIT_FAILURE;
 
-    if (region_parse_bitmap(file, &bmpFile, &bmpInfo))
+    if (region_parse_bitmap(&file, &bmpFile, &bmpInfo))
         REGION_ERROR("Bitmap file \"%s\" cannot be processed!\n", path);
-
-    if (!(bitmap->data = malloc(2 * bmpInfo.width * bmpInfo.height)))
-        REGION_ERROR("Allocating the bitmap memory failed!\n");
 
     if (fseek(file, bmpFile.offBits, 0))
         REGION_ERROR("Navigating to the bitmap image data failed!\n");
 
-    for (int h = 0; h < bmpInfo.height; h++) {
-        for (int w = 0; w < bmpInfo.width; w++) {
-            switch (bmpInfo.bitCount) {
+    if (!(bitmap->data = malloc(2 * bmpInfo.width * bmpInfo.height)))
+        REGION_ERROR("Allocating the destination buffer failed!\n");
 
-            }
-        }
+    stride = bmpInfo.width * bmpInfo.bitCount / 8;
+    alphaLen = (bmpInfo.format >> 24) & 0xFF;
+    redLen = (bmpInfo.format >> 16) & 0xFF;
+    greenLen = (bmpInfo.format >> 8) & 0xFF;
+    blueLen = bmpInfo.format & 0xFF;
+
+    if (!(buffer = malloc(bmpInfo.height * stride)))
+        REGION_ERROR("Allocating the bitmap input memory failed!\n");
+
+    if (fread(buffer, 1, (unsigned int)(bmpInfo.height * stride), file) != 
+        (unsigned int)(bmpInfo.height * stride))
+        REGION_ERROR("Reading the bitmap image data failed!\n");
+
+    start = bitmap->data;
+    dest = buffer;
+    for (int i = 0; i < bmpInfo.height * bmpInfo.height; i++) {
+        pos = 0;
+        blue = (((unsigned short)*start) >> pos) & blueLen;
+        pos += blueLen;
+        green = (((unsigned short)*start) >> pos) & greenLen;
+        pos += greenLen;
+        red = (((unsigned short)*start) >> pos) & redLen;
+        pos += redLen;
+        alpha = (((unsigned short)*start) >> pos) & alphaLen;
+        *dest = ((alpha & 1) << 15) | ((red & 31) << 10) | ((green & 31) << 5) | (blue & 31);
+        start += stride;
+        dest++;
     }
+
+    bitmap->data = buffer;
+
+    fclose(file);
 }
 
 void *region_thread(void)
@@ -226,16 +256,55 @@ void *region_thread(void)
             }
             else if (empty(osds[id].text) && osds[id].updt)
             {
-                switch (plat) {
-                    case HAL_PLATFORM_I6:  i6_region_destroy(id); break;
-                    case HAL_PLATFORM_I6C: i6c_region_destroy(id); break;
-                    case HAL_PLATFORM_I6F: i6f_region_destroy(id); break;
-                    case HAL_PLATFORM_V3:  v3_region_destroy(id); break;
-                    case HAL_PLATFORM_V4:  v4_region_destroy(id); break;
-                    case HAL_PLATFORM_T31: t31_region_destroy(&osds[id].hand); break;
+                char img[32];
+                sprintf(img, "/tmp/osd%d.bmp", id);
+                if (!access(img, F_OK))
+                {
+                    hal_bitmap bitmap;
+                    if (!(region_prepare_bitmap(img, &bitmap)))
+                    {
+                        hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
+                            .x = osds[id].posx, .y = osds[id].posy };
+                        switch (plat) {
+                            case HAL_PLATFORM_I6:
+                                i6_region_create(id, rect, osds[id].opal);
+                                i6_region_setbitmap(id, &bitmap);
+                                break;
+                            case HAL_PLATFORM_I6C:
+                                i6c_region_create(id, rect, osds[id].opal);
+                                i6c_region_setbitmap(id, &bitmap);
+                                break;
+                            case HAL_PLATFORM_I6F:
+                                i6f_region_create(id, rect, osds[id].opal);
+                                i6f_region_setbitmap(id, &bitmap);
+                                break;
+                            case HAL_PLATFORM_V3:
+                                v3_region_create(id, rect, osds[id].opal);
+                                v3_region_setbitmap(id, &bitmap);
+                                break;
+                            case HAL_PLATFORM_V4:
+                                v4_region_create(id, rect, osds[id].opal);
+                                v4_region_setbitmap(id, &bitmap);
+                                break;
+                            case HAL_PLATFORM_T31:
+                                t31_region_create(&osds[id].hand, rect, osds[id].opal);
+                                t31_region_setbitmap(&osds[id].hand, &bitmap);
+                                break;
+                        }
+                        free(bitmap.data);
+                    }
                 }
+                else
+                    switch (plat) {
+                        case HAL_PLATFORM_I6:  i6_region_destroy(id); break;
+                        case HAL_PLATFORM_I6C: i6c_region_destroy(id); break;
+                        case HAL_PLATFORM_I6F: i6f_region_destroy(id); break;
+                        case HAL_PLATFORM_V3:  v3_region_destroy(id); break;
+                        case HAL_PLATFORM_V4:  v4_region_destroy(id); break;
+                        case HAL_PLATFORM_T31: t31_region_destroy(&osds[id].hand); break;
+                    }
+                osds[id].updt = 0;
             }
-            osds[id].updt = 0;
         }
         sleep(1);
     }
