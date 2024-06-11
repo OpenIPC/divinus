@@ -135,8 +135,8 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     void *buffer, *start;
     unsigned int size;
     unsigned short *dest;
-    unsigned char bpp, alpha, alphaLen, red, redLen, 
-        green, greenLen, blue, blueLen, pos;
+    unsigned char bpp, alpha, alphaLen, alphaMask, red, redLen, redMask,
+        green, greenLen, greenMask, blue, blueLen, blueMask, pos;
 
     if (region_open_bitmap(path, &file))
         return EXIT_FAILURE;
@@ -157,11 +157,17 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     
     bpp = bmpInfo.bitCount / 8;
     size = bmpInfo.width * bmpInfo.height;
+    bitmap->dim.width = bmpInfo.width;
+    bitmap->dim.height = bmpInfo.height;
 
     alphaLen = (bmpInfo.format >> 24) & 0xFF;
+    alphaMask = (1 << alphaLen) - 1;
     redLen = (bmpInfo.format >> 16) & 0xFF;
+    redMask = (1 << redLen) - 1;
     greenLen = (bmpInfo.format >> 8) & 0xFF;
+    greenMask = (1 << greenLen) - 1;
     blueLen = bmpInfo.format & 0xFF;
+    blueMask = (1 << blueLen) - 1;
 
     if (!(buffer = malloc(size * bpp)))
         REGION_ERROR("Allocating the bitmap input memory failed!\n");
@@ -173,13 +179,17 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     start = buffer;
     dest = bitmap->data;
     for (int i = 0; i < size; i++) {
-        blue = *((unsigned int*)start) & blueLen;
-        pos += blueLen;
-        green = (*((unsigned int*)start) >> pos) & greenLen;
-        pos += greenLen;
-        red = (*((unsigned int*)start) >> pos) & redLen;
-        pos += redLen;
-        alpha = (*((unsigned int*)start) >> pos) & alphaLen;
+        pos = bmpInfo.bitCount;
+        if (bpp != 3) {
+            pos -= alphaLen;
+            alpha = (*((unsigned int*)start) >> pos) & alphaMask;
+        } else alpha = 0xFF;
+        pos -= redLen;
+        red = (*((unsigned int*)start) >> pos) & redMask;
+        pos -= greenLen;
+        green = (*((unsigned int*)start) >> pos) & greenMask;
+        pos -= blueLen;
+        blue = *((unsigned int*)start) & blueMask;
         *dest = ((alpha & 1) << 15) | ((red & 31) << 10) | ((green & 31) << 5) | (blue & 31);
         start += bpp;
         dest++;
