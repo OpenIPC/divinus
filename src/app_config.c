@@ -10,25 +10,26 @@ struct AppConfig app_config;
 enum ConfigError parse_app_config(void) {
     memset(&app_config, 0, sizeof(struct AppConfig));
 
+    app_config.web_port = 8080;
+    app_config.web_enable_static = false;
+    app_config.isp_thread_stack_size = 16 * 1024;
+    app_config.venc_stream_thread_stack_size = 16 * 1024;
+    app_config.web_server_thread_stack_size = 32 * 1024;
+    app_config.watchdog = 0;
+
+    app_config.motion_detect_enable = false;
+    app_config.osd_enable = false;
+    app_config.rtsp_enable = false;
+
     app_config.sensor_config[0] = 0;
     app_config.jpeg_enable = false;
     app_config.mp4_enable = false;
-    app_config.rtsp_enable = false;
-    app_config.osd_enable = false;
-    app_config.motion_detect_enable = false;
 
     app_config.mjpeg_enable = false;
     app_config.mjpeg_fps = 15;
     app_config.mjpeg_width = 640;
     app_config.mjpeg_height = 480;
     app_config.mjpeg_bitrate = 1024;
-
-    app_config.web_port = 8080;
-    app_config.web_enable_static = false;
-
-    app_config.isp_thread_stack_size = 16 * 1024;
-    app_config.venc_stream_thread_stack_size = 16 * 1024;
-    app_config.web_server_thread_stack_size = 32 * 1024;
 
     app_config.mirror = false;
     app_config.flip = false;
@@ -54,7 +55,7 @@ enum ConfigError parse_app_config(void) {
     enum ConfigError err;
     find_sections(&ini);
 
-    if (plat != HAL_PLATFORM_T31 && plat != HAL_PLATFORM_GM) {
+    if (plat == HAL_PLATFORM_V3 || plat == HAL_PLATFORM_V4) {
         err = parse_param_value(
             &ini, "system", "sensor_config", app_config.sensor_config);
         if (err != CONFIG_OK)
@@ -84,6 +85,7 @@ enum ConfigError parse_app_config(void) {
         &app_config.web_server_thread_stack_size);
     if (err != CONFIG_OK)
         goto RET_ERR;
+    parse_int(&ini, "system", "watchdog", 0, INT_MAX, &app_config.watchdog);
 
     err =
         parse_bool(&ini, "night_mode", "enable", &app_config.night_mode_enable);

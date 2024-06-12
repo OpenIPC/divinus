@@ -6,7 +6,15 @@
 struct AppConfig {
     // [system]
     char sensor_config[128];
+    unsigned short web_port;
+    bool web_enable_static;
+    unsigned int isp_thread_stack_size;
+    unsigned int venc_stream_thread_stack_size;
+    unsigned int web_server_thread_stack_size;
+    unsigned int watchdog;
 
+    bool motion_detect_enable;
+    bool osd_enable;
     bool rtsp_enable;
 
     // [video_0]
@@ -43,16 +51,6 @@ struct AppConfig {
     unsigned int http_post_height;
     unsigned int http_post_qfactor;
     unsigned int http_post_interval;
-
-    bool osd_enable;
-    bool motion_detect_enable;
-
-    unsigned short web_port;
-    bool web_enable_static;
-
-    unsigned int isp_thread_stack_size;
-    unsigned int venc_stream_thread_stack_size;
-    unsigned int web_server_thread_stack_size;
 
     // [isp]
     bool mirror;

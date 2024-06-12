@@ -9,10 +9,10 @@
 
 #include "http_post.h"
 #include "night.h"
+#include "rtsp/rtsp_server.h"
 #include "server.h"
 #include "video.h"
-
-#include "rtsp/rtsp_server.h"
+#include "watchdog.h"
 
 rtsp_handle rtspHandle;
 
@@ -66,7 +66,10 @@ int main(int argc, char *argv[]) {
     if (app_config.osd_enable)
         start_region_handler();
 
-    while (keepRunning) sleep(1);
+    while (keepRunning) {
+        watchdog_reset();
+        sleep(1);
+    }
 
     if (app_config.rtsp_enable) {
         rtsp_finish(rtspHandle);

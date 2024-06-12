@@ -5,6 +5,7 @@ system:
   isp_thread_stack_size: 16384
   venc_stream_thread_stack_size: 16384
   web_server_thread_stack_size: 65536
+  watchdog: 30
 
 isp:
   mirror: false

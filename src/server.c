@@ -795,6 +795,8 @@ void *server_thread(void *vargp) {
 }
 
 void sig_handler(int signo) {
+    if (app_config.watchdog)
+        watchdog_stop();
     printf(tag "Graceful shutdown...\n");
     keepRunning = 0;
 }
@@ -811,6 +813,9 @@ int start_server() {
 
     signal(SIGPIPE, spipe_handler);
     signal(EPIPE, epipe_handler);
+
+    if (app_config.watchdog)
+        watchdog_start(app_config.watchdog);
 
     for (uint32_t i = 0; i < MAX_CLIENTS; ++i) {
         client_fds[i].socket_fd = -1;
@@ -850,5 +855,9 @@ int stop_server() {
 
     pthread_mutex_destroy(&client_fds_mutex);
     printf(tag "Shutting down server...\n");
+
+    if (app_config.watchdog)
+        watchdog_stop();
+
     return EXIT_SUCCESS;
 }
