@@ -214,6 +214,7 @@ int start_sdk() {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  ret = gm_system_init(); break;
         case HAL_PLATFORM_I6:  ret = i6_system_init(); break;
         case HAL_PLATFORM_I6C: ret = i6c_system_init(); break;
         case HAL_PLATFORM_I6F: ret = i6f_system_init(); break;

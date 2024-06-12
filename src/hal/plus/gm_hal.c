@@ -68,7 +68,7 @@ int gm_pipeline_create(char mirror, char flip)
     _gm_cap_dev = ret;
 
     {
-        GM_DECLARE(gm_lib, config, gm_cap_cnf);
+        GM_DECLARE(gm_lib, config, "gm_cap_attr_t", gm_cap_cnf);
         config.channel = 0;
         config.output = GM_CAP_OUT_SCALER2;
         config.motionDataOn = 0;
@@ -104,7 +104,7 @@ int gm_video_create(char index, hal_vidconfig *config)
     switch (config->codec) {
         case HAL_VIDCODEC_JPG:
         case HAL_VIDCODEC_MJPG:
-            GM_DECLARE(gm_lib, mjpgchn, gm_venc_mjpg_cnf);
+            GM_DECLARE(gm_lib, mjpgchn, "gm_mjpege_attr_t", gm_venc_mjpg_cnf);
             mjpgchn.dest.width = config->width;
             mjpgchn.dest.height = config->height;
             mjpgchn.fpsNum = config->framerate;
@@ -117,7 +117,7 @@ int gm_video_create(char index, hal_vidconfig *config)
                 return ret;
             break;
         case HAL_VIDCODEC_H264:
-            GM_DECLARE(gm_lib, h264chn, gm_venc_h264_cnf);
+            GM_DECLARE(gm_lib, h264chn, "gm_h264e_attr_t", gm_venc_h264_cnf);
             h264chn.dest.width = config->width;
             h264chn.dest.height = config->height;
             h264chn.fpsNum = config->framerate;
@@ -185,7 +185,7 @@ int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata
     unsigned int length = 2 * 1024 * 1024;
     char *buffer = malloc(length);
 
-    GM_DECLARE(gm_lib, snap, gm_venc_snap);
+    GM_DECLARE(gm_lib, snap, "snapshot_t", gm_venc_snap);
     snap.bind = _gm_venc_fds[0].bind;
     snap.quality = quality;
     snap.buffer = buffer;
@@ -288,7 +288,7 @@ int gm_system_init(void)
     int ret;
 
     puts("App built with headers v" GM_LIB_API);
-    printf("GrainMedia - library 0x%#x\n", GM_LIB_VER);
+    printf("GrainMedia - library %#x\n", GM_LIB_VER);
 
     if (ret = gm_lib.fnInit(GM_LIB_VER))
         return ret;

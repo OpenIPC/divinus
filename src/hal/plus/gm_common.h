@@ -8,7 +8,7 @@
 
 #include "../types.h"
 
-#define GM_LIB_VER 0x34
+#define GM_LIB_VER 0x41
 
 typedef enum {
     GM_LIB_DEV_CAPTURE = 0xFEFE0001,
@@ -20,8 +20,8 @@ typedef enum {
     GM_LIB_DEV_AUDOUT
 } gm_lib_dev;
 
-#define GM_DECLARE(hal, var, type) \
-    type var = ({hal.fnDeclareStruct(&var, #type, sizeof(type), GM_LIB_VER); var;})
+#define GM_DECLARE(hal, var, real, type) \
+    type var = ({hal.fnDeclareStruct(&var, real, sizeof(type), GM_LIB_VER); var;})
 
 #define GM_ERROR(x, ...) \
     do { \
