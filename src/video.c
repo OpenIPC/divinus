@@ -135,6 +135,7 @@ int create_vpss_chn(char index, short width, short height, char framerate, char 
 int bind_vpss_venc(char index, char framerate, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  return gm_channel_bind(index);
         case HAL_PLATFORM_I6:  return i6_channel_bind(index, framerate, jpeg);
         case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate, jpeg);
         case HAL_PLATFORM_I6F: return i6f_channel_bind(index, framerate, jpeg);
@@ -149,6 +150,7 @@ int bind_vpss_venc(char index, char framerate, char jpeg) {
 int unbind_vpss_venc(char index, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  return gm_channel_unbind(index);
         case HAL_PLATFORM_I6:  return i6_channel_unbind(index);
         case HAL_PLATFORM_I6C: return i6c_channel_unbind(index, jpeg);
         case HAL_PLATFORM_I6F: return i6f_channel_unbind(index, jpeg);
@@ -163,6 +165,7 @@ int unbind_vpss_venc(char index, char jpeg) {
 int disable_venc_chn(char index, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  return gm_video_destroy(index);
         case HAL_PLATFORM_I6:  return i6_video_destroy(index);
         case HAL_PLATFORM_I6C: return i6c_video_destroy(index, jpeg);
         case HAL_PLATFORM_I6F: return i6f_video_destroy(index, jpeg);
@@ -180,6 +183,7 @@ int start_sdk() {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  ret = gm_hal_init(); break;
         case HAL_PLATFORM_I6:  ret = i6_hal_init(); break;
         case HAL_PLATFORM_I6C: ret = i6c_hal_init(); break;
         case HAL_PLATFORM_I6F: ret = i6f_hal_init(); break;
@@ -197,6 +201,7 @@ int start_sdk() {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  gm_venc_cb = save_video_stream; break;
         case HAL_PLATFORM_I6:  i6_venc_cb = save_video_stream; break;
         case HAL_PLATFORM_I6C: i6c_venc_cb = save_video_stream; break;
         case HAL_PLATFORM_I6F: i6f_venc_cb = save_video_stream; break;
@@ -230,6 +235,8 @@ int start_sdk() {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  ret = gm_pipeline_create(app_config.mirror,
+            app_config.flip);   break;
         case HAL_PLATFORM_I6:  ret = i6_pipeline_create(0, width,
             height, framerate); break;
         case HAL_PLATFORM_I6C: ret = i6c_pipeline_create(0, width,
@@ -294,6 +301,7 @@ int start_sdk() {
 
             switch (plat) {
 #if defined(__arm__)
+                case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
                 case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
                 case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
                 case HAL_PLATFORM_I6F: ret = i6f_video_create(index, &config); break;
@@ -344,6 +352,7 @@ int start_sdk() {
 
             switch (plat) {
 #if defined(__arm__)
+                case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
                 case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
                 case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
                 case HAL_PLATFORM_I6F: ret = i6f_video_create(index, &config); break;
@@ -422,6 +431,7 @@ int stop_sdk() {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  gm_video_destroy_all(); break;
         case HAL_PLATFORM_I6:  i6_video_destroy_all(); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy_all(); break;
         case HAL_PLATFORM_I6F: i6f_video_destroy_all(); break;
@@ -434,6 +444,7 @@ int stop_sdk() {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  gm_pipeline_destroy(); break;
         case HAL_PLATFORM_I6:  i6_pipeline_destroy(); break;
         case HAL_PLATFORM_I6C: i6c_pipeline_destroy(); break;
         case HAL_PLATFORM_I6F: i6f_pipeline_destroy(); break;
@@ -449,6 +460,7 @@ int stop_sdk() {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  gm_system_deinit(); break;
         case HAL_PLATFORM_I6:  i6_system_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_system_deinit(); break;
         case HAL_PLATFORM_I6F: i6f_system_deinit(); break;
@@ -468,6 +480,7 @@ int stop_sdk() {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  gm_hal_deinit(); break;
         case HAL_PLATFORM_I6:  i6_hal_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_hal_deinit(); break;
         case HAL_PLATFORM_I6F: i6f_hal_deinit(); break;

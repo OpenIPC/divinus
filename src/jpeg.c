@@ -24,6 +24,9 @@ pthread_mutex_t jpeg_mutex;
 int jpeg_init() {  
     int ret;
 
+    if (plat == HAL_PLATFORM_GM)
+        return EXIT_SUCCESS;
+
     pthread_mutex_lock(&jpeg_mutex);
 
     switch (plat) {
@@ -83,6 +86,8 @@ mjpeg_active:
 }
 
 void jpeg_deinit() {
+    if (plat == HAL_PLATFORM_GM) return;
+
     pthread_mutex_lock(&jpeg_mutex);
 
     switch (plat) {
@@ -121,6 +126,7 @@ int jpeg_get(short width, short height, char quality, char grayscale,
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  ret = gm_video_snapshot_grab(width, height, quality, jpeg); break;
         case HAL_PLATFORM_I6:  ret = i6_video_snapshot_grab(jpeg_index, quality, jpeg); break;
         case HAL_PLATFORM_I6C: ret = i6c_video_snapshot_grab(jpeg_index, quality, jpeg); break;
         case HAL_PLATFORM_I6F: ret = i6f_video_snapshot_grab(jpeg_index, quality, jpeg); break;
