@@ -24,6 +24,7 @@
 
 #ifdef __UCLIBC__
 #include <sys/sysinfo.h>
+extern int asprintf(char **restrict strp, const char *restrict fmt, ...);
 #else
 #include <linux/sysinfo.h>
 #endif

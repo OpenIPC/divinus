@@ -20,7 +20,7 @@ typedef enum {
     GM_LIB_DEV_AUDOUT
 } gm_lib_dev;
 
-#define GM_DECLARE(hal, var, real, type) \
+#define GM_DECLARE(hal, var, type, real) \
     type var = ({hal.fnDeclareStruct(&var, real, sizeof(type), GM_LIB_VER); var;})
 
 #define GM_ERROR(x, ...) \

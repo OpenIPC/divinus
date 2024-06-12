@@ -122,8 +122,8 @@ typedef struct {
     int internal[8];
     gm_common_dim dest;
     struct {
-        int fpsNum:16;
         int fpsDen:16;
+        int fpsNum:16;
     };
     gm_venc_rate rate;
     int bFrameNum;
@@ -142,6 +142,7 @@ typedef struct {
     };
     gm_venc_cksum cksumType;
     gm_venc_ffwd ffwdType;
+    int reserved[1];
 } gm_venc_h264_cnf;
 
 typedef struct {

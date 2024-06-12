@@ -32,11 +32,10 @@ int gm_channel_bind(char index)
 {
     int ret;
 
-    if (ret = gm_lib.fnBind(_gm_cap_grp, _gm_cap_dev, _gm_venc_dev[index]))
-        return ret;
-    _gm_venc_fds[index].bind = (void*)ret;
+    _gm_venc_fds[index].bind = 
+        (void*)gm_lib.fnBind(_gm_cap_grp, _gm_cap_dev, _gm_venc_dev[index]);
 
-    if (ret = gm_lib.fnRefreshGroup(_gm_cap_grp))
+    if ((ret = gm_lib.fnRefreshGroup(_gm_cap_grp)) < 0)
         return ret;
 
     return EXIT_SUCCESS;
@@ -46,10 +45,9 @@ int gm_channel_unbind(char index)
 {
     int ret;
 
-    if (ret = gm_lib.fnUnbind((int)_gm_venc_fds[index].bind))
-        return ret;
+    gm_lib.fnUnbind((int)_gm_venc_fds[index].bind);
 
-    if (ret = gm_lib.fnRefreshGroup(_gm_cap_grp))
+    if ((ret = gm_lib.fnRefreshGroup(_gm_cap_grp)) < 0)
         return ret;
 
     return EXIT_SUCCESS;
@@ -57,25 +55,19 @@ int gm_channel_unbind(char index)
 
 int gm_pipeline_create(char mirror, char flip)
 {
-    int ret;
+    _gm_cap_grp = gm_lib.fnCreateGroup();
 
-    if (ret = gm_lib.fnCreateGroup())
-        return ret;
-    _gm_cap_grp = ret;
-
-    if (ret = gm_lib.fnCreateDevice(GM_LIB_DEV_CAPTURE))
-        return ret;
-    _gm_cap_dev = ret;
-
+    _gm_cap_dev = gm_lib.fnCreateDevice(GM_LIB_DEV_CAPTURE);
     {
-        GM_DECLARE(gm_lib, config, "gm_cap_attr_t", gm_cap_cnf);
+        GM_DECLARE(gm_lib, config, gm_cap_cnf, "gm_cap_attr_t");
         config.channel = 0;
         config.output = GM_CAP_OUT_SCALER2;
         config.motionDataOn = 0;
 
-        if (ret = gm_lib.fnSetDeviceConfig(_gm_cap_dev, &config))
-            return ret;
+        gm_lib.fnSetDeviceConfig(_gm_cap_dev, &config);
     }
+
+    return EXIT_SUCCESS;
 }
 
 void gm_pipeline_destroy(void)
@@ -87,11 +79,7 @@ void gm_pipeline_destroy(void)
 
 int gm_video_create(char index, hal_vidconfig *config)
 {
-    int ret;
-
-    if (ret = gm_lib.fnCreateDevice(GM_LIB_DEV_VIDENC))
-        return ret;
-    _gm_venc_dev[index] = ret;
+    _gm_venc_dev[index] = gm_lib.fnCreateDevice(GM_LIB_DEV_VIDENC);
 
     gm_venc_ratemode ratemode;
 
@@ -104,7 +92,7 @@ int gm_video_create(char index, hal_vidconfig *config)
     switch (config->codec) {
         case HAL_VIDCODEC_JPG:
         case HAL_VIDCODEC_MJPG:
-            GM_DECLARE(gm_lib, mjpgchn, "gm_mjpege_attr_t", gm_venc_mjpg_cnf);
+            GM_DECLARE(gm_lib, mjpgchn, gm_venc_mjpg_cnf, "gm_mjpege_attr_t");
             mjpgchn.dest.width = config->width;
             mjpgchn.dest.height = config->height;
             mjpgchn.fpsNum = config->framerate;
@@ -113,19 +101,20 @@ int gm_video_create(char index, hal_vidconfig *config)
             mjpgchn.mode = ratemode;
             mjpgchn.bitrate = config->bitrate;
             mjpgchn.maxBitrate = MAX(config->bitrate, config->maxBitrate);
-            if (ret = gm_lib.fnSetDeviceConfig(_gm_venc_dev[index], &mjpgchn))
-                return ret;
+            gm_lib.fnSetDeviceConfig(_gm_venc_dev[index], &mjpgchn);
             break;
         case HAL_VIDCODEC_H264:
-            GM_DECLARE(gm_lib, h264chn, "gm_h264e_attr_t", gm_venc_h264_cnf);
+            GM_DECLARE(gm_lib, h264chn, gm_venc_h264_cnf, "gm_h264e_attr_t");
             h264chn.dest.width = config->width;
             h264chn.dest.height = config->height;
             h264chn.fpsNum = config->framerate;
             h264chn.fpsDen = 1;
             h264chn.rate.mode = ratemode;
             h264chn.rate.gop = config->gop;
-            h264chn.rate.minQual = config->minQual;
-            h264chn.rate.maxQual = config->maxQual;
+            if (config->mode != HAL_VIDMODE_CBR) {
+                h264chn.rate.minQual = config->minQual;
+                h264chn.rate.maxQual = config->maxQual;
+            }
             h264chn.rate.bitrate = config->bitrate;
             h264chn.rate.maxBitrate = MAX(config->bitrate, config->maxBitrate);
             h264chn.motionDataOn = 0;
@@ -144,8 +133,7 @@ int gm_video_create(char index, hal_vidconfig *config)
                     break;    
             }
             h264chn.level = 41;
-            if (ret = gm_lib.fnSetDeviceConfig(_gm_venc_dev[index], &mjpgchn))
-                return ret;
+            gm_lib.fnSetDeviceConfig(_gm_venc_dev[index], &h264chn);
             break;
         default: GM_ERROR("This codec is not supported by the hardware!");
     }
@@ -157,24 +145,18 @@ int gm_video_create(char index, hal_vidconfig *config)
 
 int gm_video_destroy(char index)
 {
-    int ret;
-
     gm_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
-    if (ret = gm_lib.fnDestroyDevice(index))
-        return ret;
+    gm_lib.fnDestroyDevice(index);
 
     return EXIT_SUCCESS;
 }
 
 int gm_video_destroy_all(void)
 {
-    int ret;
-
     for (char i = 0; i < GM_VENC_CHN_NUM; i++)
         if (gm_state[i].enable)
-            if (ret = gm_video_destroy(i))
-                return ret;
+            gm_video_destroy(i);
 
     return EXIT_SUCCESS;
 }
@@ -185,7 +167,7 @@ int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata
     unsigned int length = 2 * 1024 * 1024;
     char *buffer = malloc(length);
 
-    GM_DECLARE(gm_lib, snap, "snapshot_t", gm_venc_snap);
+    GM_DECLARE(gm_lib, snap, gm_venc_snap, "snapshot_t");
     snap.bind = _gm_venc_fds[0].bind;
     snap.quality = quality;
     snap.buffer = buffer;
