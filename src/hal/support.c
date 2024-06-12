@@ -90,7 +90,7 @@ void hal_identify(void) {
                 return;
         }
     
-    if (!access("/proc/vcap300", 0)) {
+    if (!access("/dev/vpd", 0)) {
         plat = HAL_PLATFORM_GM;
         strcpy(series, "GM813x");
         if (file = fopen("/proc/pmu/chipver", "r")) {
