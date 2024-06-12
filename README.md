@@ -18,6 +18,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 
 | SoC Family              | Audio Stream | JPEG Snapshot | fMP4 Stream | RTSP Stream | Motion Detect | On-Screen Display* |
 |-------------------------|:------------:|:-------------:|:-----------:|:-----------:|:-------------:|:------------------:|
+| GM813x                  | ↻            | ↻            | ↻           | ↻           | ✗            | ↻                 |
 | Hi3516CV300[^1]         | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
 | Hi3516CV500[^2]         | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
 | Hi3516EV200[^3]         | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
@@ -25,12 +26,12 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | Hi3519V100[^5]          | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
 | Hi3519AV100             | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
 | Hi3559AV100             | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
+| T31 series              | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
 | infinity6[^6]           | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
 | infinity6b0[^7]         | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
 | infinity6e[^8]          | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
 | infinity6c[^9]          | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
 | infinity6f[^10]         | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
-| T31 series              | ↻            | ✔️           | ✔️          | ✔️          | ✗            | ✔️                |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 

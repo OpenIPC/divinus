@@ -85,8 +85,6 @@ void gm_pipeline_destroy(void)
     gm_lib.fnDestroyGroup(_gm_cap_grp);
 }
 
-
-
 int gm_video_create(char index, hal_vidconfig *config)
 {
     int ret;
@@ -209,7 +207,7 @@ abort:
 
 void *gm_video_thread(void)
 {
-    
+
 }
 
 void gm_system_deinit(void)
