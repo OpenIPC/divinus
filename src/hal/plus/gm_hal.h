@@ -38,6 +38,11 @@ enum {
     GM_ERR_NONEXISTENT_FD
 };
 
+enum {
+    GM_POLL_READ = 1,
+    GM_POLL_WRITE
+};
+
 typedef struct {
     void *handle;
 

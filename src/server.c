@@ -116,9 +116,8 @@ void send_mp4_to_client(unsigned char index, const void *p, char isH265) {
         for (char j = 0; j < pack->naluCnt; j++) {
 #ifdef DEBUG
             printf("NAL: %s received in packet %d\n", nal_type_to_str(pack->nalu[j].type), i);
-            printf("     starts at %p, ends at %p\n", pack_data + pack->nalu[j].offset, pack_data + pack->nalu[j].length);
+            printf("     starts at %p, ends at %p\n", pack_data + pack->nalu[j].offset, pack_data + pack->nalu[j].offset + pack->nalu[j].length);
 #endif
-
             if ((pack->nalu[j].type == NalUnitType_SPS || pack->nalu[j].type == NalUnitType_SPS_HEVC) 
                 && pack->nalu[j].length >= 4 && pack->nalu[j].length <= UINT16_MAX)
                 set_sps(pack_data + pack->nalu[j].offset, pack->nalu[j].length, isH265);

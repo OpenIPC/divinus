@@ -34,6 +34,7 @@ int gm_channel_bind(char index)
 
     _gm_venc_fds[index].bind = 
         (void*)gm_lib.fnBind(_gm_cap_grp, _gm_cap_dev, _gm_venc_dev[index]);
+    _gm_venc_fds[index].evType = GM_POLL_READ;
 
     if ((ret = gm_lib.fnRefreshGroup(_gm_cap_grp)) < 0)
         return ret;
@@ -46,6 +47,7 @@ int gm_channel_unbind(char index)
     int ret;
 
     gm_lib.fnUnbind((int)_gm_venc_fds[index].bind);
+    _gm_venc_fds[index].evType = 0;
 
     if ((ret = gm_lib.fnRefreshGroup(_gm_cap_grp)) < 0)
         return ret;
@@ -191,16 +193,18 @@ void *gm_video_thread(void)
 {
     int ret;
     gm_venc_strm stream[GM_VENC_CHN_NUM];
-    char *bsData = (char*)malloc(GM_VENC_BUF_SIZE);
+    memset(stream, 0, sizeof(stream));
 
-    while (bsData && keepRunning) {
-        ret = gm_lib.fnPollStream(_gm_venc_fds, GM_VENC_CHN_NUM, 500);
+    char *bsData = malloc(GM_VENC_BUF_SIZE);
+    if (!bsData) goto abort;
+
+    while (keepRunning) {
+        ret = gm_lib.fnPollStream(_gm_venc_fds, GM_VENC_CHN_NUM, 2000);
         if (ret == GM_ERR_TIMEOUT) {
             fprintf(stderr, "[gm_venc] Main stream loop timed out!\n");
             continue;
         }
 
-        memset(stream, 0, sizeof(stream));
         for (char i = 0; i < GM_VENC_CHN_NUM; i++) {
             if (_gm_venc_fds[i].event.type != GM_POLL_READ)
                 continue;
@@ -222,41 +226,44 @@ void *gm_video_thread(void)
             fprintf(stderr, "[gm_venc] Receiving the streams failed "
                 "with %#x!\n", ret);
         else for (char i = 0; i < GM_VENC_CHN_NUM; i++) {
-            if (stream[i].ret < 0 && stream[i].bind)
+            if (!stream[i].bind) continue;
+            if (stream[i].ret < 0)
                 fprintf(stderr, "[gm_venc] Failed to the receive bitstream on "
                     "channel %d with %#x!\n", i, stream[i].ret);
-            else if (!stream[i].ret) {
+            else if (!stream[i].ret && gm_venc_cb) {
+                gm_venc_pack *pack = &stream[i].pack;
                 hal_vidstream outStrm;
                 hal_vidpack outPack[1];
-                memset(outPack, 0, sizeof(outPack));
 
                 outStrm.count = 1;
-                outPack[0].data = stream[i].pack.bsData;
-                outPack[0].length = stream[i].pack.bsSize;
-                outPack[0].timestamp = stream[i].pack.timestamp;
+                outStrm.seq = 0;
+                outPack[0].data = pack->bsData;
+                outPack[0].length = pack->bsSize;
+                outPack[0].offset = 0;
+                outPack[0].timestamp = pack->timestamp;
 
-                if (stream[i].pack.isKeyFrame) {
-                    outPack[0].naluCnt = 3;
-                    outPack[0].nalu[0].length = outPack[0].nalu[1].offset = 
-                        stream[i].pack.sliceOff[1];
-                    outPack[0].nalu[1].length = outPack[0].nalu[2].offset = 
-                        stream[i].pack.sliceOff[2];
-                    outPack[0].nalu[2].length = stream[i].pack.bsSize - 
-                        stream[i].pack.sliceOff[2];
-                    outPack[0].nalu[0].type = 7;
-                    outPack[0].nalu[0].type = 8;
-                    outPack[0].nalu[0].type = 5;
-                } else {
-                    outPack[0].naluCnt = 1;
-                    outPack[0].nalu[0].length = stream[i].pack.bsSize;
-                    outPack[0].nalu[0].type = 1;
+                signed char n = 0;
+                for (unsigned int p = 0; p < pack->bsSize - 4; p++) {
+                    if (pack->bsData[p] || pack->bsData[p + 1] ||
+                        pack->bsData[p + 2] || pack->bsData[p + 3] != 1) continue;
+                    outPack[0].nalu[n].type = pack->bsData[p + 4] & 0x1F;
+                    outPack[0].nalu[n++].offset = p;
+                    if (n == (pack->isKeyFrame ? 3 : 1)) break;
                 }
+                outPack[0].naluCnt = n;
+                outPack[0].nalu[n].offset = pack->bsSize;
+                for (n = 0; n < outPack[0].naluCnt; n++)
+                    outPack[0].nalu[n].length = 
+                        outPack[0].nalu[n + 1].offset -
+                        outPack[0].nalu[n].offset;
 
-                (gm_venc_cb)(i, &outStrm);
+                outStrm.pack = outPack;
+                (*gm_venc_cb)(i, &outStrm);
             }
         }        
     }
-
+abort:
+    fprintf(stderr, "[gm_venc] Shutting down encoding thread...\n");
     free(bsData);
 }
 
@@ -274,6 +281,8 @@ int gm_system_init(void)
 
     if (ret = gm_lib.fnInit(GM_LIB_VER))
         return ret;
+
+    memset(_gm_venc_fds, 0, sizeof(_gm_venc_fds));
 
     return EXIT_SUCCESS;
 }

@@ -10,11 +10,6 @@
 #define GM_VENC_SNAP_HEIGHT_MAX 576
 #define GM_VENC_SNAP_WIDTH_MAX  720
 
-enum {
-    GM_POLL_READ = 1,
-    GM_POLL_WRITE
-};
-
 typedef enum {
     GM_VENC_CKSUM_NONE,
     GM_VENC_CKSUM_ANY_CRC = 0x101,
@@ -117,6 +112,14 @@ typedef struct {
     int reserved[6];
     int internal[28];
 } gm_venc_strm;
+
+typedef struct  {
+    int internal[8];
+    int multiSlice;
+    int frameOrField;
+    int grayscaleOn;
+    int reserved[5];
+} gm_venc_h264_adv;
 
 typedef struct {
     int internal[8];

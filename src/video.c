@@ -115,6 +115,7 @@ void set_grayscale(bool active) {
 int create_vpss_chn(char index, short width, short height, char framerate, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  return EXIT_SUCCESS;
         case HAL_PLATFORM_I6:  return i6_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_I6C: return i6c_channel_create(index, width, height,

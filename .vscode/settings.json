@@ -1,3 +1,21 @@
 {
-    "C_Cpp.dimInactiveRegions": false
+    "C_Cpp.dimInactiveRegions": false,
+    "files.associations": {
+        "complex": "c",
+        "any": "c",
+        "compare": "c",
+        "array": "c",
+        "ranges": "c",
+        "ratio": "c",
+        "scoped_allocator": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "charconv": "c",
+        "chrono": "c",
+        "functional": "c",
+        "memory_resource": "c",
+        "utility": "c",
+        "variant": "c",
+        "sysinfo.h": "c"
+    }
 }
