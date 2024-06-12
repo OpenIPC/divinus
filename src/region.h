@@ -20,8 +20,13 @@
 #include <ifaddrs.h>
 #include <linux/if_link.h>
 #include <pthread.h>
-#include <sys/sysinfo.h>
 #include <time.h>
+
+#ifdef __UCLIBC__
+#include <sys/sysinfo.h>
+#else
+#include <linux/sysinfo.h>
+#endif
 
 #define REGION_ERROR(x, ...) \
     do { \
