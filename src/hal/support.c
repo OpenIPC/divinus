@@ -89,6 +89,20 @@ void hal_identify(void) {
                 venc_thread = i6f_video_thread;
                 return;
         }
+    
+    if (!access("/proc/vcap300", 0)) {
+        plat = HAL_PLATFORM_GM;
+        strcpy(series, "GM813x");
+        if (file = fopen("/proc/pmu/chipver", "r")) {
+            fgets(line, 200, file);
+            sscanf(line, "%.4s", series + 2);
+            fclose(file);
+        }
+        chnCount = GM_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)gm_state;
+        venc_thread = gm_video_thread;
+        return;
+    }
 #endif
 
 #ifdef __mips__
@@ -120,13 +134,14 @@ void hal_identify(void) {
 #endif
 
 #ifdef __arm__
-    if (file = fopen("/proc/iomem", "r"))
+    if (file = fopen("/proc/iomem", "r")) {
         while (fgets(line, 200, file))
             if (strstr(line, "uart")) {
                 val = strtol(line, &endMark, 16);
                 break;
             }
-    fclose(file);
+        fclose(file);
+    }
 
     char v3series = 0;
 
@@ -139,6 +154,7 @@ void hal_identify(void) {
             break;
         case 0x12080000: val = 0x12050000; break;
         case 0x20080000: val = 0x20050000; break;
+
         default: return;
     }
 
