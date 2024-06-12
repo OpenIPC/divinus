@@ -95,7 +95,7 @@ void hal_identify(void) {
         strcpy(series, "GM813x");
         if (file = fopen("/proc/pmu/chipver", "r")) {
             fgets(line, 200, file);
-            sscanf(line, "%.4s", series + 2);
+            sscanf(line, "%4s", series + 2);
             fclose(file);
         }
         chnCount = GM_VENC_CHN_NUM;

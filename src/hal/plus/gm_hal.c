@@ -178,7 +178,7 @@ int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata
     snap.dest.width = MIN(width, GM_VENC_SNAP_WIDTH_MAX);
     snap.dest.height = MIN(height, GM_VENC_SNAP_HEIGHT_MAX);
 
-    if ((ret = gm_lib.fnSnapshot(&snap, 500)) <= 0)
+    if ((ret = gm_lib.fnSnapshot(&snap, 1000)) <= 0)
         goto abort;
 
     jpeg->data = buffer;

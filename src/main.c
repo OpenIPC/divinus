@@ -18,6 +18,7 @@ rtsp_handle rtspHandle;
 
 int main(int argc, char *argv[]) {
     hal_identify();
+
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:
@@ -73,7 +74,7 @@ int main(int argc, char *argv[]) {
 
     if (app_config.rtsp_enable) {
         rtsp_finish(rtspHandle);
-        printf("RTSP server has closed!\n");
+        fprintf(stderr, "RTSP server has closed!\n");
     }
 
     if (app_config.osd_enable)
@@ -86,6 +87,6 @@ int main(int argc, char *argv[]) {
 
     stop_server();
 
-    printf("Main thread is shutting down...\n");
+    fprintf(stderr, "Main thread is shutting down...\n");
     return EXIT_SUCCESS;
 }

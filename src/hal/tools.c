@@ -7,6 +7,13 @@ char *memstr(char *haystack, char *needle, int size, char needlesize)
 	return NULL;
 }
 
+unsigned int millis()
+{
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    return t.tv_sec * 1000 + (t.tv_usec + 500) / 1000;
+}
+
 const char *get_extension(const char *path) {
     const char *dot = strrchr(path, '.');
     if (!dot || dot == path)

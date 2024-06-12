@@ -6,8 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 char *memstr(char *haystack, char *needle, int size, char needlesize);
+unsigned int millis();
 
 const char *get_extension(const char *path);
 const char *get_mimetype(const char *path);
