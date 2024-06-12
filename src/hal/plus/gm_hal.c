@@ -8,9 +8,9 @@ hal_chnstate gm_state[GM_VENC_CHN_NUM] = {0};
 int (*gm_aud_cb)(hal_audframe*);
 int (*gm_venc_cb)(char, hal_vidstream*);
 
+gm_venc_fds _gm_venc_fds[GM_VENC_CHN_NUM];
 int _gm_cap_dev;
 int _gm_cap_grp;
-int _gm_venc_bind[GM_VENC_CHN_NUM];
 int _gm_venc_dev[GM_VENC_CHN_NUM];
 
 void gm_hal_deinit(void)
@@ -34,7 +34,7 @@ int gm_channel_bind(char index)
 
     if (ret = gm_lib.fnBind(_gm_cap_grp, _gm_cap_dev, _gm_venc_dev[index]))
         return ret;
-    _gm_venc_bind[index] = ret;
+    _gm_venc_fds[index].bind = (void*)ret;
 
     if (ret = gm_lib.fnRefreshGroup(_gm_cap_grp))
         return ret;
@@ -46,7 +46,7 @@ int gm_channel_unbind(char index)
 {
     int ret;
 
-    if (ret = gm_lib.fnUnbind(_gm_venc_bind[index]))
+    if (ret = gm_lib.fnUnbind((int)_gm_venc_fds[index].bind))
         return ret;
 
     if (ret = gm_lib.fnRefreshGroup(_gm_cap_grp))
@@ -186,7 +186,7 @@ int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata
     char *buffer = malloc(length);
 
     GM_DECLARE(gm_lib, snap, gm_venc_snap);
-    snap.bind = (void*)_gm_venc_bind[0];
+    snap.bind = _gm_venc_fds[0].bind;
     snap.quality = quality;
     snap.buffer = buffer;
     snap.length = length;
@@ -207,7 +207,75 @@ abort:
 
 void *gm_video_thread(void)
 {
+    int ret;
+    gm_venc_strm stream[GM_VENC_CHN_NUM];
+    char *bsData = (char*)malloc(GM_VENC_BUF_SIZE);
 
+    while (bsData && keepRunning) {
+        ret = gm_lib.fnPollStream(_gm_venc_fds, GM_VENC_CHN_NUM, 500);
+        if (ret == GM_ERR_TIMEOUT) {
+            fprintf(stderr, "[gm_venc] Main stream loop timed out!\n");
+            continue;
+        }
+
+        memset(stream, 0, sizeof(stream));
+        for (char i = 0; i < GM_VENC_CHN_NUM; i++) {
+            if (_gm_venc_fds[i].event.type != GM_POLL_READ)
+                continue;
+            if (_gm_venc_fds[i].event.bsLength > GM_VENC_BUF_SIZE) {
+                fprintf(stderr, "[gm_venc] Bitstream buffer needs %d bytes "
+                    "more, dropping the upcoming data!\n",
+                    _gm_venc_fds[i].event.bsLength - GM_VENC_BUF_SIZE);
+                continue;
+            }
+
+            stream[i].bind = _gm_venc_fds[i].bind;
+            stream[i].pack.bsData = bsData;
+            stream[i].pack.bsLength = GM_VENC_BUF_SIZE;
+            stream[i].pack.mdData = 0;
+            stream[i].pack.mdLength = 0;
+        }
+
+        if ((ret = gm_lib.fnReceiveStream(stream, GM_VENC_CHN_NUM)) < 0)
+            fprintf(stderr, "[gm_venc] Receiving the streams failed "
+                "with %#x!\n", ret);
+        else for (char i = 0; i < GM_VENC_CHN_NUM; i++) {
+            if (stream[i].ret < 0 && stream[i].bind)
+                fprintf(stderr, "[gm_venc] Failed to the receive bitstream on "
+                    "channel %d with %#x!\n", i, stream[i].ret);
+            else if (!stream[i].ret) {
+                hal_vidstream outStrm;
+                hal_vidpack outPack[1];
+                memset(outPack, 0, sizeof(outPack));
+
+                outStrm.count = 1;
+                outPack[0].data = stream[i].pack.bsData;
+                outPack[0].length = stream[i].pack.bsSize;
+                outPack[0].timestamp = stream[i].pack.timestamp;
+
+                if (stream[i].pack.isKeyFrame) {
+                    outPack[0].naluCnt = 3;
+                    outPack[0].nalu[0].length = outPack[0].nalu[1].offset = 
+                        stream[i].pack.sliceOff[1];
+                    outPack[0].nalu[1].length = outPack[0].nalu[2].offset = 
+                        stream[i].pack.sliceOff[2];
+                    outPack[0].nalu[2].length = stream[i].pack.bsSize - 
+                        stream[i].pack.sliceOff[2];
+                    outPack[0].nalu[0].type = 7;
+                    outPack[0].nalu[0].type = 8;
+                    outPack[0].nalu[0].type = 5;
+                } else {
+                    outPack[0].naluCnt = 1;
+                    outPack[0].nalu[0].length = stream[i].pack.bsSize;
+                    outPack[0].nalu[0].type = 1;
+                }
+
+                (gm_venc_cb)(i, &outStrm);
+            }
+        }        
+    }
+
+    free(bsData);
 }
 
 void gm_system_deinit(void)

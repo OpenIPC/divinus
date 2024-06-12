@@ -31,6 +31,13 @@ void *gm_video_thread(void);
 void gm_system_deinit(void);
 int gm_system_init(void);
 
+enum {
+    GM_ERR_TIMEOUT = -4,
+    GM_ERR_MDBUF_TOOSMALL,
+    GM_ERR_BSBUF_TOOSMALL,
+    GM_ERR_NONEXISTENT_FD
+};
+
 typedef struct {
     void *handle;
 
@@ -51,6 +58,9 @@ typedef struct {
 
     int (*fnBind)(int group, int source, int dest);
     int (*fnUnbind)(int group);
+
+    int (*fnPollStream)(gm_venc_fds *fds, int count, int millis);
+    int (*fnReceiveStream)(gm_venc_strm *strms, int count);
 
     int (*fnSnapshot)(gm_venc_snap *snapshot, int millis);
 } gm_lib_impl;
@@ -124,6 +134,18 @@ static int gm_lib_load(gm_lib_impl *aio_lib) {
     if (!(aio_lib->fnUnbind = (int (*)(int group))
         dlsym(aio_lib->handle, "gm_unbind"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_unbind!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(aio_lib->fnPollStream = (int (*)(gm_venc_fds *fds, int count, int millis))
+        dlsym(aio_lib->handle, "gm_poll"))) {
+        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_poll!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(aio_lib->fnReceiveStream = (int (*)(gm_venc_strm *strms, int count))
+        dlsym(aio_lib->handle, "gm_recv_multi_bitstreams"))) {
+        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_recv_multi_bitstreams!\n");
         return EXIT_FAILURE;
     }
 

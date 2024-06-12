@@ -2,11 +2,18 @@
 
 #include "gm_common.h"
 
+// 1MB should be plenty for an IDR frame on this platform
+#define GM_VENC_BUF_SIZE (1 * 1024 * 1024)
 // Considering the encoder modules we use (H.264 and JPEG)
 #define GM_VENC_CHN_NUM 2
 
 #define GM_VENC_SNAP_HEIGHT_MAX 576
 #define GM_VENC_SNAP_WIDTH_MAX  720
+
+enum {
+    GM_POLL_READ = 1,
+    GM_POLL_WRITE
+};
 
 typedef enum {
     GM_VENC_CKSUM_NONE,
@@ -52,6 +59,20 @@ typedef enum {
 } gm_venc_ratemode;
 
 typedef struct {
+    unsigned int type;
+    unsigned int bsLength;
+    unsigned int mvLength;
+    unsigned int isKeyFrame;
+} gm_venc_evt;
+
+typedef struct {
+    void *bind;
+    unsigned int evType;
+    gm_venc_evt event;
+    int internal[4];
+} gm_venc_fds;
+
+typedef struct {
     gm_venc_ratemode mode;
     int gop;
     int initQual;
@@ -72,6 +93,30 @@ typedef struct {
     unsigned int extra;
     int reserved[2];
 } gm_venc_snap;
+
+typedef struct {
+    char *bsData;
+    unsigned int bsLength;
+    char *mdData;
+    unsigned int mdLength;
+    unsigned int bsSize;
+    unsigned int mdSize;
+    int isKeyFrame;
+    unsigned int timestamp;
+    unsigned int bsChanged;
+    unsigned int checksum;
+    int isRefFrame;
+    unsigned int sliceOff[3];
+    int reserved[5];
+} gm_venc_pack;
+
+typedef struct {
+    void *bind;
+    gm_venc_pack pack;
+    int ret;
+    int reserved[6];
+    int internal[28];
+} gm_venc_strm;
 
 typedef struct {
     int internal[8];
