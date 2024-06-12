@@ -166,10 +166,11 @@ int gm_video_destroy_all(void)
 int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata *jpeg)
 {
     int ret;
-    unsigned int length = 2 * 1024 * 1024;
+    unsigned int length = 1 * 1024 * 1024;
     char *buffer = malloc(length);
 
-    GM_DECLARE(gm_lib, snap, gm_venc_snap, "snapshot_t");
+    GM_DECLARE(gm_lib, snap, gm_venc_snap, "snapshot");
+    int size = sizeof(gm_venc_snap);
     snap.bind = _gm_venc_fds[0].bind;
     snap.quality = quality;
     snap.buffer = buffer;

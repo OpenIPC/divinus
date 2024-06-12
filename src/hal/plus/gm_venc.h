@@ -84,9 +84,9 @@ typedef struct {
     char *buffer;
     unsigned int length;
     gm_common_dim dest;
-    // Value must be 0x2694 for JPEG on cap0 w/ scaling
-    unsigned int extra;
-    int reserved[2];
+    int reserved1[3];
+    unsigned int timestamp;
+    int reserved2[2];
 } gm_venc_snap;
 
 typedef struct {

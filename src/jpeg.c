@@ -24,14 +24,12 @@ pthread_mutex_t jpeg_mutex;
 int jpeg_init() {  
     int ret;
 
-    if (plat == HAL_PLATFORM_GM)
-        return EXIT_SUCCESS;
-
     pthread_mutex_lock(&jpeg_mutex);
 
     switch (plat) {
+        case HAL_PLATFORM_GM: goto active;
         case HAL_PLATFORM_T31:
-            if (app_config.mjpeg_enable) goto mjpeg_active;
+            if (app_config.mjpeg_enable) goto active;
             break;
     }
 
@@ -77,7 +75,7 @@ int jpeg_init() {
         }
     }
 
-mjpeg_active:
+active:
     jpeg_module_init = true;
     pthread_mutex_unlock(&jpeg_mutex);
     printf(tag "Module initialization completed!\n");
@@ -86,12 +84,11 @@ mjpeg_active:
 }
 
 void jpeg_deinit() {
-    if (plat == HAL_PLATFORM_GM) return;
-
     pthread_mutex_lock(&jpeg_mutex);
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  goto active;
         case HAL_PLATFORM_I6:  i6_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy(jpeg_index, 1); break;
         case HAL_PLATFORM_I6F: i6f_video_destroy(jpeg_index, 1); break;
@@ -99,7 +96,7 @@ void jpeg_deinit() {
         case HAL_PLATFORM_V4:  v4_video_destroy(jpeg_index); break;
 #elif defined(__mips__)
         case HAL_PLATFORM_T31:
-            if (app_config.mjpeg_enable) goto mjpeg_active;
+            if (app_config.mjpeg_enable) goto active;
             t31_video_destroy(jpeg_index);
             break;
 #endif
@@ -109,7 +106,7 @@ void jpeg_deinit() {
     }
     disable_venc_chn(jpeg_index, 1);
 
-mjpeg_active:
+active:
     jpeg_module_init = false;
     pthread_mutex_unlock(&jpeg_mutex);
 }

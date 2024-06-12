@@ -13,8 +13,8 @@ int watchdog_start(int timeout) {
 
     while (*path) {
         if (access(*path++, F_OK)) continue;
-        if ((fd = open(*path, O_WRONLY)) == -1)
-            WATCHDOG_ERROR("%s could not be opened!\n", *path, fd--);
+        if ((fd = open(*(path - 1), O_WRONLY)) == -1)
+            WATCHDOG_ERROR("%s could not be opened!\n", *(path - 1), fd--);
         break;
     } if (!fd) WATCHDOG_ERROR("No matching device has been found!\n");
 
