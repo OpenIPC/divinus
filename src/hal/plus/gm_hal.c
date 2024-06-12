@@ -188,7 +188,7 @@ int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata
     char *buffer = malloc(length);
 
     GM_DECLARE(gm_lib, snap, gm_venc_snap);
-    snap.bind = _gm_venc_bind[0];
+    snap.bind = (void*)_gm_venc_bind[0];
     snap.quality = quality;
     snap.buffer = buffer;
     snap.length = length;
@@ -205,6 +205,11 @@ int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata
 abort:
     free(buffer);
     GM_ERROR("Taking a snapshot failed with %#x!\n", ret);
+}
+
+void *gm_video_thread(void)
+{
+    
 }
 
 void gm_system_deinit(void)

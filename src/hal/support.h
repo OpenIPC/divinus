@@ -1,5 +1,6 @@
 #include "types.h"
 #if defined(__arm__)
+#include "plus/gm_hal.h"
 #include "hisi/v3_hal.h"
 #include "hisi/v4_hal.h"
 #include "sstar/i6_hal.h"
@@ -25,6 +26,9 @@ extern hal_platform plat;
 extern char series[16];
 
 #if defined(__arm__)
+extern void *gm_video_thread(void);
+extern hal_chnstate gm_state[GM_VENC_CHN_NUM];
+
 extern void *v3_video_thread(void);
 extern hal_chnstate v3_state[V4_VENC_CHN_NUM];
 

@@ -20,6 +20,7 @@ int gm_video_create(char index, hal_vidconfig *config);
 int gm_video_destroy(char index);
 int gm_video_destroy_all(void);
 int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata *jpeg);
+void *gm_video_thread(void);
 
 void gm_system_deinit(void);
 int gm_system_init(void);
