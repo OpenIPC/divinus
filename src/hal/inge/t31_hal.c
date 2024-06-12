@@ -35,17 +35,17 @@ int t31_hal_init(void)
     int ret;
 
     if (ret = t31_sys_load(&t31_sys))
-    return ret;
+        return ret;
     if (ret = t31_aud_load(&t31_aud))
-    return ret;
+        return ret;
     if (ret = t31_fs_load(&t31_fs))
-    return ret;
+        return ret;
     if (ret = t31_isp_load(&t31_isp))
-    return ret;
+        return ret;
     if (ret = t31_osd_load(&t31_osd))
-    return ret;
+        return ret;
     if (ret = t31_venc_load(&t31_venc))
-    return ret;
+        return ret;
 
     return EXIT_SUCCESS;
 }

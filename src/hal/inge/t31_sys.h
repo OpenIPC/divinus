@@ -32,7 +32,6 @@ typedef struct {
     int (*fnExit)(void);
     int (*fnGetChipName)(const char *chip);
     int (*fnGetVersion)(t31_sys_ver *version);
-    
     int (*fnInit)(void);
 
     int (*fnBind)(t31_sys_bind *source, t31_sys_bind *dest);
