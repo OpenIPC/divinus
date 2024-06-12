@@ -19,8 +19,8 @@
 
 #include <ifaddrs.h>
 #include <linux/if_link.h>
-#include <linux/sysinfo.h>
 #include <pthread.h>
+#include <sys/sysinfo.h>
 #include <time.h>
 
 #define REGION_ERROR(x, ...) \

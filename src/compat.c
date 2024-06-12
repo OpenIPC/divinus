@@ -4,6 +4,10 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#ifndef __UCLIBC__
+void __stdin(void) {}
+#endif
+
 void __assert(void) {}
 void backtrace(void) {}
 void backtrace_symbols(void) {}
@@ -12,7 +16,6 @@ void __ctype_tolower(void) {}
 void _MI_PRINT_GetDebugLevel(void) {}
 void __pthread_register_cancel(void) {}
 void __pthread_unregister_cancel(void) {}
-void __stdin(void) {}
 void _stdlib_mb_cur_max(void) {}
 
 float __expf_finite(float x) { return expf(x); }
