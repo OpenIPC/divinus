@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Unsupported chip family! Quitting...\n");
             return EXIT_FAILURE;
     }
-    fprintf(stderr, "Chip series: %s\n", series);
+    fprintf(stderr, "Chip ID: %s\n", chipId);
 
     if (parse_app_config() != CONFIG_OK) {
         fprintf(stderr, "Can't load app config 'divinus.yaml'\n");

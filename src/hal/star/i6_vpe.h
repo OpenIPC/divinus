@@ -30,12 +30,55 @@ typedef struct {
 } i6_vpe_iqver;
 
 typedef struct {
+    int mode;
+    char bypassOn;
+    char proj3x3On;
+    int proj3x3[9];
+    unsigned short userSliceNum;
+    unsigned int focalLengthX;
+    unsigned int focalLengthY;
+    void *configAddr;
+    unsigned int configSize;
+    int mapType;
+    union {
+        struct {
+            void *xMapAddr, *yMapAddr;
+            unsigned int xMapSize, yMapSize;
+        } dispInfo;
+        struct {
+            void *calibPolyBinAddr;
+            unsigned int calibPolyBinSize;
+        } calibInfo;
+    };
+    char lensAdjOn;
+} i6e_vpe_ldc;
+
+typedef struct {
     i6_common_dim capt;
     i6_common_pixfmt pixFmt;
     i6_common_hdr hdr;
     i6_vpe_sens sensor;
     char noiseRedOn;
     char edgeOn;
+    char edgeSmoothOn;
+    char contrastOn;
+    char invertOn;
+    char rotateOn;
+    i6_vpe_mode mode;
+    i6_vpe_iqver iqparam;
+    i6e_vpe_ldc lensAdj;
+    char lensAdjOn;
+    unsigned int chnPort;
+} i6e_vpe_chn;
+
+typedef struct {
+    i6_common_dim capt;
+    i6_common_pixfmt pixFmt;
+    i6_common_hdr hdr;
+    i6_vpe_sens sensor;
+    char noiseRedOn;
+    char edgeOn;
+    char edgeSmoothOn;
     char contrastOn;
     char invertOn;
     char rotateOn;

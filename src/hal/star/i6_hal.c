@@ -282,7 +282,19 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
     if (ret = i6_vif.fnEnablePort(_i6_vif_chn, _i6_vif_port))
         return ret;
 
-    {
+    if (series == 0xF1) {
+        i6e_vpe_chn channel;
+        memset(&channel, 0, sizeof(channel));
+        channel.capt.height = _i6_snr_plane.capt.height;
+        channel.capt.width = _i6_snr_plane.capt.width;
+        channel.pixFmt = (i6_common_pixfmt)(_i6_snr_plane.bayer > I6_BAYER_END ? 
+            _i6_snr_plane.pixFmt : (I6_PIXFMT_RGB_BAYER + _i6_snr_plane.precision * I6_BAYER_END + _i6_snr_plane.bayer));
+        channel.hdr = I6_HDR_OFF;
+        channel.sensor = (i6_vpe_sens)(_i6_snr_index + 1);
+        channel.mode = I6_VPE_MODE_REALTIME;
+        if (ret = i6_vpe.fnCreateChannel(_i6_vpe_chn, (i6_vpe_chn*)&channel))
+            return ret;
+    } else {
         i6_vpe_chn channel;
         memset(&channel, 0, sizeof(channel));
         channel.capt.height = _i6_snr_plane.capt.height;

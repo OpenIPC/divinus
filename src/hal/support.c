@@ -5,8 +5,9 @@ void *venc_thread = NULL;
 
 char chnCount = 0;
 hal_chnstate *chnState = NULL;
+char chipId[16] = "unknown";
 hal_platform plat = HAL_PLATFORM_UNK;
-char series[16] = "unknown";
+int series = 0;
 
 bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
     static int mem_fd;
@@ -61,13 +62,13 @@ void hal_identify(void) {
 
 #ifdef __arm__
     if (!access("/proc/mi_modules", 0) && 
-        hal_registry(0x1F003C00, &val, OP_READ))
-        switch (val) {
+        hal_registry(0x1F003C00, &series, OP_READ))
+        switch (series) {
             case 0xEF: // Macaron (6)
             case 0xF1: // Pudding (6E)
             case 0xF2: // Ispahan (6B0)
                 plat = HAL_PLATFORM_I6;
-                strcpy(series, val == 0xEF ? "infinity6" :
+                strcpy(chipId, val == 0xEF ? "infinity6" :
                     val == 0xF1 ? "infinity6e" :
                     val == 0xF2 ? "infinity6b0" : "unknown");
                 chnCount = I6_VENC_CHN_NUM;
@@ -76,14 +77,14 @@ void hal_identify(void) {
                 return;
             case 0xF9:
                 plat = HAL_PLATFORM_I6C;
-                strcpy(series, "infinity6c");
+                strcpy(chipId, "infinity6c");
                 chnCount = I6C_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6c_state;
                 venc_thread = i6c_video_thread;
                 return;
             case 0xFB:
                 plat = HAL_PLATFORM_I6F;
-                strcpy(series, "infinity6f");
+                strcpy(chipId, "infinity6f");
                 chnCount = I6F_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6f_state;
                 venc_thread = i6f_video_thread;
@@ -92,10 +93,10 @@ void hal_identify(void) {
     
     if (!access("/dev/vpd", 0)) {
         plat = HAL_PLATFORM_GM;
-        strcpy(series, "GM813x");
+        strcpy(chipId, "GM813x");
         if (file = fopen("/proc/pmu/chipver", "r")) {
             fgets(line, 200, file);
-            sscanf(line, "%4s", series + 2);
+            sscanf(line, "%4s", chipId + 2);
             fclose(file);
         }
         chnCount = GM_VENC_CHN_NUM;
@@ -115,15 +116,15 @@ void hal_identify(void) {
             case 0x31:
                 plat = HAL_PLATFORM_T31;
                 switch (type >> 16) {
-                    case 0x2222: sprintf(series, "T31X");  break;
-                    case 0x3333: sprintf(series, "T31L");  break;
-                    case 0x4444: sprintf(series, "T31A");  break;
-                    case 0x5555: sprintf(series, "T31ZL"); break;
-                    case 0x6666: sprintf(series, "T31ZX"); break;
-                    case 0xcccc: sprintf(series, "T31AL"); break;
-                    case 0xdddd: sprintf(series, "T31ZC"); break;
-                    case 0xeeee: sprintf(series, "T31LC"); break;
-                    default:     sprintf(series, "T31N");  break;
+                    case 0x2222: sprintf(chipId, "T31X");  break;
+                    case 0x3333: sprintf(chipId, "T31L");  break;
+                    case 0x4444: sprintf(chipId, "T31A");  break;
+                    case 0x5555: sprintf(chipId, "T31ZL"); break;
+                    case 0x6666: sprintf(chipId, "T31ZX"); break;
+                    case 0xcccc: sprintf(chipId, "T31AL"); break;
+                    case 0xdddd: sprintf(chipId, "T31ZC"); break;
+                    case 0xeeee: sprintf(chipId, "T31LC"); break;
+                    default:     sprintf(chipId, "T31N");  break;
                 }
                 chnCount = T31_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)t31_state;
@@ -165,16 +166,16 @@ void hal_identify(void) {
         val |= (SCSYSID[i] & 0xFF) << i * 8;
     }
 
-    sprintf(series, "%s%X", 
+    sprintf(chipId, "%s%X", 
         ((val >> 28) == 0x7) ? "GK" : "Hi", val);
-    if (series[6] == '0') {
-        series[6] = 'V';
+    if (chipId[6] == '0') {
+        chipId[6] = 'V';
     } else {
-        series[8] = series[7];
-        series[7] = 'V';
-        series[9] = series[8];
-        series[10] = series[9];
-        series[11] = '\0';
+        chipId[8] = chipId[7];
+        chipId[7] = 'V';
+        chipId[9] = chipId[8];
+        chipId[10] = chipId[9];
+        chipId[11] = '\0';
     }
 
     if (v3series) {

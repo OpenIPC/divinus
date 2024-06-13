@@ -3,9 +3,9 @@
 #include "plus/gm_hal.h"
 #include "hisi/v3_hal.h"
 #include "hisi/v4_hal.h"
-#include "sstar/i6_hal.h"
-#include "sstar/i6c_hal.h"
-#include "sstar/i6f_hal.h"
+#include "star/i6_hal.h"
+#include "star/i6c_hal.h"
+#include "star/i6f_hal.h"
 #elif defined(__mips__)
 #include "inge/t31_hal.h"
 #endif
@@ -22,8 +22,10 @@ extern void *venc_thread;
 
 extern char chnCount;
 extern hal_chnstate *chnState;
+
+extern char chipId[16];
 extern hal_platform plat;
-extern char series[16];
+extern int series;
 
 #if defined(__arm__)
 extern void *gm_video_thread(void);

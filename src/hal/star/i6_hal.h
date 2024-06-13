@@ -10,6 +10,8 @@
 #include "i6_vif.h"
 #include "i6_vpe.h"
 
+#include "../support.h"
+
 extern char keepRunning;
 
 extern int (*i6_aud_cb)(hal_audframe*);
