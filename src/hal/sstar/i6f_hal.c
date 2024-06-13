@@ -116,10 +116,11 @@ void *i6f_audio_thread(void)
     i6f_aud_efrm echoFrame;
 
     while (keepRunning) {
-        if ((ret = i6f_aud.fnGetFrame(_i6f_aud_dev, _i6f_aud_chn, 
-            &frame, &echoFrame, 100)) & 0xFF == 0xD) {
-            fprintf(stderr, "[i6f_aud] Getting the frame failed"
-                " with %#x!\n", ret);
+        ret = i6f_aud.fnGetFrame(_i6f_aud_dev, _i6f_aud_chn, 
+            &frame, &echoFrame, 100);
+        if (ret && ret == 0xA004200E) {
+            fprintf(stderr, "[i6f_aud] Getting the frame failed "
+                "with %#x!\n", ret);
             break;
         } else continue;
 
@@ -875,9 +876,9 @@ void *i6f_video_thread(void)
                                 case HAL_VIDCODEC_H264:
                                     for (char k = 0; k < outPack[j].naluCnt; k++) {
                                         outPack[j].nalu[k].length =
-                                            pack->packetInfo[k].length - 4;
+                                            pack->packetInfo[k].length;
                                         outPack[j].nalu[k].offset =
-                                            pack->packetInfo[k].offset + 4;
+                                            pack->packetInfo[k].offset;
                                         outPack[j].nalu[k].type =
                                             pack->packetInfo[k].packType.h264Nalu;
                                     }
@@ -885,9 +886,9 @@ void *i6f_video_thread(void)
                                 case HAL_VIDCODEC_H265:
                                     for (char k = 0; k < outPack[j].naluCnt; k++) {
                                         outPack[j].nalu[k].length =
-                                            pack->packetInfo[k].length - 4;
+                                            pack->packetInfo[k].length;
                                         outPack[j].nalu[k].offset =
-                                            pack->packetInfo[k].offset + 4;
+                                            pack->packetInfo[k].offset;
                                         outPack[j].nalu[k].type =
                                             pack->packetInfo[k].packType.h265Nalu;
                                     }

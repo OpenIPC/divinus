@@ -120,16 +120,16 @@ void send_mp4_to_client(unsigned char index, const void *p, char isH265) {
 #endif
             if ((pack->nalu[j].type == NalUnitType_SPS || pack->nalu[j].type == NalUnitType_SPS_HEVC) 
                 && pack->nalu[j].length >= 4 && pack->nalu[j].length <= UINT16_MAX)
-                set_sps(pack_data + pack->nalu[j].offset, pack->nalu[j].length, isH265);
+                set_sps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
             else if ((pack->nalu[j].type == NalUnitType_PPS || pack->nalu[j].type == NalUnitType_PPS_HEVC)
                 && pack->nalu[j].length <= UINT16_MAX)
-                set_pps(pack_data + pack->nalu[j].offset, pack->nalu[j].length, isH265);
+                set_pps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
             else if (pack->nalu[j].type == NalUnitType_VPS_HEVC && pack->nalu[j].length <= UINT16_MAX)
-                set_vps(pack_data + pack->nalu[j].offset, pack->nalu[j].length);
+                set_vps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4);
             else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux)
-                set_slice(pack_data + pack->nalu[j].offset, pack->nalu[j].length, 1);
+                set_slice(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, 1);
             else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr)
-                set_slice(pack_data + pack->nalu[j].offset, pack->nalu[j].length, 0);
+                set_slice(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, 0);
         }
 
         static enum BufError err;
