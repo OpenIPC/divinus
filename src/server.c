@@ -754,9 +754,9 @@ void *server_thread(void *vargp) {
                 }
                 char mode[5] = "\0";
                 switch (app_config.mjpeg_mode) {
-                    case HAL_VIDMODE_CBR: strcpy(mode, "CBR");
-                    case HAL_VIDMODE_VBR: strcpy(mode, "VBR");
-                    case HAL_VIDMODE_QP: strcpy(mode, "QP");
+                    case HAL_VIDMODE_CBR: strcpy(mode, "CBR"); break;
+                    case HAL_VIDMODE_VBR: strcpy(mode, "VBR"); break;
+                    case HAL_VIDMODE_QP: strcpy(mode, "QP"); break;
                 }
                 respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
@@ -839,16 +839,16 @@ void *server_thread(void *vargp) {
                 if (app_config.mp4_codecH265)
                     strcpy(h265, "true");
                 switch (app_config.mp4_mode) {
-                    case HAL_VIDMODE_CBR: strcpy(mode, "CBR");
-                    case HAL_VIDMODE_VBR: strcpy(mode, "VBR");
-                    case HAL_VIDMODE_QP: strcpy(mode, "QP");
-                    case HAL_VIDMODE_ABR: strcpy(mode, "ABR");
-                    case HAL_VIDMODE_AVBR: strcpy(mode, "AVBR");
+                    case HAL_VIDMODE_CBR: strcpy(mode, "CBR"); break;
+                    case HAL_VIDMODE_VBR: strcpy(mode, "VBR"); break;
+                    case HAL_VIDMODE_QP: strcpy(mode, "QP"); break;
+                    case HAL_VIDMODE_ABR: strcpy(mode, "ABR"); break;
+                    case HAL_VIDMODE_AVBR: strcpy(mode, "AVBR"); break;
                 }
                 switch (app_config.mp4_profile) {
-                    case HAL_VIDPROFILE_BASELINE: strcpy(profile, "BP");
-                    case HAL_VIDPROFILE_MAIN: strcpy(profile, "MP");
-                    case HAL_VIDPROFILE_HIGH: strcpy(profile, "HP");
+                    case HAL_VIDPROFILE_BASELINE: strcpy(profile, "BP"); break;
+                    case HAL_VIDPROFILE_MAIN: strcpy(profile, "MP"); break;
+                    case HAL_VIDPROFILE_HIGH: strcpy(profile, "HP"); break;
                 }
                 respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
