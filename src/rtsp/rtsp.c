@@ -273,7 +273,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
                 "a=tool:libavformat 52.73.0\r\n"
                 "m=video 0 RTP/AVP 96\r\n"
                 "a=rtpmap:96 H264/90000\r\n"
-                "a=control:streamid=0\r\n"
+                "a=control:stream=0\r\n"
                 "a=fmtp:96 packetization-mode=1;"
                 " profile-level-id=%s;"
                 " sprop-parameter-sets=%s,%s;\r\n", 
@@ -291,7 +291,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
                 "m=video 0 RTP/AVP 96\r\n"
                 "a=rtpmap:96 H264/90000\r\n"
                 "a=fmtp:96 packetization-mode=1\r\n"
-                "a=control:streamid=0\r\n", __RTSP_TCP_BUF_SIZE - 1);
+                "a=control:stream=0\r\n", __RTSP_TCP_BUF_SIZE - 1);
     }
 
     fprintf(p->fp_tcp_write, "RTSP/1.0 200 OK\r\n"
