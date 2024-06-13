@@ -535,34 +535,30 @@ void *server_thread(void *vargp) {
                               "11\r\nConnection: close\r\n\r\nClosing...";
             send_to_fd(
                 client_fd, response2,
-                sizeof(response2) - 1); // zero ending string!
+                sizeof(response2) - 1);
             close_socket_fd(client_fd);
             keepRunning = 0;
             break;
         }
 
-        // send JPEG html page
         if (equals(uri, "/image.html") &&
             app_config.jpeg_enable) {
             send_image_html(client_fd);
             continue;
         }
-        // send MJPEG html page
         if (equals(uri, "/mjpeg.html") &&
             app_config.mjpeg_enable) {
             send_mjpeg_html(client_fd);
             continue;
         }
-        // send MP4 html page
         if (equals(uri, "/video.html") &&
             app_config.mp4_enable) {
             send_video_html(client_fd);
             continue;
         }
 
-        // if h26x stream is requested add client_fd socket to client_fds array
-        // and send h26x stream with http_thread
-        if (equals(uri, "/video.264") || equals(uri, "/video.265")) {
+        if ((!app_config.mp4_codecH265 && equals(uri, "/video.264")) ||
+            (app_config.mp4_codecH265 && equals(uri, "/video.265"))) {
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Type: "
                         "application/octet-stream\r\nTransfer-Encoding: "
@@ -598,8 +594,6 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        // If the MJPEG stream is requested add client_fd socket to client_fds array
-        // and send it with the HTTP thread
         if (app_config.mjpeg_enable && equals(uri, "/mjpeg")) {
             int respLen = sprintf(
                 response, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nPragma: "
@@ -781,7 +775,7 @@ void *server_thread(void *vargp) {
         static char response2[] = "HTTP/1.1 404 Not Found\r\nContent-Length: "
                                  "11\r\nConnection: close\r\n\r\n";
         send_to_fd(
-            client_fd, response2, sizeof(response2) - 1); // zero ending string!
+            client_fd, response2, sizeof(response2) - 1);
         close_socket_fd(client_fd);
     }
 

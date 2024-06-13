@@ -55,7 +55,7 @@ enum ConfigError parse_app_config(void) {
     enum ConfigError err;
     find_sections(&ini);
 
-    if (plat == HAL_PLATFORM_V3 || plat == HAL_PLATFORM_V4) {
+    if (plat != HAL_PLATFORM_GM || plat != HAL_PLATFORM_T31) {
         err = parse_param_value(
             &ini, "system", "sensor_config", app_config.sensor_config);
         if (err != CONFIG_OK)
