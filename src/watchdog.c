@@ -8,7 +8,7 @@ void watchdog_reset(void) {
 }
 
 int watchdog_start(int timeout) {
-    char* paths[] = {"/dev/watchdog", "/dev/watchdog0"};
+    char* paths[] = {"/dev/watchdog0", "/dev/watchdog"};
     char **path = paths;
 
     while (*path) {
