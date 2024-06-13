@@ -11,6 +11,7 @@
 
 #define starts_with(a, b) !strncmp(a, b, strlen(b))
 #define equals(a, b) !strcmp(a, b)
+#define equals_case(a, b) !strcasecmp(a, b)
 #define ends_with(a, b)      \
     size_t alen = strlen(a); \
     size_t blen = strlen(b); \

@@ -140,8 +140,7 @@ enum ConfigError parse_app_config(void) {
             const char *possible_values[] = {"H.264", "H.265", "H264", "H265", "AVC", "HEVC"};
             const int count = sizeof(possible_values) / sizeof(const char *);
             int val = 0;
-            parse_enum(
-                &ini, "mp4", "codec", (void *)&val,
+            parse_enum(&ini, "mp4", "codec", (void *)&val,
                 possible_values, count, 0);
             if (val % 2)
                 app_config.mp4_codecH265 = true;
@@ -152,8 +151,7 @@ enum ConfigError parse_app_config(void) {
             const char *possible_values[] = {"CBR", "VBR", "QP", "ABR", "AVBR"};
             const int count = sizeof(possible_values) / sizeof(const char *);
             int val = 0;
-            parse_enum(
-                &ini, "mp4", "mode", (void *)&val,
+            parse_enum(&ini, "mp4", "mode", (void *)&val,
                 possible_values, count, 0);
             app_config.mp4_mode = val;
         }
@@ -168,7 +166,18 @@ enum ConfigError parse_app_config(void) {
         err = parse_int(&ini, "mp4", "fps", 1, INT_MAX, &app_config.mp4_fps);
         if (err != CONFIG_OK)
             goto RET_ERR;
-
+        {
+            const char *possible_values[] = {"BP", "MP", "HP"};
+            const int count = sizeof(possible_values) / sizeof(const char *);
+            const char *possible_values2[] = {"BASELINE", "MAIN", "HIGH"};
+            const int count2 = sizeof(possible_values2) / sizeof(const char *);
+            int val = 0;
+            if (parse_enum(&ini, "mp4", "profile", (void *)&val,
+                    possible_values, count, 0) != CONFIG_OK)
+                parse_enum( &ini, "mp4", "profile", (void *)&val,
+                    possible_values2, count2, 0);
+            app_config.mp4_profile = val;
+        }
         parse_int(&ini, "mp4", "profile", 0, 2, &app_config.mp4_profile);
 
         err = parse_int(
@@ -205,8 +214,7 @@ enum ConfigError parse_app_config(void) {
             const char *possible_values[] = {"CBR", "VBR", "QP"};
             const int count = sizeof(possible_values) / sizeof(const char *);
             int val = 0;
-            parse_enum(
-                &ini, "mjpeg", "mode", (void *)&val,
+            parse_enum(&ini, "mjpeg", "mode", (void *)&val,
                 possible_values, count, 0);
             app_config.mjpeg_mode = val;
         }

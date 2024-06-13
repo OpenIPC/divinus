@@ -672,6 +672,206 @@ void *server_thread(void *vargp) {
             continue;
         }
 
+        if (app_config.jpeg_enable && starts_with(uri, "/api/jpeg")) {
+            int respLen;
+            if (equals(method, "GET")) {
+                if (!empty(query)) {
+                    char *remain;
+                    while (query) {
+                        char *value = split(&query, "&");
+                        if (!value || !*value) continue;
+                        unescape_uri(value);
+                        char *key = split(&value, "=");
+                        if (!key || !*key || !value || !*value) continue;
+                        if (equals(key, "width")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.jpeg_width = result;
+                        } else if (equals(key, "height")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.jpeg_height = result;
+                        } else if (equals(key, "qfactor")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.jpeg_qfactor = result;
+                        }
+                    }
+                }
+                respLen = sprintf(response,
+                    "HTTP/1.1 200 OK\r\n" \
+                    "Content-Type: application/json;charset=UTF-8\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "{\"width\":%d,\"height\":%d,\"fps\":%d,\"qfactor\":%d}", 
+                    app_config.jpeg_width, app_config.jpeg_height, app_config.jpeg_qfactor);
+            } else {
+                respLen = sprintf(response,
+                    "HTTP/1.1 400 Bad Request\r\n" \
+                    "Content-Type: text/plain\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "The server has no handler to the request.\r\n" \
+                );
+            }
+            send_to_fd(client_fd, response, respLen);
+            close_socket_fd(client_fd);
+            continue;
+        }
+
+        if (app_config.mjpeg_enable && starts_with(uri, "/api/mjpeg")) {
+            int respLen;
+            if (equals(method, "GET")) {
+                if (!empty(query)) {
+                    char *remain;
+                    while (query) {
+                        char *value = split(&query, "&");
+                        if (!value || !*value) continue;
+                        unescape_uri(value);
+                        char *key = split(&value, "=");
+                        if (!key || !*key || !value || !*value) continue;
+                        if (equals(key, "width")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.mjpeg_width = result;
+                        } else if (equals(key, "height")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.mjpeg_height = result;
+                        } else if (equals(key, "fps")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.mjpeg_fps = result;
+                        } else if (equals(key, "mode")) {
+                            if (equals_case(value, "CBR"))
+                                app_config.mjpeg_mode = HAL_VIDMODE_CBR;
+                            else if (equals_case(value, "VBR"))
+                                app_config.mjpeg_mode = HAL_VIDMODE_VBR;
+                            else if (equals_case(value, "QP"))
+                                app_config.mjpeg_mode = HAL_VIDMODE_QP;
+                        }
+                    }
+                }
+                char mode[5] = "\0";
+                switch (app_config.mjpeg_mode) {
+                    case HAL_VIDMODE_CBR: strcpy(mode, "CBR");
+                    case HAL_VIDMODE_VBR: strcpy(mode, "VBR");
+                    case HAL_VIDMODE_QP: strcpy(mode, "QP");
+                }
+                respLen = sprintf(response,
+                    "HTTP/1.1 200 OK\r\n" \
+                    "Content-Type: application/json;charset=UTF-8\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "{\"width\":%d,\"height\":%d,\"fps\":%d,\"mode\":\"%s\",\"bitrate\":%d}", 
+                    app_config.mjpeg_width, app_config.mjpeg_height, app_config.mjpeg_fps, mode,
+                    app_config.mjpeg_bitrate);
+            } else {
+                respLen = sprintf(response,
+                    "HTTP/1.1 400 Bad Request\r\n" \
+                    "Content-Type: text/plain\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "The server has no handler to the request.\r\n" \
+                );
+            }
+            send_to_fd(client_fd, response, respLen);
+            close_socket_fd(client_fd);
+            continue;
+        }
+
+        if (app_config.mp4_enable && starts_with(uri, "/api/mp4")) {
+            int respLen;
+            if (equals(method, "GET")) {
+                if (!empty(query)) {
+                    char *remain;
+                    while (query) {
+                        char *value = split(&query, "&");
+                        if (!value || !*value) continue;
+                        unescape_uri(value);
+                        char *key = split(&value, "=");
+                        if (!key || !*key || !value || !*value) continue;
+                        if (equals(key, "width")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.mp4_width = result;
+                        } else if (equals(key, "height")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.mp4_height = result;
+                        } else if (equals(key, "fps")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.mp4_fps = result;
+                        } else if (equals(key, "bitrate")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.mp4_bitrate = result;
+                        } else if (equals(key, "h265")) {
+                            if (equals(value, "true") || equals(value, "1"))
+                                app_config.mp4_codecH265 = 1;
+                            else if (equals(value, "false") || equals(value, "0"))
+                                app_config.mp4_codecH265 = 0;
+                        } else if (equals(key, "mode")) {
+                            if (equals_case(value, "CBR"))
+                                app_config.mp4_mode = HAL_VIDMODE_CBR;
+                            else if (equals_case(value, "VBR"))
+                                app_config.mp4_mode = HAL_VIDMODE_VBR;
+                            else if (equals_case(value, "QP"))
+                                app_config.mp4_mode = HAL_VIDMODE_QP;
+                            else if (equals_case(value, "ABR"))
+                                app_config.mp4_mode = HAL_VIDMODE_ABR;
+                            else if (equals_case(value, "AVBR"))
+                                app_config.mp4_mode = HAL_VIDMODE_AVBR;
+                        } else if (equals(key, "profile")) {
+                            if (equals_case(value, "BP") || equals_case(value, "BASELINE"))
+                                app_config.mp4_profile = HAL_VIDPROFILE_BASELINE;
+                            else if (equals_case(value, "MP") || equals_case(value, "MAIN"))
+                                app_config.mp4_profile = HAL_VIDPROFILE_MAIN;
+                            else if (equals_case(value, "HP") || equals_case(value, "HIGH"))
+                                app_config.mp4_profile = HAL_VIDPROFILE_HIGH;
+                        }
+                    }
+                }
+                char h265[6] = "false";
+                char mode[5] = "\0";
+                char profile[3] = "\0";
+                if (app_config.mp4_codecH265)
+                    strcpy(h265, "true");
+                switch (app_config.mp4_mode) {
+                    case HAL_VIDMODE_CBR: strcpy(mode, "CBR");
+                    case HAL_VIDMODE_VBR: strcpy(mode, "VBR");
+                    case HAL_VIDMODE_QP: strcpy(mode, "QP");
+                    case HAL_VIDMODE_ABR: strcpy(mode, "ABR");
+                    case HAL_VIDMODE_AVBR: strcpy(mode, "AVBR");
+                }
+                switch (app_config.mp4_profile) {
+                    case HAL_VIDPROFILE_BASELINE: strcpy(profile, "BP");
+                    case HAL_VIDPROFILE_MAIN: strcpy(profile, "MP");
+                    case HAL_VIDPROFILE_HIGH: strcpy(profile, "HP");
+                }
+                respLen = sprintf(response,
+                    "HTTP/1.1 200 OK\r\n" \
+                    "Content-Type: application/json;charset=UTF-8\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "{\"width\":%d,\"height\":%d,\"fps\":%d,\"h265\":%s,\"mode\":\"%s\",\"profile\":\"%s\",\"bitrate\":%d}", 
+                    app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps, h265, mode,
+                    profile, app_config.mp4_bitrate);
+            } else {
+                respLen = sprintf(response,
+                    "HTTP/1.1 400 Bad Request\r\n" \
+                    "Content-Type: text/plain\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "The server has no handler to the request.\r\n" \
+                );
+            }
+            send_to_fd(client_fd, response, respLen);
+            close_socket_fd(client_fd);
+            continue;
+        }
+
         if (app_config.osd_enable && starts_with(uri, "/api/osd/") &&
             uri[9] && uri[9] >= '0' && uri[9] <= (MAX_OSD - 1 + '0')) {
             char id = uri[9] - '0';
