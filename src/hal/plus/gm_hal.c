@@ -119,19 +119,15 @@ int gm_video_create(char index, hal_vidconfig *config)
             }
             h264chn.rate.bitrate = config->bitrate;
             h264chn.rate.maxBitrate = MAX(config->bitrate, config->maxBitrate);
-            h264chn.motionDataOn = 0;
             switch (config->profile) {
                 case HAL_VIDPROFILE_BASELINE:
                     h264chn.profile = GM_VENC_H264PROF_BASELINE;
-                    h264chn.bFrameNum = 0;
                     break;
                 case HAL_VIDPROFILE_MAIN:
                     h264chn.profile = GM_VENC_H264PROF_MAIN;
-                    h264chn.bFrameNum = 0;
                     break;
                 case HAL_VIDPROFILE_HIGH:
                     h264chn.profile = GM_VENC_H264PROF_HIGH;
-                    h264chn.bFrameNum = 2;
                     break;    
             }
             h264chn.level = 41;

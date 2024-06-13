@@ -300,6 +300,7 @@ int start_sdk() {
             config.gop = app_config.mp4_fps * 2;
             config.framerate = app_config.mp4_fps;
             config.bitrate = app_config.mp4_bitrate;
+            config.maxBitrate = app_config.mp4_bitrate * 5 / 4;
 
             switch (plat) {
 #if defined(__arm__)
@@ -351,6 +352,7 @@ int start_sdk() {
             config.mode = app_config.mjpeg_mode;
             config.framerate = app_config.mjpeg_fps;
             config.bitrate = app_config.mjpeg_bitrate;
+            config.maxBitrate = app_config.mjpeg_bitrate * 5 / 4;
 
             switch (plat) {
 #if defined(__arm__)
