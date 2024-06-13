@@ -129,7 +129,7 @@ typedef struct {
         int fpsNum:16;
     };
     gm_venc_rate rate;
-    int reserved1[2];
+    int reserved3[2];
     struct {
         gm_venc_h264prof profile:8;
         int level:8;
@@ -144,7 +144,7 @@ typedef struct {
     };
     gm_venc_cksum cksumType;
     gm_venc_ffwd ffwdType;
-    int reserved2[1];
+    int reserved4[1];
 } gm_venc_h264_cnf;
 
 typedef struct {
