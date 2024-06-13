@@ -667,10 +667,12 @@ attach:
     return EXIT_SUCCESS;
 }
 
-int i6c_video_destroy(char index, char jpeg)
+int i6c_video_destroy(char index)
 {
     int ret;
-    char device = jpeg ? I6C_VENC_DEV_MJPG_0 : I6C_VENC_DEV_H26X_0;
+    char device = (i6c_state->payload == HAL_VIDCODEC_JPG ||
+        i6c_state->payload == HAL_VIDCODEC_MJPG) ? 
+        I6C_VENC_DEV_MJPG_0 : I6C_VENC_DEV_H26X_0;
 
     i6c_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
@@ -700,12 +702,18 @@ int i6c_video_destroy_all(void)
 
     for (char i = 0; i < I6C_VENC_CHN_NUM; i++)
         if (i6c_state[i].enable)
-            if (ret = i6c_video_destroy(i, 
-                i6c_state[i].payload == HAL_VIDCODEC_JPG || 
-                i6c_state[i].payload == HAL_VIDCODEC_MJPG))
+            if (ret = i6c_video_destroy(i))
                 return ret;
 
     return EXIT_SUCCESS;
+}
+
+void i6c_video_request_idr(char index)
+{
+    if (i6c_state[index].payload == HAL_VIDCODEC_JPG ||
+        i6c_state[index].payload == HAL_VIDCODEC_MJPG) return;
+
+    i6c_venc.fnRequestIdr(I6C_VENC_DEV_H26X_0, index, 1);
 }
 
 int i6c_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)

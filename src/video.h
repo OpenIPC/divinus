@@ -7,10 +7,11 @@
 
 extern rtsp_handle rtspHandle;
 
-int start_sdk();
-int stop_sdk();
+int start_sdk(void);
+int stop_sdk(void);
 
 int take_next_free_channel(bool mainLoop);
+void request_idr(void);
 void set_grayscale(bool active);
 
 int create_vpss_chn(char index, short width, short height, char framerate, char jpeg);

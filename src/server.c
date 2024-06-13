@@ -559,6 +559,7 @@ void *server_thread(void *vargp) {
 
         if ((!app_config.mp4_codecH265 && equals(uri, "/video.264")) ||
             (app_config.mp4_codecH265 && equals(uri, "/video.265"))) {
+            request_idr();
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Type: "
                         "application/octet-stream\r\nTransfer-Encoding: "
@@ -577,6 +578,7 @@ void *server_thread(void *vargp) {
         }
 
         if (equals(uri, "/video.mp4") && app_config.mp4_enable) {
+            request_idr();
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Type: "
                         "video/mp4\r\nTransfer-Encoding: "

@@ -290,6 +290,7 @@ typedef struct {
 
     int (*fnQuery)(int channel, t31_venc_stat* stats);
 
+    int (*fnRequestIdr)(int channel);
     int (*fnStartReceiving)(int channel);
     int (*fnStopReceiving)(int channel);
 } t31_venc_impl;
@@ -363,6 +364,12 @@ static int t31_venc_load(t31_venc_impl *venc_lib) {
     if (!(venc_lib->fnQuery = (int(*)(int channel, t31_venc_stat *stats))
         dlsym(venc_lib->handle, "IMP_Encoder_Query"))) {
         fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_Query!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(venc_lib->fnRequestIdr = (int(*)(int channel))
+        dlsym(venc_lib->handle, "IMP_Encoder_RequestIDR"))) {
+        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_RequestIDR!\n");
         return EXIT_FAILURE;
     }
 

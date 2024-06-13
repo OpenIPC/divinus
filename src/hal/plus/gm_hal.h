@@ -25,6 +25,7 @@ void gm_pipeline_destroy(void);
 int gm_video_create(char index, hal_vidconfig *config);
 int gm_video_destroy(char index);
 int gm_video_destroy_all(void);
+void gm_video_request_idr(char index);
 int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata *jpeg);
 void *gm_video_thread(void);
 
@@ -68,6 +69,8 @@ typedef struct {
     int (*fnReceiveStream)(gm_venc_strm *strms, int count);
 
     int (*fnSnapshot)(gm_venc_snap *snapshot, int millis);
+
+    int (*fnRequestIdr)(int device);
 } gm_lib_impl;
 
 static int gm_lib_load(gm_lib_impl *aio_lib) {
@@ -157,6 +160,12 @@ static int gm_lib_load(gm_lib_impl *aio_lib) {
     if (!(aio_lib->fnSnapshot = (int (*)(gm_venc_snap *snapshot, int millis))
         dlsym(aio_lib->handle, "gm_request_snapshot"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_request_snapshot!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(aio_lib->fnRequestIdr = (int (*)(int device))
+        dlsym(aio_lib->handle, "gm_request_keyframe"))) {
+        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_request_keyframe!\n");
         return EXIT_FAILURE;
     }
 

@@ -96,6 +96,31 @@ int take_next_free_channel(bool mainLoop) {
     return -1;
 }
 
+void request_idr(void) {
+    char index = -1;
+    pthread_mutex_lock(&mutex);
+    for (int i = 0; i < chnCount; i++) {
+        if (!chnState[i].enable) continue;
+        if (chnState[i].payload != HAL_VIDCODEC_H264 &&
+            chnState[i].payload != HAL_VIDCODEC_H265) continue;
+        index = i;
+        break;
+    }
+    if (index != 1) switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_GM:  gm_video_request_idr(index); break;
+        case HAL_PLATFORM_I6:  i6_video_request_idr(index); break;
+        case HAL_PLATFORM_I6C: i6c_video_request_idr(index); break;
+        case HAL_PLATFORM_I6F: i6f_video_request_idr(index); break;
+        case HAL_PLATFORM_V3:  v3_video_request_idr(index); break;
+        case HAL_PLATFORM_V4:  v4_video_request_idr(index); break;
+#elif defined(__mips__)
+        case HAL_PLATFORM_T31: t31_video_request_idr(index); break;
+#endif
+    }  
+    pthread_mutex_unlock(&mutex);
+}
+
 void set_grayscale(bool active) {
     pthread_mutex_lock(&mutex);
     switch (plat) {
@@ -137,7 +162,7 @@ int bind_vpss_venc(char index, char framerate, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  return gm_channel_bind(index);
-        case HAL_PLATFORM_I6:  return i6_channel_bind(index, framerate, jpeg);
+        case HAL_PLATFORM_I6:  return i6_channel_bind(index, framerate);
         case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate, jpeg);
         case HAL_PLATFORM_I6F: return i6f_channel_bind(index, framerate, jpeg);
         case HAL_PLATFORM_V3:  return v3_channel_bind(index);
@@ -168,8 +193,8 @@ int disable_venc_chn(char index, char jpeg) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  return gm_video_destroy(index);
         case HAL_PLATFORM_I6:  return i6_video_destroy(index);
-        case HAL_PLATFORM_I6C: return i6c_video_destroy(index, jpeg);
-        case HAL_PLATFORM_I6F: return i6f_video_destroy(index, jpeg);
+        case HAL_PLATFORM_I6C: return i6c_video_destroy(index);
+        case HAL_PLATFORM_I6F: return i6f_video_destroy(index);
         case HAL_PLATFORM_V3:  return v3_video_destroy(index);
         case HAL_PLATFORM_V4:  return v4_video_destroy(index);
 #elif defined(__mips__)
@@ -179,7 +204,7 @@ int disable_venc_chn(char index, char jpeg) {
     return 0;
 };
 
-int start_sdk() {
+int start_sdk(void) {
     int ret;
 
     switch (plat) {
@@ -427,7 +452,7 @@ int start_sdk() {
     return EXIT_SUCCESS;
 }
 
-int stop_sdk() {
+int stop_sdk(void) {
     pthread_join(vencPid, NULL);
 
     if (app_config.jpeg_enable)

@@ -18,6 +18,8 @@
 #include <netinet/in.h>
 #include <sys/ioctl.h>
 
+extern void request_idr();
+
 /******************************************************************************
  *              PRIVATE DEFINITIONS
  ******************************************************************************/
@@ -361,6 +363,7 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
 
     ASSERT(__rtcp_send_sr(p) == SUCCESS, return );
 
+    request_idr();
 }
 
 static int __method_teardown(struct connection_item_t *p, rtsp_handle h)

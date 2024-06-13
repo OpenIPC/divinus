@@ -159,6 +159,11 @@ int gm_video_destroy_all(void)
     return EXIT_SUCCESS;
 }
 
+void gm_video_request_idr(char index)
+{
+    gm_lib.fnRequestIdr(_gm_venc_dev[index]);
+}
+
 int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata *jpeg)
 {
     int ret;

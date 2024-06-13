@@ -412,6 +412,11 @@ int t31_video_destroy_all(void)
     return EXIT_SUCCESS;
 }
 
+void t31_video_request_idr(char index)
+{
+    t31_venc.fnRequestIdr(index);
+}
+
 int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 {
     int ret, fd;

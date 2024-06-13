@@ -51,6 +51,7 @@ int v3_sensor_init(char *name, char *obj);
 int v3_video_create(char index, hal_vidconfig *config);
 int v3_video_destroy(char index);
 int v3_video_destroy_all(void);
+void v3_video_request_idr(char index);
 int v3_video_snapshot_grab(char index, hal_jpegdata *jpeg);
 void *v3_video_thread(void);
 

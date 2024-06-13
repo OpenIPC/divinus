@@ -283,6 +283,7 @@ typedef struct {
 
     int (*fnSetSourceConfig)(int channel, i6_venc_src_conf *config);
 
+    int (*fnRequestIdr)(int channel, char instant);
     int (*fnStartReceiving)(int channel);
     int (*fnStartReceivingEx)(int channel, int *count);
     int (*fnStopReceiving)(int channel);
@@ -376,6 +377,12 @@ static int i6_venc_load(i6_venc_impl *venc_lib) {
         dlsym(venc_lib->handle, "MI_VENC_SetInputSourceConfig"))) {
         fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_SetInputSourceConfig!\n");
         return EXIT_FAILURE;  
+    }
+
+    if (!(venc_lib->fnRequestIdr = (int(*)(int channel, char instant))
+        dlsym(venc_lib->handle, "MI_VENC_RequestIdr"))) {
+        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_RequestIdr!\n");
+        return EXIT_FAILURE;
     }
 
     if (!(venc_lib->fnStartReceiving = (int(*)(int channel))

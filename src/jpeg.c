@@ -90,8 +90,8 @@ void jpeg_deinit() {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  goto active;
         case HAL_PLATFORM_I6:  i6_video_destroy(jpeg_index); break;
-        case HAL_PLATFORM_I6C: i6c_video_destroy(jpeg_index, 1); break;
-        case HAL_PLATFORM_I6F: i6f_video_destroy(jpeg_index, 1); break;
+        case HAL_PLATFORM_I6C: i6c_video_destroy(jpeg_index); break;
+        case HAL_PLATFORM_I6F: i6f_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_V3:  v3_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_V4:  v4_video_destroy(jpeg_index); break;
 #elif defined(__mips__)

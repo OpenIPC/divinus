@@ -134,7 +134,7 @@ void *i6_audio_thread(void)
     fprintf(stderr, "[i6_aud] Shutting down encoding thread...\n");
 }
 
-int i6_channel_bind(char index, char framerate, char jpeg)
+int i6_channel_bind(char index, char framerate)
 {
     int ret;
 
@@ -616,11 +616,16 @@ int i6_video_destroy_all(void)
     return EXIT_SUCCESS;
 }
 
+void i6_video_request_idr(char index)
+{
+    i6_venc.fnRequestIdr(index, 1);
+}
+
 int i6_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 {
     int ret;
 
-    if (ret = i6_channel_bind(index, 1, 1)) {
+    if (ret = i6_channel_bind(index, 1)) {
         fprintf(stderr, "[i6_venc] Binding the encoder channel "
             "%d failed with %#x!\n", index, ret);
         goto abort;

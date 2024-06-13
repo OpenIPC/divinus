@@ -656,6 +656,11 @@ int v4_video_destroy_all(void)
     return EXIT_SUCCESS;
 }
 
+void v4_video_request_idr(char index)
+{
+    v4_venc.fnRequestIdr(index, 1);
+}
+
 int v4_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 {
     int ret;
