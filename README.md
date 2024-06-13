@@ -49,6 +49,11 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 [^10]: SSC379G
 
 
+### Documentation
+
+- [Overlays](doc/overlays.md) - _doc/overlays.md_
+
+
 ### Roadmap
 
 - [ ] Audio stream (G.711 over RTSP, industry-supported lossy codec for MP4)
