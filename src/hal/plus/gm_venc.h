@@ -2,8 +2,6 @@
 
 #include "gm_common.h"
 
-// 1MB should be plenty for an IDR frame on this platform
-#define GM_VENC_BUF_SIZE (1 * 1024 * 1024)
 // Considering the encoder modules we use (H.264 and JPEG)
 #define GM_VENC_CHN_NUM 2
 
@@ -124,10 +122,7 @@ typedef struct  {
 typedef struct {
     int internal[8];
     gm_common_dim dest;
-    struct {
-        int fpsDen:16;
-        int fpsNum:16;
-    };
+    int framerate;
     gm_venc_rate rate;
     int reserved3[2];
     struct {
@@ -150,10 +145,7 @@ typedef struct {
 typedef struct {
     int internal[8];
     gm_common_dim dest;
-    struct {
-        int fpsNum:16;
-        int fpsDen:16;
-    };
+    int framerate;
     int quality;
     gm_venc_ratemode mode;
     int bitrate;

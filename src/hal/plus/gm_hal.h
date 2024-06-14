@@ -47,30 +47,30 @@ enum {
 typedef struct {
     void *handle;
 
-    int (*fnDeclareStruct)(void *name, char *string, int size, int libVersion);
-    int (*fnExit)(void);
-    int (*fnInit)(int libVersion);
+    void  (*fnDeclareStruct)(void *name, char *string, int size, int libVersion);
+    int   (*fnExit)(void);
+    int   (*fnInit)(int libVersion);
 
-    int (*fnCreateDevice)(gm_lib_dev type);
-    int (*fnDestroyDevice)(int device);
-    int (*fnSetDeviceConfig)(int device, void *config);
+    void* (*fnCreateDevice)(gm_lib_dev type);
+    int   (*fnDestroyDevice)(void *device);
+    int   (*fnSetDeviceConfig)(void *device, void *config);
 
-    int (*fnCreateGroup)(void);
-    int (*fnDestroyGroup)(int group);
-    int (*fnRefreshGroup)(int group);
+    void* (*fnCreateGroup)(void);
+    int   (*fnDestroyGroup)(void *group);
+    int   (*fnRefreshGroup)(void *group);
 
-    int (*fnSetRegionBitmaps)(gm_osd_imgs *bitmaps);
-    int (*fnSetRegionConfig)(int device, gm_osd_cnf *config);
+    int   (*fnSetRegionBitmaps)(gm_osd_imgs *bitmaps);
+    int   (*fnSetRegionConfig)(void *device, gm_osd_cnf *config);
 
-    int (*fnBind)(int group, int source, int dest);
-    int (*fnUnbind)(int group);
+    void* (*fnBind)(void *group, void *source, void *dest);
+    int   (*fnUnbind)(void *group);
 
-    int (*fnPollStream)(gm_venc_fds *fds, int count, int millis);
-    int (*fnReceiveStream)(gm_venc_strm *strms, int count);
+    int   (*fnPollStream)(gm_venc_fds *fds, int count, int millis);
+    int   (*fnReceiveStream)(gm_venc_strm *strms, int count);
 
-    int (*fnSnapshot)(gm_venc_snap *snapshot, int millis);
+    int   (*fnSnapshot)(gm_venc_snap *snapshot, int millis);
 
-    int (*fnRequestIdr)(int device);
+    int   (*fnRequestIdr)(void *device);
 } gm_lib_impl;
 
 static int gm_lib_load(gm_lib_impl *aio_lib) {
@@ -79,7 +79,7 @@ static int gm_lib_load(gm_lib_impl *aio_lib) {
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnDeclareStruct = (int(*)(void *name, char *string, int size, int libVersion))
+    if (!(aio_lib->fnDeclareStruct = (void(*)(void *name, char *string, int size, int libVersion))
         dlsym(aio_lib->handle, "gm_init_attr"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_init_attr!\n");
         return EXIT_FAILURE;
@@ -97,73 +97,73 @@ static int gm_lib_load(gm_lib_impl *aio_lib) {
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnCreateDevice = (int (*)(gm_lib_dev type))
+    if (!(aio_lib->fnCreateDevice = (void*(*)(gm_lib_dev type))
         dlsym(aio_lib->handle, "gm_new_obj"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_new_obj!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnDestroyDevice = (int (*)(int device))
+    if (!(aio_lib->fnDestroyDevice = (int(*)(void *device))
         dlsym(aio_lib->handle, "gm_delete_obj"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_delete_obj!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnSetDeviceConfig = (int (*)(int device, void *config))
+    if (!(aio_lib->fnSetDeviceConfig = (int(*)(void *device, void *config))
         dlsym(aio_lib->handle, "gm_set_attr"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_set_attr!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnCreateGroup = (int (*)(void))
+    if (!(aio_lib->fnCreateGroup = (void*(*)(void))
         dlsym(aio_lib->handle, "gm_new_groupfd"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_new_groupfd!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnDestroyGroup = (int (*)(int group))
+    if (!(aio_lib->fnDestroyGroup = (int(*)(void *group))
         dlsym(aio_lib->handle, "gm_delete_groupfd"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_delete_groupfd!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnRefreshGroup = (int (*)(int group))
+    if (!(aio_lib->fnRefreshGroup = (int(*)(void *group))
         dlsym(aio_lib->handle, "gm_apply"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_apply!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnBind = (int (*)(int group, int source, int dest))
+    if (!(aio_lib->fnBind = (void*(*)(void *group, void *source, void *dest))
         dlsym(aio_lib->handle, "gm_bind"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_bind!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnUnbind = (int (*)(int group))
+    if (!(aio_lib->fnUnbind = (int(*)(void *group))
         dlsym(aio_lib->handle, "gm_unbind"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_unbind!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnPollStream = (int (*)(gm_venc_fds *fds, int count, int millis))
+    if (!(aio_lib->fnPollStream = (int(*)(gm_venc_fds *fds, int count, int millis))
         dlsym(aio_lib->handle, "gm_poll"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_poll!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnReceiveStream = (int (*)(gm_venc_strm *strms, int count))
+    if (!(aio_lib->fnReceiveStream = (int(*)(gm_venc_strm *strms, int count))
         dlsym(aio_lib->handle, "gm_recv_multi_bitstreams"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_recv_multi_bitstreams!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnSnapshot = (int (*)(gm_venc_snap *snapshot, int millis))
+    if (!(aio_lib->fnSnapshot = (int(*)(gm_venc_snap *snapshot, int millis))
         dlsym(aio_lib->handle, "gm_request_snapshot"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_request_snapshot!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aio_lib->fnRequestIdr = (int (*)(int device))
+    if (!(aio_lib->fnRequestIdr = (int(*)(void *device))
         dlsym(aio_lib->handle, "gm_request_keyframe"))) {
         fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_request_keyframe!\n");
         return EXIT_FAILURE;

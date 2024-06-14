@@ -9,9 +9,10 @@ int (*gm_aud_cb)(hal_audframe*);
 int (*gm_venc_cb)(char, hal_vidstream*);
 
 gm_venc_fds _gm_venc_fds[GM_VENC_CHN_NUM];
-int _gm_cap_dev;
-int _gm_cap_grp;
-int _gm_venc_dev[GM_VENC_CHN_NUM];
+void* _gm_cap_dev;
+void* _gm_cap_grp;
+void* _gm_venc_dev[GM_VENC_CHN_NUM];
+int   _gm_venc_sz[GM_VENC_CHN_NUM] = { 0 };
 
 void gm_hal_deinit(void)
 {
@@ -33,7 +34,7 @@ int gm_channel_bind(char index)
     int ret;
 
     _gm_venc_fds[index].bind = 
-        (void*)gm_lib.fnBind(_gm_cap_grp, _gm_cap_dev, _gm_venc_dev[index]);
+        gm_lib.fnBind(_gm_cap_grp, _gm_cap_dev, _gm_venc_dev[index]);
     _gm_venc_fds[index].evType = GM_POLL_READ;
 
     if ((ret = gm_lib.fnRefreshGroup(_gm_cap_grp)) < 0)
@@ -46,7 +47,8 @@ int gm_channel_unbind(char index)
 {
     int ret;
 
-    gm_lib.fnUnbind((int)_gm_venc_fds[index].bind);
+    gm_lib.fnUnbind(_gm_venc_fds[index].bind);
+    _gm_venc_fds[index].bind = NULL;
     _gm_venc_fds[index].evType = 0;
 
     if ((ret = gm_lib.fnRefreshGroup(_gm_cap_grp)) < 0)
@@ -64,7 +66,6 @@ int gm_pipeline_create(char mirror, char flip)
         GM_DECLARE(gm_lib, config, gm_cap_cnf, "gm_cap_attr_t");
         config.channel = 0;
         config.output = GM_CAP_OUT_SCALER2;
-        config.motionDataOn = 0;
 
         gm_lib.fnSetDeviceConfig(_gm_cap_dev, &config);
     }
@@ -97,8 +98,7 @@ int gm_video_create(char index, hal_vidconfig *config)
             GM_DECLARE(gm_lib, mjpgchn, gm_venc_mjpg_cnf, "gm_mjpege_attr_t");
             mjpgchn.dest.width = config->width;
             mjpgchn.dest.height = config->height;
-            mjpgchn.fpsNum = config->framerate;
-            mjpgchn.fpsDen = 1;
+            mjpgchn.framerate = config->framerate;
             mjpgchn.quality = MAX(config->minQual, config->maxQual);
             mjpgchn.mode = ratemode;
             mjpgchn.bitrate = config->bitrate;
@@ -109,8 +109,7 @@ int gm_video_create(char index, hal_vidconfig *config)
             GM_DECLARE(gm_lib, h264chn, gm_venc_h264_cnf, "gm_h264e_attr_t");
             h264chn.dest.width = config->width;
             h264chn.dest.height = config->height;
-            h264chn.fpsNum = config->framerate;
-            h264chn.fpsDen = 1;
+            h264chn.framerate = config->framerate;
             h264chn.rate.mode = ratemode;
             h264chn.rate.gop = config->gop;
             if (config->mode != HAL_VIDMODE_CBR) {
@@ -138,14 +137,21 @@ int gm_video_create(char index, hal_vidconfig *config)
 
     gm_state[index].payload = config->codec;
 
+    _gm_venc_sz[index] = config->width * config->height * 3 / 2;
+
     return EXIT_SUCCESS;
 }
 
 int gm_video_destroy(char index)
 {
+    _gm_venc_sz[index] = 0;
+
     gm_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
-    gm_lib.fnDestroyDevice(index);
+    gm_lib.fnUnbind(_gm_venc_fds[index].bind);
+    gm_lib.fnRefreshGroup(_gm_cap_grp);
+
+    gm_lib.fnDestroyDevice(_gm_venc_dev[index]);
 
     return EXIT_SUCCESS;
 }
@@ -161,7 +167,7 @@ int gm_video_destroy_all(void)
 
 void gm_video_request_idr(char index)
 {
-    gm_lib.fnRequestIdr(_gm_venc_dev[index]);
+    gm_lib.fnRequestIdr(_gm_venc_fds[index].bind);
 }
 
 int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata *jpeg)
@@ -197,11 +203,15 @@ void *gm_video_thread(void)
     gm_venc_strm stream[GM_VENC_CHN_NUM];
     memset(stream, 0, sizeof(stream));
 
-    char *bsData = malloc(GM_VENC_BUF_SIZE);
+    int bufSize = 0;
+    for (char i = 0; i < GM_VENC_CHN_NUM; i++)
+        bufSize += _gm_venc_sz[i];
+
+    char *bsData = malloc(bufSize);
     if (!bsData) goto abort;
 
     while (keepRunning) {
-        ret = gm_lib.fnPollStream(_gm_venc_fds, GM_VENC_CHN_NUM, 2000);
+        ret = gm_lib.fnPollStream(_gm_venc_fds, GM_VENC_CHN_NUM, 500);
         if (ret == GM_ERR_TIMEOUT) {
             fprintf(stderr, "[gm_venc] Main stream loop timed out!\n");
             continue;
@@ -210,16 +220,16 @@ void *gm_video_thread(void)
         for (char i = 0; i < GM_VENC_CHN_NUM; i++) {
             if (_gm_venc_fds[i].event.type != GM_POLL_READ)
                 continue;
-            if (_gm_venc_fds[i].event.bsLength > GM_VENC_BUF_SIZE) {
+            if (_gm_venc_fds[i].event.bsLength > bufSize) {
                 fprintf(stderr, "[gm_venc] Bitstream buffer needs %d bytes "
                     "more, dropping the upcoming data!\n",
-                    _gm_venc_fds[i].event.bsLength - GM_VENC_BUF_SIZE);
+                    _gm_venc_fds[i].event.bsLength - bufSize);
                 continue;
             }
 
             stream[i].bind = _gm_venc_fds[i].bind;
             stream[i].pack.bsData = bsData;
-            stream[i].pack.bsLength = GM_VENC_BUF_SIZE;
+            stream[i].pack.bsLength = bufSize;
             stream[i].pack.mdData = 0;
             stream[i].pack.mdLength = 0;
         }
