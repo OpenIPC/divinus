@@ -459,7 +459,7 @@ int v3_video_create(char index, hal_vidconfig *config)
     memset(&channel, 0, sizeof(channel));
 
     if (config->codec == HAL_VIDCODEC_JPG) {
-        channel.attrib.codec = V3_VENC_CODEC_JPEGE;
+        channel.attrib.codec = V3_VENC_CODEC_JPEG;
         channel.attrib.jpg.maxPic.width = config->width;
         channel.attrib.jpg.maxPic.height = config->height;
         channel.attrib.jpg.bufSize =

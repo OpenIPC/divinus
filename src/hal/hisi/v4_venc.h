@@ -5,10 +5,10 @@
 #define V4_VENC_CHN_NUM 16
 
 typedef enum {
-    V4_VENC_CODEC_JPEGE = 11,
-    V4_VENC_CODEC_H264 =  96,
-    V4_VENC_CODEC_H265 =  265,
-    V4_VENC_CODEC_MJPG =  1002,
+    V4_VENC_CODEC_JPEG = 11,
+    V4_VENC_CODEC_H264 = 96,
+    V4_VENC_CODEC_H265 = 265,
+    V4_VENC_CODEC_MJPG = 1002,
     V4_VENC_CODEC_END
 } v4_venc_codec;
 
