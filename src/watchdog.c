@@ -8,6 +8,7 @@ void watchdog_reset(void) {
 }
 
 int watchdog_start(int timeout) {
+    if (fd) return EXIT_SUCCESS;
     char* paths[] = {"/dev/watchdog0", "/dev/watchdog"};
     char **path = paths;
 
@@ -20,6 +21,7 @@ int watchdog_start(int timeout) {
 
     ioctl(fd, WDIOC_SETTIMEOUT, &timeout);
 
+    fprintf(stderr, "[watchdog] Watchdog started!\n");
     return EXIT_SUCCESS;
 }
 

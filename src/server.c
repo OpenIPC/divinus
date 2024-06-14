@@ -990,8 +990,6 @@ void *server_thread(void *vargp) {
 }
 
 void sig_handler(int signo) {
-    if (app_config.watchdog)
-        watchdog_stop();
     printf(tag "Graceful shutdown...\n");
     keepRunning = 0;
 }
