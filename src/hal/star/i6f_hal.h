@@ -23,7 +23,7 @@ void *i6f_audio_thread(void);
 int i6f_channel_bind(char index, char framerate, char jpeg);
 int i6f_channel_create(char index, short width, short height, char mirror, char flip, char jpeg);
 int i6f_channel_grayscale(char enable);
-int i6f_channel_unbind(char index, char jpeg);
+int i6f_channel_unbind(char index);
 
 int i6f_config_load(char *path);
 

@@ -178,8 +178,8 @@ int unbind_vpss_venc(char index, char jpeg) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  return gm_channel_unbind(index);
         case HAL_PLATFORM_I6:  return i6_channel_unbind(index);
-        case HAL_PLATFORM_I6C: return i6c_channel_unbind(index, jpeg);
-        case HAL_PLATFORM_I6F: return i6f_channel_unbind(index, jpeg);
+        case HAL_PLATFORM_I6C: return i6c_channel_unbind(index);
+        case HAL_PLATFORM_I6F: return i6f_channel_unbind(index);
         case HAL_PLATFORM_V3:  return v3_channel_unbind(index);
         case HAL_PLATFORM_V4:  return v4_channel_unbind(index);
 #elif defined(__mips__)

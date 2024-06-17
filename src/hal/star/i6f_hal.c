@@ -26,6 +26,7 @@ char _i6f_isp_dev = 0;
 char _i6f_isp_port = 0;
 char _i6f_scl_chn = 0;
 char _i6f_scl_dev = 0;
+char _i6f_venc_dev[I6F_VENC_CHN_NUM] = { 255 };
 char _i6f_venc_port = 0;
 char _i6f_vif_chn = 0;
 char _i6f_vif_dev = 0;
@@ -181,7 +182,7 @@ int i6f_channel_grayscale(char enable)
     return i6f_isp.fnSetColorToGray(_i6f_isp_dev, 0, &enable);
 }
 
-int i6f_channel_unbind(char index, char jpeg)
+int i6f_channel_unbind(char index)
 {
     int ret;
 
@@ -192,7 +193,7 @@ int i6f_channel_unbind(char index, char jpeg)
         i6f_sys_bind source = { .module = I6F_SYS_MOD_SCL, 
             .device = _i6f_scl_dev, .channel = _i6f_scl_chn, .port = index };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_VENC,
-            .device = jpeg ? I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0, .channel = index, .port = _i6f_venc_port };
+            .device = _i6f_venc_dev[index], .channel = index, .port = _i6f_venc_port };
         if (ret = i6f_sys.fnUnbind(0, &source, &dest))
             return ret;
     }
@@ -501,12 +502,11 @@ int i6f_region_setbitmap(int handle, hal_bitmap *bitmap)
 int i6f_video_create(char index, hal_vidconfig *config)
 {
     int ret;
-    char device = I6F_VENC_DEV_H26X_0;
     i6f_venc_chn channel;
     i6f_venc_attr_h26x *attrib;
     
     if (config->codec == HAL_VIDCODEC_JPG || config->codec == HAL_VIDCODEC_MJPG) {
-        device = I6F_VENC_DEV_MJPG_0;
+        _i6f_venc_dev[index] = I6F_VENC_DEV_MJPG_0;
         channel.attrib.codec = I6F_VENC_CODEC_MJPG;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
@@ -526,12 +526,13 @@ int i6f_video_create(char index, hal_vidconfig *config)
             default:
                 I6F_ERROR("MJPEG encoder can only support CBR or fixed QP modes!");
         }
-        channel.attrib.mjpg.maxHeight = ALIGN_BACK(config->height, 16);
-        channel.attrib.mjpg.maxWidth = ALIGN_BACK(config->width, 16);
-        channel.attrib.mjpg.bufSize = config->width * config->height;
+
+        channel.attrib.mjpg.maxHeight = ALIGN_UP(config->height, 2);
+        channel.attrib.mjpg.maxWidth = ALIGN_UP(config->width, 8);
+        channel.attrib.mjpg.bufSize = ALIGN_UP(config->width, 8) * ALIGN_UP(config->height, 2);
         channel.attrib.mjpg.byFrame = 1;
-        channel.attrib.mjpg.height = ALIGN_BACK(config->height, 16);
-        channel.attrib.mjpg.width = ALIGN_BACK(config->width, 16);
+        channel.attrib.mjpg.height = ALIGN_UP(config->height, 2);
+        channel.attrib.mjpg.width = ALIGN_UP(config->width, 8);
         channel.attrib.mjpg.dcfThumbs = 0;
         channel.attrib.mjpg.markPerRow = 0;
 
@@ -603,21 +604,22 @@ int i6f_video_create(char index, hal_vidconfig *config)
                 I6F_ERROR("H.264 encoder does not support this mode!");
         }
     } else I6F_ERROR("This codec is not supported by the hardware!");
-    attrib->maxHeight = ALIGN_BACK(config->height, 16);
-    attrib->maxWidth = ALIGN_BACK(config->width, 16);
+    _i6f_venc_dev[index] = I6F_VENC_DEV_H26X_0;
+    attrib->maxHeight = config->height;
+    attrib->maxWidth = config->width;
     attrib->bufSize = config->height * config->width;
     attrib->profile = config->profile;
     attrib->byFrame = 1;
-    attrib->height = ALIGN_BACK(config->height, 16);
-    attrib->width = ALIGN_BACK(config->width, 16);
+    attrib->height = config->height;
+    attrib->width = config->width;
     attrib->bFrameNum = 0;
     attrib->refNum = 1;
 attach:
-    if (ret = i6f_venc.fnCreateChannel(device, index, &channel))
+    if (ret = i6f_venc.fnCreateChannel(_i6f_venc_dev[index], index, &channel))
         return ret;
 
     if (config->codec != HAL_VIDCODEC_JPG && 
-        (ret = i6f_venc.fnStartReceiving(device, index)))
+        (ret = i6f_venc.fnStartReceiving(_i6f_venc_dev[index], index)))
         return ret;
 
     i6f_state[index].payload = config->codec;
@@ -628,28 +630,27 @@ attach:
 int i6f_video_destroy(char index)
 {
     int ret;
-    char device = (i6f_state->payload == HAL_VIDCODEC_JPG ||
-        i6f_state->payload == HAL_VIDCODEC_MJPG) ? 
-        I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0;
 
     i6f_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
-    i6f_venc.fnStopReceiving(device, index);
+    i6f_venc.fnStopReceiving(_i6f_venc_dev[index], index);
 
     {
         i6f_sys_bind source = { .module = I6F_SYS_MOD_SCL, 
             .device = _i6f_scl_dev, .channel = _i6f_scl_chn, .port = index };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_VENC,
-            .device = device, .channel = index, .port = _i6f_venc_port };
+            .device = _i6f_venc_dev[index], .channel = index, .port = _i6f_venc_port };
         if (ret = i6f_sys.fnUnbind(0, &source, &dest))
             return ret;
     }
 
-    if (ret = i6f_venc.fnDestroyChannel(device, index))
+    if (ret = i6f_venc.fnDestroyChannel(_i6f_venc_dev[index], index))
         return ret;
     
     if (ret = i6f_scl.fnDisablePort(_i6f_scl_dev, _i6f_scl_chn, index))
         return ret;
+
+    _i6f_venc_dev[index] = 255;
     
     return EXIT_SUCCESS;
 }
@@ -782,7 +783,7 @@ abort:
 
     i6f_venc.fnStopReceiving(device, index);
 
-    i6f_channel_unbind(device, index);
+    i6f_channel_unbind(index);
 
     return ret;    
 }
@@ -795,12 +796,8 @@ void *i6f_video_thread(void)
     for (int i = 0; i < I6F_VENC_CHN_NUM; i++) {
         if (!i6f_state[i].enable) continue;
         if (!i6f_state[i].mainLoop) continue;
-        char device = 
-            (i6f_state[i].payload == HAL_VIDCODEC_JPG ||
-             i6f_state[i].payload == HAL_VIDCODEC_MJPG) ? 
-             I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0;
 
-        ret = i6f_venc.fnGetDescriptor(device, i);
+        ret = i6f_venc.fnGetDescriptor(_i6f_venc_dev[i], i);
         if (ret < 0) {
             fprintf(stderr, "[i6f_venc] Getting the encoder descriptor failed with %#x!\n", ret);
             return NULL;
@@ -838,14 +835,10 @@ void *i6f_video_thread(void)
                 if (!i6f_state[i].enable) continue;
                 if (!i6f_state[i].mainLoop) continue;
                 if (FD_ISSET(i6f_state[i].fileDesc, &readFds)) {
-                    char device = 
-                        (i6f_state[i].payload == HAL_VIDCODEC_JPG ||
-                         i6f_state[i].payload == HAL_VIDCODEC_MJPG) ? 
-                         I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0;
 
                     memset(&stream, 0, sizeof(stream));
                     
-                    if (ret = i6f_venc.fnQuery(device, i, &stat)) {
+                    if (ret = i6f_venc.fnQuery(_i6f_venc_dev[i], i, &stat)) {
                         fprintf(stderr, "[i6f_venc] Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
                         break;
@@ -864,7 +857,7 @@ void *i6f_video_thread(void)
                     }
                     stream.count = stat.curPacks;
 
-                    if (ret = i6f_venc.fnGetStream(device, i, &stream, 40)) {
+                    if (ret = i6f_venc.fnGetStream(_i6f_venc_dev[i], i, &stream, 40)) {
                         fprintf(stderr, "[i6f_venc] Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;
@@ -909,7 +902,7 @@ void *i6f_video_thread(void)
                         (*i6f_venc_cb)(i, &outStrm);
                     }
 
-                    if (ret = i6f_venc.fnFreeStream(device, i, &stream)) {
+                    if (ret = i6f_venc.fnFreeStream(_i6f_venc_dev[i], i, &stream)) {
                         fprintf(stderr, "[i6f_venc] Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }

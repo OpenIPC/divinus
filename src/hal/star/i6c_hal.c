@@ -26,6 +26,7 @@ char _i6c_isp_dev = 0;
 char _i6c_isp_port = 0;
 char _i6c_scl_chn = 0;
 char _i6c_scl_dev = 0;
+char _i6c_venc_dev[I6C_VENC_CHN_NUM] = { 255 };
 char _i6c_venc_port = 0;
 char _i6c_vif_chn = 0;
 char _i6c_vif_dev = 0;
@@ -187,7 +188,7 @@ int i6c_channel_grayscale(char enable)
     return i6c_isp.fnSetColorToGray(_i6c_isp_dev, 0, &enable);
 }
 
-int i6c_channel_unbind(char index, char jpeg)
+int i6c_channel_unbind(char index)
 {
     int ret;
 
@@ -198,7 +199,7 @@ int i6c_channel_unbind(char index, char jpeg)
         i6c_sys_bind source = { .module = I6C_SYS_MOD_SCL, 
             .device = _i6c_scl_dev, .channel = _i6c_scl_chn, .port = index };
         i6c_sys_bind dest = { .module = I6C_SYS_MOD_VENC,
-            .device = jpeg ? I6C_VENC_DEV_MJPG_0 : I6C_VENC_DEV_H26X_0, .channel = index, .port = _i6c_venc_port };
+            .device = _i6c_venc_dev[index], .channel = index, .port = _i6c_venc_port };
         if (ret = i6c_sys.fnUnbind(0, &source, &dest))
             return ret;
     }
@@ -523,12 +524,11 @@ int i6c_region_setbitmap(int handle, hal_bitmap *bitmap)
 int i6c_video_create(char index, hal_vidconfig *config)
 {
     int ret;
-    char device = I6C_VENC_DEV_H26X_0;
     i6c_venc_chn channel;
     i6c_venc_attr_h26x *attrib;
     
     if (config->codec == HAL_VIDCODEC_JPG || config->codec == HAL_VIDCODEC_MJPG) {
-        device = I6C_VENC_DEV_MJPG_0;
+        _i6c_venc_dev[index] = I6C_VENC_DEV_MJPG_0;
         channel.attrib.codec = I6C_VENC_CODEC_MJPG;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
@@ -549,12 +549,12 @@ int i6c_video_create(char index, hal_vidconfig *config)
                 I6C_ERROR("MJPEG encoder can only support CBR or fixed QP modes!");
         }
 
-        channel.attrib.mjpg.maxHeight = ALIGN_BACK(config->height, 16);
-        channel.attrib.mjpg.maxWidth = ALIGN_BACK(config->width, 16);
-        channel.attrib.mjpg.bufSize = config->width * config->height;
+        channel.attrib.mjpg.maxHeight = ALIGN_UP(config->height, 2);
+        channel.attrib.mjpg.maxWidth = ALIGN_UP(config->width, 8);
+        channel.attrib.mjpg.bufSize = ALIGN_UP(config->width, 8) * ALIGN_UP(config->height, 2);
         channel.attrib.mjpg.byFrame = 1;
-        channel.attrib.mjpg.height = ALIGN_BACK(config->height, 16);
-        channel.attrib.mjpg.width = ALIGN_BACK(config->width, 16);
+        channel.attrib.mjpg.height = ALIGN_UP(config->height, 2);
+        channel.attrib.mjpg.width = ALIGN_UP(config->width, 8);
         channel.attrib.mjpg.dcfThumbs = 0;
         channel.attrib.mjpg.markPerRow = 0;
 
@@ -626,13 +626,14 @@ int i6c_video_create(char index, hal_vidconfig *config)
                 I6C_ERROR("H.264 encoder does not support this mode!");
         }
     } else I6C_ERROR("This codec is not supported by the hardware!");
-    attrib->maxHeight = ALIGN_BACK(config->height, 16);
-    attrib->maxWidth = ALIGN_BACK(config->width, 16);
+    _i6c_venc_dev[index] = I6C_VENC_DEV_H26X_0;
+    attrib->maxHeight = config->height;
+    attrib->maxWidth = config->width;
     attrib->bufSize = config->height * config->width;
     attrib->profile = config->profile;
     attrib->byFrame = 1;
-    attrib->height = ALIGN_BACK(config->height, 16);
-    attrib->width = ALIGN_BACK(config->width, 16);
+    attrib->height = config->height;
+    attrib->width = config->width;
     attrib->bFrameNum = 0;
     attrib->refNum = 1;
 
@@ -641,7 +642,7 @@ int i6c_video_create(char index, hal_vidconfig *config)
     pool.type = I6C_SYS_POOL_DEVICE_RING;
     pool.create = 1;
     pool.config.ring.module = I6C_SYS_MOD_VENC;
-    pool.config.ring.device = device;
+    pool.config.ring.device = _i6c_venc_dev[index];
     pool.config.ring.maxHeight = config->height;
     pool.config.ring.maxWidth = config->width;
     pool.config.ring.ringLine = config->height;
@@ -649,17 +650,17 @@ int i6c_video_create(char index, hal_vidconfig *config)
         return ret;
 attach:
 
-    if (ret = i6c_venc.fnCreateChannel(device, index, &channel))
+    if (ret = i6c_venc.fnCreateChannel(_i6c_venc_dev[index], index, &channel))
         return ret;
 
-    if (device == I6C_VENC_DEV_H26X_0) {
+    if (_i6c_venc_dev[index] == I6C_VENC_DEV_H26X_0) {
         i6c_venc_src_conf config = I6C_VENC_SRC_CONF_RING_DMA;
-        if (ret = i6c_venc.fnSetSourceConfig(device, index, &config))
+        if (ret = i6c_venc.fnSetSourceConfig(_i6c_venc_dev[index], index, &config))
             return ret;
     }
 
     if (config->codec != HAL_VIDCODEC_JPG && 
-        (ret = i6c_venc.fnStartReceiving(device, index)))
+        (ret = i6c_venc.fnStartReceiving(_i6c_venc_dev[index], index)))
         return ret;
 
     i6c_state[index].payload = config->codec;
@@ -670,28 +671,27 @@ attach:
 int i6c_video_destroy(char index)
 {
     int ret;
-    char device = (i6c_state->payload == HAL_VIDCODEC_JPG ||
-        i6c_state->payload == HAL_VIDCODEC_MJPG) ? 
-        I6C_VENC_DEV_MJPG_0 : I6C_VENC_DEV_H26X_0;
 
     i6c_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
-    i6c_venc.fnStopReceiving(device, index);
+    i6c_venc.fnStopReceiving(_i6c_venc_dev[index], index);
 
     {
         i6c_sys_bind source = { .module = I6C_SYS_MOD_SCL, 
             .device = _i6c_scl_dev, .channel = _i6c_scl_chn, .port = index };
         i6c_sys_bind dest = { .module = I6C_SYS_MOD_VENC,
-            .device = device, .channel = index, .port = _i6c_venc_port };
+            .device = _i6c_venc_dev[index], .channel = index, .port = _i6c_venc_port };
         if (ret = i6c_sys.fnUnbind(0, &source, &dest))
             return ret;
     }
 
-    if (ret = i6c_venc.fnDestroyChannel(device, index))
+    if (ret = i6c_venc.fnDestroyChannel(_i6c_venc_dev[index], index))
         return ret;
     
     if (ret = i6c_scl.fnDisablePort(_i6c_scl_dev, _i6c_scl_chn, index))
         return ret;
+
+    _i6c_venc_dev[index] = 255;
     
     return EXIT_SUCCESS;
 }
@@ -719,10 +719,6 @@ void i6c_video_request_idr(char index)
 int i6c_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 {
     int ret;
-    char device = 
-        (i6c_state[index].payload == HAL_VIDCODEC_JPG ||
-         i6c_state[index].payload == HAL_VIDCODEC_MJPG) ? 
-         I6C_VENC_DEV_MJPG_0 : I6C_VENC_DEV_H26X_0;
 
     if (ret = i6c_channel_bind(index, 1, 1)) {
         fprintf(stderr, "[i6c_venc] Binding the encoder channel "
@@ -732,27 +728,27 @@ int i6c_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 
     i6c_venc_jpg param;
     memset(&param, 0, sizeof(param));
-    if (ret = i6c_venc.fnGetJpegParam(device, index, &param)) {
+    if (ret = i6c_venc.fnGetJpegParam(_i6c_venc_dev[index], index, &param)) {
         fprintf(stderr, "[i6c_venc] Reading the JPEG settings "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
     param.quality = quality;
-    if (ret = i6c_venc.fnSetJpegParam(device, index, &param)) {
+    if (ret = i6c_venc.fnSetJpegParam(_i6c_venc_dev[index], index, &param)) {
         fprintf(stderr, "[i6c_venc] Writing the JPEG settings "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
     unsigned int count = 1;
-    if (i6c_venc.fnStartReceivingEx(device, index, &count)) {
+    if (i6c_venc.fnStartReceivingEx(_i6c_venc_dev[index], index, &count)) {
         fprintf(stderr, "[i6c_venc] Requesting one frame "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
-    int fd = i6c_venc.fnGetDescriptor(device, index);
+    int fd = i6c_venc.fnGetDescriptor(_i6c_venc_dev[index], index);
 
     struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
     fd_set readFds;
@@ -769,7 +765,7 @@ int i6c_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 
     if (FD_ISSET(fd, &readFds)) {
         i6c_venc_stat stat;
-        if (i6c_venc.fnQuery(device, index, &stat)) {
+        if (i6c_venc.fnQuery(_i6c_venc_dev[index], index, &stat)) {
             fprintf(stderr, "[i6c_venc] Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
@@ -789,7 +785,7 @@ int i6c_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
         }
         strm.count = stat.curPacks;
 
-        if (ret = i6c_venc.fnGetStream(device, index, &strm, stat.curPacks)) {
+        if (ret = i6c_venc.fnGetStream(_i6c_venc_dev[index], index, &strm, stat.curPacks)) {
             fprintf(stderr, "[i6c_venc] Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
             free(strm.packet);
@@ -815,14 +811,14 @@ int i6c_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
         }
 
 abort:
-        i6c_venc.fnFreeStream(device, index, &strm);
+        i6c_venc.fnFreeStream(_i6c_venc_dev[index], index, &strm);
     }
 
-    i6c_venc.fnFreeDescriptor(device, index);
+    i6c_venc.fnFreeDescriptor(_i6c_venc_dev[index], index);
 
-    i6c_venc.fnStopReceiving(device, index);
+    i6c_venc.fnStopReceiving(_i6c_venc_dev[index], index);
 
-    i6c_channel_unbind(device, index);
+    i6c_channel_unbind(index);
 
     return ret;
 }
@@ -835,12 +831,8 @@ void *i6c_video_thread(void)
     for (int i = 0; i < I6C_VENC_CHN_NUM; i++) {
         if (!i6c_state[i].enable) continue;
         if (!i6c_state[i].mainLoop) continue;
-        char device = 
-            (i6c_state[i].payload == HAL_VIDCODEC_JPG ||
-             i6c_state[i].payload == HAL_VIDCODEC_MJPG) ? 
-             I6C_VENC_DEV_MJPG_0 : I6C_VENC_DEV_H26X_0;
 
-        ret = i6c_venc.fnGetDescriptor(device, i);
+        ret = i6c_venc.fnGetDescriptor(_i6c_venc_dev[i], i);
         if (ret < 0) {
             fprintf(stderr, "[i6c_venc] Getting the encoder descriptor failed with %#x!\n", ret);
             return NULL;
@@ -878,14 +870,9 @@ void *i6c_video_thread(void)
                 if (!i6c_state[i].enable) continue;
                 if (!i6c_state[i].mainLoop) continue;
                 if (FD_ISSET(i6c_state[i].fileDesc, &readFds)) {
-                    char device = 
-                        (i6c_state[i].payload == HAL_VIDCODEC_JPG ||
-                         i6c_state[i].payload == HAL_VIDCODEC_MJPG) ? 
-                         I6C_VENC_DEV_MJPG_0 : I6C_VENC_DEV_H26X_0;
-
                     memset(&stream, 0, sizeof(stream));
                     
-                    if (ret = i6c_venc.fnQuery(device, i, &stat)) {
+                    if (ret = i6c_venc.fnQuery(_i6c_venc_dev[i], i, &stat)) {
                         fprintf(stderr, "[i6c_venc] Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
                         break;
@@ -904,7 +891,7 @@ void *i6c_video_thread(void)
                     }
                     stream.count = stat.curPacks;
 
-                    if (ret = i6c_venc.fnGetStream(device, i, &stream, 40)) {
+                    if (ret = i6c_venc.fnGetStream(_i6c_venc_dev[i], i, &stream, 40)) {
                         fprintf(stderr, "[i6c_venc] Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;
@@ -949,7 +936,7 @@ void *i6c_video_thread(void)
                         (*i6c_venc_cb)(i, &outStrm);
                     }
 
-                    if (ret = i6c_venc.fnFreeStream(device, i, &stream)) {
+                    if (ret = i6c_venc.fnFreeStream(_i6c_venc_dev[i], i, &stream)) {
                         fprintf(stderr, "[i6c_venc] Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }

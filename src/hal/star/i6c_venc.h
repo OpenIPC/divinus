@@ -4,9 +4,7 @@
 
 #define I6C_VENC_CHN_NUM 12
 #define I6C_VENC_DEV_H26X_0 0
-#define I6C_VENC_DEV_H26X_1 1
 #define I6C_VENC_DEV_MJPG_0 8
-#define I6C_VENC_DEV_MJPG_1 9
 
 typedef enum {
     I6C_VENC_CODEC_H264 = 2,

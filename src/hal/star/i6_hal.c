@@ -476,12 +476,12 @@ int i6_video_create(char index, hal_vidconfig *config)
                 I6_ERROR("MJPEG encoder can only support CBR or fixed QP modes!");
         }
 
-        channel.attrib.mjpg.maxHeight = ALIGN_BACK(config->height, 16);
-        channel.attrib.mjpg.maxWidth = ALIGN_BACK(config->width, 16);
-        channel.attrib.mjpg.bufSize = config->width * config->height;
+        channel.attrib.mjpg.maxHeight = ALIGN_UP(config->height, 16);
+        channel.attrib.mjpg.maxWidth = ALIGN_UP(config->width, 16);
+        channel.attrib.mjpg.bufSize = ALIGN_UP(config->width, 16) * ALIGN_UP(config->height, 16);
         channel.attrib.mjpg.byFrame = 1;
-        channel.attrib.mjpg.height = ALIGN_BACK(config->height, 16);
-        channel.attrib.mjpg.width = ALIGN_BACK(config->width, 16);
+        channel.attrib.mjpg.height = ALIGN_UP(config->height, 16);
+        channel.attrib.mjpg.width = ALIGN_UP(config->width, 16);
         channel.attrib.mjpg.dcfThumbs = 0;
         channel.attrib.mjpg.markPerRow = 0;
 
@@ -553,13 +553,13 @@ int i6_video_create(char index, hal_vidconfig *config)
                 I6_ERROR("H.264 encoder does not support this mode!");
         }
     } else I6_ERROR("This codec is not supported by the hardware!");
-    attrib->maxHeight = ALIGN_BACK(config->height, 16);
-    attrib->maxWidth = ALIGN_BACK(config->width, 16);
+    attrib->maxHeight = config->height;
+    attrib->maxWidth = config->width;
     attrib->bufSize = config->height * config->width;
     attrib->profile = config->profile;
     attrib->byFrame = 1;
-    attrib->height = ALIGN_BACK(config->height, 16);
-    attrib->width = ALIGN_BACK(config->width, 16);
+    attrib->height = config->height;
+    attrib->width = config->width;
     attrib->bFrameNum = 0;
     attrib->refNum = 1;
 attach:
