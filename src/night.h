@@ -2,7 +2,7 @@
 
 #include "common.h"
 #include "gpio.h"
-#include "video.h"
+#include "media.h"
 
 bool night_mode_is_enabled();
 void *night_thread();

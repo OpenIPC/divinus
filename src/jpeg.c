@@ -1,19 +1,5 @@
 #include "jpeg.h"
 
-#include <fcntl.h>
-#include <pthread.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-#include <sys/select.h>
-
-#include "error.h"
-#include "night.h"
-#include "video.h"
-
 #define tag "[jpeg] "
 
 int jpeg_index;
@@ -35,7 +21,7 @@ int jpeg_init() {
 
     jpeg_index = take_next_free_channel(false);
 
-    if (ret = create_vpss_chn(jpeg_index, app_config.jpeg_width, app_config.jpeg_height, 1, 1)) {
+    if (ret = create_channel(jpeg_index, app_config.jpeg_width, app_config.jpeg_height, 1, 1)) {
         printf(
             tag "Creating channel %d failed with %#x!\n%s\n", 
             jpeg_index, ret, errstr(ret));
@@ -104,7 +90,7 @@ void jpeg_deinit() {
             pthread_mutex_unlock(&jpeg_mutex);
             return;    
     }
-    disable_venc_chn(jpeg_index, 1);
+    disable_video(jpeg_index, 1);
 
 active:
     jpeg_module_init = false;

@@ -1,4 +1,4 @@
-#include "video.h"
+#include "media.h"
 
 #include <pthread.h>
 #include <signal.h>
@@ -15,6 +15,12 @@
 pthread_mutex_t mutex;
 pthread_t ispPid = 0;
 pthread_t vencPid = 0;
+
+int save_audio_stream(hal_audframe *frame) {
+    int ret = EXIT_SUCCESS;
+
+    return ret;
+}
 
 int save_video_stream(char index, hal_vidstream *stream) {
     int ret;
@@ -82,20 +88,6 @@ int save_video_stream(char index, hal_vidstream *stream) {
     return EXIT_SUCCESS;
 }
 
-int take_next_free_channel(bool mainLoop) {
-    pthread_mutex_lock(&mutex);
-    for (int i = 0; i < chnCount; i++) {
-        if (!chnState[i].enable) {
-            chnState[i].enable = true;
-            chnState[i].mainLoop = mainLoop;
-            pthread_mutex_unlock(&mutex);
-            return i;
-        }
-    }
-    pthread_mutex_unlock(&mutex);
-    return -1;
-}
-
 void request_idr(void) {
     signed char index = -1;
     pthread_mutex_lock(&mutex);
@@ -137,7 +129,21 @@ void set_grayscale(bool active) {
     pthread_mutex_unlock(&mutex);
 }
 
-int create_vpss_chn(char index, short width, short height, char framerate, char jpeg) {
+int take_next_free_channel(bool mainLoop) {
+    pthread_mutex_lock(&mutex);
+    for (int i = 0; i < chnCount; i++) {
+        if (!chnState[i].enable) {
+            chnState[i].enable = true;
+            chnState[i].mainLoop = mainLoop;
+            pthread_mutex_unlock(&mutex);
+            return i;
+        }
+    }
+    pthread_mutex_unlock(&mutex);
+    return -1;
+}
+
+int create_channel(char index, short width, short height, char framerate, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  return EXIT_SUCCESS;
@@ -158,7 +164,7 @@ int create_vpss_chn(char index, short width, short height, char framerate, char 
     }
 }
 
-int bind_vpss_venc(char index, char framerate, char jpeg) {
+int bind_channel(char index, char framerate, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  return gm_channel_bind(index);
@@ -173,7 +179,7 @@ int bind_vpss_venc(char index, char framerate, char jpeg) {
     }
 }
 
-int unbind_vpss_venc(char index, char jpeg) {
+int unbind_channel(char index, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  return gm_channel_unbind(index);
@@ -188,7 +194,7 @@ int unbind_vpss_venc(char index, char jpeg) {
     }
 }
 
-int disable_venc_chn(char index, char jpeg) {
+int disable_video(char index, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  return gm_video_destroy(index);
@@ -306,7 +312,7 @@ int start_sdk(void) {
     if (app_config.mp4_enable) {
         int index = take_next_free_channel(true);
 
-        if (ret = create_vpss_chn(index, app_config.mp4_width, 
+        if (ret = create_channel(index, app_config.mp4_width, 
             app_config.mp4_height, app_config.mp4_fps, 0)) {
             fprintf(stderr, 
                 "Creating channel %d failed with %#x!\n%s\n", 
@@ -350,7 +356,7 @@ int start_sdk(void) {
             set_mp4_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps);
         }
 
-        if (ret = bind_vpss_venc(index, app_config.mp4_fps, 0)) {
+        if (ret = bind_channel(index, app_config.mp4_fps, 0)) {
             fprintf(stderr, 
                 "Binding channel %d failed with %#x!\n%s\n",
                 index, ret, errstr(ret));
@@ -361,7 +367,7 @@ int start_sdk(void) {
     if (app_config.mjpeg_enable) {
         int index = take_next_free_channel(true);
     
-        if (ret = create_vpss_chn(index, app_config.mjpeg_width, 
+        if (ret = create_channel(index, app_config.mjpeg_width, 
             app_config.mjpeg_height, app_config.mjpeg_fps, 1)) {
             fprintf(stderr, 
                 "Creating channel %d failed with %#x!\n%s\n", 
@@ -400,7 +406,7 @@ int start_sdk(void) {
             }
         }
 
-        if (ret = bind_vpss_venc(index, app_config.mjpeg_fps, 1)) {
+        if (ret = bind_channel(index, app_config.mjpeg_fps, 1)) {
             fprintf(stderr, 
                 "Binding channel %d failed with %#x!\n%s\n",
                 index, ret, errstr(ret));

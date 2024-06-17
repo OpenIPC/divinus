@@ -8,10 +8,10 @@
 #include <unistd.h>
 
 #include "http_post.h"
+#include "media.h"
 #include "night.h"
 #include "rtsp/rtsp_server.h"
 #include "server.h"
-#include "video.h"
 #include "watchdog.h"
 
 rtsp_handle rtspHandle;

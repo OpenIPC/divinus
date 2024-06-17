@@ -95,8 +95,6 @@ int v3_audio_init(void)
     
     if (ret = v3_aud.fnEnableChannel(_v3_aud_dev, _v3_aud_chn))
         return ret;
-    //if (ret = v3_aud.fnSetVolume(_v3_aud_dev, _v3_aud_chn, 0xF6))
-    //    return ret;
 
     return EXIT_SUCCESS;
 }

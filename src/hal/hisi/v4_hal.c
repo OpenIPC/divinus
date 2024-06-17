@@ -96,8 +96,6 @@ int v4_audio_init(void)
     
     if (ret = v4_aud.fnEnableChannel(_v4_aud_dev, _v4_aud_chn))
         return ret;
-    //if (ret = v4_aud.fnSetVolume(_v4_aud_dev, _v4_aud_chn, 0xF6))
-    //    return ret;
 
     return EXIT_SUCCESS;
 }
