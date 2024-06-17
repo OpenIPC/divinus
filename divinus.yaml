@@ -1,6 +1,9 @@
 system:
   sensor_config: /etc/sensors/imx415.bin
   web_port: 80
+  web_enable_auth: false
+  web_auth_user: admin
+  web_auth_pass: 12345
   web_enable_static: false
   isp_thread_stack_size: 16384
   venc_stream_thread_stack_size: 16384

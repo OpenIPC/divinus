@@ -7,6 +7,9 @@ struct AppConfig {
     // [system]
     char sensor_config[128];
     unsigned short web_port;
+    bool web_enable_auth;
+    char web_auth_user[32];
+    char web_auth_pass[32];
     bool web_enable_static;
     unsigned int isp_thread_stack_size;
     unsigned int venc_stream_thread_stack_size;

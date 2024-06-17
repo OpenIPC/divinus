@@ -433,7 +433,7 @@ char *request_header(const char *name)
 {
     header_t *h = reqhdr;
     for (; h->name; h++)
-        if (!strcmp(h->name, name))
+        if (!strcasecmp(h->name, name))
             return h->value;
     return NULL;
 }
@@ -528,6 +528,29 @@ void *server_thread(void *vargp) {
         if (total <= 0) continue;
 
         parse_request(client_fd, request);
+
+        if (app_config.web_enable_auth) {
+            char *auth = request_header("Authorization");
+            char cred[65], valid[256];
+
+            strcpy(cred, app_config.web_auth_user);
+            strcpy(cred + strlen(app_config.web_auth_user), ":");
+            strcpy(cred + strlen(app_config.web_auth_user) + 1, app_config.web_auth_pass);
+            strcpy(valid, "Basic ");
+            base64_encode(valid + 6, cred, strlen(cred));
+            
+            if (!auth || !equals(auth, valid)) {
+                int respLen = sprintf(response,
+                    "HTTP/1.1 401 Unauthorized\r\n" \
+                    "Content-Type: text/plain\r\n" \
+                    "WWW-Authenticate: Basic realm=\"Access the camera services\"\r\n" \
+                    "Connection: close\r\n\r\n"
+                );
+                send_to_fd(client_fd, response, respLen);
+                close_socket_fd(client_fd);
+                continue;
+            }
+        }
 
         if (equals(uri, "/exit")) {
             // exit
