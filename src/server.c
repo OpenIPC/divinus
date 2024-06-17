@@ -672,7 +672,7 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.jpeg_enable && starts_with(uri, "/api/jpeg")) {
+        if (app_config.jpeg_enable && equals(uri, "/api/jpeg")) {
             int respLen;
             if (equals(method, "GET")) {
                 if (!empty(query)) {
@@ -719,7 +719,7 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.mjpeg_enable && starts_with(uri, "/api/mjpeg")) {
+        if (app_config.mjpeg_enable && equals(uri, "/api/mjpeg")) {
             int respLen;
             if (equals(method, "GET")) {
                 if (!empty(query)) {
@@ -780,7 +780,7 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.mp4_enable && starts_with(uri, "/api/mp4")) {
+        if (app_config.mp4_enable && equals(uri, "/api/mp4")) {
             int respLen;
             if (equals(method, "GET")) {
                 if (!empty(query)) {
@@ -966,6 +966,49 @@ void *server_thread(void *vargp) {
                 "\r\n" \
                 "{\"id\":%d,\"color\":%#x,\"opal\":%d\"pos\":[%d,%d],\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\"}", 
                 id, osds[id].color, osds[id].opal, osds[id].posx, osds[id].posy, osds[id].font, osds[id].size, osds[id].text);
+            send_to_fd(client_fd, response, respLen);
+            close_socket_fd(client_fd);
+            continue;
+        }
+
+        if (starts_with(uri, "/api/time")) {
+            int respLen;
+            if (equals(method, "GET")) {
+                struct timespec t;
+                if (!empty(query)) {
+                    char *remain;
+                    while (query) {
+                        char *value = split(&query, "&");
+                        if (!value || !*value) continue;
+                        unescape_uri(value);
+                        char *key = split(&value, "=");
+                        if (!key || !*key || !value || !*value) continue;
+                        if (equals(key, "fmt")) {
+                            strncpy(timefmt, value, 32);
+                        } else if (equals(key, "ts")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain == value) continue;
+                            t.tv_sec = result;
+                            clock_settime(CLOCK_REALTIME, &t);
+                        }
+                    }
+                }
+                clock_gettime(CLOCK_REALTIME, &t);
+                respLen = sprintf(response,
+                    "HTTP/1.1 200 OK\r\n" \
+                    "Content-Type: application/json;charset=UTF-8\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "{\"fmt\":\"%s\",\"ts\":%d}", timefmt, t.tv_sec);
+            } else {
+                respLen = sprintf(response,
+                    "HTTP/1.1 400 Bad Request\r\n" \
+                    "Content-Type: text/plain\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "The server has no handler to the request.\r\n" \
+                );
+            }
             send_to_fd(client_fd, response, respLen);
             close_socket_fd(client_fd);
             continue;
