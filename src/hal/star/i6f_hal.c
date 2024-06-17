@@ -103,8 +103,6 @@ int i6f_audio_init(void)
     
     if (ret = i6f_aud.fnEnableChannel(_i6f_aud_dev, _i6f_aud_chn))
         return ret;
-    if (ret = i6f_aud.fnSetVolume(_i6f_aud_dev, _i6f_aud_chn, 0xF6))
-            return ret;
 
     return EXIT_SUCCESS;
 }

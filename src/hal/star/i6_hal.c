@@ -87,9 +87,11 @@ int i6_audio_init(void)
         config.packNumPerFrm = 640;
         config.codecChnNum = 1;
         config.chnNum = 1;
-        config.i2s.clock = I6_AUD_CLK_OFF;
         config.i2s.leftJustOn = 0;
+        config.i2s.clock = I6_AUD_CLK_OFF;
         config.i2s.syncRxClkOn = 1;
+        config.i2s.tdmSlotNum = 1;
+        config.i2s.bit24On = 0;
         if (ret = i6_aud.fnSetDeviceConfig(_i6_aud_dev, &config))
             return ret;
     }
@@ -98,8 +100,6 @@ int i6_audio_init(void)
     
     if (ret = i6_aud.fnEnableChannel(_i6_aud_dev, _i6_aud_chn))
         return ret;
-    if (ret = i6_aud.fnSetVolume(_i6_aud_dev, _i6_aud_chn, 0xF6))
-            return ret;
 
     return EXIT_SUCCESS;
 }

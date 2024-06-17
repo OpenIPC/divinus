@@ -46,6 +46,8 @@ typedef struct {
     int leftJustOn;
     i6_aud_clk clock;
     char syncRxClkOn;
+    unsigned int tdmSlotNum;
+    int bit24On;
 } i6_aud_i2s;
 
 typedef struct {
@@ -114,7 +116,6 @@ typedef struct {
     int (*fnSetEncodingParam)(int device, int channel, i6_aud_para *param);
 
     int (*fnSetMute)(int device, int channel, char active);
-    int (*fnSetVolume)(int device, int channel, int dbLevel);
 
     int (*fnFreeFrame)(int device, int channel, i6_aud_frm *frame, i6_aud_efrm *encFrame);
     int (*fnGetFrame)(int device, int channel, i6_aud_frm *frame, i6_aud_efrm *encFrame, int millis);
@@ -158,13 +159,13 @@ static int i6_aud_load(i6_aud_impl *aud_lib) {
 
     if (!(aud_lib->fnDisableEncoding = (int(*)(int device, int channel))
         dlsym(aud_lib->handle, "MI_AI_DisableAenc"))) {
-        fprintf(stderr, "[i6_aud] Failed to acquire symbol MI_AI_DisableChn!\n");
+        fprintf(stderr, "[i6_aud] Failed to acquire symbol MI_AI_DisableAenc!\n");
         return EXIT_FAILURE;
     }
 
     if (!(aud_lib->fnEnableEncoding = (int(*)(int device, int channel))
         dlsym(aud_lib->handle, "MI_AI_EnableAenc"))) {
-        fprintf(stderr, "[i6_aud] Failed to acquire symbol MI_AI_EnableChn!\n");
+        fprintf(stderr, "[i6_aud] Failed to acquire symbol MI_AI_EnableAenc!\n");
         return EXIT_FAILURE;
     }
 
@@ -177,12 +178,6 @@ static int i6_aud_load(i6_aud_impl *aud_lib) {
     if (!(aud_lib->fnSetMute = (int(*)(int device, int channel, char active))
         dlsym(aud_lib->handle, "MI_AI_SetMute"))) {
         fprintf(stderr, "[i6_aud] Failed to acquire symbol MI_AI_SetMute!\n");
-        return EXIT_FAILURE;
-    }
-
-    if (!(aud_lib->fnSetVolume = (int(*)(int device, int channel, int dbLevel))
-        dlsym(aud_lib->handle, "MI_AI_SetVqeVolume"))) {
-        fprintf(stderr, "[i6_aud] Failed to acquire symbol MI_AI_SetVqeVolume!\n");
         return EXIT_FAILURE;
     }
 
