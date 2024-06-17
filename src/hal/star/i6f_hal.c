@@ -139,7 +139,7 @@ void *i6f_audio_thread(void)
     fprintf(stderr, "[i6f_aud] Shutting down encoding thread...\n");
 }
 
-int i6f_channel_bind(char index, char framerate, char jpeg)
+int i6f_channel_bind(char index, char framerate)
 {
     int ret;
 
@@ -150,10 +150,11 @@ int i6f_channel_bind(char index, char framerate, char jpeg)
         i6f_sys_bind source = { .module = I6F_SYS_MOD_SCL, 
             .device = _i6f_scl_dev, .channel = _i6f_scl_chn, .port = index };
         i6f_sys_bind dest = { .module = I6F_SYS_MOD_VENC,
-            .device = jpeg ? I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0, 
+            .device = _i6f_venc_dev[index] ? I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0, 
             .channel = index, .port = _i6f_venc_port };
         if (ret = i6f_sys.fnBindExt(0, &source, &dest, framerate, framerate,
-            I6F_SYS_LINK_REALTIME, 0))
+            _i6f_venc_dev[index] >= I6F_VENC_DEV_MJPG_0 ? 
+                I6F_SYS_LINK_FRAMEBASE : I6F_SYS_LINK_REALTIME, 0))
             return ret;
     }
 
@@ -678,12 +679,8 @@ void i6f_video_request_idr(char index)
 int i6f_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 {
     int ret;
-    char device = 
-        (i6f_state[index].payload == HAL_VIDCODEC_JPG ||
-         i6f_state[index].payload == HAL_VIDCODEC_MJPG) ? 
-         I6F_VENC_DEV_MJPG_0 : I6F_VENC_DEV_H26X_0;
 
-    if (ret = i6f_channel_bind(index, 1, 1)) {
+    if (ret = i6f_channel_bind(index, 1)) {
         fprintf(stderr, "[i6f_venc] Binding the encoder channel "
             "%d failed with %#x!\n", index, ret);
         goto abort;
@@ -692,7 +689,7 @@ int i6f_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 
     i6f_venc_jpg param;
     memset(&param, 0, sizeof(param));
-    if (ret = i6f_venc.fnGetJpegParam(device, index, &param)) {
+    if (ret = i6f_venc.fnGetJpegParam(_i6f_venc_dev[index], index, &param)) {
         fprintf(stderr, "[i6f_venc] Reading the JPEG settings "
             "%d failed with %#x!\n", index, ret);
         goto abort;
@@ -700,20 +697,20 @@ int i6f_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
     return ret;
         return ret;
     param.quality = quality;
-    if (ret = i6f_venc.fnSetJpegParam(device, index, &param)) {
+    if (ret = i6f_venc.fnSetJpegParam(_i6f_venc_dev[index], index, &param)) {
         fprintf(stderr, "[i6f_venc] Writing the JPEG settings "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
     unsigned int count = 1;
-    if (i6f_venc.fnStartReceivingEx(device, index, &count)) {
+    if (i6f_venc.fnStartReceivingEx(_i6f_venc_dev[index], index, &count)) {
         fprintf(stderr, "[i6f_venc] Requesting one frame "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
-    int fd = i6f_venc.fnGetDescriptor(device, index);
+    int fd = i6f_venc.fnGetDescriptor(_i6f_venc_dev[index], index);
 
     struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
     fd_set readFds;
@@ -730,7 +727,7 @@ int i6f_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 
     if (FD_ISSET(fd, &readFds)) {
         i6f_venc_stat stat;
-        if (i6f_venc.fnQuery(device, index, &stat)) {
+        if (i6f_venc.fnQuery(_i6f_venc_dev[index], index, &stat)) {
             fprintf(stderr, "[i6f_venc] Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
@@ -750,7 +747,7 @@ int i6f_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
         }
         strm.count = stat.curPacks;
 
-        if (ret = i6f_venc.fnGetStream(device, index, &strm, stat.curPacks)) {
+        if (ret = i6f_venc.fnGetStream(_i6f_venc_dev[index], index, &strm, stat.curPacks)) {
             fprintf(stderr, "[i6f_venc] Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
             free(strm.packet);
@@ -776,12 +773,12 @@ int i6f_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
         }
 
 abort:
-        i6f_venc.fnFreeStream(device, index, &strm);
+        i6f_venc.fnFreeStream(_i6f_venc_dev[index], index, &strm);
     }
 
-    i6f_venc.fnFreeDescriptor(device, index);
+    i6f_venc.fnFreeDescriptor(_i6f_venc_dev[index], index);
 
-    i6f_venc.fnStopReceiving(device, index);
+    i6f_venc.fnStopReceiving(_i6f_venc_dev[index], index);
 
     i6f_channel_unbind(index);
 

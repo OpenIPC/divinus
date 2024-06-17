@@ -22,7 +22,7 @@ void i6c_audio_deinit(void);
 int i6c_audio_init(void);
 void *i6c_audio_thread(void);
 
-int i6c_channel_bind(char index, char framerate, char jpeg);
+int i6c_channel_bind(char index, char framerate);
 int i6c_channel_create(char index, short width, short height, char mirror, char flip, char jpeg);
 int i6c_channel_grayscale(char enable);
 int i6c_channel_unbind(char index);

@@ -145,7 +145,7 @@ void *i6c_audio_thread(void)
     fprintf(stderr, "[i6c_aud] Shutting down encoding thread...\n");
 }
 
-int i6c_channel_bind(char index, char framerate, char jpeg)
+int i6c_channel_bind(char index, char framerate)
 {
     int ret;
 
@@ -156,10 +156,11 @@ int i6c_channel_bind(char index, char framerate, char jpeg)
         i6c_sys_bind source = { .module = I6C_SYS_MOD_SCL, 
             .device = _i6c_scl_dev, .channel = _i6c_scl_chn, .port = index };
         i6c_sys_bind dest = { .module = I6C_SYS_MOD_VENC,
-            .device = jpeg ? I6C_VENC_DEV_MJPG_0 : I6C_VENC_DEV_H26X_0,
+            .device = _i6c_venc_dev[index],
             .channel = index, .port = _i6c_venc_port };
         if (ret = i6c_sys.fnBindExt(0, &source, &dest, framerate, framerate,
-            jpeg ? I6C_SYS_LINK_REALTIME : I6C_SYS_LINK_RING, 0))
+            _i6c_venc_dev[index] >= I6C_VENC_DEV_MJPG_0 ?
+                I6C_SYS_LINK_FRAMEBASE : I6C_SYS_LINK_RING, 0))
             return ret;
     }
 
@@ -720,7 +721,7 @@ int i6c_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 {
     int ret;
 
-    if (ret = i6c_channel_bind(index, 1, 1)) {
+    if (ret = i6c_channel_bind(index, 1)) {
         fprintf(stderr, "[i6c_venc] Binding the encoder channel "
             "%d failed with %#x!\n", index, ret);
         goto abort;

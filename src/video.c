@@ -97,7 +97,7 @@ int take_next_free_channel(bool mainLoop) {
 }
 
 void request_idr(void) {
-    char index = -1;
+    signed char index = -1;
     pthread_mutex_lock(&mutex);
     for (int i = 0; i < chnCount; i++) {
         if (!chnState[i].enable) continue;
@@ -163,8 +163,8 @@ int bind_vpss_venc(char index, char framerate, char jpeg) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  return gm_channel_bind(index);
         case HAL_PLATFORM_I6:  return i6_channel_bind(index, framerate);
-        case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate, jpeg);
-        case HAL_PLATFORM_I6F: return i6f_channel_bind(index, framerate, jpeg);
+        case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate);
+        case HAL_PLATFORM_I6F: return i6f_channel_bind(index, framerate);
         case HAL_PLATFORM_V3:  return v3_channel_bind(index);
         case HAL_PLATFORM_V4:  return v4_channel_bind(index);
 #elif defined(__mips__)
