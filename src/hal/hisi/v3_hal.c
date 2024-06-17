@@ -17,7 +17,7 @@ v3_vpss_impl    v3_vpss;
 
 hal_chnstate v3_state[V3_VENC_CHN_NUM] = {0};
 int (*v3_aud_cb)(hal_audframe*);
-int (*v3_venc_cb)(char, hal_vidstream*);
+int (*v3_vid_cb)(char, hal_vidstream*);
 
 char _v3_aud_chn = 0;
 char _v3_aud_dev = 0;
@@ -97,6 +97,36 @@ int v3_audio_init(void)
         return ret;
 
     return EXIT_SUCCESS;
+}
+
+void *v3_audio_thread(void)
+{
+    int ret;
+
+    v3_aud_frm frame;
+    v3_aud_efrm echoFrame;
+
+    while (keepRunning) {
+        ret = v3_aud.fnGetFrame(_v3_aud_dev, _v3_aud_chn, 
+            &frame, &echoFrame, 100);
+        if (ret && ret != 0xA015800E) {
+            fprintf(stderr, "[v3_aud] Getting the frame failed "
+                "with %#x!\n", ret);
+            break;
+        } else continue;
+
+        if (v3_aud_cb) {
+            hal_audframe outFrame;
+            (v3_aud_cb)(&outFrame);
+        }
+
+        if (ret = v3_aud.fnFreeFrame(_v3_aud_dev, _v3_aud_chn,
+            &frame, &echoFrame)) {
+            fprintf(stderr, "[v3_aud] Releasing the frame failed"
+                " with %#x!\n", ret);
+        }
+    }
+    fprintf(stderr, "[v3_aud] Shutting down encoding thread...\n");
 }
 
 int v3_channel_bind(char index)
@@ -780,7 +810,7 @@ void *v3_video_thread(void)
                         break;
                     }
 
-                    if (v3_venc_cb) {
+                    if (v3_vid_cb) {
                         hal_vidstream outStrm;
                         hal_vidpack outPack[stream.count];
                         outStrm.count = stream.count;
@@ -804,7 +834,7 @@ void *v3_video_thread(void)
                             outPack[j].timestamp = pack->timestamp;
                         }
                         outStrm.pack = outPack;
-                        (*v3_venc_cb)(i, &outStrm);
+                        (*v3_vid_cb)(i, &outStrm);
                     }
 
                     if (ret = v3_venc.fnFreeStream(i, &stream)) {

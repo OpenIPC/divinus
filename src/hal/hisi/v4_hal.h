@@ -21,10 +21,11 @@ extern char keepRunning;
 
 extern hal_chnstate v4_state[V4_VENC_CHN_NUM];
 extern int (*v4_aud_cb)(hal_audframe*);
-extern int (*v4_venc_cb)(char, hal_vidstream*);
+extern int (*v4_vid_cb)(char, hal_vidstream*);
 
 void v4_hal_deinit(void);
 int v4_hal_init(void);
+void *v4_audio_thread(void);
 
 void v4_audio_deinit(void);
 int v4_audio_init(void);

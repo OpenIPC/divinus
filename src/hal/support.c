@@ -1,7 +1,8 @@
 #include "support.h"
 
+void *aud_thread = NULL;
 void *isp_thread = NULL;
-void *venc_thread = NULL;
+void *vid_thread = NULL;
 
 char chnCount = 0;
 hal_chnstate *chnState = NULL;
@@ -68,26 +69,28 @@ void hal_identify(void) {
             case 0xF1: // Pudding (6E)
             case 0xF2: // Ispahan (6B0)
                 plat = HAL_PLATFORM_I6;
-                strcpy(chipId, val == 0xEF ? "infinity6" :
-                    val == 0xF1 ? "infinity6e" :
-                    val == 0xF2 ? "infinity6b0" : "unknown");
+                strcpy(chipId, val == 0xEF ? 
+                    "SSC32x" : "SSC33x");
                 chnCount = I6_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6_state;
-                venc_thread = i6_video_thread;
+                aud_thread = i6_audio_thread;
+                vid_thread = i6_video_thread;
                 return;
             case 0xF9:
                 plat = HAL_PLATFORM_I6C;
-                strcpy(chipId, "infinity6c");
+                strcpy(chipId, "SSC37x");
                 chnCount = I6C_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6c_state;
-                venc_thread = i6c_video_thread;
+                aud_thread = i6c_audio_thread;
+                vid_thread = i6c_video_thread;
                 return;
             case 0xFB:
                 plat = HAL_PLATFORM_I6F;
-                strcpy(chipId, "infinity6f");
+                strcpy(chipId, "SSC37x");
                 chnCount = I6F_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6f_state;
-                venc_thread = i6f_video_thread;
+                aud_thread = i6f_audio_thread;
+                vid_thread = i6f_video_thread;
                 return;
         }
     
@@ -101,7 +104,7 @@ void hal_identify(void) {
         }
         chnCount = GM_VENC_CHN_NUM;
         chnState = (hal_chnstate*)gm_state;
-        venc_thread = gm_video_thread;
+        vid_thread = gm_video_thread;
         return;
     }
 #endif
@@ -128,7 +131,7 @@ void hal_identify(void) {
                 }
                 chnCount = T31_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)t31_state;
-                venc_thread = t31_video_thread;
+                vid_thread = t31_video_thread;
                 return;
         }
     }
@@ -153,7 +156,6 @@ void hal_identify(void) {
             val = 0x12020000;
             v3series = 1;
             break;
-        case 0x12080000: val = 0x12050000; break;
         case 0x20080000: val = 0x20050000; break;
 
         default: return;
@@ -182,15 +184,17 @@ void hal_identify(void) {
         plat = HAL_PLATFORM_V3;
         chnCount = V3_VENC_CHN_NUM;
         chnState = (hal_chnstate*)v3_state;
+        aud_thread = v3_audio_thread;
         isp_thread = v3_image_thread;
-        venc_thread = v3_video_thread;
+        vid_thread = v3_video_thread;
         return;
     }
 
     plat = HAL_PLATFORM_V4;
     chnCount = V4_VENC_CHN_NUM;
     chnState = (hal_chnstate*)v4_state;
+    aud_thread = v4_audio_thread;
     isp_thread = v4_image_thread;
-    venc_thread = v4_video_thread;
+    vid_thread = v4_video_thread;
 #endif
 }

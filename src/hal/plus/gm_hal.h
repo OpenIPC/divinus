@@ -11,7 +11,7 @@ extern char keepRunning;
 
 extern hal_chnstate gm_state[GM_VENC_CHN_NUM];
 extern int (*gm_aud_cb)(hal_audframe*);
-extern int (*gm_venc_cb)(char, hal_vidstream*);
+extern int (*gm_vid_cb)(char, hal_vidstream*);
 
 void gm_hal_deinit(void);
 int gm_hal_init(void);

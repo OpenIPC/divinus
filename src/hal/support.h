@@ -32,8 +32,9 @@
     return (alen > blen) && strcmp(a + alen - blen, b);
 #define empty(x) (x[0] == '\0')
 
+extern void *aud_thread;
 extern void *isp_thread;
-extern void *venc_thread;
+extern void *vid_thread;
 
 extern char chnCount;
 extern hal_chnstate *chnState;
@@ -46,18 +47,23 @@ extern int series;
 extern void *gm_video_thread(void);
 extern hal_chnstate gm_state[GM_VENC_CHN_NUM];
 
+extern void *v3_audio_thread(void);
 extern void *v3_video_thread(void);
 extern hal_chnstate v3_state[V4_VENC_CHN_NUM];
 
+extern void *v4_audio_thread(void);
 extern void *v4_video_thread(void);
 extern hal_chnstate v4_state[V4_VENC_CHN_NUM];
 
+extern void *i6_audio_thread(void);
 extern void *i6_video_thread(void);
 extern hal_chnstate i6_state[I6_VENC_CHN_NUM];
 
+extern void *i6c_audio_thread(void);
 extern void *i6c_video_thread(void);
 extern hal_chnstate i6c_state[I6C_VENC_CHN_NUM];
 
+extern void *i6f_audio_thread(void);
 extern void *i6f_video_thread(void);
 extern hal_chnstate i6f_state[I6F_VENC_CHN_NUM];
 #elif defined(__mips__)

@@ -11,7 +11,7 @@ t31_venc_impl t31_venc;
 
 hal_chnstate t31_state[T31_VENC_CHN_NUM] = {0};
 int (*t31_aud_cb)(hal_audframe*);
-int (*t31_venc_cb)(char, hal_vidstream*);
+int (*t31_vid_cb)(char, hal_vidstream*);
 
 t31_isp_snr _t31_isp_snr;
 t31_common_dim _t31_snr_dim;
@@ -578,7 +578,7 @@ void *t31_video_thread(void)
                         break;
                     }
 
-                    if (t31_venc_cb) {
+                    if (t31_vid_cb) {
                         hal_vidstream outStrm;
                         hal_vidpack outPack[stream.count];
                         memset(outPack, 0, sizeof(outPack));
@@ -610,7 +610,7 @@ void *t31_video_thread(void)
                             outPack[j].timestamp = pack->timestamp;
                         }
                         outStrm.pack = outPack;
-                        (*t31_venc_cb)(i, &outStrm);
+                        (*t31_vid_cb)(i, &outStrm);
                     }
 
                     if (ret = t31_venc.fnFreeStream(i, &stream)) {

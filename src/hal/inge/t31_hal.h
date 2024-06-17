@@ -14,7 +14,7 @@ extern char keepRunning;
 
 extern hal_chnstate t31_state[T31_VENC_CHN_NUM];
 extern int (*t31_aud_cb)(hal_audframe*);
-extern int (*t31_venc_cb)(char, hal_vidstream*);
+extern int (*t31_vid_cb)(char, hal_vidstream*);
 
 void t31_hal_deinit(void);
 int t31_hal_init(void);

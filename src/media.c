@@ -13,8 +13,9 @@
 #include "server.h"
 
 pthread_mutex_t mutex;
+pthread_t audPid = 0;
 pthread_t ispPid = 0;
-pthread_t vencPid = 0;
+pthread_t vidPid = 0;
 
 int save_audio_stream(hal_audframe *frame) {
     int ret = EXIT_SUCCESS;
@@ -233,14 +234,29 @@ int start_sdk(void) {
 
     switch (plat) {
 #if defined(__arm__)
-        case HAL_PLATFORM_GM:  gm_venc_cb = save_video_stream; break;
-        case HAL_PLATFORM_I6:  i6_venc_cb = save_video_stream; break;
-        case HAL_PLATFORM_I6C: i6c_venc_cb = save_video_stream; break;
-        case HAL_PLATFORM_I6F: i6f_venc_cb = save_video_stream; break;
-        case HAL_PLATFORM_V3:  v3_venc_cb = save_video_stream; break;
-        case HAL_PLATFORM_V4:  v4_venc_cb = save_video_stream; break;
+        case HAL_PLATFORM_GM:  gm_vid_cb = save_video_stream; break;
+        case HAL_PLATFORM_I6:
+            i6_aud_cb = save_audio_stream;
+            i6_vid_cb = save_video_stream;
+            break;
+        case HAL_PLATFORM_I6C:
+            i6c_aud_cb = save_audio_stream;
+            i6c_vid_cb = save_video_stream;
+            break;
+        case HAL_PLATFORM_I6F:
+            i6f_aud_cb = save_audio_stream;
+            i6f_vid_cb = save_video_stream;
+            break;
+        case HAL_PLATFORM_V3:
+            v3_aud_cb = save_audio_stream;
+            v3_vid_cb = save_video_stream;
+            break;
+        case HAL_PLATFORM_V4:
+            v4_aud_cb = save_audio_stream;
+            v4_vid_cb = save_video_stream;
+            break;
 #elif defined(__mips__)
-        case HAL_PLATFORM_T31: t31_venc_cb = save_video_stream; break;
+        case HAL_PLATFORM_T31: t31_vid_cb = save_video_stream; break;
 #endif
     }
 
@@ -432,7 +448,7 @@ int start_sdk(void) {
             fprintf(stderr, "Can't set stack size %zu\n", new_stacksize);
         }
         if (pthread_create(
-                     &vencPid, &thread_attr, (void *(*)(void *))venc_thread, NULL)) {
+                     &vidPid, &thread_attr, (void *(*)(void *))vid_thread, NULL)) {
             fprintf(stderr, "Starting the video encoding thread failed!\n");
             return EXIT_FAILURE;
         }
@@ -459,7 +475,7 @@ int start_sdk(void) {
 }
 
 int stop_sdk(void) {
-    pthread_join(vencPid, NULL);
+    pthread_join(vidPid, NULL);
 
     if (app_config.jpeg_enable)
         jpeg_deinit();

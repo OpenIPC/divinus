@@ -21,13 +21,14 @@ extern char keepRunning;
 
 extern hal_chnstate v3_state[V3_VENC_CHN_NUM];
 extern int (*v3_aud_cb)(hal_audframe*);
-extern int (*v3_venc_cb)(char, hal_vidstream*);
+extern int (*v3_vid_cb)(char, hal_vidstream*);
 
 void v3_hal_deinit(void);
 int v3_hal_init(void);
 
 void v3_audio_deinit(void);
 int v3_audio_init(void);
+void *v3_audio_thread(void);
 
 int v3_channel_bind(char index);
 int v3_channel_create(char index, short width, short height, char mirror, char flip, char framerate);

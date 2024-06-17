@@ -13,7 +13,7 @@ i6f_vif_impl  i6f_vif;
 
 hal_chnstate i6f_state[I6F_VENC_CHN_NUM] = {0};
 int (*i6f_aud_cb)(hal_audframe*);
-int (*i6f_venc_cb)(char, hal_vidstream*);
+int (*i6f_vid_cb)(char, hal_vidstream*);
 
 i6f_snr_pad _i6f_snr_pad;
 i6f_snr_plane _i6f_snr_plane;
@@ -858,7 +858,7 @@ void *i6f_video_thread(void)
                         break;
                     }
 
-                    if (i6f_venc_cb) {
+                    if (i6f_vid_cb) {
                         hal_vidstream outStrm;
                         hal_vidpack outPack[stream.count];
                         outStrm.count = stream.count;
@@ -894,7 +894,7 @@ void *i6f_video_thread(void)
                             outPack[j].timestamp = pack->timestamp;
                         }
                         outStrm.pack = outPack;
-                        (*i6f_venc_cb)(i, &outStrm);
+                        (*i6f_vid_cb)(i, &outStrm);
                     }
 
                     if (ret = i6f_venc.fnFreeStream(_i6f_venc_dev[i], i, &stream)) {

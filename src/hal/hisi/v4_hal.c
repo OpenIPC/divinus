@@ -17,7 +17,7 @@ v4_vpss_impl    v4_vpss;
 
 hal_chnstate v4_state[V4_VENC_CHN_NUM] = {0};
 int (*v4_aud_cb)(hal_audframe*);
-int (*v4_venc_cb)(char, hal_vidstream*);
+int (*v4_vid_cb)(char, hal_vidstream*);
 
 char _v4_aud_chn = 0;
 char _v4_aud_dev = 0;
@@ -98,6 +98,36 @@ int v4_audio_init(void)
         return ret;
 
     return EXIT_SUCCESS;
+}
+
+void *v4_audio_thread(void)
+{
+    int ret;
+
+    v4_aud_frm frame;
+    v4_aud_efrm echoFrame;
+
+    while (keepRunning) {
+        ret = v4_aud.fnGetFrame(_v4_aud_dev, _v4_aud_chn, 
+            &frame, &echoFrame, 100);
+        if (ret && ret != 0xA015800E) {
+            fprintf(stderr, "[v4_aud] Getting the frame failed "
+                "with %#x!\n", ret);
+            break;
+        } else continue;
+
+        if (v4_aud_cb) {
+            hal_audframe outFrame;
+            (v4_aud_cb)(&outFrame);
+        }
+
+        if (ret = v4_aud.fnFreeFrame(_v4_aud_dev, _v4_aud_chn,
+            &frame, &echoFrame)) {
+            fprintf(stderr, "[v4_aud] Releasing the frame failed"
+                " with %#x!\n", ret);
+        }
+    }
+    fprintf(stderr, "[v4_aud] Shutting down encoding thread...\n");
 }
 
 int v4_channel_bind(char index)
@@ -825,7 +855,7 @@ void *v4_video_thread(void)
                         break;
                     }
 
-                    if (v4_venc_cb) {
+                    if (v4_vid_cb) {
                         hal_vidstream outStrm;
                         hal_vidpack outPack[stream.count];
                         outStrm.count = stream.count;
@@ -849,7 +879,7 @@ void *v4_video_thread(void)
                             outPack[j].timestamp = pack->timestamp;
                         }
                         outStrm.pack = outPack;
-                        (*v4_venc_cb)(i, &outStrm);
+                        (*v4_vid_cb)(i, &outStrm);
                     }
 
                     if (ret = v4_venc.fnFreeStream(i, &stream)) {

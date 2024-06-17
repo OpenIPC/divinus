@@ -6,7 +6,7 @@ gm_lib_impl gm_lib;
 
 hal_chnstate gm_state[GM_VENC_CHN_NUM] = {0};
 int (*gm_aud_cb)(hal_audframe*);
-int (*gm_venc_cb)(char, hal_vidstream*);
+int (*gm_vid_cb)(char, hal_vidstream*);
 
 gm_venc_fds _gm_venc_fds[GM_VENC_CHN_NUM];
 void* _gm_cap_dev;
@@ -242,7 +242,7 @@ void *gm_video_thread(void)
             if (stream[i].ret < 0)
                 fprintf(stderr, "[gm_venc] Failed to the receive bitstream on "
                     "channel %d with %#x!\n", i, stream[i].ret);
-            else if (!stream[i].ret && gm_venc_cb) {
+            else if (!stream[i].ret && gm_vid_cb) {
                 gm_venc_pack *pack = &stream[i].pack;
                 hal_vidstream outStrm;
                 hal_vidpack outPack[1];
@@ -270,7 +270,7 @@ void *gm_video_thread(void)
                         outPack[0].nalu[n].offset;
 
                 outStrm.pack = outPack;
-                (*gm_venc_cb)(i, &outStrm);
+                (*gm_vid_cb)(i, &outStrm);
             }
         }        
     }
