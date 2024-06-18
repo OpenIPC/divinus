@@ -22,10 +22,10 @@
  *              PRIVATE DEFINITIONS
  ******************************************************************************/
 //static void *rtpThrFxn(void *v);
-static inline int __rtp_send_h264(struct nal_rtp_t *rtp, struct list_head_t *trans_list);
-static inline int __rtp_send_eachconnection_h264(struct list_t *e, void *v);
+static inline int __rtp_send_h26x(struct nal_rtp_t *rtp, struct list_head_t *trans_list);
+static inline int __rtp_send_eachconnection_h26x(struct list_t *e, void *v);
 static inline int __rtp_setup_transfer(struct list_t *e, void *v);
-static inline int __transfer_nal(struct list_head_t *trans_list, unsigned char *nalptr, size_t nalsize);
+static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned char *nalptr, size_t nalsize, char isH265);
 static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len);
 
 struct __transfer_set_t {
@@ -37,11 +37,14 @@ struct __transfer_set_t {
  *              PRIVATE FUNCTIONS
  ******************************************************************************/
 
-static inline int __transfer_nal(struct list_head_t *trans_list, unsigned char *nalptr, size_t nalsize)
+static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned char *nalptr, size_t nalsize, char isH265)
 {
     struct nal_rtp_t rtp;
-    unsigned int nri = nalptr[0] & 0x60;
-    unsigned int pt  = nalptr[0] & 0x1F;
+    unsigned int nri = isH265 ? (nalptr[0] & 0x81) : (nalptr[0] & 0x60);
+    unsigned int pt  = isH265 ? (nalptr[0] & 0x7E >> 1) : (nalptr[0] & 0x1F);
+    unsigned int ids = isH265 ? nalptr[1] : 0;
+    char head = isH265 ? 3 : 2;
+
     rtp_hdr_t *p_header = &(rtp.packet.header);
     unsigned char *payload = rtp.packet.payload;
 
@@ -54,7 +57,11 @@ static inline int __transfer_nal(struct list_head_t *trans_list, unsigned char *
     if(nalsize <= __RTP_MAXPAYLOADSIZE){
         /* single packet */
         /* SPS, PPS, SEI is not marked */
-        if(pt != 7 && pt != 8 && pt != 6) { 
+        if ((isH265 && pt < H265_NAL_TYPE_VPS) ||
+            (!isH265 &&
+                pt != H264_NAL_TYPE_SPS && 
+                pt != H264_NAL_TYPE_PPS &&
+                pt != H264_NAL_TYPE_SEI)) { 
             p_header->m = 1;
         } else {
             p_header->m = 0;
@@ -64,55 +71,60 @@ static inline int __transfer_nal(struct list_head_t *trans_list, unsigned char *
 
         rtp.rtpsize = nalsize + sizeof(rtp_hdr_t);
 
-        ASSERT(__rtp_send_h264(&rtp,trans_list) == SUCCESS, return FAILURE);
+        ASSERT(__rtp_send_h26x(&rtp,trans_list) == SUCCESS, return FAILURE);
     }  else  {
+        nalptr += isH265 ? 2 : 1;
+        nalsize -= isH265 ? 2 : 1;
 
-        nalptr += 1;
-        nalsize -= 1;
-
-        payload[0] = 28;
-        payload[0] |= nri;
-        payload[1] = pt;
-        payload[1] |= 1 << 7;
+        if (isH265) {
+            payload[0] = 49 << 1;
+            payload[0] |= nri;
+            payload[1] = ids;
+            payload[2] = pt;
+        } else {
+            payload[0] = 28;
+            payload[0] |= nri;
+            payload[1] = pt;
+        }
+        payload[head - 1] |= 1 << 7;
 
         /* send fragmented nal */
-        while(nalsize > __RTP_MAXPAYLOADSIZE - 2){
-
+        while(nalsize > __RTP_MAXPAYLOADSIZE - head){
             p_header->m = 0;
 
-            memcpy(&(payload[2]), nalptr, __RTP_MAXPAYLOADSIZE - 2);
+            memcpy(&(payload[head]), nalptr, __RTP_MAXPAYLOADSIZE - head);
 
             rtp.rtpsize = sizeof(rtp_hdr_t) + __RTP_MAXPAYLOADSIZE;
 
-            nalptr += __RTP_MAXPAYLOADSIZE - 2;
-            nalsize -= __RTP_MAXPAYLOADSIZE - 2;
+            nalptr += __RTP_MAXPAYLOADSIZE - head;
+            nalsize -= __RTP_MAXPAYLOADSIZE - head;
 
-            ASSERT(__rtp_send_h264(&rtp,trans_list) == SUCCESS, return FAILURE);
+            ASSERT(__rtp_send_h26x(&rtp,trans_list) == SUCCESS, return FAILURE);
 
             /* intended xor. blame vim :( */
-            payload[1] &= 0xFF ^ (1<<7); 
+            payload[head - 1] &= 0xFF ^ (1<<7); 
         }
 
         /* send trailing nal */
         p_header->m = 1;
 
-        payload[1] |= 1 << 6;
+        payload[head - 1] |= 1 << 6;
 
         /* intended xor. blame vim :( */
-        payload[1] &= 0xFF ^ (1<<7);
+        payload[head - 1] &= 0xFF ^ (1<<7);
 
         rtp.rtpsize = nalsize + sizeof(rtp_hdr_t);
 
-        memcpy(&(payload[2]), nalptr, nalsize);
+        memcpy(&(payload[head]), nalptr, nalsize);
 
-        ASSERT(__rtp_send_h264(&rtp, trans_list) == SUCCESS, return FAILURE);
+        ASSERT(__rtp_send_h26x(&rtp, trans_list) == SUCCESS, return FAILURE);
 
     }
 
     return SUCCESS;
 }
 
-static inline int __rtp_send_eachconnection_h264(struct list_t *e, void *v)
+static inline int __rtp_send_eachconnection_h26x(struct list_t *e, void *v)
 {
     int send_bytes;
     struct connection_item_t *con;
@@ -150,9 +162,9 @@ static inline int __rtp_send_eachconnection_h264(struct list_t *e, void *v)
     return FAILURE;
 }
 
-static inline int __rtp_send_h264(struct nal_rtp_t *rtp, struct list_head_t *trans_list)
+static inline int __rtp_send_h26x(struct nal_rtp_t *rtp, struct list_head_t *trans_list)
 {
-    return list_map_inline(trans_list,(__rtp_send_eachconnection_h264), rtp);
+    return list_map_inline(trans_list,(__rtp_send_eachconnection_h26x), rtp);
 }
 
 
@@ -202,16 +214,42 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
     size_t single_len;
     mime_encoded_handle base64 = NULL;
     mime_encoded_handle base16 = NULL;
-    unsigned int pt;
-    
+
+    /* check VPS is set */
+    if(!(h->sprop_vps_b64)){
+        nalptr = buf;
+        single_len = 0;
+        while (__split_nal(buf,&nalptr,&single_len,len) == SUCCESS) {
+            if (nalptr[0] & 0x7E >> 1 == H265_NAL_TYPE_VPS) {
+                ASSERT(single_len >= 4, return FAILURE);
+                ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]),single_len), return FAILURE);
+
+                DASSERT(base64->base == 64, return FAILURE);
+
+                /* optimistic lock */
+                rtsp_lock(h);
+                if(h->sprop_vps_b64) {
+                    DBG("pps is set by another thread?\n");
+                    mime_encoded_delete(base64);
+                } else {
+                    h->sprop_vps_b64 = base64;
+                }
+                rtsp_unlock(h);
+            }
+        }
+        rtsp_lock(h);
+        rtsp_unlock(h);
+        base64 = NULL;
+    }
+
     /* check SPS is set */
     if(!(h->sprop_sps_b64)){ 
         nalptr = buf;
         single_len = 0;
 
         while (__split_nal(buf,&nalptr,&single_len,len) == SUCCESS) {
-            pt = nalptr[0] & 0x1F;
-            if(pt == H264_NAL_TYPE_SPS) {
+            if (nalptr[0] & 0x1F == H264_NAL_TYPE_SPS ||
+                nalptr[0] & 0x7E >> 1 == H265_NAL_TYPE_SPS) {
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]),single_len), return FAILURE);
                 ASSERT(base16 = mime_base16_create((char *)&(nalptr[1]),3), return FAILURE);
 
@@ -235,7 +273,6 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
                 }
                 rtsp_unlock(h);
             }
-
         }
 
         base64 = NULL;
@@ -247,9 +284,8 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
         nalptr = buf;
         single_len = 0;
         while (__split_nal(buf,&nalptr,&single_len,len) == SUCCESS) {
-            pt = nalptr[0] & 0x1F;
-
-            if(pt == H264_NAL_TYPE_PPS) {
+            if (nalptr[0] & 0x1F == H264_NAL_TYPE_PPS ||
+                nalptr[0] & 0x7E >> 1 == H265_NAL_TYPE_PPS) {
                 ASSERT(single_len >= 4, return FAILURE);
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]),single_len), return FAILURE);
 
@@ -295,7 +331,7 @@ static inline int __rtcp_poll(struct list_t *e, void *v)
 /******************************************************************************
  *              PUBLIC FUNCTIONS
  ******************************************************************************/
-int rtp_send_h264(rtsp_handle h, unsigned char *buf, size_t len, struct timeval *p_tv)
+int rtp_send_h26x(rtsp_handle h, unsigned char *buf, size_t len, struct timeval *p_tv, char isH265)
 {
     unsigned char *nalptr = buf;
     size_t single_len = 0;
@@ -306,7 +342,6 @@ int rtp_send_h264(rtsp_handle h, unsigned char *buf, size_t len, struct timeval 
     DASSERT(h, return FAILURE);
     DASSERT(p_tv, return FAILURE);
 
-
     if(gbl_get_quit(h->pool->sharedp->gbl)) {
         ERR("server threads have gone already. call rtsp_finish()\n");
         return FAILURE;
@@ -314,7 +349,8 @@ int rtp_send_h264(rtsp_handle h, unsigned char *buf, size_t len, struct timeval 
     
     __get_timestamp_offset(&h->stat, p_tv);
 
-    
+    h->isH265 = isH265;
+
     ASSERT(__retrieve_sprop(h,buf,len) == SUCCESS, goto error);
 
     trans.h = h;
@@ -326,7 +362,7 @@ int rtp_send_h264(rtsp_handle h, unsigned char *buf, size_t len, struct timeval 
 
         while (__split_nal(buf,&nalptr,&single_len,len) == SUCCESS) {
             
-            ASSERT(__transfer_nal(&(trans.list_head),nalptr,single_len) == SUCCESS, goto error);
+            ASSERT(__transfer_nal_h26x(&(trans.list_head),nalptr,single_len,h->isH265) == SUCCESS, goto error);
 
         }
 

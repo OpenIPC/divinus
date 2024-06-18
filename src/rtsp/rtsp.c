@@ -257,7 +257,37 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
 {
     char sdp[__RTSP_TCP_BUF_SIZE];
 
-    if(h->sprop_sps_b64 && h->sprop_sps_b16 && h->sprop_pps_b64) {
+    if (h->isH265 && 
+        h->sprop_vps_b64 && h->sprop_sps_b64 && h->sprop_sps_b16 && h->sprop_pps_b64) {
+        DASSERT(h->sprop_vps_b64->result, return);
+        DASSERT(h->sprop_sps_b64->result, return);
+        DASSERT(h->sprop_sps_b16->result, return);
+        DASSERT(h->sprop_pps_b64->result, return);
+
+        DBG("VPS BASE64:%s\n",h->sprop_vps_b64->result);
+        DBG("SPS BASE64:%s\n",h->sprop_sps_b64->result);
+        DBG("SPS BASE16:%s\n",h->sprop_sps_b16->result);
+        DBG("PPS BASE64:%s\n",h->sprop_pps_b64->result);
+
+        snprintf(sdp, __RTSP_TCP_BUF_SIZE- 1,
+                "v=0\r\n"
+                "o=- 0 0 IN IP4 127.0.0.1\r\n"
+                "s=librtsp\r\n"
+                "c=IN IP4 0.0.0.0\r\n"
+                "t=0 0\r\n"
+                "a=tool:libavformat 52.73.0\r\n"
+                "m=video 0 RTP/AVP 96\r\n"
+                "a=rtpmap:96 H265/90000\r\n"
+                "a=control:stream=0\r\n"
+                "a=fmtp:96 packetization-mode=1;"
+                " profile-level-id=%s;"
+                " sprop-parameter-sets=%s,%s,%s;\r\n", 
+                h->sprop_sps_b16->result,
+                h->sprop_vps_b64->result,
+                h->sprop_sps_b64->result,
+                h->sprop_pps_b64->result);
+    } else if (!h->isH265 && 
+        h->sprop_sps_b64 && h->sprop_sps_b16 && h->sprop_pps_b64) {
         DASSERT(h->sprop_sps_b64->result, return);
         DASSERT(h->sprop_sps_b16->result, return);
         DASSERT(h->sprop_pps_b64->result, return);
@@ -266,7 +296,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
         DBG("SPS BASE16:%s\n",h->sprop_sps_b16->result);
         DBG("PPS BASE64:%s\n",h->sprop_pps_b64->result);
 
-        snprintf(sdp, __RTSP_TCP_BUF_SIZE- 1,
+        snprintf(sdp, __RTSP_TCP_BUF_SIZE - 1,
                 "v=0\r\n"
                 "o=- 0 0 IN IP4 127.0.0.1\r\n"
                 "s=librtsp\r\n"
@@ -283,7 +313,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
                 h->sprop_sps_b64->result,
                 h->sprop_pps_b64->result);
     } else {
-        strncpy(sdp,
+        snprintf(sdp, __RTSP_TCP_BUF_SIZE - 1,
                 "v=0\r\n"
                 "o=- 0 0 IN IP4 127.0.0.1\r\n"
                 "s=librtsp\r\n"
@@ -291,9 +321,9 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
                 "t=0 0\r\n"
                 "a=tool:libavformat 52.73.0\r\n"
                 "m=video 0 RTP/AVP 96\r\n"
-                "a=rtpmap:96 H264/90000\r\n"
+                "a=rtpmap:96 %s/90000\r\n"
                 "a=fmtp:96 packetization-mode=1\r\n"
-                "a=control:stream=0\r\n", __RTSP_TCP_BUF_SIZE - 1);
+                "a=control:stream=0\r\n", h->isH265 ? "H265" : "H264");
     }
 
     fprintf(p->fp_tcp_write, "RTSP/1.0 200 OK\r\n"

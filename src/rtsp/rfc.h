@@ -10,14 +10,14 @@
 #define RTP_SEQ_MOD (1<<16)
 #define RTP_MAX_SDES 255      /* maximum text length for SDES */
 
-#define H264_NAL_TYPE_NON_IDR 1
-#define H264_NAL_TYPE_SLICE_A 2
-#define H264_NAL_TYPE_SLICE_B 3
-#define H264_NAL_TYPE_SLICE_C 4
-#define H264_NAL_TYPE_IDR 5
 #define H264_NAL_TYPE_SEI 6
 #define H264_NAL_TYPE_SPS 7
 #define H264_NAL_TYPE_PPS 8
+#define H265_NAL_TYPE_VPS 32
+#define H265_NAL_TYPE_SPS 33
+#define H265_NAL_TYPE_PPS 34
+#define H265_NAL_TYPE_SEIP 39
+#define H265_NAL_TYPE_SEIS 40
 
 typedef enum {
     RTCP_SR   = 200,
