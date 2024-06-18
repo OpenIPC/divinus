@@ -831,6 +831,7 @@ void rtsp_finish(rtsp_handle h)
             bufpool_delete(h->con_pool);
             bufpool_delete(h->transfer_pool);
 
+            mime_encoded_delete(h->sprop_vps_b64);
             mime_encoded_delete(h->sprop_sps_b64);
             mime_encoded_delete(h->sprop_sps_b16);
             mime_encoded_delete(h->sprop_pps_b64);

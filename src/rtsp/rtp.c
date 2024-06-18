@@ -54,7 +54,9 @@ static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned c
     p_header->cc = 0;
     p_header->pt = 96 & 0x7F;
 
-    if(nalsize <= __RTP_MAXPAYLOADSIZE){
+    if (nalsize < 4) return SUCCESS;
+
+    if (nalsize <= __RTP_MAXPAYLOADSIZE){
         /* single packet */
         /* SPS, PPS, SEI is not marked */
         if ((isH265 && pt < H265_NAL_TYPE_VPS) ||
@@ -72,7 +74,7 @@ static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned c
         rtp.rtpsize = nalsize + sizeof(rtp_hdr_t);
 
         ASSERT(__rtp_send_h26x(&rtp,trans_list) == SUCCESS, return FAILURE);
-    }  else  {
+    } else {
         nalptr += isH265 ? 2 : 1;
         nalsize -= isH265 ? 2 : 1;
 
@@ -118,7 +120,6 @@ static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned c
         memcpy(&(payload[head]), nalptr, nalsize);
 
         ASSERT(__rtp_send_h26x(&rtp, trans_list) == SUCCESS, return FAILURE);
-
     }
 
     return SUCCESS;
@@ -216,12 +217,11 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
     mime_encoded_handle base16 = NULL;
 
     /* check VPS is set */
-    if(!(h->sprop_vps_b64)){
+    if(h->isH265 && !(h->sprop_vps_b64)){
         nalptr = buf;
         single_len = 0;
         while (__split_nal(buf,&nalptr,&single_len,len) == SUCCESS) {
             if (nalptr[0] & 0x7E >> 1 == H265_NAL_TYPE_VPS) {
-                ASSERT(single_len >= 4, return FAILURE);
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]),single_len), return FAILURE);
 
                 DASSERT(base64->base == 64, return FAILURE);
@@ -229,7 +229,7 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
                 /* optimistic lock */
                 rtsp_lock(h);
                 if(h->sprop_vps_b64) {
-                    DBG("pps is set by another thread?\n");
+                    DBG("vps is set by another thread?\n");
                     mime_encoded_delete(base64);
                 } else {
                     h->sprop_vps_b64 = base64;
@@ -248,8 +248,8 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
         single_len = 0;
 
         while (__split_nal(buf,&nalptr,&single_len,len) == SUCCESS) {
-            if (nalptr[0] & 0x1F == H264_NAL_TYPE_SPS ||
-                nalptr[0] & 0x7E >> 1 == H265_NAL_TYPE_SPS) {
+            if ((!(h->isH265) && nalptr[0] & 0x1F == H264_NAL_TYPE_SPS) ||
+                (h->isH265 && nalptr[0] & 0x7E >> 1 == H265_NAL_TYPE_SPS)) {
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]),single_len), return FAILURE);
                 ASSERT(base16 = mime_base16_create((char *)&(nalptr[1]),3), return FAILURE);
 
@@ -284,8 +284,8 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
         nalptr = buf;
         single_len = 0;
         while (__split_nal(buf,&nalptr,&single_len,len) == SUCCESS) {
-            if (nalptr[0] & 0x1F == H264_NAL_TYPE_PPS ||
-                nalptr[0] & 0x7E >> 1 == H265_NAL_TYPE_PPS) {
+            if ((!(h->isH265) && nalptr[0] & 0x1F == H264_NAL_TYPE_PPS) ||
+                (h->isH265 && nalptr[0] & 0x7E >> 1 == H265_NAL_TYPE_PPS)) {
                 ASSERT(single_len >= 4, return FAILURE);
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]),single_len), return FAILURE);
 
