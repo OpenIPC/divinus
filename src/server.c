@@ -471,7 +471,9 @@ void parse_request(int client_fd, char *request) {
         while (*v && *v == ' ' && v++);
         h->name = k;
         h++->value = v;
+#ifdef DEBUG
         fprintf(stderr, "         (H) %s: %s\n", k, v);
+#endif
         e = v + 1 + strlen(v);
         if (e[1] == '\r' && e[2] == '\n')
             break;
