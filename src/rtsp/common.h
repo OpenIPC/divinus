@@ -134,7 +134,6 @@ static inline struct global_state_t *gbl_create()
     return nh;
 }
 
-
 static inline void gbl_delete(struct global_state_t *h)
 {
     if(h) {

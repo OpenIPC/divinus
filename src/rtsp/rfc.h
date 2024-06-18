@@ -3,15 +3,6 @@
 #include <sys/types.h>
 
 /*
- * The type definitions below are valid for 32-bit architectures and
- * may have to be adjusted for 16- or 64-bit architectures.
- */
-typedef unsigned char  u_int8;
-typedef unsigned short u_int16;
-typedef unsigned int   u_int32;
-typedef          short int16;
-
-/*
  * Current protocol version.
  */
 #define RTP_VERSION    2
@@ -39,9 +30,6 @@ typedef enum {
 typedef enum {
     RTCP_SDES_END   = 0,
     RTCP_SDES_CNAME = 1,
-
-
-
     RTCP_SDES_NAME  = 2,
     RTCP_SDES_EMAIL = 3,
     RTCP_SDES_PHONE = 4,
@@ -65,7 +53,7 @@ typedef struct {
     unsigned int version:2;   /* protocol version */
 #endif
     unsigned int pt:8;        /* RTCP packet type */
-    u_int16 length;           /* pkt len in words, w/o this word */
+    unsigned short length;    /* pkt len in words, w/o this word */
 } rtcp_common_t;
 
 /*
@@ -78,29 +66,23 @@ typedef struct {
  * Reception report block
  */
 typedef struct {
-    u_int32 ssrc;             /* data source being reported */
+    unsigned int ssrc;        /* data source being reported */
     unsigned int fraction:8;  /* fraction lost since last SR/RR */
-
-
-
     int lost:24;              /* cumul. no. pkts lost (signed!) */
-    u_int32 last_seq;         /* extended last seq. no. received */
-    u_int32 jitter;           /* interarrival jitter */
-    u_int32 lsr;              /* last SR packet from this source */
-    u_int32 dlsr;             /* delay since last SR packet */
+    unsigned int last_seq;    /* extended last seq. no. received */
+    unsigned int jitter;      /* interarrival jitter */
+    unsigned int lsr;         /* last SR packet from this source */
+    unsigned int dlsr;        /* delay since last SR packet */
 } rtcp_rr_t;
-
-
 
 /*
  * SDES item
  */
 typedef struct {
-    u_int8 type;              /* type of item (rtcp_sdes_type_t) */
-    u_int8 length;            /* length of item (in octets) */
+    unsigned char type;       /* type of item (rtcp_sdes_type_t) */
+    unsigned char length;     /* length of item (in octets) */
     char data[1];             /* text, not null-terminated */
 } rtcp_sdes_item_t;
-
 
 /*
  * One RTCP packet
@@ -110,54 +92,35 @@ typedef struct {
     union {
         /* sender report (SR) */
         struct {
-            u_int32 ssrc;     /* sender generating this report */
-            u_int32 ntp_sec;  /* NTP timestamp */
-            u_int32 ntp_frac;
-            u_int32 rtp_ts;   /* RTP timestamp */
-            u_int32 psent;    /* packets sent */
-            u_int32 osent;    /* octets sent */
-            rtcp_rr_t rr[1];  /* variable-length list */
+            unsigned int ssrc;     /* sender generating this report */
+            unsigned int ntp_sec;  /* NTP timestamp */
+            unsigned int ntp_frac;
+            unsigned int rtp_ts;   /* RTP timestamp */
+            unsigned int psent;    /* packets sent */
+            unsigned int osent;    /* octets sent */
+            rtcp_rr_t rr[1];       /* variable-length list */
         } sr;
 
         /* reception report (RR) */
         struct {
-            u_int32 ssrc;     /* receiver generating this report */
-            rtcp_rr_t rr[1];  /* variable-length list */
+            unsigned int ssrc; /* receiver generating this report */
+            rtcp_rr_t rr[1];   /* variable-length list */
         } rr;
 
         /* source description (SDES) */
         struct rtcp_sdes {
-            u_int32 src;      /* first SSRC/CSRC */
+            unsigned int src;         /* first SSRC/CSRC */
             rtcp_sdes_item_t item[1]; /* list of SDES items */
         } sdes;
 
         /* BYE */
         struct {
-            u_int32 src[1];   /* list of sources */
-
+            unsigned int src[1]; /* list of sources */
             /* can't express trailing text for reason */
         } bye;
     } r;
 } rtcp_t;
 
 typedef struct rtcp_sdes rtcp_sdes_t;
-
-/*
- * Per-source state information
- */
-typedef struct {
-    u_int16 max_seq;        /* highest seq. number seen */
-    u_int32 cycles;         /* shifted count of seq. number cycles */
-    u_int32 base_seq;       /* base seq number */
-    u_int32 bad_seq;        /* last 'bad' seq number + 1 */
-    u_int32 probation;      /* sequ. packets till source is valid */
-    u_int32 received;       /* packets received */
-    u_int32 expected_prior; /* packet expected at last interval */
-    u_int32 received_prior; /* packet received at last interval */
-    u_int32 transit;        /* relative trans time for prev pkt */
-    u_int32 jitter;         /* estimated jitter */
-    /* ... */
-} source;
-
 
 #endif

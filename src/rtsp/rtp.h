@@ -33,9 +33,9 @@ typedef struct {
     unsigned int m:1;         /* marker bit */
 #endif
     unsigned int seq:16;      /* sequence number */
-    u_int32 ts;               /* timestamp */
-    u_int32 ssrc;             /* synchronization source */
-    //u_int32 csrc[1];          /* optional CSRC list */
+    unsigned int ts;          /* timestamp */
+    unsigned int ssrc;        /* synchronization source */
+    //unsigned int csrc[1];     /* optional CSRC list */
 } rtp_hdr_t;
 
 struct nal_rtp_t {
