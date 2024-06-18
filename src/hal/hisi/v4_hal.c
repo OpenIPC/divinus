@@ -573,22 +573,22 @@ int v4_video_create(char index, hal_vidconfig *config)
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H265CBR;
-                channel.rate.h265Cbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
+                channel.rate.h265Cbr = (v4_venc_rate_h26xbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = config->bitrate }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H265VBR;
-                channel.rate.h265Vbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
+                channel.rate.h265Vbr = (v4_venc_rate_h26xbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V4_VENC_RATEMODE_H265QP;
-                channel.rate.h265Qp = (v4_venc_rate_h26xqp){ .gop = config->gop / config->framerate,
+                channel.rate.h265Qp = (v4_venc_rate_h26xqp){ .gop = config->gop,
                     .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H265AVBR;
-                channel.rate.h265Avbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
+                channel.rate.h265Avbr = (v4_venc_rate_h26xbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = config->bitrate }; break;
             default:
@@ -600,22 +600,22 @@ int v4_video_create(char index, hal_vidconfig *config)
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H264CBR;
-                channel.rate.h264Cbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
+                channel.rate.h264Cbr = (v4_venc_rate_h26xbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = config->bitrate }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H264VBR;
-                channel.rate.h264Vbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
+                channel.rate.h264Vbr = (v4_venc_rate_h26xbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V4_VENC_RATEMODE_H264QP;
-                channel.rate.h264Qp = (v4_venc_rate_h26xqp){ .gop = config->gop / config->framerate,
+                channel.rate.h264Qp = (v4_venc_rate_h26xqp){ .gop = config->gop,
                     .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H264AVBR;
-                channel.rate.h264Avbr = (v4_venc_rate_h26xbr){ .gop = config->gop / config->framerate,
+                channel.rate.h264Avbr = (v4_venc_rate_h26xbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = config->bitrate }; break;
             default:
