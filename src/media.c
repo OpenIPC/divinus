@@ -25,13 +25,13 @@ int save_audio_stream(hal_audframe *frame) {
 
 int save_video_stream(char index, hal_vidstream *stream) {
     int ret;
+    char isH265 = chnState[index].payload == HAL_VIDCODEC_H265 ? 1 : 0;
 
     switch (chnState[index].payload) {
         case HAL_VIDCODEC_H264:
         case HAL_VIDCODEC_H265:
             if (app_config.mp4_enable) {
-                send_mp4_to_client(index, stream, 
-                    chnState[index].payload == HAL_VIDCODEC_H265 ? 1 : 0);
+                send_mp4_to_client(index, stream, isH265);
                 send_h26x_to_client(index, stream);
             }
             if (app_config.rtsp_enable) {
@@ -40,8 +40,7 @@ int save_video_stream(char index, hal_vidstream *stream) {
                         .tv_sec = stream->pack[i].timestamp / 1000000,
                         .tv_usec = stream->pack[i].timestamp % 1000000 };
                     rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
-                        stream->pack[i].length - stream->pack[i].offset, &tv,
-                        chnState[index].payload == HAL_VIDCODEC_H265 ? 1 : 0);
+                        stream->pack[i].length - stream->pack[i].offset, &tv, isH265);
                 }
             }
             break;

@@ -27,7 +27,7 @@ extern char keepRunning;
 int start_server();
 int stop_server();
 
-void send_jpeg(unsigned char chn_index, char *buf, ssize_t size);
-void send_mjpeg(unsigned char chn_index, char *buf, ssize_t size);
-void send_h26x_to_client(unsigned char chn_index, const void *p);
-void send_mp4_to_client(unsigned char chn_index, const void *p, char isH265);
+void send_jpeg(char index, char *buf, ssize_t size);
+void send_mjpeg(char index, char *buf, ssize_t size);
+void send_h26x_to_client(char index, hal_vidstream *stream);
+void send_mp4_to_client(char index, hal_vidstream *stream, char isH265);

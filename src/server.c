@@ -58,9 +58,7 @@ int send_to_client(int i, char *buf, ssize_t size) {
     return 0;
 }
 
-void send_h26x_to_client(unsigned char index, const void *p) {
-    const hal_vidstream *stream = (const hal_vidstream *)p;
-
+void send_h26x_to_client(char index, hal_vidstream *stream) {
     for (unsigned int i = 0; i < stream->count; ++i) {
         hal_vidpack *pack = &stream->pack[i];
         unsigned int pack_len = pack->length - pack->offset;
@@ -105,8 +103,7 @@ void send_h26x_to_client(unsigned char index, const void *p) {
     }
 }
 
-void send_mp4_to_client(unsigned char index, const void *p, char isH265) {
-    const hal_vidstream *stream = (const hal_vidstream *)p;
+void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
 
     for (unsigned int i = 0; i < stream->count; ++i) {
         hal_vidpack *pack = &stream->pack[i];
@@ -192,7 +189,7 @@ void send_mp4_to_client(unsigned char index, const void *p, char isH265) {
     }
 }
 
-void send_mjpeg(unsigned char index, char *buf, ssize_t size) {
+void send_mjpeg(char index, char *buf, ssize_t size) {
     static char prefix_buf[128];
     ssize_t prefix_size = sprintf(
         prefix_buf,
@@ -216,7 +213,7 @@ void send_mjpeg(unsigned char index, char *buf, ssize_t size) {
     pthread_mutex_unlock(&client_fds_mutex);
 }
 
-void send_jpeg(unsigned char index, char *buf, ssize_t size) {
+void send_jpeg(char index, char *buf, ssize_t size) {
     static char prefix_buf[128];
     ssize_t prefix_size = sprintf(
         prefix_buf,
