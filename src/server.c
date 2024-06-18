@@ -718,8 +718,10 @@ void *server_thread(void *vargp) {
                         }
                     }
                 }
+
                 jpeg_deinit();
                 jpeg_init();
+
                 respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
                     "Content-Type: application/json;charset=UTF-8\r\n" \
@@ -774,6 +776,10 @@ void *server_thread(void *vargp) {
                         }
                     }
                 }
+
+                disable_mjpeg();
+                enable_mjpeg();
+
                 char mode[5] = "\0";
                 switch (app_config.mjpeg_mode) {
                     case HAL_VIDMODE_CBR: strcpy(mode, "CBR"); break;

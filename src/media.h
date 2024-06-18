@@ -18,3 +18,8 @@ int create_channel(char index, short width, short height, char framerate, char j
 int bind_channel(char index, char framerate, char jpeg);
 int unbind_channel(char index, char jpeg);
 int disable_video(char index, char jpeg);
+
+int disable_mp4(void);
+int enable_mp4(void);
+int disable_mjpeg(void);
+int enable_mjpeg(void);

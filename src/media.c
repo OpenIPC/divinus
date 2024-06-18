@@ -211,6 +211,166 @@ int disable_video(char index, char jpeg) {
     return 0;
 };
 
+int disable_mjpeg(void) {
+    int ret;
+
+    for (char i = 0; i < chnCount; i++) {
+        if (!chnState[i].enable) continue;
+        if (chnState[i].payload != HAL_VIDCODEC_MJPG) continue;
+
+        if (ret = unbind_channel(i, 1)) {
+            fprintf(stderr, 
+                "Unbinding channel %d failed with %#x!\n%s\n", 
+                i, ret, errstr(ret));
+            return EXIT_FAILURE;
+        }
+
+        if (ret = disable_video(i, 1)) {
+            fprintf(stderr, 
+                "Disabling encoder %d failed with %#x!\n%s\n", 
+                i, ret, errstr(ret));
+            return EXIT_FAILURE;
+        }
+    }
+}
+
+int enable_mjpeg(void) {
+    int ret;
+
+    int index = take_next_free_channel(true);
+
+    if (ret = create_channel(index, app_config.mjpeg_width, 
+        app_config.mjpeg_height, app_config.mjpeg_fps, 1)) {
+        fprintf(stderr, 
+            "Creating channel %d failed with %#x!\n%s\n", 
+            index, ret, errstr(ret));
+        return EXIT_FAILURE;
+    }
+
+    {
+        hal_vidconfig config;
+        config.width = app_config.mjpeg_width;
+        config.height = app_config.mjpeg_height;
+        config.codec = HAL_VIDCODEC_MJPG;
+        config.mode = app_config.mjpeg_mode;
+        config.framerate = app_config.mjpeg_fps;
+        config.bitrate = app_config.mjpeg_bitrate;
+        config.maxBitrate = app_config.mjpeg_bitrate * 5 / 4;
+
+        switch (plat) {
+#if defined(__arm__)
+            case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
+            case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
+            case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
+            case HAL_PLATFORM_I6F: ret = i6f_video_create(index, &config); break;
+            case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
+            case HAL_PLATFORM_V4:  ret = v4_video_create(index, &config); break;
+#elif defined(__mips__)
+            case HAL_PLATFORM_T31: ret = t31_video_create(index, &config); break;
+#endif
+        }
+
+        if (ret) {
+            fprintf(stderr, 
+                "Creating encoder %d failed with %#x!\n%s\n", 
+                index, ret, errstr(ret));
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (ret = bind_channel(index, app_config.mjpeg_fps, 1)) {
+        fprintf(stderr, 
+            "Binding channel %d failed with %#x!\n%s\n",
+            index, ret, errstr(ret));
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int disable_mp4(void) {
+    int ret;
+
+    for (char i = 0; i < chnCount; i++) {
+        if (!chnState[i].enable) continue;
+        if (chnState[i].payload != HAL_VIDCODEC_H264 ||
+            chnState[i].payload != HAL_VIDCODEC_H265) continue;
+
+        if (ret = unbind_channel(i, 1)) {
+            fprintf(stderr, 
+                "Unbinding channel %d failed with %#x!\n%s\n", 
+                i, ret, errstr(ret));
+            return EXIT_FAILURE;
+        }
+
+        if (ret = disable_video(i, 1)) {
+            fprintf(stderr, 
+                "Disabling encoder %d failed with %#x!\n%s\n", 
+                i, ret, errstr(ret));
+            return EXIT_FAILURE;
+        }
+    }
+}
+
+int enable_mp4(void) {
+    int ret;
+
+    int index = take_next_free_channel(true);
+
+    if (ret = create_channel(index, app_config.mp4_width, 
+        app_config.mp4_height, app_config.mp4_fps, 0)) {
+        fprintf(stderr, 
+            "Creating channel %d failed with %#x!\n%s\n", 
+            index, ret, errstr(ret));
+        return EXIT_FAILURE;
+    }
+
+    {
+        hal_vidconfig config;
+        config.width = app_config.mp4_width;
+        config.height = app_config.mp4_height;
+        config.codec = app_config.mp4_codecH265 ? 
+            HAL_VIDCODEC_H265 : HAL_VIDCODEC_H264;
+        config.mode = app_config.mp4_mode;
+        config.profile = app_config.mp4_profile;
+        config.gop = app_config.mp4_fps * 2;
+        config.framerate = app_config.mp4_fps;
+        config.bitrate = app_config.mp4_bitrate;
+        config.maxBitrate = app_config.mp4_bitrate * 5 / 4;
+
+        switch (plat) {
+#if defined(__arm__)
+            case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
+            case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
+            case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
+            case HAL_PLATFORM_I6F: ret = i6f_video_create(index, &config); break;
+            case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
+            case HAL_PLATFORM_V4:  ret = v4_video_create(index, &config); break;
+#elif defined(__mips__)
+            case HAL_PLATFORM_T31: ret = t31_video_create(index, &config); break;
+#endif
+        }
+
+        if (ret) {
+            fprintf(stderr, 
+                "Creating encoder %d failed with %#x!\n%s\n", 
+                index, ret, errstr(ret));
+            return EXIT_FAILURE;
+        }
+
+        set_mp4_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps);
+    }
+
+    if (ret = bind_channel(index, app_config.mp4_fps, 0)) {
+        fprintf(stderr, 
+            "Binding channel %d failed with %#x!\n%s\n",
+            index, ret, errstr(ret));
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 int start_sdk(void) {
     int ret;
 
@@ -326,106 +486,17 @@ int start_sdk(void) {
     }
 
     if (app_config.mp4_enable) {
-        int index = take_next_free_channel(true);
-
-        if (ret = create_channel(index, app_config.mp4_width, 
-            app_config.mp4_height, app_config.mp4_fps, 0)) {
-            fprintf(stderr, 
-                "Creating channel %d failed with %#x!\n%s\n", 
-                index, ret, errstr(ret));
-            return EXIT_FAILURE;
-        }
-
-        {
-            hal_vidconfig config;
-            config.width = app_config.mp4_width;
-            config.height = app_config.mp4_height;
-            config.codec = app_config.mp4_codecH265 ? 
-                HAL_VIDCODEC_H265 : HAL_VIDCODEC_H264;
-            config.mode = app_config.mp4_mode;
-            config.profile = app_config.mp4_profile;
-            config.gop = app_config.mp4_fps * 2;
-            config.framerate = app_config.mp4_fps;
-            config.bitrate = app_config.mp4_bitrate;
-            config.maxBitrate = app_config.mp4_bitrate * 5 / 4;
-
-            switch (plat) {
-#if defined(__arm__)
-                case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
-                case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
-                case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
-                case HAL_PLATFORM_I6F: ret = i6f_video_create(index, &config); break;
-                case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
-                case HAL_PLATFORM_V4:  ret = v4_video_create(index, &config); break;
-#elif defined(__mips__)
-                case HAL_PLATFORM_T31: ret = t31_video_create(index, &config); break;
-#endif
-            }
-
-            if (ret) {
-                fprintf(stderr, 
-                    "Creating encoder %d failed with %#x!\n%s\n", 
-                    index, ret, errstr(ret));
-                return EXIT_FAILURE;
-            }
-
-            set_mp4_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps);
-        }
-
-        if (ret = bind_channel(index, app_config.mp4_fps, 0)) {
-            fprintf(stderr, 
-                "Binding channel %d failed with %#x!\n%s\n",
-                index, ret, errstr(ret));
+        ret = enable_mp4();
+        if (ret) {
+            fprintf(stderr, "MP4 initialization failed with %#x!\n", ret);
             return EXIT_FAILURE;
         }
     }
 
     if (app_config.mjpeg_enable) {
-        int index = take_next_free_channel(true);
-    
-        if (ret = create_channel(index, app_config.mjpeg_width, 
-            app_config.mjpeg_height, app_config.mjpeg_fps, 1)) {
-            fprintf(stderr, 
-                "Creating channel %d failed with %#x!\n%s\n", 
-                index, ret, errstr(ret));
-            return EXIT_FAILURE;
-        }
-
-        {
-            hal_vidconfig config;
-            config.width = app_config.mjpeg_width;
-            config.height = app_config.mjpeg_height;
-            config.codec = HAL_VIDCODEC_MJPG;
-            config.mode = app_config.mjpeg_mode;
-            config.framerate = app_config.mjpeg_fps;
-            config.bitrate = app_config.mjpeg_bitrate;
-            config.maxBitrate = app_config.mjpeg_bitrate * 5 / 4;
-
-            switch (plat) {
-#if defined(__arm__)
-                case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
-                case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
-                case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
-                case HAL_PLATFORM_I6F: ret = i6f_video_create(index, &config); break;
-                case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
-                case HAL_PLATFORM_V4:  ret = v4_video_create(index, &config); break;
-#elif defined(__mips__)
-                case HAL_PLATFORM_T31: ret = t31_video_create(index, &config); break;
-#endif
-            }
-
-            if (ret) {
-                fprintf(stderr, 
-                    "Creating encoder %d failed with %#x!\n%s\n", 
-                    index, ret, errstr(ret));
-                return EXIT_FAILURE;
-            }
-        }
-
-        if (ret = bind_channel(index, app_config.mjpeg_fps, 1)) {
-            fprintf(stderr, 
-                "Binding channel %d failed with %#x!\n%s\n",
-                index, ret, errstr(ret));
+        ret = enable_mjpeg();
+        if (ret) {
+            fprintf(stderr, "MJPEG initialization failed with %#x!\n", ret);
             return EXIT_FAILURE;
         }
     }
