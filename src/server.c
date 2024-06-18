@@ -723,7 +723,7 @@ void *server_thread(void *vargp) {
                     "Content-Type: application/json;charset=UTF-8\r\n" \
                     "Connection: close\r\n" \
                     "\r\n" \
-                    "{\"width\":%d,\"height\":%d,\"fps\":%d,\"qfactor\":%d}", 
+                    "{\"width\":%d,\"height\":%d,\"qfactor\":%d}", 
                     app_config.jpeg_width, app_config.jpeg_height, app_config.jpeg_qfactor);
             } else {
                 respLen = sprintf(response,

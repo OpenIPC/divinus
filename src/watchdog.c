@@ -30,4 +30,6 @@ void watchdog_stop(void) {
     write(fd, "V", 1);
     close(fd);
     fd = 0;
+
+    fprintf(stderr, "[watchdog] Watchdog stopped!\n");
 }

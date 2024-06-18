@@ -95,6 +95,7 @@ void jpeg_deinit() {
 active:
     jpeg_module_init = false;
     pthread_mutex_unlock(&jpeg_mutex);
+    printf(tag "Module de-initialization completed!\n");
 }
 
 int jpeg_get(short width, short height, char quality, char grayscale, 

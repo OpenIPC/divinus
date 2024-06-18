@@ -79,10 +79,8 @@ enum ConfigError parse_param_value(
     regmatch_t m[n_matches];
     int match = regexec(&regex, ini->str + start_pos, n_matches, m, 0);
     regfree(&regex);
-    if (match > 0 || (end_pos >= 0 && end_pos - start_pos < m[1].rm_so)) {
-        printf("Can't find '%s' in section '%s'.\n", param_name, section);
+    if (match > 0 || (end_pos >= 0 && end_pos - start_pos < m[1].rm_so))
         return CONFIG_PARAM_NOT_FOUND;
-    }
 
     int res = sprintf(param_value, "%.*s", (int)(m[1].rm_eo - m[1].rm_so),
         ini->str + start_pos + m[1].rm_so);
@@ -280,10 +278,8 @@ enum ConfigError parse_uint32(
 
 bool open_config(struct IniConfig *ini, const char *path) {
     FILE *file = fopen(path, "rb");
-    if (!file) {
-        printf("Can't open file %s\n", path);
+    if (!file)
         return false;
-    }
 
     fseek(file, 0, SEEK_END);
     size_t length = ftell(file);
