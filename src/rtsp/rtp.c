@@ -41,7 +41,7 @@ static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned c
 {
     struct nal_rtp_t rtp;
     unsigned int nri = isH265 ? (nalptr[0] & 0x81) : (nalptr[0] & 0x60);
-    unsigned int pt  = isH265 ? (nalptr[0] & 0x7E >> 1) : (nalptr[0] & 0x1F);
+    unsigned int pt  = isH265 ? (nalptr[0] >> 1 & 0x3F) : (nalptr[0] & 0x1F);
     unsigned int ids = isH265 ? nalptr[1] : 0;
     char head = isH265 ? 3 : 2;
 
@@ -221,7 +221,7 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
         nalptr = buf;
         single_len = 0;
         while (__split_nal(buf,&nalptr,&single_len,len) == SUCCESS) {
-            if (nalptr[0] & 0x7E >> 1 == H265_NAL_TYPE_VPS) {
+            if (nalptr[0] >> 1 & 0x3F == H265_NAL_TYPE_VPS) {
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]),single_len), return FAILURE);
 
                 DASSERT(base64->base == 64, return FAILURE);
@@ -249,7 +249,7 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
 
         while (__split_nal(buf,&nalptr,&single_len,len) == SUCCESS) {
             if ((!(h->isH265) && nalptr[0] & 0x1F == H264_NAL_TYPE_SPS) ||
-                (h->isH265 && nalptr[0] & 0x7E >> 1 == H265_NAL_TYPE_SPS)) {
+                (h->isH265 && nalptr[0] >> 1 & 0x3F == H265_NAL_TYPE_SPS)) {
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]),single_len), return FAILURE);
                 ASSERT(base16 = mime_base16_create((char *)&(nalptr[1]),3), return FAILURE);
 
@@ -285,7 +285,7 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
         single_len = 0;
         while (__split_nal(buf,&nalptr,&single_len,len) == SUCCESS) {
             if ((!(h->isH265) && nalptr[0] & 0x1F == H264_NAL_TYPE_PPS) ||
-                (h->isH265 && nalptr[0] & 0x7E >> 1 == H265_NAL_TYPE_PPS)) {
+                (h->isH265 && nalptr[0] >> 1 & 0x3F == H265_NAL_TYPE_PPS)) {
                 ASSERT(single_len >= 4, return FAILURE);
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]),single_len), return FAILURE);
 
