@@ -438,12 +438,21 @@ char *request_header(const char *name)
 header_t *request_headers(void) { return reqhdr; }
 
 void parse_request(int client_fd, char *request) {
+    struct sockaddr_in client_sock;
+    socklen_t client_sock_len = sizeof(client_sock);
+    memset(&client_sock, 0, client_sock_len);
+
+    getpeername(client_fd, 
+        (struct sockaddr *)&client_sock, &client_sock_len);
+
     char *state = NULL;
     method = strtok_r(request, " \t\r\n", &state);
     uri = strtok_r(NULL, " \t", &state);
     prot = strtok_r(NULL, " \t\r\n", &state);
 
-    fprintf(stderr, tag "\x1b[32m New request: (%s) %s\x1b[0m\n", method, uri);
+    fprintf(stderr, tag "\x1b[32mNew request: (%s) %s\n"
+        "         Received from: %s\x1b[0m\n",
+        method, uri, inet_ntoa(client_sock.sin_addr));
 
     if (query = strchr(uri, '?'))
         *query++ = '\0';
@@ -493,7 +502,7 @@ void *server_thread(void *vargp) {
         printf(tag "setsockopt(SO_REUSEADDR) failed");
         fflush(stdout);
     }
-    struct sockaddr_in server;
+    struct sockaddr_in server, client;
     server.sin_family = AF_INET;
     server.sin_port = htons(app_config.web_port);
     server.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -861,6 +870,10 @@ void *server_thread(void *vargp) {
                         }
                     }
                 }
+
+                disable_mp4();
+                enable_mp4();
+
                 char h265[6] = "false";
                 char mode[5] = "\0";
                 char profile[3] = "\0";
