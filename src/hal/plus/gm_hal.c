@@ -146,6 +146,7 @@ int gm_video_destroy(char index)
 {
     _gm_venc_sz[index] = 0;
 
+    gm_state[index].enable = 0;
     gm_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
     gm_lib.fnUnbind(_gm_venc_fds[index].bind);

@@ -384,6 +384,7 @@ int t31_video_destroy(char index)
 {
     int ret;
 
+    t31_state[index].enable = 0;
     t31_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
     t31_venc.fnStopReceiving(index);

@@ -64,7 +64,7 @@ int jpeg_init() {
 active:
     jpeg_module_init = true;
     pthread_mutex_unlock(&jpeg_mutex);
-    printf(tag "Module initialization completed!\n");
+    printf(tag "Module enabled!\n");
 
     return EXIT_SUCCESS;
 }
@@ -95,7 +95,7 @@ void jpeg_deinit() {
 active:
     jpeg_module_init = false;
     pthread_mutex_unlock(&jpeg_mutex);
-    printf(tag "Module de-initialization completed!\n");
+    printf(tag "Module disabled!\n");
 }
 
 int jpeg_get(short width, short height, char quality, char grayscale, 

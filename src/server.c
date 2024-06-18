@@ -718,6 +718,8 @@ void *server_thread(void *vargp) {
                         }
                     }
                 }
+                jpeg_deinit();
+                jpeg_init();
                 respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
                     "Content-Type: application/json;charset=UTF-8\r\n" \

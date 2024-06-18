@@ -605,6 +605,7 @@ int v3_video_destroy(char index)
 {
     int ret;
 
+    v3_state[index].enable = 0;
     v3_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
     v3_venc.fnStopReceiving(index);

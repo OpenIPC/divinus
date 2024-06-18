@@ -579,6 +579,7 @@ int i6_video_destroy(char index)
 {
     int ret;
 
+    i6_state[index].enable = 0;
     i6_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
     i6_venc.fnStopReceiving(index);
