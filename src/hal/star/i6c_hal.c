@@ -98,7 +98,7 @@ int i6c_audio_init(void)
         config.rate = 48000;
         config.clock = I6C_AUD_CLK_OFF;
         config.syncRxClkOn = 1;
-        config.tdmSlotNum = 1;
+        config.tdmSlotNum = 0;
         if (ret = i6c_aud.fnSetI2SConfig(input[0], &config))
             return ret;
         if (ret = i6c_aud.fnAttachToDevice(_i6c_aud_dev, input, 1))
@@ -121,11 +121,10 @@ void *i6c_audio_thread(void)
     int ret;
 
     i6c_aud_frm frame, echoFrame;
+    memset(&frame, 0, sizeof(frame));
+    memset(&echoFrame, 0, sizeof(echoFrame));
 
     while (keepRunning) {
-        memset(&frame, 0, sizeof(frame));
-        memset(&echoFrame, 0, sizeof(echoFrame));
-        
         if (ret = i6c_aud.fnGetFrame(_i6c_aud_dev, _i6c_aud_chn, 
             &frame, &echoFrame, 100)) {
             fprintf(stderr, "[i6c_aud] Getting the frame failed "

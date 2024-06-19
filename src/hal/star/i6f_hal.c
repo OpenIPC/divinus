@@ -86,14 +86,14 @@ int i6f_audio_init(void)
         config.bit = I6F_AUD_BIT_16;
         config.intf = I6F_AUD_INTF_I2S_SLAVE;
         config.sound = I6F_AUD_SND_MONO;
-        config.frmNum = 40;
-        config.packNumPerFrm = 640;
-        config.codecChnNum = 1;
+        config.frmNum = 0;
+        config.packNumPerFrm = config.rate / 16;
+        config.codecChnNum = 0;
         config.chnNum = 1;
         config.i2s.clock = I6F_AUD_CLK_OFF;
         config.i2s.leftJustOn = 0;
         config.i2s.syncRxClkOn = 1;
-        config.i2s.tdmSlotNum = 1;
+        config.i2s.tdmSlotNum = 0;
         config.i2s.bit = I6F_AUD_BIT_32;
         if (ret = i6f_aud.fnSetDeviceConfig(_i6f_aud_dev, &config))
             return ret;
@@ -113,11 +113,10 @@ void *i6f_audio_thread(void)
 
     i6f_aud_frm frame;
     i6f_aud_efrm echoFrame;
+    memset(&frame, 0, sizeof(frame));
+    memset(&echoFrame, 0, sizeof(echoFrame));
 
     while (keepRunning) {
-        memset(&frame, 0, sizeof(frame));
-        memset(&echoFrame, 0, sizeof(echoFrame));
-        
         if (ret = i6f_aud.fnGetFrame(_i6f_aud_dev, _i6f_aud_chn, 
             &frame, &echoFrame, 100)) {
             fprintf(stderr, "[i6f_aud] Getting the frame failed "

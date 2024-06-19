@@ -84,8 +84,8 @@ int v4_audio_init(void)
         config.intf = V4_AUD_INTF_I2S_SLAVE;
         config.stereoOn = 0;
         config.expandOn = 0;
-        config.frmNum = 40;
-        config.packNumPerFrm = 640;
+        config.frmNum = 0;
+        config.packNumPerFrm = config.rate / 16;
         config.chnNum = 1;
         config.syncRxClkOn = 0;
         if (ret = v4_aud.fnSetDeviceConfig(_v4_aud_dev, &config))
@@ -106,11 +106,10 @@ void *v4_audio_thread(void)
 
     v4_aud_frm frame;
     v4_aud_efrm echoFrame;
+    memset(&frame, 0, sizeof(frame));
+    memset(&echoFrame, 0, sizeof(echoFrame));
 
     while (keepRunning) {
-        memset(&frame, 0, sizeof(frame));
-        memset(&echoFrame, 0, sizeof(echoFrame));
-
         if (ret = v4_aud.fnGetFrame(_v4_aud_dev, _v4_aud_chn, 
             &frame, &echoFrame, 100)) {
             fprintf(stderr, "[v4_aud] Getting the frame failed "
