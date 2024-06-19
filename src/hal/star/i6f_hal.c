@@ -115,13 +115,15 @@ void *i6f_audio_thread(void)
     i6f_aud_efrm echoFrame;
 
     while (keepRunning) {
-        ret = i6f_aud.fnGetFrame(_i6f_aud_dev, _i6f_aud_chn, 
-            &frame, &echoFrame, 100);
-        if (ret && ret == 0xA004200E) {
+        memset(&frame, 0, sizeof(frame));
+        memset(&echoFrame, 0, sizeof(echoFrame));
+        
+        if (ret = i6f_aud.fnGetFrame(_i6f_aud_dev, _i6f_aud_chn, 
+            &frame, &echoFrame, 100)) {
             fprintf(stderr, "[i6f_aud] Getting the frame failed "
                 "with %#x!\n", ret);
-            break;
-        } else continue;
+            continue;
+        }
 
         if (i6f_aud_cb) {
             hal_audframe outFrame;

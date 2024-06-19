@@ -81,11 +81,11 @@ typedef enum {
 } i6c_aud_input;
 
 typedef enum {
-    I6C_AUD_SND_MONO,
-    I6C_AUD_SND_STEREO,
-    I6C_AUD_SND_4CH,
-    I6C_AUD_SND_6CH,
-    I6C_AEND_SND_8CH,
+    I6C_AUD_SND_MONO   = 1,
+    I6C_AUD_SND_STEREO = 2,
+    I6C_AUD_SND_4CH    = 4,
+    I6C_AUD_SND_6CH    = 6,
+    I6C_AUD_SND_8CH    = 8,
     I6C_AUD_SND_END
 } i6c_aud_snd;
 

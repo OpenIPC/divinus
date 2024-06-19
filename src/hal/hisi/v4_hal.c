@@ -108,9 +108,11 @@ void *v4_audio_thread(void)
     v4_aud_efrm echoFrame;
 
     while (keepRunning) {
-        ret = v4_aud.fnGetFrame(_v4_aud_dev, _v4_aud_chn, 
-            &frame, &echoFrame, 100);
-        if (ret && ret != 0xA015800E) {
+        memset(&frame, 0, sizeof(frame));
+        memset(&echoFrame, 0, sizeof(echoFrame));
+
+        if (ret = v4_aud.fnGetFrame(_v4_aud_dev, _v4_aud_chn, 
+            &frame, &echoFrame, 100)) {
             fprintf(stderr, "[v4_aud] Getting the frame failed "
                 "with %#x!\n", ret);
             break;
