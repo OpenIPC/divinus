@@ -67,6 +67,8 @@ struct AppConfig {
     unsigned int ir_sensor_pin;
     unsigned int check_interval_s;
     unsigned int pin_switch_delay_us;
+    char adc_device[128];
+    int adc_threshold;
 };
 
 extern struct AppConfig app_config;

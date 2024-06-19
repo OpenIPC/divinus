@@ -48,18 +48,53 @@ void *night_thread(void) {
     usleep(1000);
     set_night_mode(night_mode);
 
-    while (keepRunning) {
-        bool state = false;
-        if (!gpio_read(app_config.ir_sensor_pin, &state)) {
+    if (app_config.adc_device[0]) {
+        int adc_fd = -1;
+        fd_set adc_fds;
+        int cnt = 0, tmp = 0, val;
+
+        if ((adc_fd = open(app_config.adc_device, O_RDONLY | O_NONBLOCK)) <= 0) {
+            printf(tag "Could not open the ADC virtual device!\n");
+            return NULL;
+        }
+        while (keepRunning) {
+            struct timeval tv = { 
+                .tv_sec = app_config.check_interval_s, .tv_usec = 0 };
+            FD_ZERO(&adc_fds);
+            FD_SET(adc_fd, &adc_fds);
+            select(adc_fd + 1, &adc_fds, NULL, NULL, &tv);
+            if (read(adc_fd, &val, sizeof(val)) > 0) {
+                usleep(10000);
+                tmp += val;
+            }
+            cnt++;
+            if (cnt == 12) {
+                tmp /= cnt;
+                if (tmp >= app_config.adc_threshold)
+                    night_mode = true;
+                else
+                    night_mode = false;
+                set_night_mode(night_mode);
+                cnt = tmp = 0;
+            }
+            usleep(250000);
+        }
+        if (adc_fd) close(adc_fd);
+    } else {
+        while (keepRunning) {
+            bool state = false;
+            if (!gpio_read(app_config.ir_sensor_pin, &state)) {
+                sleep(app_config.check_interval_s);
+                continue;
+            }
+            if (night_mode != state) {
+                night_mode = state;
+                set_night_mode(night_mode);
+            }
             sleep(app_config.check_interval_s);
-            continue;
         }
-        if (night_mode != state) {
-            night_mode = state;
-            set_night_mode(night_mode);
-        }
-        sleep(app_config.check_interval_s);
     }
+    printf(tag "Night mode thread is closing...\n");
 }
 
 int start_monitor_light_sensor() {
