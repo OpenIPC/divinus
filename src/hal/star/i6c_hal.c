@@ -90,18 +90,20 @@ int i6c_audio_init(void)
             return ret;
     }
     {
-        i6c_aud_input input[] = { I6C_AUD_INPUT_I2S_A_01 };
+        i6c_aud_input input[] = { I6C_AUD_INPUT_ADC_AB };
         i6c_aud_i2s config;
-        config.intf = I6C_AUD_INTF_I2S_SLAVE;
+        /*config.intf = I6C_AUD_INTF_I2S_SLAVE;
         config.bit = I6C_AUD_BIT_16;
         config.leftJustOn = 0;
         config.rate = 8000;
         config.clock = I6C_AUD_CLK_OFF;
         config.syncRxClkOn = 0;
-        config.tdmSlotNum = 0;
-        if (ret = i6c_aud.fnSetI2SConfig(input[0], &config))
-            return ret;
-        if (ret = i6c_aud.fnAttachToDevice(_i6c_aud_dev, input, 1))
+        config.tdmSlotNum = 0;*/
+        char inputSize = sizeof(input) / sizeof(*input);
+        /*for (char i = 0; i < inputSize; i++)
+            if (ret = i6c_aud.fnSetI2SConfig(input[i], &config))
+                return ret;*/
+        if (ret = i6c_aud.fnAttachToDevice(_i6c_aud_dev, input, inputSize))
             return ret;
     }
 
