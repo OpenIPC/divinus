@@ -915,6 +915,46 @@ void *server_thread(void *vargp) {
             continue;
         }
 
+        if (app_config.night_mode_enable && equals(uri, "/api/night")) {
+            int respLen;
+            if (equals(method, "GET")) {
+                if (app_config.ir_sensor_pin == 999 && !empty(query)) {
+                    char *remain;
+                    while (query) {
+                        char *value = split(&query, "&");
+                        if (!value || !*value) continue;
+                        unescape_uri(value);
+                        char *key = split(&value, "=");
+                        if (!key || !*key || !value || !*value) continue;
+                        if (equals(key, "active")) {
+                            if (equals_case(value, "true") || equals_case(value, "1"))
+                                set_night_mode(1);
+                            else if (equals_case(value, "false") || equals_case(value, "0"))
+                                set_night_mode(0);
+                        }
+                    }
+                }
+                respLen = sprintf(response,
+                    "HTTP/1.1 200 OK\r\n" \
+                    "Content-Type: application/json;charset=UTF-8\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "{\"active\":%s}", 
+                    night_mode_is_enabled() ? "true" : "false");
+            } else {
+                respLen = sprintf(response,
+                    "HTTP/1.1 400 Bad Request\r\n" \
+                    "Content-Type: text/plain\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "The server has no handler to the request.\r\n" \
+                );
+            }
+            send_to_fd(client_fd, response, respLen);
+            close_socket_fd(client_fd);
+            continue;
+        }
+
         if (app_config.osd_enable && starts_with(uri, "/api/osd/") &&
             uri[9] && uri[9] >= '0' && uri[9] <= (MAX_OSD - 1 + '0')) {
             char id = uri[9] - '0';

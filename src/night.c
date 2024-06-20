@@ -20,7 +20,6 @@ void ircut_on() {
     usleep(app_config.pin_switch_delay_us);
     gpio_write(app_config.ir_cut_pin1, false);
     gpio_write(app_config.ir_cut_pin2, false);
-    set_grayscale(true);
 }
 
 void ircut_off() {
@@ -29,17 +28,16 @@ void ircut_off() {
     usleep(app_config.pin_switch_delay_us);
     gpio_write(app_config.ir_cut_pin1, false);
     gpio_write(app_config.ir_cut_pin2, false);
-    set_grayscale(false);
 }
 
 void set_night_mode(bool night) {
     if (night == night_mode) return;
     if (night) {
-        printf(tag "Change mode to NIGHT\n");
+        printf(tag "Changing mode to NIGHT\n");
         ircut_off();
         set_grayscale(true);
     } else {
-        printf(tag "Change mode to DAY\n");
+        printf(tag "Changing mode to DAY\n");
         ircut_on();
         set_grayscale(false);
     }
@@ -78,6 +76,8 @@ void *night_thread(void) {
             usleep(250000);
         }
         if (adc_fd) close(adc_fd);
+    } else if (app_config.ir_sensor_pin == 999) {
+        while (keepRunning) sleep(1);
     } else {
         while (keepRunning) {
             bool state = false;

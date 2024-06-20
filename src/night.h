@@ -4,6 +4,7 @@
 #include "gpio.h"
 #include "media.h"
 
+void set_night_mode(bool night);
 bool night_mode_is_enabled();
 void *night_thread();
 
