@@ -33,6 +33,7 @@ void ircut_off() {
 }
 
 void set_night_mode(bool night) {
+    if (night == night_mode) return;
     if (night) {
         printf(tag "Change mode to NIGHT\n");
         ircut_off();
@@ -42,6 +43,7 @@ void set_night_mode(bool night) {
         ircut_on();
         set_grayscale(false);
     }
+    night_mode = night;
 }
 
 void *night_thread(void) {
@@ -70,11 +72,7 @@ void *night_thread(void) {
             cnt++;
             if (cnt == 12) {
                 tmp /= cnt;
-                if (tmp >= app_config.adc_threshold)
-                    night_mode = true;
-                else
-                    night_mode = false;
-                set_night_mode(night_mode);
+                set_night_mode(tmp >= app_config.adc_threshold);
                 cnt = tmp = 0;
             }
             usleep(250000);
@@ -87,10 +85,7 @@ void *night_thread(void) {
                 sleep(app_config.check_interval_s);
                 continue;
             }
-            if (night_mode != state) {
-                night_mode = state;
-                set_night_mode(night_mode);
-            }
+            set_night_mode(night_mode);
             sleep(app_config.check_interval_s);
         }
     }
