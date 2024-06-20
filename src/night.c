@@ -14,18 +14,18 @@ pthread_t nightPid = 0;
 
 bool night_mode_is_enabled() { return night_mode; }
 
-void ircut_on() {
+void ircut_off() {
     gpio_write(app_config.ir_cut_pin1, false);
     gpio_write(app_config.ir_cut_pin2, true);
-    usleep(app_config.pin_switch_delay_us);
+    usleep(app_config.pin_switch_delay_us * 100);
     gpio_write(app_config.ir_cut_pin1, false);
     gpio_write(app_config.ir_cut_pin2, false);
 }
 
-void ircut_off() {
+void ircut_on() {
     gpio_write(app_config.ir_cut_pin1, true);
     gpio_write(app_config.ir_cut_pin2, false);
-    usleep(app_config.pin_switch_delay_us);
+    usleep(app_config.pin_switch_delay_us * 100);
     gpio_write(app_config.ir_cut_pin1, false);
     gpio_write(app_config.ir_cut_pin2, false);
 }
@@ -45,7 +45,9 @@ void set_night_mode(bool night) {
 }
 
 void *night_thread(void) {
-    usleep(1000);
+    gpio_init();
+    usleep(10000);
+
     set_night_mode(night_mode);
 
     if (app_config.adc_device[0]) {
@@ -89,6 +91,8 @@ void *night_thread(void) {
             sleep(app_config.check_interval_s);
         }
     }
+    usleep(10000);
+    gpio_deinit();
     printf(tag "Night mode thread is closing...\n");
 }
 

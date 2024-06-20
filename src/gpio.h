@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <fcntl.h>
 #include <linux/version.h>
 #include <stdbool.h>
@@ -9,6 +10,8 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 8, 0)
 #include <linux/gpio.h>
 #include <sys/ioctl.h>
+#else
+#include <string.h>
 #endif
 
 #define GPIO_ERROR(x, ...) \
