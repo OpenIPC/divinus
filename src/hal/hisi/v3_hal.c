@@ -86,7 +86,7 @@ int v3_audio_init(void)
         config.frmNum = 0;
         config.packNumPerFrm = config.rate / 16;
         config.chnNum = 1;
-        config.syncRxClkOn = 0;
+        config.syncRxClkOn = 1;
         if (ret = v3_aud.fnSetDeviceConfig(_v3_aud_dev, &config))
             return ret;
     }
