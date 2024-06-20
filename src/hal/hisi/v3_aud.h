@@ -28,7 +28,7 @@ typedef struct {
     v3_aud_intf intf;
     int stereoOn;
     // 8-to-16 bit, expand mode
-    int expandOn;
+    unsigned int expandOn;
     unsigned int frmNum;
     unsigned int packNumPerFrm;
     unsigned int chnNum;

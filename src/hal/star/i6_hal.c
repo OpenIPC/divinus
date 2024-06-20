@@ -131,6 +131,11 @@ void *i6_audio_thread(void)
 
         if (i6_aud_cb) {
             hal_audframe outFrame;
+            outFrame.channelCnt = 1;
+            outFrame.data[0] = frame.addr[0];
+            outFrame.length[0] = frame.length;
+            outFrame.seq = frame.sequence;
+            outFrame.timestamp = frame.timestamp;
             (i6_aud_cb)(&outFrame);
         }
 

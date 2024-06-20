@@ -11,6 +11,12 @@ typedef enum {
 } v4_aud_bit;
 
 typedef enum {
+    V4_AUD_I2ST_INNERCODEC,
+    V4_AUD_I2ST_INNERHDMI,
+    V4_AUD_I2ST_EXTERN
+} v4_aud_i2st;
+
+typedef enum {
     V4_AUD_INTF_I2S_MASTER,
     V4_AUD_INTF_I2S_SLAVE,
     V4_AUD_INTF_PCM_SLAVE_STD,
@@ -28,18 +34,19 @@ typedef struct {
     v4_aud_intf intf;
     int stereoOn;
     // 8-to-16 bit, expand mode
-    int expandOn;
+    unsigned int expandOn;
     unsigned int frmNum;
     unsigned int packNumPerFrm;
     unsigned int chnNum;
     unsigned int syncRxClkOn;
+    v4_aud_i2st i2sType;
 } v4_aud_cnf;
 
 typedef struct {
     v4_aud_bit bit;
     int stereoOn;
-    void *addr[2];
-    unsigned int phy[2];
+    char *addr[2];
+    unsigned long long phy[2];
     unsigned long long timestamp;
     unsigned int sequence;
     unsigned int length;

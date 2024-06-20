@@ -78,15 +78,15 @@ int v3_audio_init(void)
 
     {
         v3_aud_cnf config;
-        config.rate = 48000;
+        config.rate = 8000;
         config.bit = V3_AUD_BIT_16;
-        config.intf = V3_AUD_INTF_I2S_SLAVE;
+        config.intf = V3_AUD_INTF_I2S_MASTER;
         config.stereoOn = 0;
         config.expandOn = 0;
-        config.frmNum = 0;
-        config.packNumPerFrm = config.rate / 16;
+        config.frmNum = 30;
+        config.packNumPerFrm = 320;
         config.chnNum = 1;
-        config.syncRxClkOn = 1;
+        config.syncRxClkOn = 0;
         if (ret = v3_aud.fnSetDeviceConfig(_v3_aud_dev, &config))
             return ret;
     }
@@ -110,14 +110,19 @@ void *v3_audio_thread(void)
 
     while (keepRunning) {
         if (ret = v3_aud.fnGetFrame(_v3_aud_dev, _v3_aud_chn, 
-            &frame, &echoFrame, 100)) {
+            &frame, &echoFrame, 128)) {
             fprintf(stderr, "[v3_aud] Getting the frame failed "
                 "with %#x!\n", ret);
-            break;
-        } else continue;
+            continue;
+        }
 
         if (v3_aud_cb) {
             hal_audframe outFrame;
+            outFrame.channelCnt = 1;
+            outFrame.data[0] = frame.addr[0];
+            outFrame.length[0] = frame.length;
+            outFrame.seq = frame.sequence;
+            outFrame.timestamp = frame.timestamp;
             (v3_aud_cb)(&outFrame);
         }
 

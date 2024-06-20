@@ -66,12 +66,12 @@ typedef struct {
 typedef struct {
     int bit24On;
     i6_aud_snd sound;
-    int *addr[I6_AUD_CHN_NUM];
+    unsigned char *addr[I6_AUD_CHN_NUM];
     unsigned long long timestamp;
     unsigned int sequence;
     unsigned int length;
     unsigned int poolId[2];
-    int *pcmAddr[I6_AUD_CHN_NUM];
+    unsigned char *pcmAddr[I6_AUD_CHN_NUM];
     unsigned int pcmLength;
 } i6_aud_frm;
 
