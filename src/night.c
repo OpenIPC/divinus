@@ -14,7 +14,7 @@ pthread_t nightPid = 0;
 
 bool night_mode_is_enabled() { return night_mode; }
 
-void ircut_off() {
+void ircut_on() {
     gpio_write(app_config.ir_cut_pin1, false);
     gpio_write(app_config.ir_cut_pin2, true);
     usleep(app_config.pin_switch_delay_us * 100);
@@ -22,7 +22,7 @@ void ircut_off() {
     gpio_write(app_config.ir_cut_pin2, false);
 }
 
-void ircut_on() {
+void ircut_off() {
     gpio_write(app_config.ir_cut_pin1, true);
     gpio_write(app_config.ir_cut_pin2, false);
     usleep(app_config.pin_switch_delay_us * 100);
@@ -59,9 +59,10 @@ void *night_thread(void) {
             printf(tag "Could not open the ADC virtual device!\n");
             return NULL;
         }
+        struct timeval tv = { 
+                .tv_sec = app_config.check_interval_s % 12,
+                .tv_usec = app_config.check_interval_s / 12 * 1000000 };
         while (keepRunning) {
-            struct timeval tv = { 
-                .tv_sec = app_config.check_interval_s, .tv_usec = 0 };
             FD_ZERO(&adc_fds);
             FD_SET(adc_fd, &adc_fds);
             select(adc_fd + 1, &adc_fds, NULL, NULL, &tv);
