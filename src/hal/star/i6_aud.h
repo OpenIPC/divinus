@@ -66,12 +66,12 @@ typedef struct {
 typedef struct {
     int bit24On;
     i6_aud_snd sound;
-    void *addr[I6_AUD_CHN_NUM];
+    int *addr[I6_AUD_CHN_NUM];
     unsigned long long timestamp;
     unsigned int sequence;
     unsigned int length;
     unsigned int poolId[2];
-    void *pcmAddr[I6_AUD_CHN_NUM];
+    int *pcmAddr[I6_AUD_CHN_NUM];
     unsigned int pcmLength;
 } i6_aud_frm;
 
@@ -116,6 +116,7 @@ typedef struct {
     int (*fnSetEncodingParam)(int device, int channel, i6_aud_para *param);
 
     int (*fnSetMute)(int device, int channel, char active);
+    int (*fnSetVolume)(int device, int channel, int dbLevel);
 
     int (*fnFreeFrame)(int device, int channel, i6_aud_frm *frame, i6_aud_efrm *encFrame);
     int (*fnGetFrame)(int device, int channel, i6_aud_frm *frame, i6_aud_efrm *encFrame, int millis);
@@ -178,6 +179,12 @@ static int i6_aud_load(i6_aud_impl *aud_lib) {
     if (!(aud_lib->fnSetMute = (int(*)(int device, int channel, char active))
         dlsym(aud_lib->handle, "MI_AI_SetMute"))) {
         fprintf(stderr, "[i6_aud] Failed to acquire symbol MI_AI_SetMute!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(aud_lib->fnSetVolume = (int(*)(int device, int channel, int dbLevel))
+        dlsym(aud_lib->handle, "MI_AI_SetVqeVolume"))) {
+        fprintf(stderr, "[i6_aud] Failed to acquire symbol MI_AI_SetVqeVolume!\n");
         return EXIT_FAILURE;
     }
 

@@ -82,19 +82,19 @@ int i6f_audio_init(void)
 
     {
         i6f_aud_cnf config;
-        config.rate = 48000;
+        config.rate = 8000;
         config.bit = I6F_AUD_BIT_16;
         config.intf = I6F_AUD_INTF_I2S_SLAVE;
         config.sound = I6F_AUD_SND_MONO;
         config.frmNum = 0;
-        config.packNumPerFrm = config.rate / 16;
+        config.packNumPerFrm = 640;
         config.codecChnNum = 0;
         config.chnNum = 1;
         config.i2s.clock = I6F_AUD_CLK_OFF;
         config.i2s.leftJustOn = 0;
-        config.i2s.syncRxClkOn = 1;
+        config.i2s.syncRxClkOn = 0;
         config.i2s.tdmSlotNum = 0;
-        config.i2s.bit = I6F_AUD_BIT_32;
+        config.i2s.bit = I6F_AUD_BIT_16;
         if (ret = i6f_aud.fnSetDeviceConfig(_i6f_aud_dev, &config))
             return ret;
     }
@@ -103,6 +103,15 @@ int i6f_audio_init(void)
     
     if (ret = i6f_aud.fnEnableChannel(_i6f_aud_dev, _i6f_aud_chn))
         return ret;
+    if (ret = i6f_aud.fnSetVolume(_i6f_aud_dev, _i6f_aud_chn, 13))
+        return ret;
+
+    {
+        i6f_sys_bind bind = { .module = I6F_SYS_MOD_AI, 
+            .device = _i6f_aud_dev, .channel = _i6f_aud_chn };
+        if (ret = i6f_sys.fnSetOutputDepth(0, &bind, 2, 4))
+            return ret;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -112,13 +121,11 @@ void *i6f_audio_thread(void)
     int ret;
 
     i6f_aud_frm frame;
-    i6f_aud_efrm echoFrame;
     memset(&frame, 0, sizeof(frame));
-    memset(&echoFrame, 0, sizeof(echoFrame));
 
     while (keepRunning) {
         if (ret = i6f_aud.fnGetFrame(_i6f_aud_dev, _i6f_aud_chn, 
-            &frame, &echoFrame, 100)) {
+            &frame, NULL, 128)) {
             fprintf(stderr, "[i6f_aud] Getting the frame failed "
                 "with %#x!\n", ret);
             continue;
@@ -130,7 +137,7 @@ void *i6f_audio_thread(void)
         }
 
         if (ret = i6f_aud.fnFreeFrame(_i6f_aud_dev, _i6f_aud_chn,
-            &frame, &echoFrame)) {
+            &frame, NULL)) {
             fprintf(stderr, "[i6f_aud] Releasing the frame failed"
                 " with %#x!\n", ret);
         }

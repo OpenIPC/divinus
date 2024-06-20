@@ -83,8 +83,8 @@ int i6c_audio_init(void)
         i6c_aud_cnf config;
         config.reserved = 0;
         config.sound = I6C_AUD_SND_MONO;
-        config.rate = 48000;
-        config.periodSize = 0x600;
+        config.rate = 8000;
+        config.periodSize = 0x400;
         config.interleavedOn = 0;
         if (ret = i6c_aud.fnEnableDevice(_i6c_aud_dev, &config))
             return ret;
@@ -95,9 +95,9 @@ int i6c_audio_init(void)
         config.intf = I6C_AUD_INTF_I2S_SLAVE;
         config.bit = I6C_AUD_BIT_16;
         config.leftJustOn = 0;
-        config.rate = 48000;
+        config.rate = 8000;
         config.clock = I6C_AUD_CLK_OFF;
-        config.syncRxClkOn = 1;
+        config.syncRxClkOn = 0;
         config.tdmSlotNum = 0;
         if (ret = i6c_aud.fnSetI2SConfig(input[0], &config))
             return ret;
@@ -105,13 +105,20 @@ int i6c_audio_init(void)
             return ret;
     }
 
+    if (ret = i6c_aud.fnEnableGroup(_i6c_aud_dev, _i6c_aud_chn))
+        return ret;
     {
-        char gain[1] = { 0xF6 };
+        char gain[1] = { 13 };
         if (ret = i6c_aud.fnSetGain(_i6c_aud_dev, _i6c_aud_chn, gain, 1))
             return ret;
     }
-    if (ret = i6c_aud.fnEnableGroup(_i6c_aud_dev, _i6c_aud_chn))
-        return ret;
+
+    {
+        i6c_sys_bind bind = { .module = I6C_SYS_MOD_AI, 
+            .device = _i6c_aud_dev, .channel = _i6c_aud_chn };
+        if (ret = i6c_sys.fnSetOutputDepth(0, &bind, 2, 4))
+            return ret;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -120,13 +127,12 @@ void *i6c_audio_thread(void)
 {
     int ret;
 
-    i6c_aud_frm frame, echoFrame;
+    i6c_aud_frm frame;
     memset(&frame, 0, sizeof(frame));
-    memset(&echoFrame, 0, sizeof(echoFrame));
 
     while (keepRunning) {
         if (ret = i6c_aud.fnGetFrame(_i6c_aud_dev, _i6c_aud_chn, 
-            &frame, &echoFrame, 100)) {
+            &frame, NULL, 128)) {
             fprintf(stderr, "[i6c_aud] Getting the frame failed "
                 "with %#x!\n", ret);
             continue;
@@ -138,7 +144,7 @@ void *i6c_audio_thread(void)
         }
 
         if (ret = i6c_aud.fnFreeFrame(_i6c_aud_dev, _i6c_aud_chn,
-            &frame, &echoFrame)) {
+            &frame, NULL)) {
             fprintf(stderr, "[i6c_aud] Releasing the frame failed"
                 " with %#x!\n", ret);
         }

@@ -79,6 +79,7 @@ typedef struct {
         unsigned int srcFps, unsigned int dstFps);
     int (*fnBindExt)(i6_sys_bind *source, i6_sys_bind *dest, unsigned int srcFps, 
         unsigned int dstFps, i6_sys_link link, unsigned int linkParam);
+    int (*fnSetOutputDepth)(i6_sys_bind *bind, unsigned int usrDepth, unsigned int bufDepth);
     int (*fnUnbind)(i6_sys_bind *source, i6_sys_bind *dest);
 } i6_sys_impl;
 
@@ -122,6 +123,12 @@ static int i6_sys_load(i6_sys_impl *sys_lib) {
         unsigned int dstFps, i6_sys_link link, unsigned int linkParam))
         dlsym(sys_lib->handle, "MI_SYS_BindChnPort2"))) {
         fprintf(stderr, "[i6_sys] Failed to acquire symbol MI_SYS_BindChnPort2!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(sys_lib->fnSetOutputDepth = (int(*)(i6_sys_bind *bind, unsigned int usrDepth, unsigned int bufDepth))
+        dlsym(sys_lib->handle, "MI_SYS_SetChnOutputPortDepth"))) {
+        fprintf(stderr, "[i6_sys] Failed to acquire symbol MI_SYS_SetChnOutputPortDepth!\n");
         return EXIT_FAILURE;
     }
 

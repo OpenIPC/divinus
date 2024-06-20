@@ -121,6 +121,8 @@ typedef struct {
     int (*fnBind)(unsigned short chip, i6f_sys_bind *source, i6f_sys_bind *dest, i6f_sys_link *link);
     int (*fnBindExt)(unsigned short chip, i6f_sys_bind *source, i6f_sys_bind *dest, 
         unsigned int srcFps, unsigned int dstFps, i6f_sys_link link, unsigned int linkParam);
+    int (*fnSetOutputDepth)(unsigned short chip, i6f_sys_bind *bind, unsigned int usrDepth, 
+        unsigned int bufDepth);
     int (*fnUnbind)(unsigned short chip, i6f_sys_bind *source, i6f_sys_bind *dest);
 
     int (*fnConfigPool)(unsigned short chip, i6f_sys_pool *config);
@@ -167,6 +169,14 @@ static int i6f_sys_load(i6f_sys_impl *sys_lib) {
         fprintf(stderr, "[i6f_sys] Failed to acquire symbol MI_SYS_BindChnPort2!\n");
         return EXIT_FAILURE;
     }
+
+    if (!(sys_lib->fnSetOutputDepth = (int(*)(unsigned short chip, i6f_sys_bind *bind,
+        unsigned int usrDepth, unsigned int bufDepth))
+        dlsym(sys_lib->handle, "MI_SYS_SetChnOutputPortDepth"))) {
+        fprintf(stderr, "[i6f_sys] Failed to acquire symbol MI_SYS_SetChnOutputPortDepth!\n");
+        return EXIT_FAILURE;
+    }
+
 
     if (!(sys_lib->fnUnbind = (int(*)(unsigned short chip, i6f_sys_bind *source, i6f_sys_bind *dest))
         dlsym(sys_lib->handle, "MI_SYS_UnBindChnPort"))) {
