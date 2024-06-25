@@ -105,15 +105,12 @@ int i6c_audio_init(short samplerate)
                 return ret;*/
         if (ret = i6c_aud.fnAttachToDevice(_i6c_aud_dev, input, inputSize))
             return ret;
+        if (ret = i6c_aud.fnSetGain(input[0], 13, 13))
+            return ret;
     }
 
     if (ret = i6c_aud.fnEnableGroup(_i6c_aud_dev, _i6c_aud_chn))
         return ret;
-    {
-        char gain[1] = { 13 };
-        if (ret = i6c_aud.fnSetGain(_i6c_aud_dev, _i6c_aud_chn, gain, 1))
-            return ret;
-    }
 
     {
         i6c_sys_bind bind = { .module = I6C_SYS_MOD_AI, 

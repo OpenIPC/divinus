@@ -135,8 +135,9 @@ typedef struct {
 
     int (*fnSetI2SConfig)(i6c_aud_input input, i6c_aud_i2s *config);
 
-    int (*fnSetGain)(int device, unsigned char group, char gains[], unsigned char gainSize);
+    int (*fnSetGain)(i6c_aud_input input, char leftLevel, char rightLevel);
     int (*fnSetMute)(int device, unsigned char group, char actives[], unsigned char activeSize);
+    int (*fnSetVolume)(int device, unsigned char group, char levels[], unsigned char levelSize);
 
     int (*fnFreeFrame)(int device, unsigned char group, i6c_aud_frm *frame, i6c_aud_frm *echoFrame);
     int (*fnGetFrame)(int device, unsigned char group, i6c_aud_frm *frame, i6c_aud_frm *echoFrame, int millis);
@@ -184,15 +185,21 @@ static int i6c_aud_load(i6c_aud_impl *aud_lib) {
         return EXIT_FAILURE;
     }
 
-    if (!(aud_lib->fnSetGain = (int(*)(int device, unsigned char group, char gains[], unsigned char gainSize))
-        dlsym(aud_lib->handle, "MI_AI_SetGain"))) {
-        fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_SetGain!\n");
+    if (!(aud_lib->fnSetGain = (int(*)(i6c_aud_input input, char leftLevel, char rightLevel))
+        dlsym(aud_lib->handle, "MI_AI_SetIfGain"))) {
+        fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_SetIfGain!\n");
         return EXIT_FAILURE;
     }
 
     if (!(aud_lib->fnSetMute = (int(*)(int device, unsigned char group, char actives[], unsigned char activeSize))
         dlsym(aud_lib->handle, "MI_AI_SetMute"))) {
         fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_SetMute!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(aud_lib->fnSetVolume = (int(*)(int device, unsigned char group, char levels[], unsigned char levelSize))
+        dlsym(aud_lib->handle, "MI_AI_SetGain"))) {
+        fprintf(stderr, "[i6c_aud] Failed to acquire symbol MI_AI_SetGain!\n");
         return EXIT_FAILURE;
     }
 
