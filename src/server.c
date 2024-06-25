@@ -4,7 +4,13 @@
 
 char keepRunning = 1;
 
-enum StreamType { STREAM_H26X, STREAM_JPEG, STREAM_MJPEG, STREAM_MP4 };
+enum StreamType {
+    STREAM_H26X,
+    STREAM_JPEG,
+    STREAM_MJPEG,
+    STREAM_MP4,
+    STREAM_PCM
+};
 
 struct Client {
     int socket_fd;
@@ -187,6 +193,26 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
         }
         pthread_mutex_unlock(&client_fds_mutex);
     }
+}
+
+void send_pcm_to_client(hal_audframe *frame) {
+    pthread_mutex_lock(&client_fds_mutex);
+    for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
+        if (client_fds[i].socket_fd < 0)
+            continue;
+        if (client_fds[i].type != STREAM_PCM)
+            continue;
+
+        static char len_buf[50];
+        ssize_t len_size = sprintf(len_buf, "%zX\r\n", frame->length[0]);
+        if (send_to_client(i, len_buf, len_size) < 0)
+            continue; // send <SIZE>\r\n
+        if (send_to_client(i, frame->data[0], frame->length[0]) < 0)
+            continue; // send <DATA>
+        if (send_to_client(i, "\r\n", 2) < 0)
+            continue; // send \r\n
+    }
+    pthread_mutex_unlock(&client_fds_mutex);
 }
 
 void send_mjpeg(char index, char *buf, ssize_t size) {
@@ -585,6 +611,23 @@ void *server_thread(void *vargp) {
         if (equals(uri, "/video.html") &&
             app_config.mp4_enable) {
             send_video_html(client_fd);
+            continue;
+        }
+
+        if (app_config.audio_enable && equals(uri, "/audio.pcm")) {
+            int respLen = sprintf(
+                response, "HTTP/1.1 200 OK\r\nContent-Type: "
+                        "audio/pcm\r\nTransfer-Encoding: "
+                        "chunked\r\nConnection: keep-alive\r\n\r\n");
+            send_to_fd(client_fd, response, respLen);
+            pthread_mutex_lock(&client_fds_mutex);
+            for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
+                if (client_fds[i].socket_fd < 0) {
+                    client_fds[i].socket_fd = client_fd;
+                    client_fds[i].type = STREAM_PCM;
+                    break;
+                }
+            pthread_mutex_unlock(&client_fds_mutex);
             continue;
         }
 

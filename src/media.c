@@ -24,10 +24,12 @@ int save_audio_stream(hal_audframe *frame) {
     printf("[audio] data:%p - %02x %02x %02x %02x %02x %02x %02x %02x\n", 
         frame->data, frame->data[0][0], frame->data[0][1], frame->data[0][2], frame->data[0][3],
         frame->data[0][4], frame->data[0][5], frame->data[0][6], frame->data[0][7]);
-    printf("        len:%d\n", frame->length);
+    printf("        len:%d\n", frame->length[0]);
     printf("        seq:%d\n", frame->seq);
     printf("        ts:%d\n", frame->timestamp);
 #endif
+
+    send_pcm_to_client(frame);
 
     return ret;
 }

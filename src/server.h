@@ -32,3 +32,4 @@ void send_jpeg(char index, char *buf, ssize_t size);
 void send_mjpeg(char index, char *buf, ssize_t size);
 void send_h26x_to_client(char index, hal_vidstream *stream);
 void send_mp4_to_client(char index, hal_vidstream *stream, char isH265);
+void send_pcm_to_client(hal_audframe *frame);
