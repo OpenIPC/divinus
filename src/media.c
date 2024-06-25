@@ -427,7 +427,10 @@ int start_sdk(void) {
             v4_vid_cb = save_video_stream;
             break;
 #elif defined(__mips__)
-        case HAL_PLATFORM_T31: t31_vid_cb = save_video_stream; break;
+        case HAL_PLATFORM_T31:
+            t31_aud_cb = save_audio_stream;
+            t31_vid_cb = save_video_stream;
+            break;
 #endif
     }
 
@@ -456,6 +459,8 @@ int start_sdk(void) {
         case HAL_PLATFORM_I6F: ret = i6f_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V3:  ret = v3_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V4:  ret = v4_audio_init(app_config.audio_srate); break;
+#elif defined(__mips__)
+        case HAL_PLATFORM_T31: ret = t31_audio_init(app_config.audio_srate); break;
 #endif
     }
     if (ret) {
@@ -649,6 +654,8 @@ int stop_sdk(void) {
         case HAL_PLATFORM_I6F: i6f_audio_deinit(); break;
         case HAL_PLATFORM_V3:  v3_audio_deinit(); break;
         case HAL_PLATFORM_V4:  v4_audio_deinit(); break;
+#elif defined(__mips__)
+        case HAL_PLATFORM_T31: t31_audio_deinit(); break;
 #endif
     }
 
