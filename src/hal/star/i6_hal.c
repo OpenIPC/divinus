@@ -73,13 +73,13 @@ void i6_audio_deinit(void)
     i6_aud.fnDisableDevice(_i6_aud_dev);
 }
 
-int i6_audio_init(void)
+int i6_audio_init(short samplerate)
 {
     int ret;
 
     {
         i6_aud_cnf config;
-        config.rate = 8000;
+        config.rate = samplerate;
         config.bit24On = 0;
         config.intf = I6_AUD_INTF_I2S_SLAVE;
         config.sound = I6_AUD_SND_MONO;

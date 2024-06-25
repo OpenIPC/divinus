@@ -57,13 +57,13 @@ void t31_audio_deinit(void)
     t31_aud.fnDisableDevice(_t31_aud_dev);
 }
 
-int t31_audio_init(void)
+int t31_audio_init(short samplerate)
 {
     int ret;
 
     {
         t31_aud_cnf config;
-        config.rate = 48000;
+        config.rate = samplerate;
         config.bit = T31_AUD_BIT_16;
         config.mode = T31_AUD_SND_MONO;
         config.frmNum = 40;

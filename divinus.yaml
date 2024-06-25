@@ -49,6 +49,10 @@ http_post:
   login: <your login>
   password: <yout pass>
 
+audio:
+  enable: false
+  srate: 8000
+
 rtsp:
   enable: true
 

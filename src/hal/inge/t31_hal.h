@@ -20,7 +20,7 @@ void t31_hal_deinit(void);
 int t31_hal_init(void);
 
 void t31_audio_deinit(void);
-int t31_audio_init(void);
+int t31_audio_init(short samplerate);
 
 int t31_channel_bind(char index);
 int t31_channel_create(char index, short width, short height, char framerate);

@@ -17,7 +17,7 @@ void i6f_hal_deinit(void);
 int i6f_hal_init(void);
 
 void i6f_audio_deinit(void);
-int i6f_audio_init(void);
+int i6f_audio_init(short samplerate);
 void *i6f_audio_thread(void);
 
 int i6f_channel_bind(char index, char framerate);

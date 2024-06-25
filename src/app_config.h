@@ -20,6 +20,10 @@ struct AppConfig {
     bool osd_enable;
     bool rtsp_enable;
 
+    // [audio]
+    bool audio_enable;
+    unsigned int audio_srate;
+
     // [video_0]
     bool mp4_enable;
     bool mp4_codecH265;

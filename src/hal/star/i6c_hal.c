@@ -75,7 +75,7 @@ void i6c_audio_deinit(void)
     i6c_aud.fnDisableDevice(_i6c_aud_dev);
 }
 
-int i6c_audio_init(void)
+int i6c_audio_init(short samplerate)
 {
     int ret;
 
@@ -83,7 +83,7 @@ int i6c_audio_init(void)
         i6c_aud_cnf config;
         config.reserved = 0;
         config.sound = I6C_AUD_SND_MONO;
-        config.rate = 8000;
+        config.rate = samplerate;
         config.periodSize = 0x400;
         config.interleavedOn = 0;
         if (ret = i6c_aud.fnEnableDevice(_i6c_aud_dev, &config))

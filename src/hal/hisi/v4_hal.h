@@ -28,7 +28,7 @@ int v4_hal_init(void);
 void *v4_audio_thread(void);
 
 void v4_audio_deinit(void);
-int v4_audio_init(void);
+int v4_audio_init(short samplerate);
 
 int v4_channel_bind(char index);
 int v4_channel_create(char index, char mirror, char flip, char framerate);

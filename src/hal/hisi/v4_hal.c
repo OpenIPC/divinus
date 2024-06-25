@@ -73,13 +73,13 @@ void v4_audio_deinit(void)
     v4_aud.fnDisableDevice(_v4_aud_dev);
 }
 
-int v4_audio_init(void)
+int v4_audio_init(short samplerate)
 {
     int ret;
 
     {
         v4_aud_cnf config;
-        config.rate = 8000;
+        config.rate = samplerate;
         config.bit = V4_AUD_BIT_16;
         config.intf = V4_AUD_INTF_I2S_MASTER;
         config.stereoOn = 0;

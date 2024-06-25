@@ -20,6 +20,15 @@ pthread_t vidPid = 0;
 int save_audio_stream(hal_audframe *frame) {
     int ret = EXIT_SUCCESS;
 
+#ifdef DEBUG
+    printf("[audio] data:%p - %02x %02x %02x %02x %02x %02x %02x %02x\n", 
+        frame->data, frame->data[0][0], frame->data[0][1], frame->data[0][2], frame->data[0][3],
+        frame->data[0][4], frame->data[0][5], frame->data[0][6], frame->data[0][7]);
+    printf("        len:%d\n", frame->length);
+    printf("        seq:%d\n", frame->seq);
+    printf("        ts:%d\n", frame->timestamp);
+#endif
+
     return ret;
 }
 
@@ -438,6 +447,41 @@ int start_sdk(void) {
         return EXIT_FAILURE;
     }
 
+    if (app_config.audio_enable) switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_I6:  ret = i6_audio_init(app_config.audio_srate); break;
+        case HAL_PLATFORM_I6C: ret = i6c_audio_init(app_config.audio_srate); break;
+        case HAL_PLATFORM_I6F: ret = i6f_audio_init(app_config.audio_srate); break;
+        case HAL_PLATFORM_V3:  ret = v3_audio_init(app_config.audio_srate); break;
+        case HAL_PLATFORM_V4:  ret = v4_audio_init(app_config.audio_srate); break;
+#endif
+    }
+    if (ret) {
+        fprintf(stderr, "Audio initialization failed with %#x!\n%s\n",
+            ret, errstr(ret));
+        return EXIT_FAILURE;
+    }
+
+    if (app_config.audio_enable) {
+        pthread_attr_t thread_attr;
+        pthread_attr_init(&thread_attr);
+        size_t stacksize;
+        pthread_attr_getstacksize(&thread_attr, &stacksize);
+        size_t new_stacksize = app_config.venc_stream_thread_stack_size;
+        if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
+            fprintf(stderr, "Can't set stack size %zu\n", new_stacksize);
+        }
+        if (pthread_create(
+                     &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL)) {
+            fprintf(stderr, "Starting the audio encoding thread failed!\n");
+            return EXIT_FAILURE;
+        }
+        if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
+            fprintf(stderr, "Can't set stack size %zu\n", stacksize);
+        }
+        pthread_attr_destroy(&thread_attr);
+    }
+
     short width = MAX(app_config.mp4_width, app_config.mjpeg_width);
     short height = MAX(app_config.mp4_height, app_config.mjpeg_height);
     short framerate = MAX(app_config.mp4_fps, app_config.mjpeg_fps);
@@ -577,6 +621,9 @@ int stop_sdk(void) {
 #endif
     }
 
+    if (app_config.audio_enable)
+        pthread_join(audPid, NULL);
+
     if (isp_thread)
         pthread_join(ispPid, NULL);
 
@@ -590,6 +637,16 @@ int stop_sdk(void) {
         case HAL_PLATFORM_V4:  v4_system_deinit(); break;
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: t31_system_deinit(); break;
+#endif
+    }
+
+    if (app_config.audio_enable) switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_I6:  i6_audio_deinit(); break;
+        case HAL_PLATFORM_I6C: i6c_audio_deinit(); break;
+        case HAL_PLATFORM_I6F: i6f_audio_deinit(); break;
+        case HAL_PLATFORM_V3:  v3_audio_deinit(); break;
+        case HAL_PLATFORM_V4:  v4_audio_deinit(); break;
 #endif
     }
 

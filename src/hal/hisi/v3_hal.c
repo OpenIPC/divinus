@@ -72,13 +72,13 @@ void v3_audio_deinit(void)
     v3_aud.fnDisableDevice(_v3_aud_dev);
 }
 
-int v3_audio_init(void)
+int v3_audio_init(short samplerate)
 {
     int ret;
 
     {
         v3_aud_cnf config;
-        config.rate = 8000;
+        config.rate = samplerate;
         config.bit = V3_AUD_BIT_16;
         config.intf = V3_AUD_INTF_I2S_MASTER;
         config.stereoOn = 0;

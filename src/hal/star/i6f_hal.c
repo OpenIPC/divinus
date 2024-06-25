@@ -76,13 +76,13 @@ void i6f_audio_deinit(void)
 }
 
 
-int i6f_audio_init(void)
+int i6f_audio_init(short samplerate)
 {
     int ret;
 
     {
         i6f_aud_cnf config;
-        config.rate = 8000;
+        config.rate = samplerate;
         config.bit = I6F_AUD_BIT_16;
         config.intf = I6F_AUD_INTF_I2S_SLAVE;
         config.sound = I6F_AUD_SND_MONO;
