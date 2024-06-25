@@ -137,7 +137,7 @@ enum ConfigError parse_app_config(void) {
 
     parse_bool(&ini, "audio", "enable", &app_config.audio_enable);
     if (app_config.audio_enable) {
-        parse_int(&ini, "audio", "srate", 8000, 48000, 
+        parse_int(&ini, "audio", "srate", 8000, 96000, 
             &app_config.audio_srate);
         if (err != CONFIG_OK)
             goto RET_ERR;

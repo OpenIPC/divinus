@@ -76,7 +76,7 @@ void i6f_audio_deinit(void)
 }
 
 
-int i6f_audio_init(short samplerate)
+int i6f_audio_init(int samplerate)
 {
     int ret;
 

@@ -73,7 +73,7 @@ void v4_audio_deinit(void)
     v4_aud.fnDisableDevice(_v4_aud_dev);
 }
 
-int v4_audio_init(short samplerate)
+int v4_audio_init(int samplerate)
 {
     int ret;
 

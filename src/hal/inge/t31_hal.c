@@ -57,7 +57,7 @@ void t31_audio_deinit(void)
     t31_aud.fnDisableDevice(_t31_aud_dev);
 }
 
-int t31_audio_init(short samplerate)
+int t31_audio_init(int samplerate)
 {
     int ret;
 

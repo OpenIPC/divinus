@@ -27,7 +27,7 @@ void v3_hal_deinit(void);
 int v3_hal_init(void);
 
 void v3_audio_deinit(void);
-int v3_audio_init(short samplerate);
+int v3_audio_init(int samplerate);
 void *v3_audio_thread(void);
 
 int v3_channel_bind(char index);

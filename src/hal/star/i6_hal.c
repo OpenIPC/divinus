@@ -73,7 +73,7 @@ void i6_audio_deinit(void)
     i6_aud.fnDisableDevice(_i6_aud_dev);
 }
 
-int i6_audio_init(short samplerate)
+int i6_audio_init(int samplerate)
 {
     int ret;
 
