@@ -48,6 +48,7 @@ typedef struct {
 
     int (*fnFreeFrame)(int device, int channel, t31_aud_frm *frame);
     int (*fnGetFrame)(int device, int channel, t31_aud_frm *frame, int notBlocking);
+    int (*fnPollFrame)(int device, int channel, int timeout);
 } t31_aud_impl;
 
 static int t31_aud_load(t31_aud_impl *aud_lib) {
@@ -107,6 +108,12 @@ static int t31_aud_load(t31_aud_impl *aud_lib) {
     if (!(aud_lib->fnGetFrame = (int(*)(int device, int channel, t31_aud_frm *frame, int notBlocking))
         dlsym(aud_lib->handle, "IMP_AI_GetFrame"))) {
         fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_GetFrame!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(aud_lib->fnPollFrame = (int(*)(int device, int channel, int timeout))
+        dlsym(aud_lib->handle, "IMP_AI_PollingFrame"))) {
+        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_PollingFrame!\n");
         return EXIT_FAILURE;
     }
 

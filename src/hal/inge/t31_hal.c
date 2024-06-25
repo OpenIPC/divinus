@@ -86,6 +86,41 @@ int t31_audio_init(int samplerate)
     return EXIT_SUCCESS;
 }
 
+void *t31_audio_thread(void)
+{
+    int ret;
+
+    t31_aud_frm frame;
+    memset(&frame, 0, sizeof(frame));
+
+    while (keepRunning) {
+        if (ret = t31_aud.fnPollFrame(_t31_aud_dev, _t31_aud_chn, 128))
+            continue;
+
+        if (ret = t31_aud.fnGetFrame(_t31_aud_dev, _t31_aud_chn, &frame, 1)) {
+            fprintf(stderr, "[t31_aud] Getting the frame failed "
+                "with %#x!\n", ret);
+            continue;
+        }
+
+        if (t31_aud_cb) {
+            hal_audframe outFrame;
+            outFrame.channelCnt = 1;
+            outFrame.data[0] = (char*)frame.addr;
+            outFrame.length[0] = frame.length;
+            outFrame.seq = frame.sequence;
+            outFrame.timestamp = frame.timestamp;
+            (t31_aud_cb)(&outFrame);
+        }
+
+        if (ret = t31_aud.fnFreeFrame(_t31_aud_dev, _t31_aud_chn, &frame)) {
+            fprintf(stderr, "[t31_aud] Releasing the frame failed"
+                " with %#x!\n", ret);
+        }
+    }
+    fprintf(stderr, "[t31_aud] Shutting down encoding thread...\n");
+}
+
 int t31_channel_bind(char index)
 {
     int ret;
