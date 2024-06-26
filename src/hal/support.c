@@ -131,6 +131,7 @@ void hal_identify(void) {
                 }
                 chnCount = T31_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)t31_state;
+                aud_thread = t31_audio_thread;
                 vid_thread = t31_video_thread;
                 return;
         }

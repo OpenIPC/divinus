@@ -5,13 +5,18 @@
 #define T31_AUD_CHN_NUM 2
 
 typedef enum {
-    T31_AUD_BIT_16
+    T31_AUD_BIT_16 = 16
 } t31_aud_bit;
 
 typedef enum {
     T31_AUD_SND_MONO = 1,
     T31_AUD_SND_STEREO = 2
 } t31_aud_snd;
+
+typedef struct {
+    int usrFrmDepth;
+    int rev;
+} t31_aud_chn;
 
 typedef struct {
     // Accept industry standards from 8000 to 96000Hz
@@ -42,9 +47,11 @@ typedef struct {
 
     int (*fnDisableChannel)(int device, int channel);
     int (*fnEnableChannel)(int device, int channel);
+    int (*fnSetChannelConfig)(int device, int channel, t31_aud_chn *config);
 
+    int (*fnSetGain)(int device, int channel, int level);
     int (*fnSetMute)(int device, int channel, int active);
-    int (*fnSetVolume)(int device, int channel, int *dbLevel);
+    int (*fnSetVolume)(int device, int channel, int level);
 
     int (*fnFreeFrame)(int device, int channel, t31_aud_frm *frame);
     int (*fnGetFrame)(int device, int channel, t31_aud_frm *frame, int notBlocking);
@@ -87,13 +94,25 @@ static int t31_aud_load(t31_aud_impl *aud_lib) {
         return EXIT_FAILURE;
     }
 
+    if (!(aud_lib->fnSetChannelConfig = (int(*)(int device, int channel, t31_aud_chn *config))
+        dlsym(aud_lib->handle, "IMP_AI_SetChnParam"))) {
+        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_SetChnParam!\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!(aud_lib->fnSetGain = (int(*)(int device, int channel, int level))
+        dlsym(aud_lib->handle, "IMP_AI_SetGain"))) {
+        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_SetGain!\n");
+        return EXIT_FAILURE;
+    }
+
     if (!(aud_lib->fnSetMute = (int(*)(int device, int channel, int active))
         dlsym(aud_lib->handle, "IMP_AI_SetVolMute"))) {
         fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_SetVolMute!\n");
         return EXIT_FAILURE;
     }
 
-    if (!(aud_lib->fnSetVolume = (int(*)(int device, int channel, int *dbLevel))
+    if (!(aud_lib->fnSetVolume = (int(*)(int device, int channel, int level))
         dlsym(aud_lib->handle, "IMP_AI_SetVol"))) {
         fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_SetVol!\n");
         return EXIT_FAILURE;

@@ -67,7 +67,7 @@ int t31_audio_init(int samplerate)
         config.bit = T31_AUD_BIT_16;
         config.mode = T31_AUD_SND_MONO;
         config.frmNum = 40;
-        config.packNumPerFrm = 640;
+        config.packNumPerFrm = samplerate / 25;
         config.chnNum = 1;
         if (ret = t31_aud.fnSetDeviceConfig(_t31_aud_dev, &config))
             return ret;
@@ -75,13 +75,20 @@ int t31_audio_init(int samplerate)
     if (ret = t31_aud.fnEnableDevice(_t31_aud_dev))
         return ret;
     
+    {
+        t31_aud_chn config;
+        config.usrFrmDepth = 40;
+        if (ret = t31_aud.fnSetChannelConfig(_t31_aud_dev, _t31_aud_chn, &config))
+            return ret;
+    }
     if (ret = t31_aud.fnEnableChannel(_t31_aud_dev, _t31_aud_chn))
         return ret;
-    {
-        int dbLevel = 0xF6;
-        if (ret = t31_aud.fnSetVolume(_t31_aud_dev, _t31_aud_chn, &dbLevel))
-                return ret;
-    }
+
+    if (ret = t31_aud.fnSetGain(_t31_aud_dev, _t31_aud_chn, 28))
+        return ret;
+
+    if (ret = t31_aud.fnSetVolume(_t31_aud_dev, _t31_aud_chn, 60))
+        return ret;
     
     return EXIT_SUCCESS;
 }
@@ -94,7 +101,7 @@ void *t31_audio_thread(void)
     memset(&frame, 0, sizeof(frame));
 
     while (keepRunning) {
-        if (ret = t31_aud.fnPollFrame(_t31_aud_dev, _t31_aud_chn, 128))
+        if (ret = t31_aud.fnPollFrame(_t31_aud_dev, _t31_aud_chn, 1000))
             continue;
 
         if (ret = t31_aud.fnGetFrame(_t31_aud_dev, _t31_aud_chn, &frame, 1)) {
