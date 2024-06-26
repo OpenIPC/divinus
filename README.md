@@ -19,19 +19,19 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | SoC Family              | Audio Stream | JPEG Snapshot | fMP4 Stream | RTSP Stream | On-Screen Display* |
 |-------------------------|:------------:|:-------------:|:-----------:|:-----------:|:------------------:|
 | GM813x                  | ↻            | ✔️           | ✔️          | ✔️          | ↻                 |
-| Hi3516CV300[^1]         | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| Hi3516CV500[^2]         | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| Hi3516EV200[^3]         | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| GK7205V200[^4]          | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| Hi3519V100[^5]          | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| Hi3519AV100             | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| Hi3559AV100             | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| T31 series              | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6[^6]           | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6b0[^7]         | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6e[^8]          | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6c[^9]          | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6f[^10]         | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3516CV300[^1]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3516CV500[^2]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3516EV200[^3]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| GK7205V200[^4]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3519V100[^5]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3519AV100             | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3559AV100             | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| T31 series              | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6[^6]           | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6b0[^7]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6e[^8]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6c[^9]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6f[^10]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
@@ -56,7 +56,7 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 
 ### Roadmap
 
-- [ ] Audio stream (G.711 over RTSP, industry-supported lossy codec for MP4)
+- [ ] Audio encoding (G.711 over RTSP, industry-supported lossy codec for MP4)
 - [ ] Assorted WebUI to handle media reconfiguration and live preview
 - [ ] Motion detection reimplementation
 - [ ] Hardware support improvement (older SoCs, general usage chips)
