@@ -17,6 +17,7 @@ enum BufError write_dinf(struct BitBuf *ptr);
 enum BufError write_dref(struct BitBuf *ptr);
 enum BufError write_url(struct BitBuf *ptr);
 enum BufError write_vmhd(struct BitBuf *ptr);
+enum BufError write_smhd(struct BitBuf *ptr);
 enum BufError write_stbl(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_stsd(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_avc1_hev1(struct BitBuf *ptr, const struct MoovInfo *moov_info);
@@ -258,9 +259,9 @@ enum BufError write_tkhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
         err = put_u32_be(ptr, 0x40000000);
         chk_err;
     }
-    err = put_u32_be(ptr, 125829120);
+    err = put_u32_be(ptr, moov_info->width << 16);
     chk_err; // 4 Track width
-    err = put_u32_be(ptr, 70778880);
+    err = put_u32_be(ptr, moov_info->height << 16);
     chk_err; // 4 Track height
 
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
@@ -418,14 +419,14 @@ enum BufError write_vmhd(struct BitBuf *ptr) {
 
     err = put_u8(ptr, 0);
     chk_err; // 1 version
-    err = put_u8(ptr, 0);
-    chk_err;
 
     err = put_u8(ptr, 0);
     chk_err;
-
+    err = put_u8(ptr, 0);
+    chk_err;
     err = put_u8(ptr, 1);
     chk_err; // 3 flags
+
     err = put_u16_be(ptr, 0);
     chk_err; // 2 Graphics mode
     err = put_u16_be(ptr, 0);
@@ -434,6 +435,34 @@ enum BufError write_vmhd(struct BitBuf *ptr) {
     chk_err; // 2 Opcolor
     err = put_u16_be(ptr, 0);
     chk_err; // 2 Opcolor
+    err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
+    chk_err;
+    return BUF_OK;
+}
+
+enum BufError write_smhd(struct BitBuf *ptr) {
+    enum BufError err;
+    uint32_t start_atom = ptr->offset;
+    err = put_u32_be(ptr, 0);
+    chk_err;
+
+    err = put_str4(ptr, "smhd");
+    chk_err;
+
+    err = put_u8(ptr, 0);
+    chk_err; // 1 version
+
+    err = put_u8(ptr, 0);
+    chk_err;
+    err = put_u8(ptr, 0);
+    chk_err;
+    err = put_u8(ptr, 0);
+    chk_err; // 3 flags
+
+    err = put_u16_be(ptr, 0);
+    chk_err; // 2 Balance
+    err = put_u16_be(ptr, 0);
+    chk_err; // 2 Apple reserved
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;
     return BUF_OK;
