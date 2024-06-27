@@ -3,6 +3,7 @@
 #include "bitbuf.h"
 
 struct MoovInfo {
+    char hasAudio;
     char isH265;
     uint8_t profile_idc;
     uint8_t level_idc;

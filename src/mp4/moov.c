@@ -8,18 +8,18 @@ enum BufError write_ftyp(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_moov(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 
 enum BufError write_mvhd(struct BitBuf *ptr, const struct MoovInfo *moov_info);
-enum BufError write_trak(struct BitBuf *ptr, const struct MoovInfo *moov_info);
-enum BufError write_tkhd(struct BitBuf *ptr, const struct MoovInfo *moov_info);
-enum BufError write_mdia(struct BitBuf *ptr, const struct MoovInfo *moov_info);
+enum BufError write_trak(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio);
+enum BufError write_tkhd(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio);
+enum BufError write_mdia(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio);
 enum BufError write_mdhd(struct BitBuf *ptr, const struct MoovInfo *moov_info);
-enum BufError write_minf(struct BitBuf *ptr, const struct MoovInfo *moov_info);
+enum BufError write_minf(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio);
 enum BufError write_dinf(struct BitBuf *ptr);
 enum BufError write_dref(struct BitBuf *ptr);
 enum BufError write_url(struct BitBuf *ptr);
 enum BufError write_vmhd(struct BitBuf *ptr);
 enum BufError write_smhd(struct BitBuf *ptr);
-enum BufError write_stbl(struct BitBuf *ptr, const struct MoovInfo *moov_info);
-enum BufError write_stsd(struct BitBuf *ptr, const struct MoovInfo *moov_info);
+enum BufError write_stbl(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio);
+enum BufError write_stsd(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio);
 enum BufError write_avc1_hev1(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_avcC(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_hvcC(struct BitBuf *ptr, const struct MoovInfo *moov_info);
@@ -27,8 +27,8 @@ enum BufError write_stts(struct BitBuf *ptr);
 enum BufError write_stsc(struct BitBuf *ptr);
 enum BufError write_stsz(struct BitBuf *ptr);
 enum BufError write_stco(struct BitBuf *ptr);
-enum BufError write_mvex(struct BitBuf *ptr);
-enum BufError write_trex(struct BitBuf *ptr);
+enum BufError write_mvex(struct BitBuf *ptr, char isAudio);
+enum BufError write_trex(struct BitBuf *ptr, char id);
 enum BufError write_udta(struct BitBuf *ptr);
 enum BufError write_meta(struct BitBuf *ptr);
 enum BufError write_hdlr(
@@ -93,10 +93,18 @@ enum BufError write_moov(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     chk_err;
     err = write_mvhd(ptr, moov_info);
     chk_err;
-    err = write_trak(ptr, moov_info);
+    err = write_trak(ptr, moov_info, 0);
     chk_err;
-    err = write_mvex(ptr);
+    if (moov_info->hasAudio) {
+        err = write_trak(ptr, moov_info, 1);
+        chk_err;
+    }
+    err = write_mvex(ptr, 0);
     chk_err;
+    if (moov_info->hasAudio) {
+        err = write_mvex(ptr, 0);
+        chk_err;
+    }
     err = write_udta(ptr);
     chk_err;
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
@@ -194,7 +202,7 @@ enum BufError write_mvhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     return BUF_OK;
 }
 
-enum BufError write_trak(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
+enum BufError write_trak(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -202,16 +210,16 @@ enum BufError write_trak(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
 
     err = put_str4(ptr, "trak");
     chk_err;
-    err = write_tkhd(ptr, moov_info);
+    err = write_tkhd(ptr, moov_info, isAudio);
     chk_err;
-    err = write_mdia(ptr, moov_info);
+    err = write_mdia(ptr, moov_info, isAudio);
     chk_err;
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;
     return BUF_OK;
 }
 
-enum BufError write_tkhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
+enum BufError write_tkhd(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -227,17 +235,18 @@ enum BufError write_tkhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     err = put_u8(ptr, 0);
     chk_err;
 
-    err = put_u8(ptr, 3);
+    err = put_u8(ptr, isAudio ? 7 : 3);
     chk_err;                                         // 3 flags
+                                                     // last one represents the tkhd version
     err = put_u32_be(ptr, moov_info->creation_time); // 4 creation_time
     err = put_u32_be(ptr, 0);                        // 4 modification_time
-    err = put_u32_be(ptr, 1);                        // 4 track id
+    err = put_u32_be(ptr, isAudio ? 2 : 1);          // 4 track id
     err = put_u32_be(ptr, 0);                        // 4 reserved
     err = put_u32_be(ptr, 0);                        // 4 duration
     err = put_skip(ptr, 8);                          // 8 reserved
     err = put_u16_be(ptr, 0);                        // 2 layer
     err = put_u16_be(ptr, 0);                        // 2 Alternate group
-    err = put_u16_be(ptr, 0);                        // 2 Volume
+    err = put_u16_be(ptr, isAudio ? 0x100 : 0);      // 2 Volume
     err = put_u16_be(ptr, 0);                        // 2 Reserved
     {                                                // 36 Matrix structure
         err = put_u32_be(ptr, 0x10000);
@@ -259,9 +268,9 @@ enum BufError write_tkhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
         err = put_u32_be(ptr, 0x40000000);
         chk_err;
     }
-    err = put_u32_be(ptr, moov_info->width << 16);
+    err = put_u32_be(ptr, isAudio ? 0 : (moov_info->width << 16));
     chk_err; // 4 Track width
-    err = put_u32_be(ptr, moov_info->height << 16);
+    err = put_u32_be(ptr, isAudio ? 0 : (moov_info->height << 16));
     chk_err; // 4 Track height
 
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
@@ -269,7 +278,7 @@ enum BufError write_tkhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     return BUF_OK;
 }
 
-enum BufError write_mdia(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
+enum BufError write_mdia(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -279,10 +288,17 @@ enum BufError write_mdia(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     chk_err;
     err = write_mdhd(ptr, moov_info);
     chk_err;
-    char *str = "VideoHandler";
-    err = write_hdlr(ptr, "vide", "\0\0\0\0", str, strlen(str));
-    chk_err;
-    err = write_minf(ptr, moov_info);
+    if (isAudio) {
+        char *str = "Audio Track";
+        err = write_hdlr(ptr, "soun", "\0\0\0\0", str, strlen(str));
+        chk_err;
+    } else {
+        char *str = "VideoHandler";
+        err = write_hdlr(ptr, "vide", "\0\0\0\0", str, strlen(str));
+        chk_err;
+    }
+
+    err = write_minf(ptr, moov_info, isAudio);
     chk_err;
 
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
@@ -324,7 +340,7 @@ enum BufError write_mdhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     return BUF_OK;
 }
 
-enum BufError write_minf(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
+enum BufError write_minf(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -332,11 +348,16 @@ enum BufError write_minf(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
 
     err = put_str4(ptr, "minf");
     chk_err;
-    err = write_vmhd(ptr);
-    chk_err;
+    if (isAudio) {
+        err = write_smhd(ptr);
+        chk_err;
+    } else {
+        err = write_vmhd(ptr);
+        chk_err;
+    }
     err = write_dinf(ptr);
     chk_err;
-    err = write_stbl(ptr, moov_info);
+    err = write_stbl(ptr, moov_info, isAudio);
     chk_err;
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;
@@ -468,7 +489,7 @@ enum BufError write_smhd(struct BitBuf *ptr) {
     return BUF_OK;
 }
 
-enum BufError write_stbl(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
+enum BufError write_stbl(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -476,7 +497,7 @@ enum BufError write_stbl(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
 
     err = put_str4(ptr, "stbl");
     chk_err;
-    err = write_stsd(ptr, moov_info);
+    err = write_stsd(ptr, moov_info, isAudio);
     chk_err;
     err = write_stts(ptr);
     chk_err;
@@ -491,7 +512,7 @@ enum BufError write_stbl(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     return BUF_OK;
 }
 
-enum BufError write_stsd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
+enum BufError write_stsd(struct BitBuf *ptr, const struct MoovInfo *moov_info, char isAudio) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -850,7 +871,7 @@ enum BufError write_stco(struct BitBuf *ptr) {
     return BUF_OK;
 }
 
-enum BufError write_mvex(struct BitBuf *ptr) {
+enum BufError write_mvex(struct BitBuf *ptr, char isAudio) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -858,14 +879,14 @@ enum BufError write_mvex(struct BitBuf *ptr) {
 
     err = put_str4(ptr, "mvex");
     chk_err;
-    err = write_trex(ptr);
+    err = write_trex(ptr, isAudio ? 2 : 1);
     chk_err;
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;
     return BUF_OK;
 }
 
-enum BufError write_trex(struct BitBuf *ptr) {
+enum BufError write_trex(struct BitBuf *ptr, char id) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
