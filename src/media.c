@@ -17,6 +17,14 @@ pthread_t audPid = 0;
 pthread_t ispPid = 0;
 pthread_t vidPid = 0;
 
+unsigned char *mp3Buf;
+shine_config_t mp3Cnf;
+shine_t mp3Enc;
+unsigned int mp3Samp;
+
+unsigned int mp3Pos;
+short mp3Src[SHINE_MAX_SAMPLES];
+
 int save_audio_stream(hal_audframe *frame) {
     int ret = EXIT_SUCCESS;
 
@@ -31,6 +39,21 @@ int save_audio_stream(hal_audframe *frame) {
 
     send_pcm_to_client(frame);
 
+    unsigned int mp3Len = frame->length[0] / 2;
+    unsigned int mp3Orig = mp3Len;
+    short *mp3Pack = (short*)frame->data[0];
+
+    while (mp3Pos + mp3Len >= mp3Samp) {
+        memcpy(mp3Src + mp3Pos, mp3Pack + mp3Orig - mp3Len, (mp3Samp - mp3Pos) * 2);
+        mp3Buf = shine_encode_buffer_interleaved(mp3Enc, mp3Src, &ret);
+        send_mp3_to_client(mp3Buf, ret);
+        mp3Len -= (mp3Samp - mp3Pos);
+        mp3Pos = 0;
+    }
+
+    memcpy(mp3Src + mp3Pos, mp3Pack + mp3Orig - mp3Len, mp3Len * 2);
+    mp3Pos += mp3Len;
+    
     return ret;
 }
 
@@ -470,6 +493,23 @@ int start_sdk(void) {
     }
 
     if (app_config.audio_enable) {
+        if (shine_check_config(app_config.audio_srate, 128) < 0)
+            fprintf(stderr, "Unsupported samplerate/bitrate configuration!\n");
+        else {
+            mp3Cnf.mpeg.mode = MONO;
+            mp3Cnf.mpeg.bitr = 128;
+            mp3Cnf.mpeg.emph = NONE;
+            mp3Cnf.mpeg.copyright = 0;
+            mp3Cnf.mpeg.original = 1;
+            mp3Cnf.wave.channels = PCM_MONO;
+            mp3Cnf.wave.samplerate = app_config.audio_srate;
+            if (!(mp3Enc = shine_initialise(&mp3Cnf))) {
+                fprintf(stderr, "MP3 encoder initialization failed!\n");
+                return EXIT_FAILURE;
+            }
+            mp3Samp = shine_samples_per_pass(mp3Enc);
+        }
+
         pthread_attr_t thread_attr;
         pthread_attr_init(&thread_attr);
         size_t stacksize;
@@ -628,8 +668,10 @@ int stop_sdk(void) {
 #endif
     }
 
-    if (app_config.audio_enable)
+    if (app_config.audio_enable) {
         pthread_join(audPid, NULL);
+        shine_close(mp3Enc);
+    }
 
     if (isp_thread)
         pthread_join(ispPid, NULL);

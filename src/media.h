@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "lib/shine/layer3.h"
 #include "rtsp/rtsp_server.h"
 
 #include <sys/time.h>
