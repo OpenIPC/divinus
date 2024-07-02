@@ -495,11 +495,11 @@ int start_sdk(void) {
     }
 
     if (app_config.audio_enable) {
-        if (shine_check_config(app_config.audio_srate, 128) < 0)
+        if (shine_check_config(app_config.audio_srate, app_config.audio_bitrate) < 0)
             fprintf(stderr, "Unsupported samplerate/bitrate configuration!\n");
         else {
             mp3Cnf.mpeg.mode = MONO;
-            mp3Cnf.mpeg.bitr = 128;
+            mp3Cnf.mpeg.bitr = app_config.audio_bitrate;
             mp3Cnf.mpeg.emph = NONE;
             mp3Cnf.mpeg.copyright = 0;
             mp3Cnf.mpeg.original = 1;

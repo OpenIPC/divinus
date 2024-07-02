@@ -24,6 +24,7 @@ enum ConfigError parse_app_config(void) {
 
     app_config.sensor_config[0] = 0;
     app_config.audio_enable = false;
+    app_config.audio_bitrate = 128;
     app_config.jpeg_enable = false;
     app_config.mp4_enable = false;
 
@@ -137,7 +138,8 @@ enum ConfigError parse_app_config(void) {
 
     parse_bool(&ini, "audio", "enable", &app_config.audio_enable);
     if (app_config.audio_enable) {
-        parse_int(&ini, "audio", "srate", 8000, 96000, 
+        parse_int(&ini, "audio", "bitrate", 32, 320, &app_config.audio_bitrate);
+        err = parse_int(&ini, "audio", "srate", 8000, 96000, 
             &app_config.audio_srate);
         if (err != CONFIG_OK)
             goto RET_ERR;

@@ -22,6 +22,7 @@ struct AppConfig {
 
     // [audio]
     bool audio_enable;
+    unsigned int audio_bitrate;
     unsigned int audio_srate;
 
     // [video_0]
