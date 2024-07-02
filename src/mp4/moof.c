@@ -174,7 +174,7 @@ enum BufError write_tfhd(
     err = put_u8(ptr, flags >> 0);
     chk_err; // 3 flags
 
-    err = put_u32_be(ptr, 1);
+    err = put_u32_be(ptr, is_audio ? 2 : 1);
     chk_err; // 4 track_ID
     if (base_data_offset_present) {
         pos_base_data_offset = ptr->offset;

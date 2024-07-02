@@ -31,7 +31,7 @@ enum BufError write_stsc(struct BitBuf *ptr);
 enum BufError write_stsz(struct BitBuf *ptr);
 enum BufError write_stco(struct BitBuf *ptr);
 enum BufError write_mvex(struct BitBuf *ptr, char is_audio);
-enum BufError write_trex(struct BitBuf *ptr, char id);
+enum BufError write_trex(struct BitBuf *ptr, char is_audio);
 enum BufError write_udta(struct BitBuf *ptr);
 enum BufError write_meta(struct BitBuf *ptr);
 enum BufError write_hdlr(
@@ -1131,14 +1131,14 @@ enum BufError write_mvex(struct BitBuf *ptr, char is_audio) {
 
     err = put_str4(ptr, "mvex");
     chk_err;
-    err = write_trex(ptr, is_audio ? 2 : 1);
+    err = write_trex(ptr, is_audio);
     chk_err;
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;
     return BUF_OK;
 }
 
-enum BufError write_trex(struct BitBuf *ptr, char id) {
+enum BufError write_trex(struct BitBuf *ptr, char is_audio) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -1156,7 +1156,7 @@ enum BufError write_trex(struct BitBuf *ptr, char id) {
 
     err = put_u8(ptr, 0);
     chk_err; // 3 flags
-    err = put_u32_be(ptr, id);
+    err = put_u32_be(ptr, is_audio ? 2 : 1);
     chk_err; // track_ID
     err = put_u32_be(ptr, 1);
     chk_err; // default_sample_description_index
