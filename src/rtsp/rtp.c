@@ -22,8 +22,8 @@
  *              PRIVATE DEFINITIONS
  ******************************************************************************/
 //static void *rtpThrFxn(void *v);
-static inline int __rtp_send_h26x(struct nal_rtp_t *rtp, struct list_head_t *trans_list);
-static inline int __rtp_send_eachconnection_h26x(struct list_t *e, void *v);
+static inline int __rtp_send(struct nal_rtp_t *rtp, struct list_head_t *trans_list);
+static inline int __rtp_send_eachconnection(struct list_t *e, void *v);
 static inline int __rtp_setup_transfer(struct list_t *e, void *v);
 static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned char *nalptr, size_t nalsize, char isH265);
 static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len);
@@ -73,7 +73,7 @@ static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned c
 
         rtp.rtpsize = nalsize + sizeof(rtp_hdr_t);
 
-        ASSERT(__rtp_send_h26x(&rtp,trans_list) == SUCCESS, return FAILURE);
+        ASSERT(__rtp_send(&rtp,trans_list) == SUCCESS, return FAILURE);
     } else {
         nalptr += isH265 ? 2 : 1;
         nalsize -= isH265 ? 2 : 1;
@@ -101,7 +101,7 @@ static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned c
             nalptr += __RTP_MAXPAYLOADSIZE - head;
             nalsize -= __RTP_MAXPAYLOADSIZE - head;
 
-            ASSERT(__rtp_send_h26x(&rtp,trans_list) == SUCCESS, return FAILURE);
+            ASSERT(__rtp_send(&rtp,trans_list) == SUCCESS, return FAILURE);
 
             /* intended xor. blame vim :( */
             payload[head - 1] &= 0xFF ^ (1<<7); 
@@ -119,13 +119,13 @@ static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned c
 
         memcpy(&(payload[head]), nalptr, nalsize);
 
-        ASSERT(__rtp_send_h26x(&rtp, trans_list) == SUCCESS, return FAILURE);
+        ASSERT(__rtp_send(&rtp, trans_list) == SUCCESS, return FAILURE);
     }
 
     return SUCCESS;
 }
 
-static inline int __rtp_send_eachconnection_h26x(struct list_t *e, void *v)
+static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
 {
     int send_bytes;
     struct connection_item_t *con;
@@ -163,9 +163,9 @@ static inline int __rtp_send_eachconnection_h26x(struct list_t *e, void *v)
     return FAILURE;
 }
 
-static inline int __rtp_send_h26x(struct nal_rtp_t *rtp, struct list_head_t *trans_list)
+static inline int __rtp_send(struct nal_rtp_t *rtp, struct list_head_t *trans_list)
 {
-    return list_map_inline(trans_list,(__rtp_send_eachconnection_h26x), rtp);
+    return list_map_inline(trans_list,(__rtp_send_eachconnection), rtp);
 }
 
 
