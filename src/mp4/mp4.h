@@ -25,12 +25,12 @@ struct Mp4State {
     uint32_t nals_count;
 };
 
-void set_mp4_config(short width, short height, char framerate);
+void set_mp4_config(short width, short height, char framerate, char acodec, int srate);
 
 enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
-    char isIframe);
-void set_sps(const char *nal_data, const uint32_t nal_len, char isH265);
-void set_pps(const char *nal_data, const uint32_t nal_len, char isH265);
+    char is_iframe);
+void set_sps(const char *nal_data, const uint32_t nal_len, char is_h265);
+void set_pps(const char *nal_data, const uint32_t nal_len, char is_h265);
 void set_vps(const char *nal_data, const uint32_t nal_len);
 
 enum BufError get_header(struct BitBuf *ptr);

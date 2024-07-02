@@ -6,10 +6,11 @@
 
 uint32_t default_sample_size = 40000;
 
-enum BufError create_header(char isH265);
+enum BufError create_header(char is_h265);
 
+unsigned int aud_samplerate = 0;
 short vid_width = 1920, vid_height = 1080;
-char vid_framerate = 30;
+char aud_codec = 0, vid_framerate = 30;
 
 char buf_pps[128];
 uint16_t buf_pps_len = 0;
@@ -21,26 +22,30 @@ struct BitBuf buf_header;
 struct BitBuf buf_mdat;
 struct BitBuf buf_moof;
 
-void set_mp4_config(short width, short height, char framerate)
+void set_mp4_config(short width, short height, char framerate, char acodec, int srate)
 {
     vid_width = width;
     vid_height = height;
     vid_framerate = framerate;
+    aud_codec = acodec;
+    aud_samplerate = srate;
 }
 
-enum BufError create_header(char isH265) {
+enum BufError create_header(char is_h265) {
     if (buf_header.offset > 0)
         return BUF_OK;
     if (buf_sps_len == 0)
         return BUF_OK;
     if (buf_pps_len == 0)
         return BUF_OK;
-    if (isH265 && buf_vps_len == 0)
+    if (is_h265 && buf_vps_len == 0)
         return BUF_OK;
 
     struct MoovInfo moov_info;
     memset(&moov_info, 0, sizeof(struct MoovInfo));
-    moov_info.isH265 = isH265 & 1;
+    moov_info.audio_codec = aud_codec;
+    moov_info.audio_samplerate = aud_samplerate;
+    moov_info.is_h265 = is_h265 & 1;
     moov_info.profile_idc = 100;
     moov_info.level_idc = 41;
     moov_info.width = vid_width;
@@ -62,16 +67,16 @@ enum BufError create_header(char isH265) {
     chk_err return BUF_OK;
 }
 
-void set_sps(const char *nal_data, const uint32_t nal_len, char isH265) {
+void set_sps(const char *nal_data, const uint32_t nal_len, char is_h265) {
     memcpy(buf_sps, nal_data, MIN(nal_len, sizeof(buf_sps)));
     buf_sps_len = nal_len;
-    create_header(isH265);
+    create_header(is_h265);
 }
 
-void set_pps(const char *nal_data, const uint32_t nal_len, char isH265) {
+void set_pps(const char *nal_data, const uint32_t nal_len, char is_h265) {
     memcpy(buf_pps, nal_data, MIN(nal_len, sizeof(buf_pps)));
     buf_pps_len = nal_len;
-    create_header(isH265);
+    create_header(is_h265);
 }
 
 void set_vps(const char *nal_data, const uint32_t nal_len) {
@@ -88,7 +93,7 @@ enum BufError get_header(struct BitBuf *ptr) {
 }
 
 enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
-    char isIframe) {
+    char is_iframe) {
     enum BufError err;
 
     const uint32_t samples_info_len = 1;
@@ -98,7 +103,7 @@ enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
     samples_info[0].composition_offset = default_sample_size;
     samples_info[0].decode_time = default_sample_size;
     samples_info[0].duration = default_sample_size;
-    samples_info[0].flags = isIframe ? 0 : 65536;
+    samples_info[0].flags = is_iframe ? 0 : 65536;
 
     buf_moof.offset = 0;
     err = write_moof(

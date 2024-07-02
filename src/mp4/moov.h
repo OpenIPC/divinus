@@ -3,8 +3,9 @@
 #include "bitbuf.h"
 
 struct MoovInfo {
-    char hasAudio;
-    char isH265;
+    char audio_codec;
+    unsigned int audio_samplerate;
+    char is_h265;
     uint8_t profile_idc;
     uint8_t level_idc;
     char *vps;

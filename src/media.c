@@ -392,7 +392,9 @@ int enable_mp4(void) {
             return EXIT_FAILURE;
         }
 
-        set_mp4_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps);
+        set_mp4_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
+            app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC, 
+            app_config.audio_srate);
     }
 
     if (ret = bind_channel(index, app_config.mp4_fps, 0)) {

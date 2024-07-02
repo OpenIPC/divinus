@@ -34,6 +34,11 @@ typedef enum {
 } hal_register_op;
 
 typedef enum {
+    HAL_AUDCODEC_UNSPEC,
+    HAL_AUDCODEC_MP3 = 0x69
+} hal_audcodec;
+
+typedef enum {
     HAL_VIDCODEC_UNSPEC,
     HAL_VIDCODEC_H264,
     HAL_VIDCODEC_H265,
