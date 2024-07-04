@@ -29,16 +29,19 @@ enum BufError write_trun(
     const uint32_t samples_info_count, struct DataOffsetPos *data_offset, char is_audio);
 
 enum BufError
-write_mdat(struct BitBuf *ptr, const char *data, const uint32_t len) {
+write_mdat(struct BitBuf *ptr,
+    const char *data1, const uint32_t len1, const char *data2, const uint32_t len2) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
     chk_err;
     err = put_str4(ptr, "mdat");
     chk_err;
-    err = put_u32_be(ptr, len);
+    err = put_u32_be(ptr, len1);
     chk_err;
-    err = put(ptr, data, len);
+    err = put(ptr, data1, len1);
+    chk_err;
+    err = put(ptr, data2, len2);
     chk_err;
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;

@@ -115,13 +115,9 @@ enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
     chk_err;
 
     buf_mdat.offset = 0;
-    err = write_mdat(&buf_mdat, nal_data, nal_len);
+    err = write_mdat(&buf_mdat, nal_data, nal_len, buf_aud.buf, buf_aud.offset);
     chk_err;
-    if (buf_aud.offset) {
-        err = write_mdat(&buf_mdat, buf_aud.buf, buf_aud.offset);
-        buf_aud.offset = 0;
-        chk_err;
-    }
+    buf_aud.offset = 0;
 
     return BUF_OK;
 }
