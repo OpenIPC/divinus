@@ -48,8 +48,9 @@ write_mdat(struct BitBuf *ptr, const char *data, const uint32_t len) {
 enum BufError write_moof(
     struct BitBuf *ptr, const uint32_t sequence_number,
     const uint64_t base_data_offset, const uint64_t base_media_decode_time,
-    const uint32_t default_sample_duration, const struct SampleInfo *samples_info,
-    const uint32_t samples_info_len) {
+    const uint32_t default_sample_duration, const struct SampleInfo *samples_vid,
+    const uint32_t samples_vid_len, const struct SampleInfo *samples_aud,
+    const uint32_t samples_aud_len) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -58,19 +59,41 @@ enum BufError write_moof(
     chk_err;
     err = write_mfhd(ptr, sequence_number);
     chk_err;
-    struct DataOffsetPos data_offset = {0};
+    struct DataOffsetPos vid_offset = {0};
+    struct DataOffsetPos aud_offset = {0};
 
-    err = write_traf(
-        ptr, sequence_number, base_data_offset, base_media_decode_time,
-        default_sample_duration, samples_info, samples_info_len,
-        &data_offset, 0);
-    chk_err;
+    if (samples_vid_len && samples_vid[0].size) {
+        err = write_traf(
+            ptr, sequence_number, base_data_offset, base_media_decode_time,
+            default_sample_duration, samples_vid, samples_vid_len,
+            &vid_offset, 0);
+        chk_err;
+    }
+
+    if (samples_aud_len && samples_aud[0].size) {
+        err = write_traf(
+            ptr, sequence_number, base_data_offset, base_media_decode_time,
+            default_sample_duration, samples_aud, samples_aud_len,
+            &aud_offset, 1);
+        chk_err;
+        uint32_t vid_mdat = ptr->offset + 4 /*mdat size*/ + 4 /*mdat id*/;
+
+        if (aud_offset.data_offset_present) {
+            uint32_t vid_len = 0;
+            for (int i = 0; i < samples_vid_len; i++)
+                vid_len += samples_vid[i].size;
+            err = put_u32_be_to_offset(
+                ptr, aud_offset.offset, vid_mdat + vid_len);
+                chk_err;
+        }
+    }
     
-    if (data_offset.data_offset_present)
+    if (vid_offset.data_offset_present) {
         err = put_u32_be_to_offset(
-            ptr, data_offset.offset,
+            ptr, vid_offset.offset,
             ptr->offset + 4 /*mdat size*/ + 4 /*mdat id*/);
-    chk_err;
+        chk_err;
+    }
 
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;

@@ -20,5 +20,6 @@ write_mdat(struct BitBuf *ptr, const char *data, const uint32_t len);
 enum BufError write_moof(
     struct BitBuf *ptr, const uint32_t sequence_number,
     const uint64_t base_data_offset, const uint64_t base_media_decode_time,
-    const uint32_t default_sample_duration, const struct SampleInfo *samples_info,
-    const uint32_t samples_info_len);
+    const uint32_t default_sample_duration, const struct SampleInfo *samples_vid,
+    const uint32_t samples_vid_len, const struct SampleInfo *samples_aud,
+    const uint32_t samples_aud_len);

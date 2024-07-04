@@ -108,7 +108,7 @@ enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
     buf_moof.offset = 0;
     err = write_moof(
         &buf_moof, 0, 0, 0, default_sample_size, samples_info,
-        samples_info_len);
+        samples_info_len, NULL, 0);
     chk_err
 
     buf_mdat.offset = 0;
