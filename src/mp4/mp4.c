@@ -18,6 +18,7 @@ char buf_sps[128];
 uint16_t buf_sps_len = 0;
 char buf_vps[128];
 uint16_t buf_vps_len = 0;
+struct BitBuf buf_aud;
 struct BitBuf buf_header;
 struct BitBuf buf_mdat;
 struct BitBuf buf_moof;
@@ -62,6 +63,7 @@ enum BufError create_header(char is_h265) {
     moov_info.vps = buf_vps;
     moov_info.vps_length = buf_vps_len;
 
+    buf_aud.offset = 0;
     buf_header.offset = 0;
     enum BufError err = write_header(&buf_header, &moov_info);
     chk_err return BUF_OK;
@@ -97,23 +99,37 @@ enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
     enum BufError err;
 
     const uint32_t samples_info_len = 1;
-    struct SampleInfo samples_info[1];
-    memset(&samples_info[0], 0, sizeof(struct SampleInfo));
+    struct SampleInfo samples_info[2];
+    memset(samples_info, 0, sizeof(samples_info) / sizeof(*samples_info));
     samples_info[0].size = nal_len + 4; // add size of sample
     samples_info[0].composition_offset = default_sample_size;
     samples_info[0].decode_time = default_sample_size;
     samples_info[0].duration = default_sample_size;
     samples_info[0].flags = is_iframe ? 0 : 65536;
+    samples_info[1].size = buf_aud.offset;
 
     buf_moof.offset = 0;
     err = write_moof(
         &buf_moof, 0, 0, 0, default_sample_size, samples_info,
-        samples_info_len, NULL, 0);
-    chk_err
+        samples_info_len, samples_info + 1, buf_aud.offset ? 1 : 0);
+    chk_err;
 
     buf_mdat.offset = 0;
     err = write_mdat(&buf_mdat, nal_data, nal_len);
-    chk_err
+    chk_err;
+    if (buf_aud.offset) {
+        err = write_mdat(&buf_mdat, buf_aud.buf, buf_aud.offset);
+        buf_aud.offset = 0;
+        chk_err;
+    }
+
+    return BUF_OK;
+}
+
+enum BufError ingest_mp4_audio(const char *data, const uint32_t len) {
+    enum BufError err;
+    err = put(&buf_aud, data, len);
+    chk_err;
 
     return BUF_OK;
 }

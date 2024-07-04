@@ -105,7 +105,7 @@ enum BufError write_moov(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     err = write_mvex(ptr, 0);
     chk_err;
     if (moov_info->audio_codec) {
-        err = write_mvex(ptr, 0);
+        err = write_mvex(ptr, 1);
         chk_err;
     }
     err = write_udta(ptr);

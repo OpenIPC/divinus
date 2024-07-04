@@ -27,6 +27,7 @@ struct Mp4State {
 
 void set_mp4_config(short width, short height, char framerate, char acodec, int srate);
 
+enum BufError ingest_mp4_audio(const char *data, const uint32_t len);
 enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
     char is_iframe);
 void set_sps(const char *nal_data, const uint32_t nal_len, char is_h265);

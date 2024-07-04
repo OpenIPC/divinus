@@ -46,7 +46,10 @@ int save_audio_stream(hal_audframe *frame) {
     while (mp3Pos + mp3Len >= mp3Samp) {
         memcpy(mp3Src + mp3Pos, mp3Pack + mp3Orig - mp3Len, (mp3Samp - mp3Pos) * 2);
         mp3Buf = shine_encode_buffer_interleaved(mp3Enc, mp3Src, &ret);
+
         send_mp3_to_client(mp3Buf, ret);
+        ingest_mp4_audio(mp3Buf, ret);
+
         mp3Len -= (mp3Samp - mp3Pos);
         mp3Pos = 0;
     }
