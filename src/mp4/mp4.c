@@ -6,8 +6,6 @@
 
 uint32_t default_sample_size = 40000;
 
-enum BufError create_header(char is_h265);
-
 unsigned int aud_samplerate = 0;
 short vid_width = 1920, vid_height = 1080;
 char aud_codec = 0, vid_framerate = 30;
@@ -22,15 +20,6 @@ struct BitBuf buf_aud;
 struct BitBuf buf_header;
 struct BitBuf buf_mdat;
 struct BitBuf buf_moof;
-
-void set_mp4_config(short width, short height, char framerate, char acodec, int srate)
-{
-    vid_width = width;
-    vid_height = height;
-    vid_framerate = framerate;
-    aud_codec = acodec;
-    aud_samplerate = srate;
-}
 
 enum BufError create_header(char is_h265) {
     if (buf_header.offset > 0)
@@ -69,32 +58,34 @@ enum BufError create_header(char is_h265) {
     chk_err return BUF_OK;
 }
 
-void set_sps(const char *nal_data, const uint32_t nal_len, char is_h265) {
+void mp4_set_config(short width, short height, char framerate, char acodec, int srate)
+{
+    vid_width = width;
+    vid_height = height;
+    vid_framerate = framerate;
+    aud_codec = acodec;
+    aud_samplerate = srate;
+}
+
+void mp4_set_sps(const char *nal_data, const uint32_t nal_len, char is_h265) {
     memcpy(buf_sps, nal_data, MIN(nal_len, sizeof(buf_sps)));
     buf_sps_len = nal_len;
     create_header(is_h265);
 }
 
-void set_pps(const char *nal_data, const uint32_t nal_len, char is_h265) {
+void mp4_set_pps(const char *nal_data, const uint32_t nal_len, char is_h265) {
     memcpy(buf_pps, nal_data, MIN(nal_len, sizeof(buf_pps)));
     buf_pps_len = nal_len;
     create_header(is_h265);
 }
 
-void set_vps(const char *nal_data, const uint32_t nal_len) {
+void mp4_set_vps(const char *nal_data, const uint32_t nal_len) {
     memcpy(buf_vps, nal_data, MIN(nal_len, sizeof(buf_vps)));
     buf_vps_len = nal_len;
     create_header(1);
 }
 
-enum BufError get_header(struct BitBuf *ptr) {
-    ptr->buf = buf_header.buf;
-    ptr->size = buf_header.size;
-    ptr->offset = buf_header.offset;
-    return BUF_OK;
-}
-
-enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
+enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     char is_iframe) {
     enum BufError err;
 
@@ -122,7 +113,7 @@ enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
     return BUF_OK;
 }
 
-enum BufError ingest_mp4_audio(const char *data, const uint32_t len) {
+enum BufError mp4_ingest_audio(const char *data, const uint32_t len) {
     enum BufError err;
     err = put(&buf_aud, data, len);
     chk_err;
@@ -130,7 +121,7 @@ enum BufError ingest_mp4_audio(const char *data, const uint32_t len) {
     return BUF_OK;
 }
 
-enum BufError set_mp4_state(struct Mp4State *state) {
+enum BufError mp4_set_state(struct Mp4State *state) {
     enum BufError err;
     if (pos_sequence_number > 0)
         err = put_u32_be_to_offset(
@@ -145,15 +136,24 @@ enum BufError set_mp4_state(struct Mp4State *state) {
     state->base_media_decode_time += state->default_sample_duration;
     return BUF_OK;
 }
-enum BufError get_moof(struct BitBuf *ptr) {
-    ptr->buf = buf_moof.buf;
-    ptr->size = buf_moof.size;
-    ptr->offset = buf_moof.offset;
+
+enum BufError mp4_get_header(struct BitBuf *ptr) {
+    ptr->buf = buf_header.buf;
+    ptr->size = buf_header.size;
+    ptr->offset = buf_header.offset;
     return BUF_OK;
 }
-enum BufError get_mdat(struct BitBuf *ptr) {
+
+enum BufError mp4_get_mdat(struct BitBuf *ptr) {
     ptr->buf = buf_mdat.buf;
     ptr->size = buf_mdat.size;
     ptr->offset = buf_mdat.offset;
+    return BUF_OK;
+}
+
+enum BufError mp4_get_moof(struct BitBuf *ptr) {
+    ptr->buf = buf_moof.buf;
+    ptr->size = buf_moof.size;
+    ptr->offset = buf_moof.offset;
     return BUF_OK;
 }

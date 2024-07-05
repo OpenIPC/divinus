@@ -48,7 +48,7 @@ int save_audio_stream(hal_audframe *frame) {
         mp3Buf = shine_encode_buffer_interleaved(mp3Enc, mp3Src, &ret);
 
         send_mp3_to_client(mp3Buf, ret);
-        ingest_mp4_audio(mp3Buf, ret);
+        mp4_ingest_audio(mp3Buf, ret);
 
         mp3Len -= (mp3Samp - mp3Pos);
         mp3Pos = 0;
@@ -395,7 +395,7 @@ int enable_mp4(void) {
             return EXIT_FAILURE;
         }
 
-        set_mp4_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
+        mp4_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
             app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC, 
             app_config.audio_srate);
     }

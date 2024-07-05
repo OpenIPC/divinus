@@ -124,16 +124,16 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
 #endif
             if ((pack->nalu[j].type == NalUnitType_SPS || pack->nalu[j].type == NalUnitType_SPS_HEVC) 
                 && pack->nalu[j].length >= 4 && pack->nalu[j].length <= UINT16_MAX)
-                set_sps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
+                mp4_set_sps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
             else if ((pack->nalu[j].type == NalUnitType_PPS || pack->nalu[j].type == NalUnitType_PPS_HEVC)
                 && pack->nalu[j].length <= UINT16_MAX)
-                set_pps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
+                mp4_set_pps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
             else if (pack->nalu[j].type == NalUnitType_VPS_HEVC && pack->nalu[j].length <= UINT16_MAX)
-                set_vps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4);
+                mp4_set_vps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4);
             else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux)
-                set_slice(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, 1);
+                mp4_set_slice(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, 1);
             else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr)
-                set_slice(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, 0);
+                mp4_set_slice(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, 0);
         }
 
         static enum BufError err;
@@ -147,7 +147,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
 
             if (!client_fds[i].mp4.header_sent) {
                 struct BitBuf header_buf;
-                err = get_header(&header_buf);
+                err = mp4_get_header(&header_buf);
                 chk_err_continue ssize_t len_size =
                     sprintf(len_buf, "%zX\r\n", header_buf.offset);
                 if (send_to_client(i, len_buf, len_size) < 0)
@@ -166,10 +166,10 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                     default_sample_size;
             }
 
-            err = set_mp4_state(&client_fds[i].mp4);
+            err = mp4_set_state(&client_fds[i].mp4);
             chk_err_continue {
                 struct BitBuf moof_buf;
-                err = get_moof(&moof_buf);
+                err = mp4_get_moof(&moof_buf);
                 chk_err_continue ssize_t len_size =
                     sprintf(len_buf, "%zX\r\n", (ssize_t)moof_buf.offset);
                 if (send_to_client(i, len_buf, len_size) < 0)
@@ -181,7 +181,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
             }
             {
                 struct BitBuf mdat_buf;
-                err = get_mdat(&mdat_buf);
+                err = mp4_get_mdat(&mdat_buf);
                 chk_err_continue ssize_t len_size =
                     sprintf(len_buf, "%zX\r\n", (ssize_t)mdat_buf.offset);
                 if (send_to_client(i, len_buf, len_size) < 0)

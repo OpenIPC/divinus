@@ -25,17 +25,17 @@ struct Mp4State {
     uint32_t nals_count;
 };
 
-void set_mp4_config(short width, short height, char framerate, char acodec, int srate);
+void mp4_set_config(short width, short height, char framerate, char acodec, int srate);
 
-enum BufError ingest_mp4_audio(const char *data, const uint32_t len);
-enum BufError set_slice(const char *nal_data, const uint32_t nal_len,
+void mp4_set_sps(const char *nal_data, const uint32_t nal_len, char is_h265);
+void mp4_set_pps(const char *nal_data, const uint32_t nal_len, char is_h265);
+void mp4_set_vps(const char *nal_data, const uint32_t nal_len);
+enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     char is_iframe);
-void set_sps(const char *nal_data, const uint32_t nal_len, char is_h265);
-void set_pps(const char *nal_data, const uint32_t nal_len, char is_h265);
-void set_vps(const char *nal_data, const uint32_t nal_len);
+enum BufError mp4_ingest_audio(const char *data, const uint32_t len);
 
-enum BufError get_header(struct BitBuf *ptr);
+enum BufError mp4_set_state(struct Mp4State *state);
 
-enum BufError set_mp4_state(struct Mp4State *state);
-enum BufError get_moof(struct BitBuf *ptr);
-enum BufError get_mdat(struct BitBuf *ptr);
+enum BufError mp4_get_header(struct BitBuf *ptr);
+enum BufError mp4_get_moof(struct BitBuf *ptr);
+enum BufError mp4_get_mdat(struct BitBuf *ptr);
