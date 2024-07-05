@@ -8,7 +8,7 @@ toolchain() {
 		tar -xf $1.tgz -C toolchain/$1 --strip-components=1 || exit 1
 		rm -f $1.tgz
 	fi
-	make -C src -B CC=$PWD/toolchain/$1/bin/$2-linux-gcc OPT="$OPT $3"
+	make -j $(nproc) -C src -B CC=$PWD/toolchain/$1/bin/$2-linux-gcc OPT="$OPT $3"
 }
 
 if [ "$2" = "debug" ]; then

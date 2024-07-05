@@ -1,4 +1,8 @@
-SRC := $(shell find ./ -name '*.c')
+OBJ := $(shell find ./ -name '*.c' | sed -e "s/\.c/\.o/")
 
-divinus:
-	$(CC) $(SRC) -I src -rdynamic $(OPT) -o ../$@
+%.o: %.c
+	@mkdir -p ../obj/$(shell dirname $<)
+	$(CC) $< -I src $(OPT) -c -o ../obj/$@
+
+divinus: $(OBJ)
+	$(CC) $(addprefix ../obj/,$^) -I src -rdynamic $(OPT) -o ../$@
