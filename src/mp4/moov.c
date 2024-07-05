@@ -30,7 +30,7 @@ enum BufError write_stts(struct BitBuf *ptr);
 enum BufError write_stsc(struct BitBuf *ptr);
 enum BufError write_stsz(struct BitBuf *ptr);
 enum BufError write_stco(struct BitBuf *ptr);
-enum BufError write_mvex(struct BitBuf *ptr, char is_audio);
+enum BufError write_mvex(struct BitBuf *ptr, char has_audio);
 enum BufError write_trex(struct BitBuf *ptr, char is_audio);
 enum BufError write_udta(struct BitBuf *ptr);
 enum BufError write_meta(struct BitBuf *ptr);
@@ -102,12 +102,8 @@ enum BufError write_moov(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
         err = write_trak(ptr, moov_info, 1);
         chk_err;
     }
-    err = write_mvex(ptr, 0);
+    err = write_mvex(ptr, moov_info->audio_codec);
     chk_err;
-    if (moov_info->audio_codec) {
-        err = write_mvex(ptr, 1);
-        chk_err;
-    }
     err = write_udta(ptr);
     chk_err;
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
@@ -621,9 +617,9 @@ enum BufError write_DecoderConfig(struct BitBuf *ptr, const struct MoovInfo *moo
     chk_err; // streamType
     err = put_skip(ptr, 3);
     chk_err; // 3 bufferSize
-    err = put_u32_be(ptr, 25636);
+    err = put_u32_be(ptr, 128000);
     chk_err; // 4 Max bitrate
-    err = put_u32_be(ptr, 25636);
+    err = put_u32_be(ptr, 128000);
     chk_err; // 4 Avg bitrate
     err = put_u32_le_to_offset(ptr, var_len, varint32(ptr->offset - var_len - 4));
     chk_err;
@@ -718,7 +714,7 @@ enum BufError write_ObjectDescriptor(struct BitBuf *ptr, const struct MoovInfo *
     err = put_u32_be(ptr, 0);
     chk_err;
 
-    err = put_u16_be(ptr, 1);
+    err = put_u16_be(ptr, 2);
     chk_err; // 2 ES id
     err = put_u8(ptr, 0);
     chk_err; // flags
@@ -1123,7 +1119,7 @@ enum BufError write_stco(struct BitBuf *ptr) {
     return BUF_OK;
 }
 
-enum BufError write_mvex(struct BitBuf *ptr, char is_audio) {
+enum BufError write_mvex(struct BitBuf *ptr, char has_audio) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -1131,8 +1127,12 @@ enum BufError write_mvex(struct BitBuf *ptr, char is_audio) {
 
     err = put_str4(ptr, "mvex");
     chk_err;
-    err = write_trex(ptr, is_audio);
+    err = write_trex(ptr, 0);
     chk_err;
+    if (has_audio) {
+        err = write_trex(ptr, 1);
+        chk_err;
+    }
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;
     return BUF_OK;

@@ -157,7 +157,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                 if (send_to_client(i, "\r\n", 2) < 0)
                     continue; // send \r\n
 
-                client_fds[i].mp4.sequence_number = 1;
+                client_fds[i].mp4.sequence_number = 0;
                 client_fds[i].mp4.base_data_offset = header_buf.offset;
                 client_fds[i].mp4.base_media_decode_time = 0;
                 client_fds[i].mp4.header_sent = true;
