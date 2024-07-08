@@ -142,6 +142,7 @@ static inline int __transfer_nal_mpga(struct list_head_t *trans_list, unsigned c
 
     payload[0] = payload[1] = payload[2] = payload[3] = 0;
     memcpy(payload + 4, ptr, size);
+    size += 4;
 
     rtp.rtpsize = size + sizeof(rtp_hdr_t);
 

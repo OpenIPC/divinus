@@ -144,7 +144,7 @@ void *i6_audio_thread(void)
                 " with %#x!\n", ret);
         }
     }
-    fprintf(stderr, "[i6_aud] Shutting down encoding thread...\n");
+    fprintf(stderr, "[i6_aud] Shutting down capture thread...\n");
 }
 
 int i6_channel_bind(char index, char framerate)

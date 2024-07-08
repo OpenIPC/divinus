@@ -12,17 +12,43 @@
 #include "jpeg.h"
 #include "server.h"
 
-pthread_mutex_t chnMtx, mp4Mtx;
-pthread_t audPid = 0;
-pthread_t ispPid = 0;
-pthread_t vidPid = 0;
+pthread_mutex_t aencMtx, chnMtx, mp4Mtx;
+pthread_t aencPid = 0, audPid = 0, ispPid = 0, vidPid = 0;
 
-unsigned char *mp3Buf;
+struct BitBuf mp3Buf;
 shine_config_t mp3Cnf;
 shine_t mp3Enc;
 unsigned int pcmPos;
 unsigned int pcmSamp;
 short pcmSrc[SHINE_MAX_SAMPLES];
+
+void *aenc_thread(void) {
+    const uint32_t mp3FrmSize = 1152;
+    
+    while (keepRunning) {
+        pthread_mutex_lock(&aencMtx);
+        if (mp3Buf.offset < mp3FrmSize) {
+            pthread_mutex_unlock(&aencMtx);
+            usleep(10000);
+            continue;
+        }
+
+        send_mp3_to_client(mp3Buf.buf, mp3FrmSize);
+
+        pthread_mutex_lock(&mp4Mtx);
+        mp4_ingest_audio(mp3Buf.buf, mp3FrmSize);
+        pthread_mutex_unlock(&mp4Mtx);
+
+        if (app_config.rtsp_enable)
+            rtp_send_mp3(rtspHandle, mp3Buf.buf, mp3FrmSize);
+
+        mp3Buf.offset -= mp3FrmSize;
+        if (mp3Buf.offset);
+            memcpy(mp3Buf.buf, mp3Buf.buf + mp3FrmSize, mp3Buf.offset);
+        pthread_mutex_unlock(&aencMtx);
+    }
+    fprintf(stderr, "[media] Shutting down audio encoding thread...\n");
+}
 
 int save_audio_stream(hal_audframe *frame) {
     int ret = EXIT_SUCCESS;
@@ -44,17 +70,10 @@ int save_audio_stream(hal_audframe *frame) {
 
     while (pcmPos + pcmLen >= pcmSamp) {
         memcpy(pcmSrc + pcmPos, pcmPack + pcmOrig - pcmLen, (pcmSamp - pcmPos) * 2);
-        mp3Buf = shine_encode_buffer_interleaved(mp3Enc, pcmSrc, &ret);
-
-        send_mp3_to_client(mp3Buf, ret);
-
-        pthread_mutex_lock(&mp4Mtx);
-        mp4_ingest_audio(mp3Buf, ret);
-        pthread_mutex_unlock(&mp4Mtx);
-
-        //if (app_config.rtsp_enable)
-        //    rtp_send_mp3(rtspHandle, mp3Buf, ret);
-        
+        unsigned char *mp3Ptr = shine_encode_buffer_interleaved(mp3Enc, pcmSrc, &ret);
+        pthread_mutex_lock(&aencMtx);
+        put(&mp3Buf, mp3Ptr, ret);
+        pthread_mutex_unlock(&aencMtx);
         pcmLen -= (pcmSamp - pcmPos);
         pcmPos = 0;
     }
@@ -249,7 +268,98 @@ int disable_video(char index, char jpeg) {
 #endif
     }    
     return 0;
-};
+}
+
+void disable_audio(void) {
+    pthread_join(aencPid, NULL);
+    pthread_join(audPid, NULL);
+    shine_close(mp3Enc);
+
+    switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_I6:  i6_audio_deinit(); break;
+        case HAL_PLATFORM_I6C: i6c_audio_deinit(); break;
+        case HAL_PLATFORM_I6F: i6f_audio_deinit(); break;
+        case HAL_PLATFORM_V3:  v3_audio_deinit(); break;
+        case HAL_PLATFORM_V4:  v4_audio_deinit(); break;
+#elif defined(__mips__)
+        case HAL_PLATFORM_T31: t31_audio_deinit(); break;
+#endif
+    }
+}
+
+int enable_audio(void) {
+    int ret;
+
+    switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_I6:  ret = i6_audio_init(app_config.audio_srate); break;
+        case HAL_PLATFORM_I6C: ret = i6c_audio_init(app_config.audio_srate); break;
+        case HAL_PLATFORM_I6F: ret = i6f_audio_init(app_config.audio_srate); break;
+        case HAL_PLATFORM_V3:  ret = v3_audio_init(app_config.audio_srate); break;
+        case HAL_PLATFORM_V4:  ret = v4_audio_init(app_config.audio_srate); break;
+#elif defined(__mips__)
+        case HAL_PLATFORM_T31: ret = t31_audio_init(app_config.audio_srate); break;
+#endif
+    }
+    if (ret) {
+        fprintf(stderr, "Audio initialization failed with %#x!\n%s\n",
+            ret, errstr(ret));
+        return EXIT_FAILURE;
+    }
+
+    if (shine_check_config(app_config.audio_srate, app_config.audio_bitrate) < 0)
+        fprintf(stderr, "Unsupported samplerate/bitrate configuration!\n");
+    else {
+        mp3Cnf.mpeg.mode = MONO;
+        mp3Cnf.mpeg.bitr = app_config.audio_bitrate;
+        mp3Cnf.mpeg.emph = NONE;
+        mp3Cnf.mpeg.copyright = 0;
+        mp3Cnf.mpeg.original = 1;
+        mp3Cnf.wave.channels = PCM_MONO;
+        mp3Cnf.wave.samplerate = app_config.audio_srate;
+        if (!(mp3Enc = shine_initialise(&mp3Cnf))) {
+            fprintf(stderr, "MP3 encoder initialization failed!\n");
+            return EXIT_FAILURE;
+        }
+        pcmSamp = shine_samples_per_pass(mp3Enc);
+    }
+
+    pthread_attr_t thread_attr;
+    pthread_attr_init(&thread_attr);
+    size_t stacksize;
+    pthread_attr_getstacksize(&thread_attr, &stacksize);
+    size_t new_stacksize = 16384;
+    if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
+        fprintf(stderr, "Can't set stack size %zu\n", new_stacksize);
+    }
+    if (pthread_create(
+                    &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL)) {
+        fprintf(stderr, "Starting the audio capture thread failed!\n");
+        return EXIT_FAILURE;
+    }
+    if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
+        fprintf(stderr, "Can't set stack size %zu\n", stacksize);
+    }
+    pthread_attr_destroy(&thread_attr);
+
+    pthread_attr_init(&thread_attr);
+    pthread_attr_getstacksize(&thread_attr, &stacksize);
+    if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
+        fprintf(stderr, "Can't set stack size %zu\n", new_stacksize);
+    }
+    if (pthread_create(
+                    &aencPid, &thread_attr, (void *(*)(void *))aenc_thread, NULL)) {
+        fprintf(stderr, "Starting the audio encoding thread failed!\n");
+        return EXIT_FAILURE;
+    }
+    if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
+        fprintf(stderr, "Can't set stack size %zu\n", stacksize);
+    }
+    pthread_attr_destroy(&thread_attr);
+
+    return ret;
+}
 
 int disable_mjpeg(void) {
     int ret;
@@ -272,6 +382,8 @@ int disable_mjpeg(void) {
             return EXIT_FAILURE;
         }
     }
+
+    return EXIT_SUCCESS;
 }
 
 int enable_mjpeg(void) {
@@ -350,6 +462,8 @@ int disable_mp4(void) {
             return EXIT_FAILURE;
         }
     }
+
+    return EXIT_SUCCESS;
 }
 
 int enable_mp4(void) {
@@ -483,58 +597,13 @@ int start_sdk(void) {
         return EXIT_FAILURE;
     }
 
-    if (app_config.audio_enable) switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_I6:  ret = i6_audio_init(app_config.audio_srate); break;
-        case HAL_PLATFORM_I6C: ret = i6c_audio_init(app_config.audio_srate); break;
-        case HAL_PLATFORM_I6F: ret = i6f_audio_init(app_config.audio_srate); break;
-        case HAL_PLATFORM_V3:  ret = v3_audio_init(app_config.audio_srate); break;
-        case HAL_PLATFORM_V4:  ret = v4_audio_init(app_config.audio_srate); break;
-#elif defined(__mips__)
-        case HAL_PLATFORM_T31: ret = t31_audio_init(app_config.audio_srate); break;
-#endif
-    }
-    if (ret) {
-        fprintf(stderr, "Audio initialization failed with %#x!\n%s\n",
-            ret, errstr(ret));
-        return EXIT_FAILURE;
-    }
-
     if (app_config.audio_enable) {
-        if (shine_check_config(app_config.audio_srate, app_config.audio_bitrate) < 0)
-            fprintf(stderr, "Unsupported samplerate/bitrate configuration!\n");
-        else {
-            mp3Cnf.mpeg.mode = MONO;
-            mp3Cnf.mpeg.bitr = app_config.audio_bitrate;
-            mp3Cnf.mpeg.emph = NONE;
-            mp3Cnf.mpeg.copyright = 0;
-            mp3Cnf.mpeg.original = 1;
-            mp3Cnf.wave.channels = PCM_MONO;
-            mp3Cnf.wave.samplerate = app_config.audio_srate;
-            if (!(mp3Enc = shine_initialise(&mp3Cnf))) {
-                fprintf(stderr, "MP3 encoder initialization failed!\n");
-                return EXIT_FAILURE;
-            }
-            pcmSamp = shine_samples_per_pass(mp3Enc);
-        }
-
-        pthread_attr_t thread_attr;
-        pthread_attr_init(&thread_attr);
-        size_t stacksize;
-        pthread_attr_getstacksize(&thread_attr, &stacksize);
-        size_t new_stacksize = app_config.venc_stream_thread_stack_size;
-        if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-            fprintf(stderr, "Can't set stack size %zu\n", new_stacksize);
-        }
-        if (pthread_create(
-                     &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL)) {
-            fprintf(stderr, "Starting the audio encoding thread failed!\n");
+        ret = enable_audio();
+        if (ret) {
+            fprintf(stderr, "Audio initialization failed with %#x!\n%s\n",
+                ret, errstr(ret));
             return EXIT_FAILURE;
         }
-        if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-            fprintf(stderr, "Can't set stack size %zu\n", stacksize);
-        }
-        pthread_attr_destroy(&thread_attr);
     }
 
     short width = MAX(app_config.mp4_width, app_config.mjpeg_width);
@@ -676,10 +745,8 @@ int stop_sdk(void) {
 #endif
     }
 
-    if (app_config.audio_enable) {
-        pthread_join(audPid, NULL);
-        shine_close(mp3Enc);
-    }
+    if (app_config.audio_enable)
+        disable_audio();
 
     if (isp_thread)
         pthread_join(ispPid, NULL);
@@ -694,18 +761,6 @@ int stop_sdk(void) {
         case HAL_PLATFORM_V4:  v4_system_deinit(); break;
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: t31_system_deinit(); break;
-#endif
-    }
-
-    if (app_config.audio_enable) switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_I6:  i6_audio_deinit(); break;
-        case HAL_PLATFORM_I6C: i6c_audio_deinit(); break;
-        case HAL_PLATFORM_I6F: i6f_audio_deinit(); break;
-        case HAL_PLATFORM_V3:  v3_audio_deinit(); break;
-        case HAL_PLATFORM_V4:  v4_audio_deinit(); break;
-#elif defined(__mips__)
-        case HAL_PLATFORM_T31: t31_audio_deinit(); break;
 #endif
     }
 

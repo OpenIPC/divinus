@@ -132,7 +132,7 @@ void *v3_audio_thread(void)
                 " with %#x!\n", ret);
         }
     }
-    fprintf(stderr, "[v3_aud] Shutting down encoding thread...\n");
+    fprintf(stderr, "[v3_aud] Shutting down capture thread...\n");
 }
 
 int v3_channel_bind(char index)

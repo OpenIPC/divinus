@@ -125,7 +125,7 @@ void *t31_audio_thread(void)
                 " with %#x!\n", ret);
         }
     }
-    fprintf(stderr, "[t31_aud] Shutting down encoding thread...\n");
+    fprintf(stderr, "[t31_aud] Shutting down capture thread...\n");
 }
 
 int t31_channel_bind(char index)

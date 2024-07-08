@@ -134,7 +134,7 @@ void *v4_audio_thread(void)
                 " with %#x!\n", ret);
         }
     }
-    fprintf(stderr, "[v4_aud] Shutting down encoding thread...\n");
+    fprintf(stderr, "[v4_aud] Shutting down capture thread...\n");
 }
 
 int v4_channel_bind(char index)
