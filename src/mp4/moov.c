@@ -1099,9 +1099,9 @@ enum BufError write_stco(struct BitBuf *ptr) {
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
     chk_err;
-
     err = put_str4(ptr, "stco");
     chk_err;
+
     err = put_u8(ptr, 0);
     chk_err; // 1 version
     err = put_u8(ptr, 0);
@@ -1124,9 +1124,9 @@ enum BufError write_mvex(struct BitBuf *ptr, char has_audio) {
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
     chk_err;
-
     err = put_str4(ptr, "mvex");
     chk_err;
+
     err = write_trex(ptr, 0);
     chk_err;
     if (has_audio) {
@@ -1143,9 +1143,9 @@ enum BufError write_trex(struct BitBuf *ptr, char is_audio) {
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
     chk_err;
-
     err = put_str4(ptr, "trex");
     chk_err;
+
     err = put_u8(ptr, 0);
     chk_err; // 1 version
     err = put_u8(ptr, 0);
@@ -1176,9 +1176,9 @@ enum BufError write_udta(struct BitBuf *ptr) {
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
     chk_err;
-
     err = put_str4(ptr, "udta");
     chk_err;
+
     err = write_meta(ptr);
     chk_err;
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
@@ -1191,9 +1191,9 @@ enum BufError write_meta(struct BitBuf *ptr) {
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
     chk_err;
-
     err = put_str4(ptr, "meta");
     chk_err;
+
     err = put_u8(ptr, 0);
     chk_err; // 1 version
     err = put_u8(ptr, 0);
@@ -1224,9 +1224,9 @@ enum BufError write_hdlr(
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
     chk_err;
-
     err = put_str4(ptr, "hdlr");
     chk_err;
+
     err = put_u8(ptr, 0);
     chk_err; // 1 version
     err = put_u8(ptr, 0);
@@ -1260,9 +1260,9 @@ write_ilst(struct BitBuf *ptr, const uint8_t *array, const uint32_t len) {
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
     chk_err;
-
     err = put_str4(ptr, "ilst");
     chk_err;
+    
     err = put(ptr, array, len);
     chk_err; // <counted string> Component name
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);

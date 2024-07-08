@@ -20,10 +20,10 @@ pthread_t vidPid = 0;
 unsigned char *mp3Buf;
 shine_config_t mp3Cnf;
 shine_t mp3Enc;
-unsigned int mp3Samp;
+unsigned int pcmSamp;
 
-unsigned int mp3Pos;
-short mp3Src[SHINE_MAX_SAMPLES];
+unsigned int pcmPos;
+short pcmSrc[SHINE_MAX_SAMPLES];
 
 int save_audio_stream(hal_audframe *frame) {
     int ret = EXIT_SUCCESS;
@@ -39,23 +39,23 @@ int save_audio_stream(hal_audframe *frame) {
 
     send_pcm_to_client(frame);
 
-    unsigned int mp3Len = frame->length[0] / 2;
-    unsigned int mp3Orig = mp3Len;
-    short *mp3Pack = (short*)frame->data[0];
+    unsigned int pcmLen = frame->length[0] / 2;
+    unsigned int pcmOrig = pcmLen;
+    short *pcmPack = (short*)frame->data[0];
 
-    while (mp3Pos + mp3Len >= mp3Samp) {
-        memcpy(mp3Src + mp3Pos, mp3Pack + mp3Orig - mp3Len, (mp3Samp - mp3Pos) * 2);
-        mp3Buf = shine_encode_buffer_interleaved(mp3Enc, mp3Src, &ret);
+    while (pcmPos + pcmLen >= pcmSamp) {
+        memcpy(pcmSrc + pcmPos, pcmPack + pcmOrig - pcmLen, (pcmSamp - pcmPos) * 2);
+        mp3Buf = shine_encode_buffer_interleaved(mp3Enc, pcmSrc, &ret);
 
         send_mp3_to_client(mp3Buf, ret);
         mp4_ingest_audio(mp3Buf, ret);
 
-        mp3Len -= (mp3Samp - mp3Pos);
-        mp3Pos = 0;
+        pcmLen -= (pcmSamp - pcmPos);
+        pcmPos = 0;
     }
 
-    memcpy(mp3Src + mp3Pos, mp3Pack + mp3Orig - mp3Len, mp3Len * 2);
-    mp3Pos += mp3Len;
+    memcpy(pcmSrc + pcmPos, pcmPack + pcmOrig - pcmLen, pcmLen * 2);
+    pcmPos += pcmLen;
     
     return ret;
 }
@@ -512,7 +512,7 @@ int start_sdk(void) {
                 fprintf(stderr, "MP3 encoder initialization failed!\n");
                 return EXIT_FAILURE;
             }
-            mp3Samp = shine_samples_per_pass(mp3Enc);
+            pcmSamp = shine_samples_per_pass(mp3Enc);
         }
 
         pthread_attr_t thread_attr;

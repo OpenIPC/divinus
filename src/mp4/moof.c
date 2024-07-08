@@ -116,11 +116,12 @@ enum BufError write_mfhd(struct BitBuf *ptr, const uint32_t sequence_number) {
 
     err = put_u8(ptr, 0);
     chk_err; // 1 version
+    err = put_u8(ptr, 0);
+    chk_err;
 
     err = put_u8(ptr, 0);
     chk_err;
-    err = put_u8(ptr, 0);
-    chk_err;
+    
     err = put_u8(ptr, 0);
     chk_err; // 3 flags
     pos_sequence_number = ptr->offset;
@@ -300,8 +301,10 @@ enum BufError write_trun(
         } // 0x000800 sample-composition-time-offsets-present
         err = put_u8(ptr, flags >> 16);
         chk_err;
+        
         err = put_u8(ptr, flags >> 8);
         chk_err;
+
         err = put_u8(ptr, flags >> 0);
         chk_err // 3 flags
     }
@@ -314,30 +317,30 @@ enum BufError write_trun(
                      // moof atom will created
     if (data_offset_present) {
         err = put_i32_be(ptr, 0);
-        chk_err;
-    } // 4 fake data_offset
+        chk_err; // 4 fake data_offset
+    }
 
     if (first_sample_flags_present) {
         err = put_u32_be(ptr, is_audio ? 0 : 33554432);
-        chk_err;
-    } // 4 first_sample_flags
+        chk_err; // 4 first_sample_flags
+    }
     for (uint32_t i = 0; i < samples_info_count; ++i) {
         const struct SampleInfo sample_info = samples_info[i];
         if (sample_duration_present) {
             err = put_u32_be(ptr, sample_info.duration);
-            chk_err;
-        } // 4 sample_duration
+            chk_err; // 4 sample_duration
+        } 
         if (sample_size_present) {
             err = put_u32_be(ptr, sample_info.size);
-            chk_err;
-        } // 4 sample_size
+            chk_err; // 4 sample_size
+        }
         if (sample_flags_present) {
             err = put_u32_be(ptr, sample_info.flags);
-            chk_err;
-        } // 4 sample_flags
+            chk_err; // 4 sample_flags
+        }
         if (sample_composition_time_offsets_present) {
             err = put_i32_be(ptr, sample_info.composition_offset);
-            chk_err;
+            chk_err; // 4 sample_composition_offset
         }
     }
 
