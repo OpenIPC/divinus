@@ -18,7 +18,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 
 | SoC Family              | Audio Stream | JPEG Snapshot | fMP4 Stream | RTSP Stream | On-Screen Display* |
 |-------------------------|:------------:|:-------------:|:-----------:|:-----------:|:------------------:|
-| GM813x                  | ↻            | ✔️           | ✔️          | ✔️          | ↻                 |
+| GM813x                  | ✗            | ✔️           | ✔️          | ✔️          | ✗                 |
 | Hi3516CV300[^1]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3516CV500[^2]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3516EV200[^3]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
@@ -56,7 +56,7 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 
 ### Roadmap
 
-- [ ] Audio encoding (G.711 over RTSP, industry-supported lossy codec for MP4)
+- [ ] Audio encoding (G.711 over RTSP, enclosed audio track on MP4s)
 - [ ] Assorted WebUI to handle media reconfiguration and live preview
 - [ ] Motion detection reimplementation
 - [ ] Hardware support improvement (older SoCs, general usage chips)

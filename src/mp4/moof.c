@@ -30,18 +30,20 @@ enum BufError write_trun(
 
 enum BufError
 write_mdat(struct BitBuf *ptr,
-    const char *data1, const uint32_t len1, const char *data2, const uint32_t len2) {
+    const char *data_vid, const uint32_t len_vid,
+    const char *data_aud, const uint32_t len_aud) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
     chk_err;
     err = put_str4(ptr, "mdat");
     chk_err;
-    err = put_u32_be(ptr, len1);
+    
+    err = put_u32_be(ptr, len_vid);
     chk_err;
-    err = put(ptr, data1, len1);
+    err = put(ptr, data_vid, len_vid);
     chk_err;
-    err = put(ptr, data2, len2);
+    err = put(ptr, data_aud, len_aud);
     chk_err;
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;
@@ -60,6 +62,7 @@ enum BufError write_moof(
     chk_err;
     err = put_str4(ptr, "moof");
     chk_err;
+
     err = write_mfhd(ptr, sequence_number);
     chk_err;
     struct DataOffsetPos vid_offset = {0};
@@ -109,14 +112,17 @@ enum BufError write_mfhd(struct BitBuf *ptr, const uint32_t sequence_number) {
     err = put_u32_be(ptr, 0);
     chk_err;
     err = put_str4(ptr, "mfhd");
-    chk_err err = put_u8(ptr, 0); // 1 version
+    chk_err;
+
+    err = put_u8(ptr, 0);
+    chk_err; // 1 version
+
     err = put_u8(ptr, 0);
     chk_err;
     err = put_u8(ptr, 0);
     chk_err;
     err = put_u8(ptr, 0);
-    chk_err;
-    // 3 flags
+    chk_err; // 3 flags
     pos_sequence_number = ptr->offset;
     err = put_u32_be(ptr, sequence_number);
     chk_err; // 4 sequence_number
@@ -137,6 +143,7 @@ enum BufError write_traf(
     chk_err;
     err = put_str4(ptr, "traf");
     chk_err;
+
     err = write_tfhd(
         ptr, sequence_number, base_data_offset, samples_info[0].size, 
         default_sample_duration, is_audio);
@@ -234,7 +241,11 @@ write_tfdt(struct BitBuf *ptr, const uint64_t base_media_decode_time) {
     err = put_u32_be(ptr, 0);
     chk_err;
     err = put_str4(ptr, "tfdt");
-    chk_err err = put_u8(ptr, 1); // 1 version
+    chk_err;
+
+    err = put_u8(ptr, 1);
+    chk_err; // 1 version
+
     err = put_u8(ptr, 0);
     chk_err;
     err = put_u8(ptr, 0);

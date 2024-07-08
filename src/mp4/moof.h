@@ -17,7 +17,8 @@ struct SampleInfo {
 
 enum BufError
 write_mdat(struct BitBuf *ptr,
-    const char *data1, const uint32_t len1, const char *data2, const uint32_t len2);
+    const char *data_vid, const uint32_t len_vid,
+    const char *data_aud, const uint32_t len_aud);
 enum BufError write_moof(
     struct BitBuf *ptr, const uint32_t sequence_number,
     const uint64_t base_data_offset, const uint64_t base_media_decode_time,
