@@ -84,7 +84,7 @@ int i6c_audio_init(int samplerate)
         config.reserved = 0;
         config.sound = I6C_AUD_SND_MONO;
         config.rate = samplerate;
-        config.periodSize = 0x400;
+        config.periodSize = 0x800;
         config.interleavedOn = 0;
         if (ret = i6c_aud.fnEnableDevice(_i6c_aud_dev, &config))
             return ret;
