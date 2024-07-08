@@ -52,6 +52,9 @@ int save_audio_stream(hal_audframe *frame) {
         mp4_ingest_audio(mp3Buf, ret);
         pthread_mutex_unlock(&mp4Mtx);
 
+        //if (app_config.rtsp_enable)
+        //    rtp_send_mp3(rtspHandle, mp3Buf, ret);
+        
         pcmLen -= (pcmSamp - pcmPos);
         pcmPos = 0;
     }
@@ -76,15 +79,10 @@ int save_video_stream(char index, hal_vidstream *stream) {
                 
                 send_h26x_to_client(index, stream);
             }
-            if (app_config.rtsp_enable) {
-                for (int i = 0; i < stream->count; i++) {
-                    struct timeval tv = { 
-                        .tv_sec = stream->pack[i].timestamp / 1000000,
-                        .tv_usec = stream->pack[i].timestamp % 1000000 };
+            if (app_config.rtsp_enable)
+                for (int i = 0; i < stream->count; i++)
                     rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
-                        stream->pack[i].length - stream->pack[i].offset, &tv, isH265);
-                }
-            }
+                        stream->pack[i].length - stream->pack[i].offset, isH265);
             break;
         case HAL_VIDCODEC_MJPG:
             if (app_config.mjpeg_enable) {

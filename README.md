@@ -56,7 +56,7 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 
 ### Roadmap
 
-- [ ] Audio encoding (G.711 over RTSP, enclosed audio track on MP4s)
+- [ ] Alternative audio codecs
 - [ ] Assorted WebUI to handle media reconfiguration and live preview
 - [ ] Motion detection reimplementation
 - [ ] Hardware support improvement (older SoCs, general usage chips)

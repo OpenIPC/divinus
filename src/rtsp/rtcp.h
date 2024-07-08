@@ -34,20 +34,21 @@ static inline int __rtcp_send_sr(struct connection_item_t *con)
         r: { sr: { ssrc: htonl(con->ssrc),
             ntp_sec: htonl(ts_h),
             ntp_frac: htonl(ts_l),
-            rtp_ts: htonl(con->rtp_timestamp),
-            psent: htonl(con->rtcp_packet_cnt),
-            osent: htonl(con->rtcp_octet)}}};
+            rtp_ts: htonl(con->trans[con->track_id].rtp_timestamp),
+            psent: htonl(con->trans[con->track_id].rtcp_packet_cnt),
+            osent: htonl(con->trans[con->track_id].rtcp_octet)}}};
 
     to_addr = con->addr;
-    to_addr.sin_port = con->client_port_rtcp;
+    to_addr.sin_port = con->trans[con->track_id].client_port_rtcp;
 
-    ASSERT((send_bytes = send(con->server_rtcp_fd,&(rtcp),36,0)) == 36, ({
+    ASSERT((send_bytes = send(con->trans[con->track_id].server_rtcp_fd,
+        &(rtcp),36,0)) == 36, ({
                 ERR("send:%d:%s¥n",send_bytes,strerror(errno));
                 return FAILURE;}));
 
-    con->rtcp_packet_cnt = 0;
-    con->rtcp_octet = 0;
-    con->rtcp_tick = con->rtcp_tick_org;
+    con->trans[con->track_id].rtcp_packet_cnt = 0;
+    con->trans[con->track_id].rtcp_octet = 0;
+    con->trans[con->track_id].rtcp_tick = con->trans[con->track_id].rtcp_tick_org;
 
     return SUCCESS;
 }

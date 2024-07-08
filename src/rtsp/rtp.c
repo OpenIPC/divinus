@@ -26,6 +26,7 @@ static inline int __rtp_send(struct nal_rtp_t *rtp, struct list_head_t *trans_li
 static inline int __rtp_send_eachconnection(struct list_t *e, void *v);
 static inline int __rtp_setup_transfer(struct list_t *e, void *v);
 static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned char *nalptr, size_t nalsize, char isH265);
+static inline int __transfer_nal_mpga(struct list_head_t *trans_list, unsigned char *ptr, size_t size);
 static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len);
 
 struct __transfer_set_t {
@@ -125,27 +126,54 @@ static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned c
     return SUCCESS;
 }
 
+static inline int __transfer_nal_mpga(struct list_head_t *trans_list, unsigned char *ptr, size_t size)
+{
+    struct nal_rtp_t rtp;
+
+    rtp_hdr_t *p_header = &(rtp.packet.header);
+    unsigned char *payload = rtp.packet.payload;
+
+    p_header->version = 2;
+    p_header->p = 0;
+    p_header->x = 0;
+    p_header->cc = 0;
+    p_header->pt = 14;
+    p_header->m = 1;
+
+    payload[0] = payload[1] = payload[2] = payload[3] = 0;
+    memcpy(payload + 4, ptr, size);
+
+    rtp.rtpsize = size + sizeof(rtp_hdr_t);
+
+    ASSERT(__rtp_send(&rtp,trans_list) == SUCCESS, return FAILURE);
+
+    return SUCCESS;
+}
+
 static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
 {
     int send_bytes;
     struct connection_item_t *con;
     struct transfer_item_t *trans;
     struct nal_rtp_t *rtp = v;
+    int track_id = rtp->packet.header.pt == 96 ? 0 : 1;
 
     list_upcast(trans,e); 
 
     MUST(con = trans->con, return FAILURE);
+    if (!con->trans[track_id].server_port_rtp) return SUCCESS;
 
-    rtp->packet.header.seq = htons(con->rtp_seq);
-    rtp->packet.header.ts = htonl(con->rtp_timestamp);
+    rtp->packet.header.seq = htons(con->trans[track_id].rtp_seq);
+    rtp->packet.header.ts = htonl(con->trans[track_id].rtp_timestamp);
     rtp->packet.header.ssrc = htonl(con->ssrc);
-    con->rtp_seq += 1;
+    con->trans[track_id].rtp_seq += 1;
 
-    send_bytes = send(con->server_rtp_fd,&(rtp->packet),rtp->rtpsize,0);
+    send_bytes = send(con->trans[track_id].server_rtp_fd,
+        &(rtp->packet),rtp->rtpsize,0);
     
     if(send_bytes == rtp->rtpsize) {
-        con->rtcp_packet_cnt += 1;
-        con->rtcp_octet += rtp->rtpsize;
+        con->trans[track_id].rtcp_packet_cnt += 1;
+        con->trans[track_id].rtcp_octet += rtp->rtpsize;
         return SUCCESS;
     } 
 
@@ -198,7 +226,8 @@ static inline int __rtp_setup_transfer(struct list_t *e, void *v)
 
         timestamp_offset = trans_set->h->stat.ts_offset;
 
-        con->rtp_timestamp = ((unsigned int)con->rtp_timestamp + timestamp_offset);
+        con->trans[con->track_id].rtp_timestamp = 
+            ((unsigned int)con->trans[con->track_id].rtp_timestamp + timestamp_offset);
     }
 
     ret = SUCCESS;
@@ -314,40 +343,40 @@ static inline int __rtcp_poll(struct list_t *e, void *v)
 {
     struct connection_item_t *con;
     struct transfer_item_t *trans;
+    int *track_id = v;
 
     list_upcast(trans, e);
     MUST(con = trans->con, return FAILURE);
     
-    if((con->rtcp_tick)-- == 0) {
+    if((con->trans[*track_id].rtcp_tick)-- == 0) {
         ASSERT(__rtcp_send_sr(con) == SUCCESS, return FAILURE);
 
         /* postcondition check */
-        DASSERT(con->rtcp_tick == con->rtcp_tick_org, return FAILURE);
-        DASSERT(con->rtcp_packet_cnt == 0, return FAILURE);
-        DASSERT(con->rtcp_octet == 0, return FAILURE);
+        DASSERT(con->trans[*track_id].rtcp_tick == 
+            con->trans[*track_id].rtcp_tick_org, return FAILURE);
+        DASSERT(con->trans[*track_id].rtcp_packet_cnt == 0, return FAILURE);
+        DASSERT(con->trans[*track_id].rtcp_octet == 0, return FAILURE);
     }
     return SUCCESS;
 }
 /******************************************************************************
  *              PUBLIC FUNCTIONS
  ******************************************************************************/
-int rtp_send_h26x(rtsp_handle h, unsigned char *buf, size_t len, struct timeval *p_tv, char isH265)
+int rtp_send_h26x(rtsp_handle h, unsigned char *buf, size_t len, char isH265)
 {
     unsigned char *nalptr = buf;
     size_t single_len = 0;
     int ret = FAILURE;
+    int track_id = 0;
     struct __transfer_set_t trans = {};
 
     /* checkout RTP packet */
     DASSERT(h, return FAILURE);
-    DASSERT(p_tv, return FAILURE);
 
     if(gbl_get_quit(h->pool->sharedp->gbl)) {
         ERR("server threads have gone already. call rtsp_finish()\n");
         return FAILURE;
     }
-    
-    __get_timestamp_offset(&h->stat, p_tv);
 
     h->isH265 = isH265;
 
@@ -364,9 +393,48 @@ int rtp_send_h26x(rtsp_handle h, unsigned char *buf, size_t len, struct timeval 
             
             ASSERT(__transfer_nal_h26x(&(trans.list_head),nalptr,single_len,h->isH265) == SUCCESS, goto error);
 
+            ASSERT(list_map_inline(&(trans.list_head),(__rtcp_poll), &track_id) == SUCCESS, goto error);
+
         }
 
-        ASSERT(list_map_inline(&(trans.list_head),(__rtcp_poll), NULL) == SUCCESS, goto error);
+        ASSERT(list_map_inline(&(trans.list_head),(__rtcp_poll), &track_id) == SUCCESS, goto error);
+    } 
+
+    ret = SUCCESS;
+
+error:
+    list_destroy(&(trans.list_head));
+
+    return ret;
+}
+
+int rtp_send_mp3(rtsp_handle h, unsigned char *buf, size_t len)
+{
+    int ret = FAILURE;
+    int track_id = 1;
+    struct __transfer_set_t trans = {};
+
+    /* checkout RTP packet */
+    DASSERT(h, return FAILURE);
+
+    if(gbl_get_quit(h->pool->sharedp->gbl)) {
+        ERR("server threads have gone already. call rtsp_finish()\n");
+        return FAILURE;
+    }
+
+    h->audioPt = 14;
+
+    trans.h = h;
+
+    /* setup transmission objecl t*/
+    ASSERT(list_map_inline(&h->con_list,(__rtp_setup_transfer),&trans) == SUCCESS, goto error);
+    
+    if(trans.list_head.list) {
+
+        ASSERT(__transfer_nal_mpga(&(trans.list_head),buf,len) == SUCCESS, goto error);
+
+        ASSERT(list_map_inline(&(trans.list_head),(__rtcp_poll), &track_id) == SUCCESS, goto error);
+
     } 
 
     ret = SUCCESS;

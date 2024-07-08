@@ -22,6 +22,14 @@
 
 #define __TERM  "\r\n"
 #define SCMP(id,s) (strncasecmp(id,s,strlen(id)) == 0)
+#define STR_KEY_NUM(buf, key, num) do {  \
+		char *__point = NULL; \
+		if ((__point=strstr(buf, key))) { \
+			num = strtoul(__point+strlen(key), NULL, 10);  \
+		} else { \
+			num = 0; \
+		} \
+}while(0)
 
 enum __connection_state_e {
     __CON_S_INIT = 0,
@@ -69,31 +77,35 @@ struct __time_stat_t {
 
 struct connection_item_t {
     struct sockaddr_in addr;
-    int client_fd;
-    int server_rtcp_fd;
-    int server_rtp_fd;
-    int cseq;
-
     FILE *fp_tcp_read;
     FILE *fp_tcp_write;
+    int client_fd;
+    int track_id;
+    int cseq;
+
+    struct {
+        int server_rtcp_fd;
+        int server_rtp_fd;
+        unsigned int client_port_rtp;
+        unsigned int client_port_rtcp;
+        unsigned int server_port_rtp;
+        unsigned int server_port_rtcp;
+        unsigned int range_start;
+        unsigned int range_end;
+        unsigned int rtcp_octet;
+        unsigned int rtcp_packet_cnt;
+        int rtcp_tick;
+        int rtcp_tick_org;
+        unsigned short rtp_seq;
+        unsigned int rtp_timestamp;
+    } trans[2];
+
     enum __connection_state_e con_state;
     enum __parser_state_e parser_state;
     enum __method_e method;
-    unsigned int client_port_rtp;
-    unsigned int client_port_rtcp;
-    unsigned int server_port_rtp;
-    unsigned int server_port_rtcp;
+    bufpool_handle pool;
     unsigned long long session_id;
     unsigned long long given_session_id;
-    unsigned int range_start;
-    unsigned int range_end;
-    unsigned int rtcp_octet;
-    unsigned int rtcp_packet_cnt;
-    int rtcp_tick;
-    int rtcp_tick_org;
-    unsigned short rtp_seq;
-    bufpool_handle pool;
-    unsigned int rtp_timestamp;
     unsigned int ssrc;
     struct list_t list_entry;
 };
@@ -113,6 +125,7 @@ struct __rtsp_obj_t {
     unsigned short  port;
     struct __time_stat_t stat;
     char isH265;
+    char audioPt;
     mime_encoded_handle sprop_vps_b64;
     mime_encoded_handle sprop_sps_b64;
     mime_encoded_handle sprop_pps_b64;
