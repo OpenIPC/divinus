@@ -12,7 +12,7 @@
 #include "jpeg.h"
 #include "server.h"
 
-pthread_mutex_t mutex;
+pthread_mutex_t chnMutex, mp4Mutex;
 pthread_t audPid = 0;
 pthread_t ispPid = 0;
 pthread_t vidPid = 0;
@@ -48,7 +48,10 @@ int save_audio_stream(hal_audframe *frame) {
         mp3Buf = shine_encode_buffer_interleaved(mp3Enc, pcmSrc, &ret);
 
         send_mp3_to_client(mp3Buf, ret);
+
+        pthread_mutex_lock(&mp4Mutex);
         mp4_ingest_audio(mp3Buf, ret);
+        pthread_mutex_unlock(&mp4Mutex);
 
         pcmLen -= (pcmSamp - pcmPos);
         pcmPos = 0;
@@ -68,7 +71,10 @@ int save_video_stream(char index, hal_vidstream *stream) {
         case HAL_VIDCODEC_H264:
         case HAL_VIDCODEC_H265:
             if (app_config.mp4_enable) {
+                pthread_mutex_lock(&mp4Mutex);
                 send_mp4_to_client(index, stream, isH265);
+                pthread_mutex_unlock(&mp4Mutex);
+                
                 send_h26x_to_client(index, stream);
             }
             if (app_config.rtsp_enable) {
@@ -128,7 +134,7 @@ int save_video_stream(char index, hal_vidstream *stream) {
 
 void request_idr(void) {
     signed char index = -1;
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&chnMutex);
     for (int i = 0; i < chnCount; i++) {
         if (!chnState[i].enable) continue;
         if (chnState[i].payload != HAL_VIDCODEC_H264 &&
@@ -148,11 +154,11 @@ void request_idr(void) {
         case HAL_PLATFORM_T31: t31_video_request_idr(index); break;
 #endif
     }  
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&chnMutex);
 }
 
 void set_grayscale(bool active) {
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&chnMutex);
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_I6:  i6_channel_grayscale(active); break;
@@ -164,20 +170,20 @@ void set_grayscale(bool active) {
         case HAL_PLATFORM_T31: t31_channel_grayscale(active); break;
 #endif
     }
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&chnMutex);
 }
 
 int take_next_free_channel(bool mainLoop) {
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&chnMutex);
     for (int i = 0; i < chnCount; i++) {
         if (!chnState[i].enable) {
             chnState[i].enable = true;
             chnState[i].mainLoop = mainLoop;
-            pthread_mutex_unlock(&mutex);
+            pthread_mutex_unlock(&chnMutex);
             return i;
         }
     }
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&chnMutex);
     return -1;
 }
 

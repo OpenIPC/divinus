@@ -103,12 +103,14 @@ enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     buf_moof.offset = 0;
     err = write_moof(
         &buf_moof, 0, 0, 0, default_sample_size, samples_info,
-        samples_info_len, samples_info + 1, buf_aud.offset ? 1 : 0);
+        samples_info_len, samples_info + 1, buf_aud.offset >= 2304 ? 1 : 0);
     chk_err;
 
     buf_mdat.offset = 0;
-    err = write_mdat(&buf_mdat, nal_data, nal_len, buf_aud.buf, buf_aud.offset);
+    err = write_mdat(&buf_mdat, nal_data, nal_len, 
+        buf_aud.buf, buf_aud.offset >= 2304 ? buf_aud.offset : 0);
     chk_err;
+
     buf_aud.offset = 0;
 
     return BUF_OK;
