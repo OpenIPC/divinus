@@ -74,100 +74,68 @@ typedef struct {
 } gm_lib_impl;
 
 static int gm_lib_load(gm_lib_impl *aio_lib) {
-    if (!(aio_lib->handle = dlopen("libgm.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[gm_lib] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(aio_lib->handle = dlopen("libgm.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("gm_lib", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(aio_lib->fnDeclareStruct = (void(*)(void *name, char *string, int size, int libVersion))
-        dlsym(aio_lib->handle, "gm_init_attr"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_init_attr!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_init_attr")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnExit = (int(*)(void))
-        dlsym(aio_lib->handle, "gm_release"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_release!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_release")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnInit = (int(*)(int libVersion))
-        dlsym(aio_lib->handle, "gm_init_private"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_init_private!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_init_private")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnCreateDevice = (void*(*)(gm_lib_dev type))
-        dlsym(aio_lib->handle, "gm_new_obj"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_new_obj!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_new_obj")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnDestroyDevice = (int(*)(void *device))
-        dlsym(aio_lib->handle, "gm_delete_obj"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_delete_obj!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_delete_obj")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnSetDeviceConfig = (int(*)(void *device, void *config))
-        dlsym(aio_lib->handle, "gm_set_attr"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_set_attr!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_set_attr")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnCreateGroup = (void*(*)(void))
-        dlsym(aio_lib->handle, "gm_new_groupfd"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_new_groupfd!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_new_groupfd")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnDestroyGroup = (int(*)(void *group))
-        dlsym(aio_lib->handle, "gm_delete_groupfd"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_delete_groupfd!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_delete_groupfd")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnRefreshGroup = (int(*)(void *group))
-        dlsym(aio_lib->handle, "gm_apply"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_apply!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_apply")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnBind = (void*(*)(void *group, void *source, void *dest))
-        dlsym(aio_lib->handle, "gm_bind"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_bind!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_bind")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnUnbind = (int(*)(void *group))
-        dlsym(aio_lib->handle, "gm_unbind"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_unbind!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_unbind")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnPollStream = (int(*)(gm_venc_fds *fds, int count, int millis))
-        dlsym(aio_lib->handle, "gm_poll"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_poll!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_poll")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnReceiveStream = (int(*)(gm_venc_strm *strms, int count))
-        dlsym(aio_lib->handle, "gm_recv_multi_bitstreams"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_recv_multi_bitstreams!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_recv_multi_bitstreams")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnSnapshot = (int(*)(gm_venc_snap *snapshot, int millis))
-        dlsym(aio_lib->handle, "gm_request_snapshot"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_request_snapshot!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_request_snapshot")))
         return EXIT_FAILURE;
-    }
 
     if (!(aio_lib->fnRequestIdr = (int(*)(void *device))
-        dlsym(aio_lib->handle, "gm_request_keyframe"))) {
-        fprintf(stderr, "[gm_lib] Failed to acquire symbol gm_request_keyframe!\n");
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_request_keyframe")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

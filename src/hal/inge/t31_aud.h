@@ -59,82 +59,56 @@ typedef struct {
 } t31_aud_impl;
 
 static int t31_aud_load(t31_aud_impl *aud_lib) {
-    if (!(aud_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[t31_aud] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(aud_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("t31_aud", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(aud_lib->fnDisableDevice = (int(*)(int device))
-        dlsym(aud_lib->handle, "IMP_AI_Disable"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_Disable!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_Disable")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnEnableDevice = (int(*)(int device))
-        dlsym(aud_lib->handle, "IMP_AI_Enable"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_Enable!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_Enable")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnSetDeviceConfig = (int(*)(int device, t31_aud_cnf *config))
-        dlsym(aud_lib->handle, "IMP_AI_SetPubAttr"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_SetPubAttr!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_SetPubAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnDisableChannel = (int(*)(int device, int channel))
-        dlsym(aud_lib->handle, "IMP_AI_DisableChn"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_DisableChn!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_DisableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnEnableChannel = (int(*)(int device, int channel))
-        dlsym(aud_lib->handle, "IMP_AI_EnableChn"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_EnableChn!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_EnableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnSetChannelConfig = (int(*)(int device, int channel, t31_aud_chn *config))
-        dlsym(aud_lib->handle, "IMP_AI_SetChnParam"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_SetChnParam!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_SetChnParam")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnSetGain = (int(*)(int device, int channel, int level))
-        dlsym(aud_lib->handle, "IMP_AI_SetGain"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_SetGain!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_SetGain")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnSetMute = (int(*)(int device, int channel, int active))
-        dlsym(aud_lib->handle, "IMP_AI_SetVolMute"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_SetVolMute!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_SetVolMute")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnSetVolume = (int(*)(int device, int channel, int level))
-        dlsym(aud_lib->handle, "IMP_AI_SetVol"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_SetVol!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_SetVol")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnFreeFrame = (int(*)(int device, int channel, t31_aud_frm *frame))
-        dlsym(aud_lib->handle, "IMP_AI_ReleaseFrame"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_ReleaseFrame!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_ReleaseFrame")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnGetFrame = (int(*)(int device, int channel, t31_aud_frm *frame, int notBlocking))
-        dlsym(aud_lib->handle, "IMP_AI_GetFrame"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_GetFrame!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_GetFrame")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnPollFrame = (int(*)(int device, int channel, int timeout))
-        dlsym(aud_lib->handle, "IMP_AI_PollingFrame"))) {
-        fprintf(stderr, "[t31_aud] Failed to acquire symbol IMP_AI_PollingFrame!\n");
+        hal_symbol_load("t31_aud", aud_lib->handle, "IMP_AI_PollingFrame")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

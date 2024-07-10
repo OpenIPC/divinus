@@ -99,70 +99,48 @@ typedef struct {
 } i6f_snr_impl;
 
 static int i6f_snr_load(i6f_snr_impl *snr_lib) {
-    if (!(snr_lib->handle = dlopen("libmi_sensor.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[i6f_snr] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(snr_lib->handle = dlopen("libmi_sensor.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("i6f_snr", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(snr_lib->fnDisable = (int(*)(unsigned int sensor))
-        dlsym(snr_lib->handle, "MI_SNR_Disable"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_Disable!\n");
+        hal_symbol_load("i6f_snr", snr_lib->handle, "MI_SNR_Disable")))
         return EXIT_FAILURE;
-    }
 
     if (!(snr_lib->fnEnable = (int(*)(unsigned int sensor))
-        dlsym(snr_lib->handle, "MI_SNR_Enable"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_Enable!\n");
+        hal_symbol_load("i6f_snr", snr_lib->handle, "MI_SNR_Enable")))
         return EXIT_FAILURE;
-    }
 
     if (!(snr_lib->fnSetFramerate = (int(*)(unsigned int sensor, unsigned int framerate))
-        dlsym(snr_lib->handle, "MI_SNR_SetFps"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_SetFps!\n");
+        hal_symbol_load("i6f_snr", snr_lib->handle, "MI_SNR_SetFps")))
         return EXIT_FAILURE;
-    }
 
     if (!(snr_lib->fnGetPadInfo = (int(*)(unsigned int sensor, i6f_snr_pad *info))
-        dlsym(snr_lib->handle, "MI_SNR_GetPadInfo"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_GetPadInfo!\n");
+        hal_symbol_load("i6f_snr", snr_lib->handle, "MI_SNR_GetPadInfo")))
         return EXIT_FAILURE;
-    }
 
     if (!(snr_lib->fnGetPlaneInfo = (int(*)(unsigned int sensor, unsigned int index, i6f_snr_plane *info))
-        dlsym(snr_lib->handle, "MI_SNR_GetPlaneInfo"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_GetPlaneInfo!\n");
+        hal_symbol_load("i6f_snr", snr_lib->handle, "MI_SNR_GetPlaneInfo")))
         return EXIT_FAILURE;
-    }
 
     if (!(snr_lib->fnSetPlaneMode = (int(*)(unsigned int sensor, unsigned char active))
-        dlsym(snr_lib->handle, "MI_SNR_SetPlaneMode"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_SetPlaneMode!\n");
+        hal_symbol_load("i6f_snr", snr_lib->handle, "MI_SNR_SetPlaneMode")))
         return EXIT_FAILURE;
-    }
 
     if (!(snr_lib->fnCurrentResolution = (int(*)(unsigned int sensor, unsigned char *index, i6f_snr_res *resolution))
-        dlsym(snr_lib->handle, "MI_SNR_GetCurRes"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_GetCurRes!\n");
+        hal_symbol_load("i6f_snr", snr_lib->handle, "MI_SNR_GetCurRes")))
         return EXIT_FAILURE;
-    }
 
     if (!(snr_lib->fnGetResolution = (int(*)(unsigned int sensor, unsigned char index, i6f_snr_res *resolution))
-        dlsym(snr_lib->handle, "MI_SNR_GetRes"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_GetRes!\n");
+        hal_symbol_load("i6f_snr", snr_lib->handle, "MI_SNR_GetRes")))
         return EXIT_FAILURE;
-    }
 
     if (!(snr_lib->fnGetResolutionCount = (int(*)(unsigned int sensor, unsigned int *count))
-        dlsym(snr_lib->handle, "MI_SNR_QueryResCount"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_QueryResCount!\n");
+        hal_symbol_load("i6f_snr", snr_lib->handle, "MI_SNR_QueryResCount")))
         return EXIT_FAILURE;
-    }
 
     if (!(snr_lib->fnSetResolution = (int(*)(unsigned int sensor, unsigned char index))
-        dlsym(snr_lib->handle, "MI_SNR_SetRes"))) {
-        fprintf(stderr, "[i6f_snr] Failed to acquire symbol MI_SNR_SetRes!\n");
+        hal_symbol_load("i6f_snr", snr_lib->handle, "MI_SNR_SetRes")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

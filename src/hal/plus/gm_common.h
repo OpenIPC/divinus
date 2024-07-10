@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/select.h>
 
+#include "../symbols.h"
 #include "../types.h"
 
 #define GM_LIB_VER 0x41
@@ -22,14 +23,6 @@ typedef enum {
 
 #define GM_DECLARE(hal, var, type, real) \
     type var = ({hal.fnDeclareStruct(&var, real, sizeof(type), GM_LIB_VER); var;})
-
-#define GM_ERROR(x, ...) \
-    do { \
-        fprintf(stderr, "[gm_hal] \033[31m"); \
-        fprintf(stderr, (x), ##__VA_ARGS__); \
-        fprintf(stderr, "\033[0m"); \
-        return EXIT_FAILURE; \
-    } while (0)
 
 typedef struct {
     int width;

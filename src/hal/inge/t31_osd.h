@@ -65,83 +65,56 @@ typedef struct {
 } t31_osd_impl;
 
 static int t31_osd_load(t31_osd_impl *osd_lib) {
-    if (!(osd_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[t31_osd] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(osd_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("t31_osd", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(osd_lib->fnCreateRegion = (int(*)(t31_osd_rgn *config))
-        dlsym(osd_lib->handle, "IMP_OSD_CreateRgn"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_CreateRgn!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_CreateRgn")))
         return EXIT_FAILURE;
-    }
 
     if (!(osd_lib->fnDestroyRegion = (int(*)(int handle))
-        dlsym(osd_lib->handle, "IMP_OSD_DestroyRgn"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_DestroyRgn!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_DestroyRgn")))
         return EXIT_FAILURE;
-    }
 
     if (!(osd_lib->fnGetRegionConfig = (int(*)(int handle, t31_osd_rgn *config))
-        dlsym(osd_lib->handle, "IMP_OSD_GetRgnAttr"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_GetRgnAttr!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_GetRgnAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(osd_lib->fnRegisterRegion = (int(*)(int handle, int group, t31_osd_grp *config))
-        dlsym(osd_lib->handle, "IMP_OSD_RegisterRgn"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_RegisterRgn!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_RegisterRgn")))
         return EXIT_FAILURE;
-    }
 
     if (!(osd_lib->fnSetRegionConfig = (int(*)(int handle, t31_osd_rgn *config))
-        dlsym(osd_lib->handle, "IMP_OSD_SetRgnAttr"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_SetRgnAttr!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_SetRgnAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(osd_lib->fnUnregisterRegion = (int(*)(int handle, int group))
-        dlsym(osd_lib->handle, "IMP_OSD_UnRegisterRgn"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_UnRegisterRgn!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_UnRegisterRgn")))
         return EXIT_FAILURE;
-    }
 
     if (!(osd_lib->fnAttachToGroup = (int(*)(t31_sys_bind *source, t31_sys_bind *dest))
-        dlsym(osd_lib->handle, "IMP_OSD_AttachToGroup"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_AttachToGroup!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_AttachToGroup")))
         return EXIT_FAILURE;
-    }
 
     if (!(osd_lib->fnCreateGroup = (int(*)(int group))
-        dlsym(osd_lib->handle, "IMP_OSD_CreateGroup"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_CreateGroup!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_CreateGroup")))
         return EXIT_FAILURE;
-    }
 
     if (!(osd_lib->fnDestroyGroup = (int(*)(int group))
-        dlsym(osd_lib->handle, "IMP_OSD_DestroyGroup"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_DestroyGroup!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_DestroyGroup")))
         return EXIT_FAILURE;
-    }
 
     if (!(osd_lib->fnGetGroupConfig = (int(*)(int handle, int group, t31_osd_grp *config))
-        dlsym(osd_lib->handle, "IMP_OSD_GetGrpRgnAttr"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_GetGrpRgnAttr!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_GetGrpRgnAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(osd_lib->fnStartGroup = (int(*)(int group))
-        dlsym(osd_lib->handle, "IMP_OSD_Start"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_Start!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_Start")))
         return EXIT_FAILURE;
-    }
 
     if (!(osd_lib->fnStopGroup = (int(*)(int group))
-        dlsym(osd_lib->handle, "IMP_OSD_Stop"))) {
-        fprintf(stderr, "[t31_osd] Failed to acquire symbol IMP_OSD_Stop!\n");
+        hal_symbol_load("t31_osd", osd_lib->handle, "IMP_OSD_Stop")))
         return EXIT_FAILURE;
-    }
-
 
     return EXIT_SUCCESS;
 }

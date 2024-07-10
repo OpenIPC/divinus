@@ -84,59 +84,41 @@ typedef struct {
 } i6_sys_impl;
 
 static int i6_sys_load(i6_sys_impl *sys_lib) {
-    if (!(sys_lib->handleCamOsWrapper = dlopen("libcam_os_wrapper.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[i6_sys] Failed to load dependency library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(sys_lib->handleCamOsWrapper = dlopen("libcam_os_wrapper.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("i6_sys", "Failed to load dependency library!\nError: %s\n", dlerror());
 
-    if (!(sys_lib->handle = dlopen("libmi_sys.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[i6_sys] Failed to load library!\nError: %s\n", dlerror());
+    if (!(sys_lib->handle = dlopen("libmi_sys.so", RTLD_LAZY | RTLD_GLOBAL)))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnExit = (int(*)(void))
-        dlsym(sys_lib->handle, "MI_SYS_Exit"))) {
-        fprintf(stderr, "[i6_sys] Failed to acquire symbol MI_SYS_Exit!\n");
+        hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_Exit")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnGetVersion = (int(*)(i6_sys_ver *version))
-        dlsym(sys_lib->handle, "MI_SYS_GetVersion"))) {
-        fprintf(stderr, "[i6_sys] Failed to acquire symbol MI_SYS_GetVersion!\n");
+        hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_GetVersion")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnInit = (int(*)(void))
-        dlsym(sys_lib->handle, "MI_SYS_Init"))) {
-        fprintf(stderr, "[i6_sys] Failed to acquire symbol MI_SYS_Init!\n");
+        hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_Init")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnBind = (int(*)(i6_sys_bind *source, i6_sys_bind *dest,
         unsigned int srcFps, unsigned int dstFps))
-        dlsym(sys_lib->handle, "MI_SYS_BindChnPort"))) {
-        fprintf(stderr, "[i6_sys] Failed to acquire symbol MI_SYS_BindChnPort!\n");
+        hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_BindChnPort")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnBindExt = (int(*)(i6_sys_bind *source, i6_sys_bind *dest, unsigned int srcFps,
         unsigned int dstFps, i6_sys_link link, unsigned int linkParam))
-        dlsym(sys_lib->handle, "MI_SYS_BindChnPort2"))) {
-        fprintf(stderr, "[i6_sys] Failed to acquire symbol MI_SYS_BindChnPort2!\n");
+        hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_BindChnPort2")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnSetOutputDepth = (int(*)(i6_sys_bind *bind, unsigned int usrDepth, unsigned int bufDepth))
-        dlsym(sys_lib->handle, "MI_SYS_SetChnOutputPortDepth"))) {
-        fprintf(stderr, "[i6_sys] Failed to acquire symbol MI_SYS_SetChnOutputPortDepth!\n");
+        hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_SetChnOutputPortDepth")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnUnbind = (int(*)(i6_sys_bind *source, i6_sys_bind *dest))
-        dlsym(sys_lib->handle, "MI_SYS_UnBindChnPort"))) {
-        fprintf(stderr, "[i6_sys] Failed to acquire symbol MI_SYS_UnBindChnPort!\n");
+        hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_UnBindChnPort")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

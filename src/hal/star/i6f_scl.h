@@ -40,70 +40,48 @@ typedef struct {
 } i6f_scl_impl;
 
 static int i6f_scl_load(i6f_scl_impl *scl_lib) {
-    if (!(scl_lib->handle = dlopen("libmi_scl.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[i6f_scl] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(scl_lib->handle = dlopen("libmi_scl.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("i6f_scl", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(scl_lib->fnCreateDevice = (int(*)(int device, unsigned int *binds))
-        dlsym(scl_lib->handle, "MI_SCL_CreateDevice"))) {
-        fprintf(stderr, "[i6f_scl] Failed to acquire symbol MI_SCL_CreateDevice!\n");
+        hal_symbol_load("i6f_scl", scl_lib->handle, "MI_SCL_CreateDevice")))
         return EXIT_FAILURE;
-    }
 
     if (!(scl_lib->fnDestroyDevice = (int(*)(int device))
-        dlsym(scl_lib->handle, "MI_SCL_DestroyDevice"))) {
-        fprintf(stderr, "[i6f_scl] Failed to acquire symbol MI_SCL_DestroyDevice!\n");
+        hal_symbol_load("i6f_scl", scl_lib->handle, "MI_SCL_DestroyDevice")))
         return EXIT_FAILURE;
-    }
 
     if (!(scl_lib->fnAdjustChannelRotation = (int(*)(int device, int channel, int *rotate))
-        dlsym(scl_lib->handle, "MI_SCL_SetChnParam"))) {
-        fprintf(stderr, "[i6f_scl] Failed to acquire symbol MI_SCL_SetChnParam!\n");
+        hal_symbol_load("i6f_scl", scl_lib->handle, "MI_SCL_SetChnParam")))
         return EXIT_FAILURE;
-    }
 
     if (!(scl_lib->fnCreateChannel = (int(*)(int device, int channel, unsigned int *reserved))
-        dlsym(scl_lib->handle, "MI_SCL_CreateChannel"))) {
-        fprintf(stderr, "[i6f_scl] Failed to acquire symbol MI_SCL_CreateChannel!\n");
+        hal_symbol_load("i6f_scl", scl_lib->handle, "MI_SCL_CreateChannel")))
         return EXIT_FAILURE;
-    }
 
     if (!(scl_lib->fnDestroyChannel = (int(*)(int device, int channel))
-        dlsym(scl_lib->handle, "MI_SCL_DestroyChannel"))) {
-        fprintf(stderr, "[i6f_scl] Failed to acquire symbol MI_SCL_DestroyChannel!\n");
+        hal_symbol_load("i6f_scl", scl_lib->handle, "MI_SCL_DestroyChannel")))
         return EXIT_FAILURE;
-    }
 
     if (!(scl_lib->fnStartChannel = (int(*)(int device, int channel))
-        dlsym(scl_lib->handle, "MI_SCL_StartChannel"))) {
-        fprintf(stderr, "[i6f_scl] Failed to acquire symbol MI_SCL_StartChannel!\n");
+        hal_symbol_load("i6f_scl", scl_lib->handle, "MI_SCL_StartChannel")))
         return EXIT_FAILURE;
-    }
 
     if (!(scl_lib->fnStopChannel = (int(*)(int device, int channel))
-        dlsym(scl_lib->handle, "MI_SCL_StopChannel"))) {
-        fprintf(stderr, "[i6f_scl] Failed to acquire symbol MI_SCL_StopChannel!\n");
+        hal_symbol_load("i6f_scl", scl_lib->handle, "MI_SCL_StopChannel")))
         return EXIT_FAILURE;
-    }
 
     if (!(scl_lib->fnDisablePort = (int(*)(int device, int channel, int port))
-        dlsym(scl_lib->handle, "MI_SCL_DisableOutputPort"))) {
-        fprintf(stderr, "[i6f_scl] Failed to acquire symbol MI_SCL_DisableOutputPort!\n");
+        hal_symbol_load("i6f_scl", scl_lib->handle, "MI_SCL_DisableOutputPort")))
         return EXIT_FAILURE;
-    }
 
     if (!(scl_lib->fnEnablePort = (int(*)(int device, int channel, int port))
-        dlsym(scl_lib->handle, "MI_SCL_EnableOutputPort"))) {
-        fprintf(stderr, "[i6f_scl] Failed to acquire symbol MI_SCL_EnableOutputPort!\n");
+        hal_symbol_load("i6f_scl", scl_lib->handle, "MI_SCL_EnableOutputPort")))
         return EXIT_FAILURE;
-    }
 
     if (!(scl_lib->fnSetPortConfig = (int(*)(int device, int channel, int port, i6f_scl_port *config))
-        dlsym(scl_lib->handle, "MI_SCL_SetOutputPortParam"))) {
-        fprintf(stderr, "[i6f_scl] Failed to acquire symbol MI_SCL_SetOutputPortParam!\n");
+        hal_symbol_load("i6f_scl", scl_lib->handle, "MI_SCL_SetOutputPortParam")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

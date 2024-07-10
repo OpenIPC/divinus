@@ -290,118 +290,80 @@ typedef struct {
 } i6_venc_impl;
 
 static int i6_venc_load(i6_venc_impl *venc_lib) {
-    if (!(venc_lib->handle = dlopen("libmi_venc.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[i6_venc] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(venc_lib->handle = dlopen("libmi_venc.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("i6_venc", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(venc_lib->fnCreateChannel = (int(*)(int channel, i6_venc_chn *config))
-        dlsym(venc_lib->handle, "MI_VENC_CreateChn"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_CreateChn!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_CreateChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnDestroyChannel = (int(*)(int channel))
-        dlsym(venc_lib->handle, "MI_VENC_DestroyChn"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_DestroyChn!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_DestroyChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnGetChannelConfig = (int(*)(int channel, i6_venc_chn *config))
-        dlsym(venc_lib->handle, "MI_VENC_GetChnAttr"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_GetChnAttr!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_GetChnAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnGetChannelDeviceId = (int(*)(int channel, unsigned int *device))
-        dlsym(venc_lib->handle, "MI_VENC_GetChnDevid"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_GetChnDevid!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_GetChnDevid")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnResetChannel = (int(*)(int channel))
-        dlsym(venc_lib->handle, "MI_VENC_ResetChn"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_ResetChn!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_ResetChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnSetChannelConfig = (int(*)(int channel, i6_venc_chn *config))
-        dlsym(venc_lib->handle, "MI_VENC_SetChnAttr"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_SetChnAttr!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_SetChnAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnFreeDescriptor = (int(*)(int channel))
-        dlsym(venc_lib->handle, "MI_VENC_CloseFd"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_CloseFd!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_CloseFd")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnGetDescriptor = (int(*)(int channel))
-        dlsym(venc_lib->handle, "MI_VENC_GetFd"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_GetFd!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_GetFd")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnGetJpegParam = (int(*)(int channel, i6_venc_jpg *param))
-        dlsym(venc_lib->handle, "MI_VENC_GetJpegParam"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_CloseFd!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_GetJpegParam")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnSetJpegParam = (int(*)(int channel, i6_venc_jpg *param))
-        dlsym(venc_lib->handle, "MI_VENC_SetJpegParam"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_GetFd!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_SetJpegParam")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnFreeStream = (int(*)(int channel, i6_venc_strm *stream))
-        dlsym(venc_lib->handle, "MI_VENC_ReleaseStream"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_ReleaseStream!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_ReleaseStream")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnGetStream = (int(*)(int channel, i6_venc_strm *stream, unsigned int timeout))
-        dlsym(venc_lib->handle, "MI_VENC_GetStream"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_GetStream!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_GetStream")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnQuery = (int(*)(int channel, i6_venc_stat *stats))
-        dlsym(venc_lib->handle, "MI_VENC_Query"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_Query!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_Query")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnSetSourceConfig = (int(*)(int channel, i6_venc_src_conf *config))
-        dlsym(venc_lib->handle, "MI_VENC_SetInputSourceConfig"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_SetInputSourceConfig!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_SetInputSourceConfig")))
         return EXIT_FAILURE;  
-    }
 
     if (!(venc_lib->fnRequestIdr = (int(*)(int channel, char instant))
-        dlsym(venc_lib->handle, "MI_VENC_RequestIdr"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_RequestIdr!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_RequestIdr")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnStartReceiving = (int(*)(int channel))
-        dlsym(venc_lib->handle, "MI_VENC_StartRecvPic"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_StartRecvPic!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_StartRecvPic")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnStartReceivingEx = (int(*)(int channel, int *count))
-        dlsym(venc_lib->handle, "MI_VENC_StartRecvPicEx"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_StartRecvPicEx!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_StartRecvPicEx")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnStopReceiving = (int(*)(int channel))
-        dlsym(venc_lib->handle, "MI_VENC_StopRecvPic"))) {
-        fprintf(stderr, "[i6_venc] Failed to acquire symbol MI_VENC_StopRecvPic!\n");
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_StopRecvPic")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

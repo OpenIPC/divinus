@@ -89,7 +89,7 @@ int gm_video_create(char index, hal_vidconfig *config)
     switch (config->mode) {
         case HAL_VIDMODE_CBR: ratemode = GM_VENC_RATEMODE_CBR; break;
         case HAL_VIDMODE_VBR: ratemode = GM_VENC_RATEMODE_VBR; break;
-        default: GM_ERROR("Video encoder does not support this mode!");
+        default: HAL_ERROR("gm_venc", "Video encoder does not support this mode!");
     }
 
     switch (config->codec) {
@@ -132,7 +132,7 @@ int gm_video_create(char index, hal_vidconfig *config)
             h264chn.level = 41;
             gm_lib.fnSetDeviceConfig(_gm_venc_dev[index], &h264chn);
             break;
-        default: GM_ERROR("This codec is not supported by the hardware!");
+        default: HAL_ERROR("gm_venc", "This codec is not supported by the hardware!");
     }
 
     gm_state[index].payload = config->codec;
@@ -195,7 +195,7 @@ int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata
 
 abort:
     free(buffer);
-    GM_ERROR("Taking a snapshot failed with %#x!\n", ret);
+    HAL_ERROR("gm_venc", "Taking a snapshot failed with %#x!\n", ret);
 }
 
 void *gm_video_thread(void)
@@ -214,7 +214,7 @@ void *gm_video_thread(void)
     while (keepRunning) {
         ret = gm_lib.fnPollStream(_gm_venc_fds, GM_VENC_CHN_NUM, 500);
         if (ret == GM_ERR_TIMEOUT) {
-            fprintf(stderr, "[gm_venc] Main stream loop timed out!\n");
+            HAL_WARNING("gm_venc", "Main stream loop timed out!\n");
             continue;
         }
 
@@ -222,7 +222,7 @@ void *gm_video_thread(void)
             if (_gm_venc_fds[i].event.type != GM_POLL_READ)
                 continue;
             if (_gm_venc_fds[i].event.bsLength > bufSize) {
-                fprintf(stderr, "[gm_venc] Bitstream buffer needs %d bytes "
+                HAL_WARNING("gm_venc", "Bitstream buffer needs %d bytes "
                     "more, dropping the upcoming data!\n",
                     _gm_venc_fds[i].event.bsLength - bufSize);
                 continue;
@@ -236,12 +236,12 @@ void *gm_video_thread(void)
         }
 
         if ((ret = gm_lib.fnReceiveStream(stream, GM_VENC_CHN_NUM)) < 0)
-            fprintf(stderr, "[gm_venc] Receiving the streams failed "
+            HAL_WARNING("gm_venc", "Receiving the streams failed "
                 "with %#x!\n", ret);
         else for (char i = 0; i < GM_VENC_CHN_NUM; i++) {
             if (!stream[i].bind) continue;
             if (stream[i].ret < 0)
-                fprintf(stderr, "[gm_venc] Failed to the receive bitstream on "
+                HAL_WARNING("gm_venc", "Failed to the receive bitstream on "
                     "channel %d with %#x!\n", i, stream[i].ret);
             else if (!stream[i].ret && gm_vid_cb) {
                 gm_venc_pack *pack = &stream[i].pack;
@@ -276,7 +276,7 @@ void *gm_video_thread(void)
         }        
     }
 abort:
-    fprintf(stderr, "[gm_venc] Shutting down encoding thread...\n");
+    HAL_INFO("gm_venc", "Shutting down encoding thread...\n");
     free(bsData);
 }
 

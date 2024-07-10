@@ -41,46 +41,32 @@ typedef struct {
 static int t31_sys_load(t31_sys_impl *sys_lib) {
     if (!(sys_lib->handleSysutils = dlopen("libsysutils.so", RTLD_LAZY | RTLD_GLOBAL)) ||
         !(sys_lib->handleAlog = dlopen("libalog.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-        !(sys_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[t31_sys] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+        !(sys_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("t31_sys", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(sys_lib->fnExit = (int(*)(void))
-        dlsym(sys_lib->handle, "IMP_System_Exit"))) {
-        fprintf(stderr, "[t31_sys] Failed to acquire symbol IMP_System_Exit!\n");
+        hal_symbol_load("t31_sys", sys_lib->handle, "IMP_System_Exit")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnGetChipName = (int(*)(const char *chip))
-        dlsym(sys_lib->handle, "IMP_System_GetCPUInfo"))) {
-        fprintf(stderr, "[t31_sys] Failed to acquire symbol IMP_System_GetCPUInfo!\n");
+        hal_symbol_load("t31_sys", sys_lib->handle, "IMP_System_GetCPUInfo")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnGetVersion = (int(*)(t31_sys_ver *version))
-        dlsym(sys_lib->handle, "IMP_System_GetVersion"))) {
-        fprintf(stderr, "[t31_sys] Failed to acquire symbol IMP_System_GetVersion!\n");
+        hal_symbol_load("t31_sys", sys_lib->handle, "IMP_System_GetVersion")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnInit = (int(*)(void))
-        dlsym(sys_lib->handle, "IMP_System_Init"))) {
-        fprintf(stderr, "[t31_sys] Failed to acquire symbol IMP_System_Init!\n");
+        hal_symbol_load("t31_sys", sys_lib->handle, "IMP_System_Init")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnBind = (int(*)(t31_sys_bind *source, t31_sys_bind *dest))
-        dlsym(sys_lib->handle, "IMP_System_Bind"))) {
-        fprintf(stderr, "[t31_sys] Failed to acquire symbol IMP_System_Bind!\n");
+        hal_symbol_load("t31_sys", sys_lib->handle, "IMP_System_Bind")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnUnbind = (int(*)(t31_sys_bind *source, t31_sys_bind *dest))
-        dlsym(sys_lib->handle, "IMP_System_UnBind"))) {
-        fprintf(stderr, "[t31_sys] Failed to acquire symbol IMP_System_UnBind!\n");
+        hal_symbol_load("t31_sys", sys_lib->handle, "IMP_System_UnBind")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

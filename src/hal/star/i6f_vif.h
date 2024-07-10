@@ -69,58 +69,40 @@ typedef struct {
 } i6f_vif_impl;
 
 static int i6f_vif_load(i6f_vif_impl *vif_lib) {
-    if (!(vif_lib->handle = dlopen("libmi_vif.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[i6f_vif] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(vif_lib->handle = dlopen("libmi_vif.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("i6f_vif", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(vif_lib->fnDisableDevice = (int(*)(int device))
-        dlsym(vif_lib->handle, "MI_VIF_DisableDev"))) {
-        fprintf(stderr, "[i6f_vif] Failed to acquire symbol MI_VIF_DisableDev!\n");
+        hal_symbol_load("i6f_vif", vif_lib->handle, "MI_VIF_DisableDev")))
         return EXIT_FAILURE;
-    }
 
     if (!(vif_lib->fnEnableDevice = (int(*)(int device))
-        dlsym(vif_lib->handle, "MI_VIF_EnableDev"))) {
-        fprintf(stderr, "[i6f_vif] Failed to acquire symbol MI_VIF_EnableDev!\n");
+        hal_symbol_load("i6f_vif", vif_lib->handle,  "MI_VIF_EnableDev")))
         return EXIT_FAILURE;
-    }
 
     if (!(vif_lib->fnSetDeviceConfig = (int(*)(int device, i6f_vif_dev *config))
-        dlsym(vif_lib->handle, "MI_VIF_SetDevAttr"))) {
-        fprintf(stderr, "[i6f_vif] Failed to acquire symbol MI_VIF_SetDevAttr!\n");
+        hal_symbol_load("i6f_vif", vif_lib->handle,  "MI_VIF_SetDevAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(vif_lib->fnCreateGroup = (int(*)(int group, i6f_vif_grp *config))
-        dlsym(vif_lib->handle, "MI_VIF_CreateDevGroup"))) {
-        fprintf(stderr, "[i6f_vif] Failed to acquire symbol MI_VIF_CreateDevGroup!\n");
+        hal_symbol_load("i6f_vif", vif_lib->handle,  "MI_VIF_CreateDevGroup")))
         return EXIT_FAILURE;
-    }
 
     if (!(vif_lib->fnDestroyGroup = (int(*)(int group))
-        dlsym(vif_lib->handle, "MI_VIF_DestroyDevGroup"))) {
-        fprintf(stderr, "[i6f_vif] Failed to acquire symbol MI_VIF_DestroyDevGroup!\n");
+        hal_symbol_load("i6f_vif", vif_lib->handle,  "MI_VIF_DestroyDevGroup")))
         return EXIT_FAILURE;
-    }
 
     if (!(vif_lib->fnDisablePort = (int(*)(int device, int port))
-        dlsym(vif_lib->handle, "MI_VIF_DisableOutputPort"))) {
-        fprintf(stderr, "[i6f_vif] Failed to acquire symbol MI_VIF_DisableOutputPort!\n");
+        hal_symbol_load("i6f_vif", vif_lib->handle,  "MI_VIF_DisableOutputPort")))
         return EXIT_FAILURE;
-    }
 
     if (!(vif_lib->fnEnablePort = (int(*)(int device, int port))
-        dlsym(vif_lib->handle, "MI_VIF_EnableOutputPort"))) {
-        fprintf(stderr, "[i6f_vif] Failed to acquire symbol MI_VIF_EnableOutputPort!\n");
+        hal_symbol_load("i6f_vif", vif_lib->handle,  "MI_VIF_EnableOutputPort")))
         return EXIT_FAILURE;
-    }
 
     if (!(vif_lib->fnSetPortConfig = (int(*)(int device, int port, i6f_vif_port *config))
-        dlsym(vif_lib->handle, "MI_VIF_SetOutputPortAttr"))) {
-        fprintf(stderr, "[i6f_vif] Failed to acquire symbol MI_VIF_SetOutputPortAttr!\n");
+        hal_symbol_load("i6f_vif", vif_lib->handle,  "MI_VIF_SetOutputPortAttr")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

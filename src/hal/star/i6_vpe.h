@@ -123,64 +123,44 @@ typedef struct {
 } i6_vpe_impl;
 
 static int i6_vpe_load(i6_vpe_impl *vpe_lib) {
-    if (!(vpe_lib->handle = dlopen("libmi_vpe.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[i6_vpe] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(vpe_lib->handle = dlopen("libmi_vpe.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("i6_vpe", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(vpe_lib->fnCreateChannel = (int(*)(int channel, i6_vpe_chn *config))
-        dlsym(vpe_lib->handle, "MI_VPE_CreateChannel"))) {
-        fprintf(stderr, "[i6_vpe] Failed to acquire symbol MI_VPE_CreateChannel!\n");
+        hal_symbol_load("i6_vpe", vpe_lib->handle, "MI_VPE_CreateChannel")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpe_lib->fnDestroyChannel = (int(*)(int channel))
-        dlsym(vpe_lib->handle, "MI_VPE_DestroyChannel"))) {
-        fprintf(stderr, "[i6_vpe] Failed to acquire symbol MI_VPE_DestroyChannel!\n");
+        hal_symbol_load("i6_vpe", vpe_lib->handle, "MI_VPE_DestroyChannel")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpe_lib->fnSetChannelConfig = (int(*)(int channel, i6_vpe_chn *config))
-        dlsym(vpe_lib->handle, "MI_VPE_SetChannelAttr"))) {
-        fprintf(stderr, "[i6_vpe] Failed to acquire symbol MI_VPE_SetChannelAttr!\n");
+        hal_symbol_load("i6_vpe", vpe_lib->handle, "MI_VPE_SetChannelAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpe_lib->fnSetChannelParam = (int(*)(int channel, i6_vpe_para *config))
-        dlsym(vpe_lib->handle, "MI_VPE_SetChannelParam"))) {
-        fprintf(stderr, "[i6_vpe] Failed to acquire symbol MI_VPE_SetChannelParam!\n");
+        hal_symbol_load("i6_vpe", vpe_lib->handle, "MI_VPE_SetChannelParam")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpe_lib->fnStartChannel = (int(*)(int channel))
-        dlsym(vpe_lib->handle, "MI_VPE_StartChannel"))) {
-        fprintf(stderr, "[i6_vpe] Failed to acquire symbol MI_VPE_StartChannel!\n");
+        hal_symbol_load("i6_vpe", vpe_lib->handle, "MI_VPE_StartChannel")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpe_lib->fnStopChannel = (int(*)(int channel))
-        dlsym(vpe_lib->handle, "MI_VPE_StopChannel"))) {
-        fprintf(stderr, "[i6_vpe] Failed to acquire symbol MI_VPE_StopChannel!\n");
+        hal_symbol_load("i6_vpe", vpe_lib->handle, "MI_VPE_StopChannel")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpe_lib->fnDisablePort = (int(*)(int channel, int port))
-        dlsym(vpe_lib->handle, "MI_VPE_DisablePort"))) {
-        fprintf(stderr, "[i6_vpe] Failed to acquire symbol MI_VPE_DisablePort!\n");
+        hal_symbol_load("i6_vpe", vpe_lib->handle, "MI_VPE_DisablePort")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpe_lib->fnEnablePort = (int(*)(int channel, int port))
-        dlsym(vpe_lib->handle, "MI_VPE_EnablePort"))) {
-        fprintf(stderr, "[i6_vpe] Failed to acquire symbol MI_VPE_EnablePort!\n");
+        hal_symbol_load("i6_vpe", vpe_lib->handle, "MI_VPE_EnablePort")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpe_lib->fnSetPortConfig = (int(*)(int channel, int port, i6_vpe_port *config))
-        dlsym(vpe_lib->handle, "MI_VPE_SetPortMode"))) {
-        fprintf(stderr, "[i6_vpe] Failed to acquire symbol MI_VPE_SetPortMode!\n");
+        hal_symbol_load("i6_vpe", vpe_lib->handle, "MI_VPE_SetPortMode")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

@@ -57,53 +57,37 @@ typedef struct {
 } t31_fs_impl;
 
 static int t31_fs_load(t31_fs_impl *fs_lib) {
-    if (!(fs_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[t31_fs] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(fs_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("t31_fs", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(fs_lib->fnCreateChannel = (int(*)(int channel, t31_fs_chn *config))
-        dlsym(fs_lib->handle, "IMP_FrameSource_CreateChn"))) {
-        fprintf(stderr, "[t31_fs] Failed to acquire symbol IMP_FrameSource_CreateChn!\n");
+        hal_symbol_load("t31_fs", fs_lib->handle, "IMP_FrameSource_CreateChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(fs_lib->fnDestroyChannel = (int(*)(int channel))
-        dlsym(fs_lib->handle, "IMP_FrameSource_DestroyChn"))) {
-        fprintf(stderr, "[t31_fs] Failed to acquire symbol IMP_FrameSource_DestroyChn!\n");
+        hal_symbol_load("t31_fs", fs_lib->handle, "IMP_FrameSource_DestroyChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(fs_lib->fnDisableChannel = (int(*)(int channel))
-        dlsym(fs_lib->handle, "IMP_FrameSource_DisableChn"))) {
-        fprintf(stderr, "[t31_fs] Failed to acquire symbol IMP_FrameSource_DisableChn!\n");
+        hal_symbol_load("t31_fs", fs_lib->handle, "IMP_FrameSource_DisableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(fs_lib->fnEnableChannel = (int(*)(int channel))
-        dlsym(fs_lib->handle, "IMP_FrameSource_EnableChn"))) {
-        fprintf(stderr, "[t31_fs] Failed to acquire symbol IMP_FrameSource_EnableChn!\n");
+        hal_symbol_load("t31_fs", fs_lib->handle, "IMP_FrameSource_EnableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(fs_lib->fnSetChannelRotate = (int(*)(int channel, char rotateMode, int width, int height))
-        dlsym(fs_lib->handle, "IMP_FrameSource_SetChnRotate"))) {
-        fprintf(stderr, "[t31_fs] Failed to acquire symbol IMP_FrameSource_SetChnRotate!\n");
+        hal_symbol_load("t31_fs", fs_lib->handle, "IMP_FrameSource_SetChnRotate")))
         return EXIT_FAILURE;
-    }
 
     if (!(fs_lib->fnSetChannelSource = (int(*)(int channel, int source))
-        dlsym(fs_lib->handle, "IMP_FrameSource_SetSource"))) {
-        fprintf(stderr, "[t31_fs] Failed to acquire symbol IMP_FrameSource_SetSource!\n");
+        hal_symbol_load("t31_fs", fs_lib->handle, "IMP_FrameSource_SetSource")))
         return EXIT_FAILURE;
-    }
 
     if (!(fs_lib->fnSnapshot = (int(*)(int channel, t31_common_pixfmt pixFmt, int width, int height, 
         void *data, t31_fs_frame *info))
-        dlsym(fs_lib->handle, "IMP_FrameSource_SnapFrame"))) {
-        fprintf(stderr, "[t31_fs] Failed to acquire symbol IMP_FrameSource_SnapFrame!\n");
+        hal_symbol_load("t31_fs", fs_lib->handle, "IMP_FrameSource_SnapFrame")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

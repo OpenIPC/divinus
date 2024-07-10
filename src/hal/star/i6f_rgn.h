@@ -105,70 +105,49 @@ typedef struct {
 } i6f_rgn_impl;
 
 static int i6f_rgn_load(i6f_rgn_impl *rgn_lib) {
-    if (!(rgn_lib->handle = dlopen("libmi_rgn.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[i6f_rgn] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(rgn_lib->handle = dlopen("libmi_rgn.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("i6f_rgn", "Failed to load library!\nError: %s\n", dlerror());
+
 
     if (!(rgn_lib->fnDeinit = (int(*)(unsigned short chip))
-        dlsym(rgn_lib->handle, "MI_RGN_DeInit"))) {
-        fprintf(stderr, "[i6f_rgn] Failed to acquire symbol MI_RGN_DeInit!\n");
+        hal_symbol_load("i6f_rgn", rgn_lib->handle, "MI_RGN_DeInit")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnInit = (int(*)(unsigned short chip, i6f_rgn_pal *palette))
-        dlsym(rgn_lib->handle, "MI_RGN_Init"))) {
-        fprintf(stderr, "[i6f_rgn] Failed to acquire symbol MI_RGN_Init!\n");
+        hal_symbol_load("i6f_rgn", rgn_lib->handle, "MI_RGN_Init")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnCreateRegion = (int(*)(unsigned short chip, unsigned int handle, i6f_rgn_cnf *config))
-        dlsym(rgn_lib->handle, "MI_RGN_Create"))) {
-        fprintf(stderr, "[i6f_rgn] Failed to acquire symbol MI_RGN_Create!\n");
+        hal_symbol_load("i6f_rgn", rgn_lib->handle, "MI_RGN_Create")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnGetRegionConfig = (int(*)(unsigned short chip, unsigned int handle, i6f_rgn_cnf *config))
-        dlsym(rgn_lib->handle, "MI_RGN_GetAttr"))) {
-        fprintf(stderr, "[i6f_rgn] Failed to acquire symbol MI_RGN_GetAttr!\n");
+        hal_symbol_load("i6f_rgn", rgn_lib->handle, "MI_RGN_GetAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnDestroyRegion = (int(*)(unsigned short chip, unsigned int handle))
-        dlsym(rgn_lib->handle, "MI_RGN_Destroy"))) {
-        fprintf(stderr, "[i6f_rgn] Failed to acquire symbol MI_RGN_Destroy!\n");
+        hal_symbol_load("i6f_rgn", rgn_lib->handle, "MI_RGN_Destroy")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnAttachChannel = (int(*)(unsigned short chip, unsigned int handle, i6f_sys_bind *dest, i6f_rgn_chn *config))
-        dlsym(rgn_lib->handle, "MI_RGN_AttachToChn"))) {
-        fprintf(stderr, "[i6f_rgn] Failed to acquire symbol MI_RGN_AttachToChn!\n");
+        hal_symbol_load("i6f_rgn", rgn_lib->handle, "MI_RGN_AttachToChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnDetachChannel = (int(*)(unsigned short chip, unsigned int handle, i6f_sys_bind *dest))
-        dlsym(rgn_lib->handle, "MI_RGN_DetachFromChn"))) {
-        fprintf(stderr, "[i6f_rgn] Failed to acquire symbol MI_RGN_DetachFromChn!\n");
+        hal_symbol_load("i6f_rgn", rgn_lib->handle, "MI_RGN_DetachFromChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnGetChannelConfig = (int(*)(unsigned short chip, unsigned int handle, i6f_sys_bind *dest, i6f_rgn_chn *config))
-        dlsym(rgn_lib->handle, "MI_RGN_GetDisplayAttr"))) {
-        fprintf(stderr, "[i6f_rgn] Failed to acquire symbol MI_RGN_GetDisplayAttr!\n");
+        hal_symbol_load("i6f_rgn", rgn_lib->handle, "MI_RGN_GetDisplayAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnSetChannelConfig = (int(*)(unsigned short chip, unsigned int handle, i6f_sys_bind *dest, i6f_rgn_chn *config))
-        dlsym(rgn_lib->handle, "MI_RGN_SetDisplayAttr"))) {
-        fprintf(stderr, "[i6f_rgn] Failed to acquire symbol MI_RGN_SetDisplayAttr!\n");
+        hal_symbol_load("i6f_rgn", rgn_lib->handle, "MI_RGN_SetDisplayAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnSetBitmap = (int(*)(unsigned short chip, unsigned int handle, i6f_rgn_bmp *bitmap))
-        dlsym(rgn_lib->handle, "MI_RGN_SetBitMap"))) {
-        fprintf(stderr, "[i6f_rgn] Failed to acquire symbol MI_RGN_SetBitMap!\n");
+        hal_symbol_load("i6f_rgn", rgn_lib->handle, "MI_RGN_SetBitMap")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

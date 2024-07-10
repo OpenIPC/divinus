@@ -273,7 +273,10 @@ typedef struct {
 typedef struct {
     void *handle;
 
-    int (*fnSetDefaults)(t31_venc_chn *config, t31_venc_prof profile, t31_venc_ratemode ratemode, unsigned short width, unsigned short height, unsigned int fpsNum, unsigned int fpsDen, unsigned int gopLength, int maxSameSenceCnt, int initialQp, unsigned int tgtBitrate);
+    int (*fnSetDefaults)(t31_venc_chn *config, t31_venc_prof profile,
+        t31_venc_ratemode ratemode, unsigned short width, unsigned short height,
+        unsigned int fpsNum, unsigned int fpsDen, unsigned int gopLength,
+        int maxSameSenceCnt, int initialQp, unsigned int tgtBitrate);
     
     int (*fnCreateGroup)(int group);
     int (*fnDestroyGroup)(int group);
@@ -296,94 +299,67 @@ typedef struct {
 } t31_venc_impl;
 
 static int t31_venc_load(t31_venc_impl *venc_lib) {
-    if (!(venc_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[t31_venc] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(venc_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("t31_venc", "Failed to load library!\nError: %s\n", dlerror());
 
-    if (!(venc_lib->fnSetDefaults = (int(*)(t31_venc_chn *config, t31_venc_prof profile, t31_venc_ratemode ratemode, unsigned short width, unsigned short height, unsigned int fpsNum, unsigned int fpsDen, unsigned int gopLength, int maxSameSenceCnt, int initialQp, unsigned int tgtBitrate))
-        dlsym(venc_lib->handle, "IMP_Encoder_SetDefaultParam"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_SetDefaultParam!\n");
+    if (!(venc_lib->fnSetDefaults = (int(*)(t31_venc_chn *config, t31_venc_prof profile, 
+        t31_venc_ratemode ratemode, unsigned short width, unsigned short height, 
+        unsigned int fpsNum, unsigned int fpsDen, unsigned int gopLength, 
+        int maxSameSenceCnt, int initialQp, unsigned int tgtBitrate))
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_SetDefaultParam")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnCreateGroup = (int(*)(int group))
-        dlsym(venc_lib->handle, "IMP_Encoder_CreateGroup"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_CreateGroup!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_CreateGroup")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnDestroyGroup = (int(*)(int group))
-        dlsym(venc_lib->handle, "IMP_Encoder_DestroyGroup"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_DestroyGroup!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_DestroyGroup")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnCreateChannel = (int(*)(int channel, t31_venc_chn *config))
-        dlsym(venc_lib->handle, "IMP_Encoder_CreateChn"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_CreateChn!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_CreateChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnDestroyChannel = (int(*)(int channel))
-        dlsym(venc_lib->handle, "IMP_Encoder_DestroyChn"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_DestroyChn!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_DestroyChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnRegisterChannel = (int(*)(int group, int channel))
-        dlsym(venc_lib->handle, "IMP_Encoder_RegisterChn"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_RegisterChn!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_RegisterChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnUnregisterChannel = (int(*)(int channel))
-        dlsym(venc_lib->handle, "IMP_Encoder_UnRegisterChn"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_UnRegisterChn!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_UnRegisterChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnGetDescriptor = (int(*)(int channel))
-        dlsym(venc_lib->handle, "IMP_Encoder_GetFd"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_GetFd!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_GetFd")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnFreeStream = (int(*)(int channel, t31_venc_strm *stream))
-        dlsym(venc_lib->handle, "IMP_Encoder_ReleaseStream"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_ReleaseStream!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_ReleaseStream")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnGetStream = (int(*)(int channel, t31_venc_strm *stream, char blockingOn))
-        dlsym(venc_lib->handle, "IMP_Encoder_GetStream"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_GetStream!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_GetStream")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnQuery = (int(*)(int channel, t31_venc_stat *stats))
-        dlsym(venc_lib->handle, "IMP_Encoder_Query"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_Query!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_Query")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnRequestIdr = (int(*)(int channel))
-        dlsym(venc_lib->handle, "IMP_Encoder_RequestIDR"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_RequestIDR!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_RequestIDR")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnStartReceiving = (int(*)(int channel))
-        dlsym(venc_lib->handle, "IMP_Encoder_StartRecvPic"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_StartRecvPic!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_StartRecvPic")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnStopReceiving = (int(*)(int channel))
-        dlsym(venc_lib->handle, "IMP_Encoder_StopRecvPic"))) {
-        fprintf(stderr, "[t31_venc] Failed to acquire symbol IMP_Encoder_StopRecvPic!\n");
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_StopRecvPic")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

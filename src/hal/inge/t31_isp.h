@@ -119,82 +119,56 @@ typedef struct {
 } t31_isp_impl;
 
 static int t31_isp_load(t31_isp_impl *isp_lib) {
-    if (!(isp_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[t31_isp] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(isp_lib->handle = dlopen("libimp.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("t31_isp", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(isp_lib->fnEnableTuning = (int(*)(void))
-        dlsym(isp_lib->handle, "IMP_ISP_EnableTuning"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_EnableTuning!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_EnableTuning")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnExit = (int(*)(void))
-        dlsym(isp_lib->handle, "IMP_ISP_Close"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Close!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_Close")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnInit = (int(*)(void))
-        dlsym(isp_lib->handle, "IMP_ISP_Open"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Open!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_Open")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnLoadConfig = (int(*)(char *path))
-        dlsym(isp_lib->handle, "IMP_ISP_SetDefaultBinPath"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_SetDefaultBinPath!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_SetDefaultBinPath")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnSetAntiFlicker = (int(*)(t31_isp_flick mode))
-        dlsym(isp_lib->handle, "IMP_ISP_Tuning_SetAntiFlickerAttr"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Tuning_SetAntiFlickerAttr!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_Tuning_SetAntiFlickerAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnSetFlip = (int(*)(int mode))
-        dlsym(isp_lib->handle, "IMP_ISP_Tuning_SetHVFLIP"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Tuning_SetHVFLIP!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_Tuning_SetHVFLIP")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnSetFramerate = (int(*)(unsigned int fpsNum, unsigned int fpsDen))
-        dlsym(isp_lib->handle, "IMP_ISP_Tuning_SetSensorFPS"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Tuning_SetSensorFPS!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_Tuning_SetSensorFPS")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnSetRunningMode = (int(*)(int nightOn))
-        dlsym(isp_lib->handle, "IMP_ISP_Tuning_SetISPRunningMode"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_Tuning_SetISPRunningMode!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_Tuning_SetISPRunningMode")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnAddSensor = (int(*)(t31_isp_snr *sensor))
-        dlsym(isp_lib->handle, "IMP_ISP_AddSensor"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_AddSensor!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_AddSensor")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnDeleteSensor = (int(*)(t31_isp_snr *sensor))
-        dlsym(isp_lib->handle, "IMP_ISP_DelSensor"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_DelSensor!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_DelSensor")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnDisableSensor = (int(*)(void))
-        dlsym(isp_lib->handle, "IMP_ISP_DisableSensor"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_DisableSensor!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_DisableSensor")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnEnableSensor = (int(*)(void))
-        dlsym(isp_lib->handle, "IMP_ISP_EnableSensor"))) {
-        fprintf(stderr, "[t31_isp] Failed to acquire symbol IMP_ISP_EnableSensor!\n");
+        hal_symbol_load("t31_isp", isp_lib->handle, "IMP_ISP_EnableSensor")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

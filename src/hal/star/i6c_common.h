@@ -6,15 +6,8 @@
 #include <string.h>
 #include <sys/select.h>
 
+#include "../symbols.h"
 #include "../types.h"
-
-#define I6C_ERROR(x, ...) \
-    do { \
-        fprintf(stderr, "[i6c_hal] \033[31m"); \
-        fprintf(stderr, (x), ##__VA_ARGS__); \
-        fprintf(stderr, "\033[0m"); \
-        return EXIT_FAILURE; \
-    } while (0)
 
 typedef enum {
     I6C_BAYER_RG,

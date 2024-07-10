@@ -123,7 +123,7 @@ void *i6_audio_thread(void)
     while (keepRunning) {
         if (ret = i6_aud.fnGetFrame(_i6_aud_dev, _i6_aud_chn, 
             &frame, NULL, 128)) {
-            fprintf(stderr, "[i6_aud] Getting the frame failed "
+            HAL_WARNING("i6_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
             continue;
         }
@@ -140,11 +140,11 @@ void *i6_audio_thread(void)
 
         if (ret = i6_aud.fnFreeFrame(_i6_aud_dev, _i6_aud_chn,
             &frame, NULL)) {
-            fprintf(stderr, "[i6_aud] Releasing the frame failed"
+            HAL_WARNING("i6_aud", "Releasing the frame failed"
                 " with %#x!\n", ret);
         }
     }
-    fprintf(stderr, "[i6_aud] Shutting down capture thread...\n");
+    HAL_INFO("i6_aud", "Shutting down capture thread...\n");
 }
 
 int i6_channel_bind(char index, char framerate)
@@ -383,12 +383,12 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
     region.size.height = rect.height;
 
     if (i6_rgn.fnGetRegionConfig(handle, &regionCurr)) {
-        fprintf(stderr, "[i6_rgn] Creating region %d...\n", handle);
+        HAL_INFO("i6_rgn", "Creating region %d...\n", handle);
         if (ret = i6_rgn.fnCreateRegion(handle, &region))
             return ret;
     } else if (regionCurr.size.height != region.size.height || 
         regionCurr.size.width != region.size.width) {
-        fprintf(stderr, "[i6_rgn] Parameters are different, recreating "
+        HAL_INFO("i6_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
         for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
             if (!i6_state[i].enable) continue;
@@ -401,10 +401,10 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
     }
 
     if (i6_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
-        fprintf(stderr, "[i6_rgn] Attaching region %d...\n", handle);
+        HAL_INFO("i6_rgn", "Attaching region %d...\n", handle);
     else if (attribCurr.point.x != rect.x || attribCurr.point.x != rect.y ||
         attribCurr.osd.bgFgAlpha[1] != opacity) {
-        fprintf(stderr, "[i6_rgn] Parameters are different, reattaching "
+        HAL_INFO("i6_rgn", "Parameters are different, reattaching "
             "region %d...\n", handle);
         for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
             if (!i6_state[i].enable) continue;
@@ -486,7 +486,7 @@ int i6_video_create(char index, hal_vidconfig *config)
                 channel.rate.mjpgQp.quality = MAX(config->minQual, config->maxQual);
                 break;
             default:
-                I6_ERROR("MJPEG encoder can only support CBR or fixed QP modes!");
+                HAL_ERROR("i6_venc", "MJPEG encoder can only support CBR or fixed QP modes!");
         }
 
         channel.attrib.mjpg.maxHeight = ALIGN_UP(config->height, 16);
@@ -520,7 +520,7 @@ int i6_video_create(char index, hal_vidconfig *config)
                     .fpsNum = config->framerate, .fpsDen = 1, .interQual = config->maxQual,
                     .predQual = config->minQual }; break;
             case HAL_VIDMODE_ABR:
-                I6_ERROR("H.265 encoder does not support ABR mode!");
+                HAL_ERROR("i6_venc", "H.265 encoder does not support ABR mode!");
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = I6_VENC_RATEMODE_H265AVBR;
                 channel.rate.h265Avbr = (i6_venc_rate_h26xvbr){ .gop = config->gop,
@@ -528,7 +528,7 @@ int i6_video_create(char index, hal_vidconfig *config)
                     (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             default:
-                I6_ERROR("H.265 encoder does not support this mode!");
+                HAL_ERROR("i6_venc", "H.265 encoder does not support this mode!");
         }  
     } else if (config->codec == HAL_VIDCODEC_H264) {
         channel.attrib.codec = I6_VENC_CODEC_H264;
@@ -563,9 +563,9 @@ int i6_video_create(char index, hal_vidconfig *config)
                     (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             default:
-                I6_ERROR("H.264 encoder does not support this mode!");
+                HAL_ERROR("i6_venc", "H.264 encoder does not support this mode!");
         }
-    } else I6_ERROR("This codec is not supported by the hardware!");
+    } else HAL_ERROR("i6_venc", "This codec is not supported by the hardware!");
     attrib->maxHeight = config->height;
     attrib->maxWidth = config->width;
     attrib->bufSize = config->height * config->width;
@@ -640,7 +640,7 @@ int i6_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
     int ret;
 
     if (ret = i6_channel_bind(index, 1)) {
-        fprintf(stderr, "[i6_venc] Binding the encoder channel "
+        HAL_DANGER("i6_venc", "Binding the encoder channel "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
@@ -648,21 +648,21 @@ int i6_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
     i6_venc_jpg param;
     memset(&param, 0, sizeof(param));
     if (ret = i6_venc.fnGetJpegParam(index, &param)) {
-        fprintf(stderr, "[i6_venc] Reading the JPEG settings "
+        HAL_DANGER("i6_venc", "Reading the JPEG settings "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
     param.quality = quality;
     if (ret = i6_venc.fnSetJpegParam(index, &param)) {
-        fprintf(stderr, "[i6_venc] Writing the JPEG settings "
+        HAL_DANGER("i6_venc", "Writing the JPEG settings "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
     unsigned int count = 1;
     if (i6_venc.fnStartReceivingEx(index, &count)) {
-        fprintf(stderr, "[i6_venc] Requesting one frame "
+        HAL_DANGER("i6_venc", "Requesting one frame "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
@@ -675,23 +675,23 @@ int i6_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
     FD_SET(fd, &readFds);
     ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
     if (ret < 0) {
-        fprintf(stderr, "[i6_venc] Select operation failed!\n");
+        HAL_DANGER("i6_venc", "Select operation failed!\n");
         goto abort;
     } else if (ret == 0) {
-        fprintf(stderr, "[i6_venc] Capture stream timed out!\n");
+        HAL_DANGER("i6_venc", "Capture stream timed out!\n");
         goto abort;
     }
 
     if (FD_ISSET(fd, &readFds)) {
         i6_venc_stat stat;
         if (i6_venc.fnQuery(index, &stat)) {
-            fprintf(stderr, "[i6_venc] Querying the encoder channel "
+            HAL_DANGER("i6_venc", "Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
         }
 
         if (!stat.curPacks) {
-            fprintf(stderr, "[i6_venc] Current frame is empty, skipping it!\n");
+            HAL_DANGER("i6_venc", "Current frame is empty, skipping it!\n");
             goto abort;
         }
 
@@ -699,13 +699,13 @@ int i6_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
         memset(&strm, 0, sizeof(strm));
         strm.packet = (i6_venc_pack*)malloc(sizeof(i6_venc_pack) * stat.curPacks);
         if (!strm.packet) {
-            fprintf(stderr, "[i6_venc] Memory allocation on channel %d failed!\n", index);
+            HAL_DANGER("i6_venc", "Memory allocation on channel %d failed!\n", index);
             goto abort;
         }
         strm.count = stat.curPacks;
 
         if (ret = i6_venc.fnGetStream(index, &strm, stat.curPacks)) {
-            fprintf(stderr, "[i6_venc] Getting the stream on "
+            HAL_DANGER("i6_venc", "Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
             free(strm.packet);
             strm.packet = NULL;
@@ -753,7 +753,7 @@ void *i6_video_thread(void)
 
         ret = i6_venc.fnGetDescriptor(i);
         if (ret < 0) {
-            fprintf(stderr, "[i6_venc] Getting the encoder descriptor failed with %#x!\n", ret);
+            HAL_DANGER("i6_venc", "Getting the encoder descriptor failed with %#x!\n", ret);
             return NULL;
         }
         i6_state[i].fileDesc = ret;
@@ -779,10 +779,10 @@ void *i6_video_thread(void)
         timeout.tv_usec = 0;
         ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
         if (ret < 0) {
-            fprintf(stderr, "[i6_venc] Select operation failed!\n");
+            HAL_DANGER("i6_venc", "Select operation failed!\n");
             break;
         } else if (ret == 0) {
-            fprintf(stderr, "[i6_venc] Main stream loop timed out!\n");
+            HAL_WARNING("i6_venc", "Main stream loop timed out!\n");
             continue;
         } else {
             for (int i = 0; i < I6_VENC_CHN_NUM; i++) {
@@ -792,26 +792,26 @@ void *i6_video_thread(void)
                     memset(&stream, 0, sizeof(stream));
                     
                     if (ret = i6_venc.fnQuery(i, &stat)) {
-                        fprintf(stderr, "[i6_venc] Querying the encoder channel "
+                        HAL_DANGER("i6_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
                         break;
                     }
 
                     if (!stat.curPacks) {
-                        fprintf(stderr, "[i6_venc] Current frame is empty, skipping it!\n");
+                        HAL_WARNING("i6_venc", "Current frame is empty, skipping it!\n");
                         continue;
                     }
 
                     stream.packet = (i6_venc_pack*)malloc(
                         sizeof(i6_venc_pack) * stat.curPacks);
                     if (!stream.packet) {
-                        fprintf(stderr, "[i6_venc] Memory allocation on channel %d failed!\n", i);
+                        HAL_DANGER("i6_venc", "Memory allocation on channel %d failed!\n", i);
                         break;
                     }
                     stream.count = stat.curPacks;
 
                     if (ret = i6_venc.fnGetStream(i, &stream, 40)) {
-                        fprintf(stderr, "[i6_venc] Getting the stream on "
+                        HAL_DANGER("i6_venc", "Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;
                     }
@@ -856,7 +856,7 @@ void *i6_video_thread(void)
                     }
 
                     if (ret = i6_venc.fnFreeStream(i, &stream)) {
-                        fprintf(stderr, "[i6_venc] Releasing the stream on "
+                        HAL_DANGER("i6_venc", "Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
                     free(stream.packet);
@@ -865,7 +865,7 @@ void *i6_video_thread(void)
             }
         }
     }
-    fprintf(stderr, "[i6_venc] Shutting down encoding thread...\n");
+    HAL_INFO("i6_venc", "Shutting down encoding thread...\n");
 }
 
 void i6_system_deinit(void)

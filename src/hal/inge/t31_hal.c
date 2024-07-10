@@ -105,7 +105,7 @@ void *t31_audio_thread(void)
             continue;
 
         if (ret = t31_aud.fnGetFrame(_t31_aud_dev, _t31_aud_chn, &frame, 1)) {
-            fprintf(stderr, "[t31_aud] Getting the frame failed "
+            HAL_WARNING("t31_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
             continue;
         }
@@ -121,11 +121,11 @@ void *t31_audio_thread(void)
         }
 
         if (ret = t31_aud.fnFreeFrame(_t31_aud_dev, _t31_aud_chn, &frame)) {
-            fprintf(stderr, "[t31_aud] Releasing the frame failed"
+            HAL_WARNING("t31_aud", "Releasing the frame failed"
                 " with %#x!\n", ret);
         }
     }
-    fprintf(stderr, "[t31_aud] Shutting down capture thread...\n");
+    HAL_INFO("t31_aud", "Shutting down capture thread...\n");
 }
 
 int t31_channel_bind(char index)
@@ -216,7 +216,7 @@ int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate
         char *sensor, sensorName[50];
         FILE *sensorInfo = fopen("/proc/jz/sinfo/info", "r");
         if (!fgets(sensorName, 50, sensorInfo))
-            fprintf(stderr, "[t31_hal] Couldn't determine the sensor name from sinfo module!\n");
+            HAL_INFO("t31_hal", "Couldn't determine the sensor name from sinfo module!\n");
         else {
             sensor = strstr(sensorName, ":");
             if (!sensor++) goto sensor_from_env;
@@ -301,13 +301,13 @@ int t31_region_create(int *handle, hal_rect rect, short opacity)
     region.data.picture = NULL;
 
     if (t31_osd.fnGetRegionConfig(*handle, &regionCurr)) {
-        fprintf(stderr, "[t31_osd] Creating region...\n", _t31_osd_grp);
+        HAL_INFO("t31_osd", "Creating region...\n", _t31_osd_grp);
         if ((ret = t31_osd.fnCreateRegion(&region)) < 0)
             return ret;
         else *handle = ret;
     } else if (regionCurr.rect.p1.y - regionCurr.rect.p0.y != rect.height || 
         regionCurr.rect.p1.x - regionCurr.rect.p0.x != rect.width) {
-        fprintf(stderr, "[t31_osd] Parameters are different, recreating "
+        HAL_INFO("t31_osd", "Parameters are different, recreating "
             "region...\n", _t31_osd_grp);
         if (ret = t31_osd.fnSetRegionConfig(*handle, &region))
             return ret;
@@ -316,7 +316,7 @@ int t31_region_create(int *handle, hal_rect rect, short opacity)
     }
 
     if (t31_osd.fnGetGroupConfig(*handle, _t31_osd_grp, &attribCurr))
-        fprintf(stderr, "[t31_osd] Attaching region...\n", _t31_osd_grp);
+        HAL_INFO("t31_osd", "Attaching region...\n", _t31_osd_grp);
 
     memset(&attrib, 0, sizeof(attrib));
     attrib.show = 1;
@@ -358,7 +358,7 @@ int t31_video_create(char index, hal_vidconfig *config)
         case HAL_VIDMODE_VBR: ratemode = T31_VENC_RATEMODE_VBR; break;
         case HAL_VIDMODE_QP: ratemode = T31_VENC_RATEMODE_QP; break;
         case HAL_VIDMODE_AVBR: ratemode = T31_VENC_RATEMODE_AVBR; break;
-        default: T31_ERROR("Video encoder does not support this mode!");
+        default: HAL_ERROR("t31_venc", "Video encoder does not support this mode!");
     }
     switch (config->codec) {
         case HAL_VIDCODEC_JPG:
@@ -370,7 +370,7 @@ int t31_video_create(char index, hal_vidconfig *config)
                 case HAL_VIDPROFILE_MAIN: profile = T31_VENC_PROF_H264_MAIN; break;
                 default: profile = T31_VENC_PROF_H264_HIGH; break;
             } break;
-        default: T31_ERROR("This codec is not supported by the hardware!");
+        default: HAL_ERROR("t31_venc", "This codec is not supported by the hardware!");
     }
 
     if (profile == T31_VENC_PROF_MJPG) {
@@ -466,7 +466,7 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     char mjpeg = 0;
 
     if (index == -1) {
-        fprintf(stderr, "[t31_venc] Snapshot falling back to the MJPEG channel,"
+        HAL_INFO("t31_venc", "Snapshot falling back to the MJPEG channel,"
             " its resolution will be used in place\n");
         for (char i = 0; i < T31_VENC_CHN_NUM; i++) {
             if (!t31_state[i].enable) continue; 
@@ -480,13 +480,13 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
     if (!mjpeg) {
         if (ret = t31_channel_bind(index)) {
-            fprintf(stderr, "[t31_venc] Binding the encoder channel "
+            HAL_DANGER("t31_venc", "Binding the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
         }
 
         if (t31_venc.fnStartReceiving(index)) {
-            fprintf(stderr, "[t31_venc] Requesting one frame "
+            HAL_DANGER("t31_venc", "Requesting one frame "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
         }
@@ -500,23 +500,23 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     FD_SET(fd, &readFds);
     ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
     if (ret < 0) {
-        fprintf(stderr, "[t31_venc] Select operation failed!\n");
+        HAL_DANGER("t31_venc", "Select operation failed!\n");
         goto abort;
     } else if (ret == 0) {
-        fprintf(stderr, "[t31_venc] Capture stream timed out!\n");
+        HAL_DANGER("t31_venc", "Capture stream timed out!\n");
         goto abort;
     }
 
     if (FD_ISSET(fd, &readFds)) {
         t31_venc_stat stat;
         if (t31_venc.fnQuery(index, &stat)) {
-            fprintf(stderr, "[t31_venc] Querying the encoder channel "
+            HAL_DANGER("t31_venc", "Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
         }
 
         if (!stat.curPacks) {
-            fprintf(stderr, "[t31_venc] Current frame is empty, skipping it!\n");
+            HAL_DANGER("t31_venc", "Current frame is empty, skipping it!\n");
             goto abort;
         }
 
@@ -524,13 +524,13 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         memset(&strm, 0, sizeof(strm));
         strm.packet = (t31_venc_pack*)malloc(sizeof(t31_venc_pack) * stat.curPacks);
         if (!strm.packet) {
-            fprintf(stderr, "[t31_venc] Memory allocation on channel %d failed!\n", index);
+            HAL_DANGER("t31_venc", "Memory allocation on channel %d failed!\n", index);
             goto abort;
         }
         strm.count = stat.curPacks;
 
         if (ret = t31_venc.fnGetStream(index, &strm, 0)) {
-            fprintf(stderr, "[t31_venc] Getting the stream on "
+            HAL_DANGER("t31_venc", "Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
             free(strm.packet);
             strm.packet = NULL;
@@ -578,7 +578,7 @@ void *t31_video_thread(void)
 
         ret = t31_venc.fnGetDescriptor(i);
         if (ret < 0) {
-            fprintf(stderr, "[t31_venc] Getting the encoder descriptor failed with %#x!\n", ret);
+            HAL_DANGER("t31_venc", "Getting the encoder descriptor failed with %#x!\n", ret);
             return NULL;
         }
         t31_state[i].fileDesc = ret;
@@ -603,10 +603,10 @@ void *t31_video_thread(void)
         timeout.tv_usec = 0;
         ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
         if (ret < 0) {
-            fprintf(stderr, "[t31_venc] Select operation failed!\n");
+            HAL_DANGER("t31_venc", "Select operation failed!\n");
             break;
         } else if (ret == 0) {
-            fprintf(stderr, "[t31_venc] Main stream loop timed out!\n");
+            HAL_WARNING("t31_venc", "Main stream loop timed out!\n");
             continue;
         } else {
             for (int i = 0; i < T31_VENC_CHN_NUM; i++) {
@@ -616,7 +616,7 @@ void *t31_video_thread(void)
                     t31_venc_strm stream;
 
                     if (ret = t31_venc.fnGetStream(i, &stream, 0)) {
-                        fprintf(stderr, "[t31_venc] Getting the stream on "
+                        HAL_DANGER("t31_venc", "Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;
                     }
@@ -657,14 +657,14 @@ void *t31_video_thread(void)
                     }
 
                     if (ret = t31_venc.fnFreeStream(i, &stream)) {
-                        fprintf(stderr, "[t31_venc] Releasing the stream on "
+                        HAL_DANGER("t31_venc", "Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
                 }
             }
         }
     }
-    fprintf(stderr, "[t31_venc] Shutting down encoding thread...\n");
+    HAL_INFO("t31_venc", "Shutting down encoding thread...\n");
 }
 
 void t31_system_deinit(void)

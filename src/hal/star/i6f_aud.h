@@ -130,82 +130,56 @@ typedef struct {
 } i6f_aud_impl;
 
 static int i6f_aud_load(i6f_aud_impl *aud_lib) {
-    if (!(aud_lib->handle = dlopen("libmi_ai.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[i6f_aud] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(aud_lib->handle = dlopen("libmi_ai.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("i6f_aud", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(aud_lib->fnDisableDevice = (int(*)(int device))
-        dlsym(aud_lib->handle, "MI_AI_Disable"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_Disable!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_Disable")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnEnableDevice = (int(*)(int device))
-        dlsym(aud_lib->handle, "MI_AI_Enable"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_Enable!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_Enable")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnSetDeviceConfig = (int(*)(int device, i6f_aud_cnf *config))
-        dlsym(aud_lib->handle, "MI_AI_SetPubAttr"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_SetPubAttr!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_SetPubAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnDisableChannel = (int(*)(int device, int channel))
-        dlsym(aud_lib->handle, "MI_AI_DisableChn"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_DisableChn!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_DisableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnEnableChannel = (int(*)(int device, int channel))
-        dlsym(aud_lib->handle, "MI_AI_EnableChn"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_EnableChn!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_EnableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnDisableEncoding = (int(*)(int device, int channel))
-        dlsym(aud_lib->handle, "MI_AI_DisableAenc"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_DisableChn!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_DisableAenc")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnEnableEncoding = (int(*)(int device, int channel))
-        dlsym(aud_lib->handle, "MI_AI_EnableAenc"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_EnableChn!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_EnableAenc")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnSetEncodingParam = (int(*)(int device, int channel, i6f_aud_para *param))
-        dlsym(aud_lib->handle, "MI_AI_SetAencAttr"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_SetAencAttr!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_SetAencAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnSetMute = (int(*)(int device, int channel, char active))
-        dlsym(aud_lib->handle, "MI_AI_SetMute"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_SetMute!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_SetMute")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnSetVolume = (int(*)(int device, int channel, int dbLevel))
-        dlsym(aud_lib->handle, "MI_AI_SetVqeVolume"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_SetVqeVolume!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_SetVqeVolume")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnFreeFrame = (int(*)(int device, int channel, i6f_aud_frm *frame, i6f_aud_efrm *encFrame))
-        dlsym(aud_lib->handle, "MI_AI_ReleaseFrame"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_ReleaseFrame!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_ReleaseFrame")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnGetFrame = (int(*)(int device, int channel, i6f_aud_frm *frame, i6f_aud_efrm *encFrame, int millis))
-        dlsym(aud_lib->handle, "MI_AI_GetFrame"))) {
-        fprintf(stderr, "[i6f_aud] Failed to acquire symbol MI_AI_GetFrame!\n");
+        hal_symbol_load("i6f_aud", aud_lib->handle, "MI_AI_GetFrame")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }
