@@ -134,64 +134,44 @@ static int v3_rgn_load(v3_rgn_impl *rgn_lib) {
     if ( !(rgn_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL)) &&
 
         (!(rgn_lib->handleGoke = dlopen("libgk_api.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-         !(rgn_lib->handle = dlopen("libhi_mpi.so", RTLD_LAZY | RTLD_GLOBAL)))) {
-        fprintf(stderr, "[v3_rgn] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+         !(rgn_lib->handle = dlopen("libhi_mpi.so", RTLD_LAZY | RTLD_GLOBAL))))
+        HAL_ERROR("v3_rgn", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(rgn_lib->fnCreateRegion = (int(*)(unsigned int handle, v3_rgn_cnf *config))
-        dlsym(rgn_lib->handle, "HI_MPI_RGN_Create"))) {
-        fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_Create!\n");
+        hal_symbol_load("v3_rgn", rgn_lib->handle, "HI_MPI_RGN_Create")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnDestroyRegion = (int(*)(unsigned int handle))
-        dlsym(rgn_lib->handle, "HI_MPI_RGN_Destroy"))) {
-        fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_Destroy!\n");
+        hal_symbol_load("v3_rgn", rgn_lib->handle, "HI_MPI_RGN_Destroy")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnGetRegionConfig = (int(*)(unsigned int handle, v3_rgn_cnf *config))
-        dlsym(rgn_lib->handle, "HI_MPI_RGN_GetAttr"))) {
-        fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_GetAttr!\n");
+        hal_symbol_load("v3_rgn", rgn_lib->handle, "HI_MPI_RGN_GetAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnSetRegionConfig = (int(*)(unsigned int handle, v3_rgn_cnf *config))
-        dlsym(rgn_lib->handle, "HI_MPI_RGN_SetAttr"))) {
-        fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_SetAttr!\n");
+        hal_symbol_load("v3_rgn", rgn_lib->handle, "HI_MPI_RGN_SetAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnAttachChannel = (int(*)(unsigned int handle, v3_sys_bind *dest, v3_rgn_chn *config))
-        dlsym(rgn_lib->handle, "HI_MPI_RGN_AttachToChn"))) {
-        fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_AttachToChn!\n");
+        hal_symbol_load("v3_rgn", rgn_lib->handle, "HI_MPI_RGN_AttachToChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnDetachChannel = (int(*)(unsigned int handle, v3_sys_bind *dest))
-        dlsym(rgn_lib->handle, "HI_MPI_RGN_DetachFromChn"))) {
-        fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_DetachFromChn!\n");
+        hal_symbol_load("v3_rgn", rgn_lib->handle, "HI_MPI_RGN_DetachFromChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnGetChannelConfig = (int(*)(unsigned int handle, v3_sys_bind *dest, v3_rgn_chn *config))
-        dlsym(rgn_lib->handle, "HI_MPI_RGN_GetDisplayAttr"))) {
-        fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_GetDisplayAttr!\n");
+        hal_symbol_load("v3_rgn", rgn_lib->handle, "HI_MPI_RGN_GetDisplayAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnSetChannelConfig = (int(*)(unsigned int handle, v3_sys_bind *dest, v3_rgn_chn *config))
-        dlsym(rgn_lib->handle, "HI_MPI_RGN_SetDisplayAttr"))) {
-        fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_SetDisplayAttr!\n");
+        hal_symbol_load("v3_rgn", rgn_lib->handle, "HI_MPI_RGN_SetDisplayAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnSetBitmap = (int(*)(unsigned int handle, v3_rgn_bmp *bitmap))
-        dlsym(rgn_lib->handle, "HI_MPI_RGN_SetBitMap"))) {
-        fprintf(stderr, "[v3_rgn] Failed to acquire symbol HI_MPI_RGN_SetBitMap!\n");
+        hal_symbol_load("v3_rgn", rgn_lib->handle, "HI_MPI_RGN_SetBitMap")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

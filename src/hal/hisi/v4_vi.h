@@ -156,76 +156,52 @@ static int v4_vi_load(v4_vi_impl *vi_lib) {
     if ( !(vi_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL)) &&
 
         (!(vi_lib->handleGoke = dlopen("libgk_api.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-         !(vi_lib->handle = dlopen("libhi_mpi.so", RTLD_LAZY | RTLD_GLOBAL)))) {
-        fprintf(stderr, "[v4_vi] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+         !(vi_lib->handle = dlopen("libhi_mpi.so", RTLD_LAZY | RTLD_GLOBAL))))
+        HAL_ERROR("v4_vi", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(vi_lib->fnDisableDevice = (int(*)(int device))
-        dlsym(vi_lib->handle, "HI_MPI_VI_DisableDev"))) {
-        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_DisableDev!\n");
+        hal_symbol_load("v4_vi", vi_lib->handle, "HI_MPI_VI_DisableDev")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnEnableDevice = (int(*)(int device))
-        dlsym(vi_lib->handle, "HI_MPI_VI_EnableDev"))) {
-        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_EnableDev!\n");
+        hal_symbol_load("v4_vi", vi_lib->handle, "HI_MPI_VI_EnableDev")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnSetDeviceConfig = (int(*)(int device, v4_vi_dev *config))
-        dlsym(vi_lib->handle, "HI_MPI_VI_SetDevAttr"))) {
-        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_SetDevAttr!\n");
+        hal_symbol_load("v4_vi", vi_lib->handle, "HI_MPI_VI_SetDevAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnDisableChannel = (int(*)(int pipe, int channel))
-        dlsym(vi_lib->handle, "HI_MPI_VI_DisableChn"))) {
-        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_DisableChn!\n");
+        hal_symbol_load("v4_vi", vi_lib->handle, "HI_MPI_VI_DisableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnEnableChannel = (int(*)(int pipe, int channel))
-        dlsym(vi_lib->handle, "HI_MPI_VI_EnableChn"))) {
-        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_EnableChn!\n");
+        hal_symbol_load("v4_vi", vi_lib->handle, "HI_MPI_VI_EnableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnSetChannelConfig = (int(*)(int pipe, int channel, v4_vi_chn *config))
-        dlsym(vi_lib->handle, "HI_MPI_VI_SetChnAttr"))) {
-        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_SetChnAttr!\n");
+        hal_symbol_load("v4_vi", vi_lib->handle, "HI_MPI_VI_SetChnAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnBindPipe = (int(*)(int device, v4_vi_bind *config))
-        dlsym(vi_lib->handle, "HI_MPI_VI_SetDevBindPipe"))) {
-        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_SetDevBindPipe!\n");
+        hal_symbol_load("v4_vi", vi_lib->handle, "HI_MPI_VI_SetDevBindPipe")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnCreatePipe = (int(*)(int pipe, v4_vi_pipe *config))
-        dlsym(vi_lib->handle, "HI_MPI_VI_CreatePipe"))) {
-        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_CreatePipe!\n");
+        hal_symbol_load("v4_vi", vi_lib->handle, "HI_MPI_VI_CreatePipe")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnDestroyPipe = (int(*)(int pipe))
-        dlsym(vi_lib->handle, "HI_MPI_VI_DestroyPipe"))) {
-        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_DestroyPipe!\n");
+        hal_symbol_load("v4_vi", vi_lib->handle, "HI_MPI_VI_DestroyPipe")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnStartPipe = (int(*)(int pipe))
-        dlsym(vi_lib->handle, "HI_MPI_VI_StartPipe"))) {
-        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_StartPipe!\n");
+        hal_symbol_load("v4_vi", vi_lib->handle, "HI_MPI_VI_StartPipe")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnStopPipe = (int(*)(int pipe))
-        dlsym(vi_lib->handle, "HI_MPI_VI_StopPipe"))) {
-        fprintf(stderr, "[v4_vi] Failed to acquire symbol HI_MPI_VI_StopPipe!\n");
+        hal_symbol_load("v4_vi", vi_lib->handle, "HI_MPI_VI_StopPipe")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

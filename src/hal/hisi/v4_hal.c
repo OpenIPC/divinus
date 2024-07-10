@@ -113,7 +113,7 @@ void *v4_audio_thread(void)
     while (keepRunning) {
         if (ret = v4_aud.fnGetFrame(_v4_aud_dev, _v4_aud_chn, 
             &frame, &echoFrame, 128)) {
-            fprintf(stderr, "[v4_aud] Getting the frame failed "
+            HAL_WARNING("v4_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
             continue;
         }
@@ -130,7 +130,7 @@ void *v4_audio_thread(void)
 
         if (ret = v4_aud.fnFreeFrame(_v4_aud_dev, _v4_aud_chn,
             &frame, &echoFrame)) {
-            fprintf(stderr, "[v4_aud] Releasing the frame failed"
+            HAL_WARNING("v4_aud", "Releasing the frame failed"
                 " with %#x!\n", ret);
         }
     }
@@ -219,8 +219,8 @@ void *v4_image_thread(void)
     int ret;
 
     if (ret = v4_isp.fnRun(_v4_isp_dev))
-        fprintf(stderr, "[v4_isp] Operation failed with %#x!\n", ret);
-    fprintf(stderr, "[v4_isp] Shutting down ISP thread...\n");
+        HAL_DANGER("v4_isp", "Operation failed with %#x!\n", ret);
+    HAL_INFO("v4_isp", "Shutting down ISP thread...\n");
 }
 
 int v4_pipeline_create(void)
@@ -407,12 +407,12 @@ int v4_region_create(char handle, hal_rect rect, short opacity)
     region.overlay.canvas = handle + 1;
 
     if (v4_rgn.fnGetRegionConfig(handle, &regionCurr)) {
-        fprintf(stderr, "[v4_rgn] Creating region %d...\n", handle);
+        HAL_INFO("v4_rgn", "Creating region %d...\n", handle);
         if (ret = v4_rgn.fnCreateRegion(handle, &region))
             return ret;
     } else if (regionCurr.overlay.size.height != region.overlay.size.height || 
         regionCurr.overlay.size.width != region.overlay.size.width) {
-        fprintf(stderr, "[v4_rgn] Parameters are different, recreating "
+        HAL_INFO("v4_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
         v4_rgn.fnDetachChannel(handle, &channel);
         v4_rgn.fnDestroyRegion(handle);
@@ -421,9 +421,9 @@ int v4_region_create(char handle, hal_rect rect, short opacity)
     }
 
     if (v4_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
-        fprintf(stderr, "[v4_rgn] Attaching region %d...\n", handle);
+        HAL_INFO("v4_rgn", "Attaching region %d...\n", handle);
     else if (attribCurr.overlay.point.x != rect.x || attribCurr.overlay.point.x != rect.y) {
-        fprintf(stderr, "[v4_rgn] Position has changed, reattaching "
+        HAL_INFO("v4_rgn", "Position has changed, reattaching "
             "region %d...\n", handle);
         v4_rgn.fnDetachChannel(handle, &channel);
     }
@@ -477,7 +477,7 @@ int v4_sensor_config(void) {
         fd = open(v4_snr_endp, O_RDWR);
     else fd = open("/dev/mipi", O_RDWR);
     if (fd < 0)
-        V4_ERROR("Opening imaging device has failed!\n");
+        HAL_ERROR("v4_snr", "Opening imaging device has failed!\n");
 
     int laneMode = 0;
     ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_HSMODE, int), &laneMode);
@@ -491,7 +491,7 @@ int v4_sensor_config(void) {
     ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device);
     
     if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_DEV, v4_snr_dev), &config))
-        V4_ERROR("Configuring imaging device has failed!\n");
+        HAL_ERROR("v4_snr", "Configuring imaging device has failed!\n");
 
     ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_MIPI, unsigned int), &config.device);
 
@@ -511,7 +511,7 @@ void v4_sensor_deconfig(void) {
         fd = open(v4_snr_endp, O_RDWR);
     else fd = open("/dev/mipi", O_RDWR);
     if (fd < 0)
-        fprintf(stderr, "[v4_hal] Opening imaging device has failed!\n");
+        HAL_DANGER("v4_snr", "Opening imaging device has failed!\n");
 
     ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKOFF_SENS, unsigned int), &config.device);
 
@@ -541,10 +541,10 @@ int v4_sensor_init(char *name, char *obj)
         if (v4_snr_drv.handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL))
             break;
     } if (!v4_snr_drv.handle)
-        V4_ERROR("Failed to load the sensor driver");
+        HAL_ERROR("v4_snr", "Failed to load the sensor driver");
     
     if (!(v4_snr_drv.obj = (v4_snr_obj*)dlsym(v4_snr_drv.handle, obj)))
-        V4_ERROR("Failed to connect the sensor object");
+        HAL_ERROR("v4_snr", "Failed to connect the sensor object");
 
     return EXIT_SUCCESS;
 }
@@ -572,7 +572,7 @@ int v4_video_create(char index, hal_vidconfig *config)
                 channel.rate.mjpgQp = (v4_venc_rate_mjpgqp){ .srcFps = config->framerate,
                     .dstFps = config->framerate, .quality = config->maxQual }; break;
             default:
-                V4_ERROR("MJPEG encoder can only support CBR, VBR or fixed QP modes!");
+                HAL_ERROR("v4_venc", "MJPEG encoder can only support CBR, VBR or fixed QP modes!");
         }
     } else if (config->codec == HAL_VIDCODEC_H265) {
         channel.attrib.codec = V4_VENC_CODEC_H265;
@@ -599,7 +599,7 @@ int v4_video_create(char index, hal_vidconfig *config)
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = config->bitrate }; break;
             default:
-                V4_ERROR("H.265 encoder does not support this mode!");
+                HAL_ERROR("v4_venc", "H.265 encoder does not support this mode!");
         }
     } else if (config->codec == HAL_VIDCODEC_H264) {
         channel.attrib.codec = V4_VENC_CODEC_H264;
@@ -626,9 +626,9 @@ int v4_video_create(char index, hal_vidconfig *config)
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = config->bitrate }; break;
             default:
-                V4_ERROR("H.264 encoder does not support this mode!");
+                HAL_ERROR("v4_venc", "H.264 encoder does not support this mode!");
         }
-    } else V4_ERROR("This codec is not supported by the hardware!");
+    } else HAL_ERROR("v4_venc", "This codec is not supported by the hardware!");
     channel.attrib.maxPic.width = config->width;
     channel.attrib.maxPic.height = config->height;
     channel.attrib.bufSize = ALIGN_UP(config->height * config->width * 3 / 4, 64);
@@ -702,14 +702,14 @@ int v4_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     int ret;
 
     if (ret = v4_channel_bind(index)) {
-        fprintf(stderr, "[v4_venc] Binding the encoder channel "
+        HAL_DANGER("v4_venc", "Binding the encoder channel "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
     unsigned int count = 1;
     if (v4_venc.fnStartReceivingEx(index, &count)) {
-        fprintf(stderr, "[v4_venc] Requesting one frame "
+        HAL_DANGER("v4_venc", "Requesting one frame "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
@@ -722,23 +722,23 @@ int v4_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     FD_SET(fd, &readFds);
     ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
     if (ret < 0) {
-        fprintf(stderr, "[v4_venc] Select operation failed!\n");
+        HAL_DANGER("v4_venc", "Select operation failed!\n");
         goto abort;
     } else if (ret == 0) {
-        fprintf(stderr, "[v4_venc] Capture stream timed out!\n");
+        HAL_DANGER("v4_venc", "Capture stream timed out!\n");
         goto abort;
     }
 
     if (FD_ISSET(fd, &readFds)) {
         v4_venc_stat stat;
         if (v4_venc.fnQuery(index, &stat)) {
-            fprintf(stderr, "[v4_venc] Querying the encoder channel "
+            HAL_DANGER("v4_venc", "Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
         }
 
         if (!stat.curPacks) {
-            fprintf(stderr, "[v4_venc] Current frame is empty, skipping it!\n");
+            HAL_DANGER("v4_venc", "Current frame is empty, skipping it!\n");
             goto abort;
         }
 
@@ -746,13 +746,13 @@ int v4_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         memset(&strm, 0, sizeof(strm));
         strm.packet = (v4_venc_pack*)malloc(sizeof(v4_venc_pack) * stat.curPacks);
         if (!strm.packet) {
-            fprintf(stderr, "[v4_venc] Memory allocation on channel %d failed!\n", index);
+            HAL_DANGER("v4_venc", "Memory allocation on channel %d failed!\n", index);
             goto abort;
         }
         strm.count = stat.curPacks;
 
         if (ret = v4_venc.fnGetStream(index, &strm, stat.curPacks)) {
-            fprintf(stderr, "[v4_venc] Getting the stream on "
+            HAL_DANGER("v4_venc", "Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
             free(strm.packet);
             strm.packet = NULL;
@@ -800,7 +800,7 @@ void *v4_video_thread(void)
 
         ret = v4_venc.fnGetDescriptor(i);
         if (ret < 0) {
-            fprintf(stderr, "[v4_venc] Getting the encoder descriptor failed with %#x!\n", ret);
+            HAL_DANGER("v4_venc", "Getting the encoder descriptor failed with %#x!\n", ret);
             return NULL;
         }
         v4_state[i].fileDesc = ret;
@@ -826,10 +826,10 @@ void *v4_video_thread(void)
         timeout.tv_usec = 0;
         ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
         if (ret < 0) {
-            fprintf(stderr, "[v4_venc] Select operation failed!\n");
+            HAL_DANGER("v4_venc", "Select operation failed!\n");
             break;
         } else if (ret == 0) {
-            fprintf(stderr, "[v4_venc] Main stream loop timed out!\n");
+            HAL_WARNING("v4_venc", "Main stream loop timed out!\n");
             continue;
         } else {
             for (int i = 0; i < V4_VENC_CHN_NUM; i++) {
@@ -839,26 +839,26 @@ void *v4_video_thread(void)
                     memset(&stream, 0, sizeof(stream));
                     
                     if (ret = v4_venc.fnQuery(i, &stat)) {
-                        fprintf(stderr, "[v4_venc] Querying the encoder channel "
+                        HAL_DANGER("v4_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
                         break;
                     }
 
                     if (!stat.curPacks) {
-                        fprintf(stderr, "[v4_venc] Current frame is empty, skipping it!\n");
+                        HAL_WARNING("v4_venc", "Current frame is empty, skipping it!\n");
                         continue;
                     }
 
                     stream.packet = (v4_venc_pack*)malloc(
                         sizeof(v4_venc_pack) * stat.curPacks);
                     if (!stream.packet) {
-                        fprintf(stderr, "[v4_venc] Memory allocation on channel %d failed!\n", i);
+                        HAL_DANGER("v4_venc", "Memory allocation on channel %d failed!\n", i);
                         break;
                     }
                     stream.count = stat.curPacks;
 
                     if (ret = v4_venc.fnGetStream(i, &stream, 40)) {
-                        fprintf(stderr, "[v4_venc] Getting the stream on "
+                        HAL_DANGER("v4_venc", "Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;
                     }
@@ -891,7 +891,7 @@ void *v4_video_thread(void)
                     }
 
                     if (ret = v4_venc.fnFreeStream(i, &stream)) {
-                        fprintf(stderr, "[v4_venc] Releasing the stream on "
+                        HAL_WARNING("v4_venc", "Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
                     free(stream.packet);
@@ -900,7 +900,7 @@ void *v4_video_thread(void)
             }
         }
     }
-    fprintf(stderr, "[v4_venc] Shutting down encoding thread...\n");
+    HAL_INFO("v4_venc", "Shutting down encoding thread...\n");
 }
 
 void v4_system_deinit(void)
@@ -923,7 +923,7 @@ int v4_system_init(char *snrConfig)
     }
 
     if (v4_parse_sensor_config(snrConfig, &v4_config) != CONFIG_OK)
-        V4_ERROR("Can't load sensor config\n");
+        HAL_ERROR("v4_sys", "Can't load sensor config\n");
 
     if (ret = v4_sensor_init(v4_config.dll_file, v4_config.sensor_type))
         return ret;

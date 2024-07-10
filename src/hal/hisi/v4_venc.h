@@ -401,112 +401,75 @@ static int v4_venc_load(v4_venc_impl *venc_lib) {
     if ( !(venc_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL)) &&
 
         (!(venc_lib->handleGoke = dlopen("libgk_api.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-         !(venc_lib->handle = dlopen("libhi_mpi.so", RTLD_LAZY | RTLD_GLOBAL)))) {
-        fprintf(stderr, "[v4_venc] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+         !(venc_lib->handle = dlopen("libhi_mpi.so", RTLD_LAZY | RTLD_GLOBAL))))
+        HAL_ERROR("v4_venc", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(venc_lib->fnCreateChannel = (int(*)(int channel, v4_venc_chn *config))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_CreateChn"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_CreateChn!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_CreateChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnDestroyChannel = (int(*)(int channel))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_DestroyChn"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_DestroyChn!\n");
-        return EXIT_FAILURE;
-    }
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_DestroyChn")))
 
     if (!(venc_lib->fnGetChannelConfig = (int(*)(int channel, v4_venc_chn *config))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_GetChnAttr"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_GetChnAttr!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_GetChnAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnGetChannelParam = (int(*)(int channel, v4_venc_para *config))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_GetChnParam"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_GetChnParam!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_GetChnParam")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnResetChannel = (int(*)(int channel))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_ResetChn"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_ResetChn!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_ResetChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnSetChannelConfig = (int(*)(int channel, v4_venc_chn *config))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_SetChnAttr"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_SetChnAttr!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_SetChnAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnSetChannelParam = (int(*)(int channel, v4_venc_para *config))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_SetChnParam"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_SetChnParam!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_SetChnParam")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnFreeDescriptor = (int(*)(int channel))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_CloseFd"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_CloseFd!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_CloseFd")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnGetDescriptor = (int(*)(int channel))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_GetFd"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_GetFd!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_GetFd")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnGetJpegParam = (int(*)(int channel, v4_venc_jpg *param))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_GetJpegParam"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_GetJpegParam!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_GetJpegParam")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnSetJpegParam = (int(*)(int channel, v4_venc_jpg *param))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_SetJpegParam"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_SetJpegParam!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_SetJpegParam")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnFreeStream = (int(*)(int channel, v4_venc_strm *stream))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_ReleaseStream"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_ReleaseStream!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_ReleaseStream")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnGetStream = (int(*)(int channel, v4_venc_strm *stream, unsigned int timeout))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_GetStream"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_GetStream!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_GetStream")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnQuery = (int(*)(int channel, v4_venc_stat *stats))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_QueryStatus"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_QueryStatus!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_QueryStatus")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnRequestIdr = (int(*)(int channel, int instant))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_RequestIDR"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_RequestIDR!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_RequestIDR")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnStartReceivingEx = (int(*)(int channel, int *count))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_StartRecvFrame"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_StartRecvFrame!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_StartRecvFrame")))
         return EXIT_FAILURE;
-    }
 
     if (!(venc_lib->fnStopReceiving = (int(*)(int channel))
-        dlsym(venc_lib->handle, "HI_MPI_VENC_StopRecvFrame"))) {
-        fprintf(stderr, "[v4_venc] Failed to acquire symbol HI_MPI_VENC_StopRecvPic!\n");
+        hal_symbol_load("v4_venc", venc_lib->handle, "HI_MPI_VENC_StopRecvFrame")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

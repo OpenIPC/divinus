@@ -111,7 +111,7 @@ void *v3_audio_thread(void)
     while (keepRunning) {
         if (ret = v3_aud.fnGetFrame(_v3_aud_dev, _v3_aud_chn, 
             &frame, &echoFrame, 128)) {
-            fprintf(stderr, "[v3_aud] Getting the frame failed "
+            HAL_WARNING("v3_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
             continue;
         }
@@ -128,11 +128,11 @@ void *v3_audio_thread(void)
 
         if (ret = v3_aud.fnFreeFrame(_v3_aud_dev, _v3_aud_chn,
             &frame, &echoFrame)) {
-            fprintf(stderr, "[v3_aud] Releasing the frame failed"
+            HAL_WARNING("v3_aud", "Releasing the frame failed"
                 " with %#x!\n", ret);
         }
     }
-    fprintf(stderr, "[v3_aud] Shutting down capture thread...\n");
+    HAL_INFO("v3_aud", "Shutting down capture thread...\n");
 }
 
 int v3_channel_bind(char index)
@@ -220,8 +220,8 @@ void *v3_image_thread(void)
     int ret;
 
     if (ret = v3_isp.fnRun(_v3_isp_dev))
-        fprintf(stderr, "[v3_isp] Operation failed with %#x!\n", ret);
-    fprintf(stderr, "[v3_isp] Shutting down ISP thread...\n");
+        HAL_DANGER("v3_isp", "Operation failed with %#x!\n", ret);
+    HAL_INFO("v3_isp", "Shutting down ISP thread...\n");
 }
 
 int v3_pipeline_create(void)
@@ -355,12 +355,12 @@ int v3_region_create(char handle, hal_rect rect, short opacity)
     region.overlay.canvas = handle + 1;
 
     if (v3_rgn.fnGetRegionConfig(handle, &regionCurr)) {
-        fprintf(stderr, "[v3_rgn] Creating region %d...\n", handle);
+        HAL_INFO("v3_rgn", "Creating region %d...\n", handle);
         if (ret = v3_rgn.fnCreateRegion(handle, &region))
             return ret;
     } else if (regionCurr.overlay.size.height != region.overlay.size.height || 
         regionCurr.overlay.size.width != region.overlay.size.width) {
-        fprintf(stderr, "[v3_rgn] Parameters are different, recreating "
+        HAL_INFO("v3_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
         v3_rgn.fnDetachChannel(handle, &channel);
         v3_rgn.fnDestroyRegion(handle);
@@ -369,9 +369,9 @@ int v3_region_create(char handle, hal_rect rect, short opacity)
     }
 
     if (v3_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
-        fprintf(stderr, "[v3_rgn] Attaching region %d...\n", handle);
+        HAL_INFO("v3_rgn", "Attaching region %d...\n", handle);
     else if (attribCurr.overlay.point.x != rect.x || attribCurr.overlay.point.x != rect.y) {
-        fprintf(stderr, "[v3_rgn] Position has changed, reattaching "
+        HAL_INFO("v3_rgn", "Position has changed, reattaching "
             "region %d...\n", handle);
         v3_rgn.fnDetachChannel(handle, &channel);
     }
@@ -422,14 +422,14 @@ int v3_sensor_config(void) {
         fd = open(v3_snr_endp, O_RDWR);
     else fd = open("/dev/mipi", O_RDWR);
     if (fd < 0)
-        V3_ERROR("Opening imaging device has failed!\n");
+        HAL_ERROR("v3_snr", "Opening imaging device has failed!\n");
 
     ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_RST_MIPI, unsigned int), &config.device);
 
     ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_RST_SENS, unsigned int), &config.device);
     
     if (ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_CONF_DEV, v3_snr_dev), &config))
-        V3_ERROR("Configuring imaging device has failed!\n");
+        HAL_ERROR("v3_snr", "Configuring imaging device has failed!\n");
 
     ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_UNRST_MIPI, unsigned int), &config.device);
 
@@ -449,7 +449,7 @@ void v3_sensor_deconfig(void) {
         fd = open(v3_snr_endp, O_RDWR);
     else fd = open("/dev/mipi", O_RDWR);
     if (fd < 0)
-        fprintf(stderr, "[v3_hal] Opening imaging device has failed!\n");
+        HAL_DANGER("v3_snr", "Opening imaging device has failed!\n");
 
     ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_RST_SENS, unsigned int), &config.device);
 
@@ -475,12 +475,12 @@ int v3_sensor_init(char *name, char *obj)
         if (v3_snr_drv.handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL))
             break;
     } if (!v3_snr_drv.handle)
-        V3_ERROR("Failed to load the sensor driver");
+        HAL_ERROR("v3_snr", "Failed to load the sensor driver");
     
     if (!(v3_snr_drv.fnRegisterCallback = (int(*)(void))dlsym(v3_snr_drv.handle, "sensor_register_callback")))
-        V3_ERROR("Failed to connect the callback register function");
+        HAL_ERROR("v3_snr", "Failed to connect the callback register function");
     if (!(v3_snr_drv.fnUnRegisterCallback = (int(*)(void))dlsym(v3_snr_drv.handle, "sensor_unregister_callback")))
-        V3_ERROR("Failed to connect the callback register function");
+        HAL_ERROR("v3_snr", "Failed to connect the callback register function");
 
     return EXIT_SUCCESS;
 }
@@ -527,7 +527,7 @@ int v3_video_create(char index, hal_vidconfig *config)
                 channel.rate.mjpgQp = (v3_venc_rate_mjpgqp){ .srcFps = config->framerate,
                     .dstFps = config->framerate, .quality = config->maxQual }; break;
             default:
-                V3_ERROR("MJPEG encoder can only support CBR, VBR or fixed QP modes!");
+                HAL_ERROR("v3_venc", "MJPEG encoder can only support CBR, VBR or fixed QP modes!");
         }
         goto attach;
     } else if (config->codec == HAL_VIDCODEC_H265) {
@@ -556,7 +556,7 @@ int v3_video_create(char index, hal_vidconfig *config)
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .bitrate = config->bitrate }; break;
             default:
-                V3_ERROR("H.265 encoder does not support this mode!");
+                HAL_ERROR("v3_venc", "H.265 encoder does not support this mode!");
         }
     } else if (config->codec == HAL_VIDCODEC_H264) {
         channel.attrib.codec = V3_VENC_CODEC_H264;
@@ -584,9 +584,9 @@ int v3_video_create(char index, hal_vidconfig *config)
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .bitrate = config->bitrate }; break;
             default:
-                V3_ERROR("H.264 encoder does not support this mode!");
+                HAL_ERROR("v3_venc", "H.264 encoder does not support this mode!");
         }
-    } else V3_ERROR("This codec is not supported by the hardware!");
+    } else HAL_ERROR("v3_venc", "This codec is not supported by the hardware!");
     attrib->maxPic.width = config->width;
     attrib->maxPic.height = config->height;
     attrib->bufSize = config->height * config->width * 2;
@@ -656,14 +656,14 @@ int v3_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     int ret;
 
     if (ret = v3_channel_bind(index)) {
-        fprintf(stderr, "[v3_venc] Binding the encoder channel "
+        HAL_DANGER("v3_venc", "Binding the encoder channel "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
     unsigned int count = 1;
     if (v3_venc.fnStartReceivingEx(index, &count)) {
-        fprintf(stderr, "[v3_venc] Requesting one frame "
+        HAL_DANGER("v3_venc", "Requesting one frame "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
@@ -676,23 +676,23 @@ int v3_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     FD_SET(fd, &readFds);
     ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
     if (ret < 0) {
-        fprintf(stderr, "[v3_venc] Select operation failed!\n");
+        HAL_DANGER("v3_venc", "Select operation failed!\n");
         goto abort;
     } else if (ret == 0) {
-        fprintf(stderr, "[v3_venc] Capture stream timed out!\n");
+        HAL_DANGER("v3_venc", "Capture stream timed out!\n");
         goto abort;
     }
 
     if (FD_ISSET(fd, &readFds)) {
         v3_venc_stat stat;
         if (v3_venc.fnQuery(index, &stat)) {
-            fprintf(stderr, "[v3_venc] Querying the encoder channel "
+            HAL_DANGER("v3_venc", "Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
         }
 
         if (!stat.curPacks) {
-            fprintf(stderr, "[v3_venc] Current frame is empty, skipping it!\n");
+            HAL_DANGER("v3_venc", "Current frame is empty, skipping it!\n");
             goto abort;
         }
 
@@ -700,13 +700,13 @@ int v3_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         memset(&strm, 0, sizeof(strm));
         strm.packet = (v3_venc_pack*)malloc(sizeof(v3_venc_pack) * stat.curPacks);
         if (!strm.packet) {
-            fprintf(stderr, "[v3_venc] Memory allocation on channel %d failed!\n", index);
+            HAL_DANGER("v3_venc", "Memory allocation on channel %d failed!\n", index);
             goto abort;
         }
         strm.count = stat.curPacks;
 
         if (ret = v3_venc.fnGetStream(index, &strm, stat.curPacks)) {
-            fprintf(stderr, "[v3_venc] Getting the stream on "
+            HAL_DANGER("v3_venc", "Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
             free(strm.packet);
             strm.packet = NULL;
@@ -754,7 +754,7 @@ void *v3_video_thread(void)
 
         ret = v3_venc.fnGetDescriptor(i);
         if (ret < 0) {
-            fprintf(stderr, "[v3_venc] Getting the encoder descriptor failed with %#x!\n", ret);
+            HAL_DANGER("v3_venc", "Getting the encoder descriptor failed with %#x!\n", ret);
             return NULL;
         }
         v3_state[i].fileDesc = ret;
@@ -780,10 +780,10 @@ void *v3_video_thread(void)
         timeout.tv_usec = 0;
         ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
         if (ret < 0) {
-            fprintf(stderr, "[v3_venc] Select operation failed!\n");
+            HAL_DANGER("v3_venc", "Select operation failed!\n");
             break;
         } else if (ret == 0) {
-            fprintf(stderr, "[v3_venc] Main stream loop timed out!\n");
+            HAL_WARNING("v3_venc", "Main stream loop timed out!\n");
             continue;
         } else {
             for (int i = 0; i < V3_VENC_CHN_NUM; i++) {
@@ -793,26 +793,26 @@ void *v3_video_thread(void)
                     memset(&stream, 0, sizeof(stream));
                     
                     if (ret = v3_venc.fnQuery(i, &stat)) {
-                        fprintf(stderr, "[v3_venc] Querying the encoder channel "
+                        HAL_DANGER("v3_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
                         break;
                     }
 
                     if (!stat.curPacks) {
-                        fprintf(stderr, "[v3_venc] Current frame is empty, skipping it!\n");
+                        HAL_WARNING("v3_venc", " Current frame is empty, skipping it!\n");
                         continue;
                     }
 
                     stream.packet = (v3_venc_pack*)malloc(
                         sizeof(v3_venc_pack) * stat.curPacks);
                     if (!stream.packet) {
-                        fprintf(stderr, "[v3_venc] Memory allocation on channel %d failed!\n", i);
+                        HAL_DANGER("v3_venc", "Memory allocation on channel %d failed!\n", i);
                         break;
                     }
                     stream.count = stat.curPacks;
 
                     if (ret = v3_venc.fnGetStream(i, &stream, 40)) {
-                        fprintf(stderr, "[v3_venc] Getting the stream on "
+                        HAL_DANGER("v3_venc", "Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;
                     }
@@ -845,7 +845,7 @@ void *v3_video_thread(void)
                     }
 
                     if (ret = v3_venc.fnFreeStream(i, &stream)) {
-                        fprintf(stderr, "[v3_venc] Releasing the stream on "
+                        HAL_WARNING("v3_venc", "Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
                     free(stream.packet);
@@ -854,7 +854,7 @@ void *v3_video_thread(void)
             }
         }
     }
-    fprintf(stderr, "[v3_venc] Shutting down encoding thread...\n");
+    HAL_INFO("v3_venc", "Shutting down encoding thread...\n");
 }
 
 void v3_system_deinit(void)
@@ -877,7 +877,7 @@ int v3_system_init(char *snrConfig)
     }
 
     if (v3_parse_sensor_config(snrConfig, &v3_config) != CONFIG_OK)
-        V3_ERROR("Can't load sensor config\n");
+        HAL_ERROR("v3_sys", "Can't load sensor config\n");
 
     if (ret = v3_sensor_init(v3_config.dll_file, v3_config.sensor_type))
         return ret;

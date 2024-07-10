@@ -67,52 +67,36 @@ typedef struct {
 } v3_aud_impl;
 
 static int v3_aud_load(v3_aud_impl *aud_lib) {
-    if (!(aud_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[v3_aud] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(aud_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("v3_aud", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(aud_lib->fnDisableDevice = (int(*)(int device))
-        dlsym(aud_lib->handle, "HI_MPI_AI_Disable"))) {
-        fprintf(stderr, "[v3_aud] Failed to acquire symbol HI_MPI_AI_Disable!\n");
+        hal_symbol_load("v3_aud", aud_lib->handle, "HI_MPI_AI_Disable")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnEnableDevice = (int(*)(int device))
-        dlsym(aud_lib->handle, "HI_MPI_AI_Enable"))) {
-        fprintf(stderr, "[v3_aud] Failed to acquire symbol HI_MPI_AI_Enable!\n");
+        hal_symbol_load("v3_aud", aud_lib->handle, "HI_MPI_AI_Enable")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnSetDeviceConfig = (int(*)(int device, v3_aud_cnf *config))
-        dlsym(aud_lib->handle, "HI_MPI_AI_SetPubAttr"))) {
-        fprintf(stderr, "[v3_aud] Failed to acquire symbol HI_MPI_AI_SetPubAttr!\n");
+        hal_symbol_load("v3_aud", aud_lib->handle, "HI_MPI_AI_SetPubAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnDisableChannel = (int(*)(int device, int channel))
-        dlsym(aud_lib->handle, "HI_MPI_AI_DisableChn"))) {
-        fprintf(stderr, "[v3_aud] Failed to acquire symbol HI_MPI_AI_DisableChn!\n");
+        hal_symbol_load("v3_aud", aud_lib->handle, "HI_MPI_AI_DisableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnEnableChannel = (int(*)(int device, int channel))
-        dlsym(aud_lib->handle, "HI_MPI_AI_EnableChn"))) {
-        fprintf(stderr, "[v3_aud] Failed to acquire symbol HI_MPI_AI_EnableChn!\n");
+        hal_symbol_load("v3_aud", aud_lib->handle, "HI_MPI_AI_EnableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnFreeFrame = (int(*)(int device, int channel, v3_aud_frm *frame, v3_aud_efrm *encFrame))
-        dlsym(aud_lib->handle, "HI_MPI_AI_ReleaseFrame"))) {
-        fprintf(stderr, "[v3_aud] Failed to acquire symbol HI_MPI_AI_ReleaseFrame!\n");
+        hal_symbol_load("v3_aud", aud_lib->handle, "HI_MPI_AI_ReleaseFrame")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnGetFrame = (int(*)(int device, int channel, v3_aud_frm *frame, v3_aud_efrm *encFrame, int millis))
-        dlsym(aud_lib->handle, "HI_MPI_AI_GetFrame"))) {
-        fprintf(stderr, "[v3_aud] Failed to acquire symbol HI_MPI_AI_GetFrame!\n");
+        hal_symbol_load("v3_aud", aud_lib->handle, "HI_MPI_AI_GetFrame")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

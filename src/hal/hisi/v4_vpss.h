@@ -67,64 +67,44 @@ static int v4_vpss_load(v4_vpss_impl *vpss_lib) {
     if ( !(vpss_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL)) &&
 
         (!(vpss_lib->handleGoke = dlopen("libgk_api.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-         !(vpss_lib->handle = dlopen("libhi_mpi.so", RTLD_LAZY | RTLD_GLOBAL)))) {
-        fprintf(stderr, "[v4_vpss] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+         !(vpss_lib->handle = dlopen("libhi_mpi.so", RTLD_LAZY | RTLD_GLOBAL))))
+        HAL_ERROR("v4_vpss", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(vpss_lib->fnCreateGroup = (int(*)(int group, v4_vpss_grp *config))
-        dlsym(vpss_lib->handle, "HI_MPI_VPSS_CreateGrp"))) {
-        fprintf(stderr, "[v4_vpss] Failed to acquire symbol HI_MPI_VPSS_CreateGrp!\n");
+        hal_symbol_load("v4_vpss", vpss_lib->handle, "HI_MPI_VPSS_CreateGrp")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnDestroyGroup = (int(*)(int group))
-        dlsym(vpss_lib->handle, "HI_MPI_VPSS_DestroyGrp"))) {
-        fprintf(stderr, "[v4_vpss] Failed to acquire symbol HI_MPI_VPSS_DestroyGrp!\n");
+        hal_symbol_load("v4_vpss", vpss_lib->handle, "HI_MPI_VPSS_DestroyGrp")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnResetGroup = (int(*)(int group))
-        dlsym(vpss_lib->handle, "HI_MPI_VPSS_ResetGrp"))) {
-        fprintf(stderr, "[v4_vpss] Failed to acquire symbol HI_MPI_VPSS_ResetGrp!\n");
+        hal_symbol_load("v4_vpss", vpss_lib->handle, "HI_MPI_VPSS_ResetGrp")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnSetGroupConfig = (int(*)(int group, v4_vpss_grp *config))
-        dlsym(vpss_lib->handle, "HI_MPI_VPSS_SetGrpAttr"))) {
-        fprintf(stderr, "[v4_vpss] Failed to acquire symbol HI_MPI_VPSS_SetGrpAttr!\n");
+        hal_symbol_load("v4_vpss", vpss_lib->handle, "HI_MPI_VPSS_SetGrpAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnStartGroup = (int(*)(int group))
-        dlsym(vpss_lib->handle, "HI_MPI_VPSS_StartGrp"))) {
-        fprintf(stderr, "[v4_vpss] Failed to acquire symbol HI_MPI_VPSS_StartGrp!\n");
+        hal_symbol_load("v4_vpss", vpss_lib->handle, "HI_MPI_VPSS_StartGrp")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnStopGroup = (int(*)(int group))
-        dlsym(vpss_lib->handle, "HI_MPI_VPSS_StopGrp"))) {
-        fprintf(stderr, "[v4_vpss] Failed to acquire symbol HI_MPI_VPSS_StopGrp!\n");
+        hal_symbol_load("v4_vpss", vpss_lib->handle, "HI_MPI_VPSS_StopGrp")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnDisableChannel = (int(*)(int group, int channel))
-        dlsym(vpss_lib->handle, "HI_MPI_VPSS_DisableChn"))) {
-        fprintf(stderr, "[v4_vpss] Failed to acquire symbol HI_MPI_VPSS_DisableChn!\n");
+        hal_symbol_load("v4_vpss", vpss_lib->handle, "HI_MPI_VPSS_DisableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnEnableChannel = (int(*)(int group, int channel))
-        dlsym(vpss_lib->handle, "HI_MPI_VPSS_EnableChn"))) {
-        fprintf(stderr, "[v4_vpss] Failed to acquire symbol HI_MPI_VPSS_EnableChn!\n");
+        hal_symbol_load("v4_vpss", vpss_lib->handle, "HI_MPI_VPSS_EnableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnSetChannelConfig = (int(*)(int group, int channel, v4_vpss_chn *config))
-        dlsym(vpss_lib->handle, "HI_MPI_VPSS_SetChnAttr"))) {
-        fprintf(stderr, "[v4_vpss] Failed to acquire symbol HI_MPI_VPSS_SetChnAttr!\n");
+        hal_symbol_load("v4_vpss", vpss_lib->handle, "HI_MPI_VPSS_SetChnAttr")))
         return EXIT_FAILURE;
-    }
     
     return EXIT_SUCCESS;
 }

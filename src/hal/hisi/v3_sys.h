@@ -90,58 +90,40 @@ static int v3_sys_load(v3_sys_impl *sys_lib) {
     if (!(sys_lib->handleUpvqe = dlopen("libupvqe.so", RTLD_LAZY | RTLD_GLOBAL)) ||
         !(sys_lib->handleDnvqe = dlopen("libdnvqe.so", RTLD_LAZY | RTLD_GLOBAL)) ||
         !(sys_lib->handleVoiceEngine = dlopen("libVoiceEngine.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-        !(sys_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[v3_sys] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+        !(sys_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("v3_sys", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(sys_lib->fnExit = (int(*)(void))
-        dlsym(sys_lib->handle, "HI_MPI_SYS_Exit"))) {
-        fprintf(stderr, "[v3_sys] Failed to acquire symbol HI_MPI_SYS_Exit!\n");
+        hal_symbol_load("v3_sys", sys_lib->handle, "HI_MPI_SYS_Exit")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnGetChipId = (int(*)(unsigned int *chip))
-        dlsym(sys_lib->handle, "HI_MPI_SYS_GetChipId"))) {
-        fprintf(stderr, "[v3_sys] Failed to acquire symbol HI_MPI_SYS_GetChipId!\n");
+        hal_symbol_load("v3_sys", sys_lib->handle, "HI_MPI_SYS_GetChipId")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnGetVersion = (int(*)(v3_sys_ver *version))
-        dlsym(sys_lib->handle, "HI_MPI_SYS_GetVersion"))) {
-        fprintf(stderr, "[v3_sys] Failed to acquire symbol HI_MPI_SYS_GetVersion!\n");
+        hal_symbol_load("v3_sys", sys_lib->handle, "HI_MPI_SYS_GetVersion")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnInit = (int(*)(void))
-        dlsym(sys_lib->handle, "HI_MPI_SYS_Init"))) {
-        fprintf(stderr, "[v3_sys] Failed to acquire symbol HI_MPI_SYS_Init!\n");
+        hal_symbol_load("v3_sys", sys_lib->handle, "HI_MPI_SYS_Init")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnSetAlignment = (int(*)(unsigned int *width))
-        dlsym(sys_lib->handle, "HI_MPI_SYS_SetConf"))) {
-        fprintf(stderr, "[v3_sys] Failed to acquire symbol HI_MPI_SYS_SetConf!\n");
+        hal_symbol_load("v3_sys", sys_lib->handle, "HI_MPI_SYS_SetConf")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnBind = (int(*)(v3_sys_bind *source, v3_sys_bind *dest))
-        dlsym(sys_lib->handle, "HI_MPI_SYS_Bind"))) {
-        fprintf(stderr, "[v3_sys] Failed to acquire symbol HI_MPI_SYS_Bind!\n");
+        hal_symbol_load("v3_sys", sys_lib->handle, "HI_MPI_SYS_Bind")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnUnbind = (int(*)(v3_sys_bind *source, v3_sys_bind *dest))
-        dlsym(sys_lib->handle, "HI_MPI_SYS_UnBind"))) {
-        fprintf(stderr, "[v3_sys] Failed to acquire symbol HI_MPI_SYS_UnBind!\n");
+        hal_symbol_load("v3_sys", sys_lib->handle, "HI_MPI_SYS_UnBind")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnGetViVpssMode = (int(*)(unsigned int *onlineOn))
-        dlsym(sys_lib->handle, "HI_MPI_SYS_GetViVpssMode"))) {
-        fprintf(stderr, "[v3_sys] Failed to acquire symbol HI_MPI_SYS_GetViVpssMode!\n");
+        hal_symbol_load("v3_sys", sys_lib->handle, "HI_MPI_SYS_GetViVpssMode")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

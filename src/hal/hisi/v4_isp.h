@@ -67,87 +67,60 @@ static int v4_isp_load(v4_isp_impl *isp_lib) {
         (isp_lib->handle = dlopen("libhi_isp.so", RTLD_LAZY | RTLD_GLOBAL)))
         goto loaded;
 
-    fprintf(stderr, "[v4_isp] Failed to load library!\nError: %s\n", dlerror());
-    return EXIT_FAILURE;
+    HAL_ERROR("v4_isp", "Failed to load library!\nError: %s\n", dlerror());
 
 loaded:
     if (!(fnISP_AlgRegisterDehaze = (int(*)(int))
-        dlsym(isp_lib->handleDehaze, "ISP_AlgRegisterDehaze"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol ISP_AlgRegisterDehaze!\n");
+        hal_symbol_load("v4_isp", isp_lib->handleDehaze, "ISP_AlgRegisterDehaze")))
         return EXIT_FAILURE;
-    }
 
     if (!(fnISP_AlgRegisterDrc = (int(*)(int))
-        dlsym(isp_lib->handleDrc, "ISP_AlgRegisterDrc"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol ISP_AlgRegisterDrc!\n");
+        hal_symbol_load("v4_isp", isp_lib->handleDrc, "ISP_AlgRegisterDrc")))
         return EXIT_FAILURE;
-    }
 
     if (!(fnISP_AlgRegisterLdci = (int(*)(int))
-        dlsym(isp_lib->handleLdci, "ISP_AlgRegisterLdci"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol ISP_AlgRegisterLdci!\n");
+        hal_symbol_load("v4_isp", isp_lib->handleLdci, "ISP_AlgRegisterLdci")))
         return EXIT_FAILURE;
-    }
 
     if (!(fnMPI_ISP_IrAutoRunOnce = (int(*)(int, void*))
-        dlsym(isp_lib->handleIrAuto, "MPI_ISP_IrAutoRunOnce"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol MPI_ISP_IrAutoRunOnce!\n");
+        hal_symbol_load("v4_isp", isp_lib->handleIrAuto, "MPI_ISP_IrAutoRunOnce")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnExit = (int(*)(int pipe))
-        dlsym(isp_lib->handle, "HI_MPI_ISP_Exit"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_ISP_Exit!\n");
+        hal_symbol_load("v4_isp", isp_lib->handle, "HI_MPI_ISP_Exit")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnInit = (int(*)(int pipe))
-        dlsym(isp_lib->handle, "HI_MPI_ISP_Init"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_ISP_Init!\n");
+        hal_symbol_load("v4_isp", isp_lib->handle, "HI_MPI_ISP_Init")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnMemInit = (int(*)(int pipe))
-        dlsym(isp_lib->handle, "HI_MPI_ISP_MemInit"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_ISP_MemInit!\n");
+        hal_symbol_load("v4_isp", isp_lib->handle, "HI_MPI_ISP_MemInit")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnRun = (int(*)(int pipe))
-        dlsym(isp_lib->handle, "HI_MPI_ISP_Run"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_ISP_Run!\n");
+        hal_symbol_load("v4_isp", isp_lib->handle, "HI_MPI_ISP_Run")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnSetDeviceConfig = (int(*)(int pipe, v4_isp_dev *config))
-        dlsym(isp_lib->handle, "HI_MPI_ISP_SetPubAttr"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_ISP_SetPubAttr!\n");
+        hal_symbol_load("v4_isp", isp_lib->handle, "HI_MPI_ISP_SetPubAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnRegisterAE = (int(*)(int pipe, v4_isp_alg *library))
-        dlsym(isp_lib->handleAe, "HI_MPI_AE_Register"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_AE_Register!\n");
+        hal_symbol_load("v4_isp", isp_lib->handleAe, "HI_MPI_AE_Register")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnRegisterAWB = (int(*)(int pipe, v4_isp_alg *library))
-        dlsym(isp_lib->handleAwb, "HI_MPI_AWB_Register"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_AWB_Register!\n");
+        hal_symbol_load("v4_isp", isp_lib->handleAwb, "HI_MPI_AWB_Register")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnUnregisterAE = (int(*)(int pipe, v4_isp_alg *library))
-        dlsym(isp_lib->handleAe, "HI_MPI_AE_UnRegister"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_AE_UnRegister!\n");
+        hal_symbol_load("v4_isp", isp_lib->handleAe, "HI_MPI_AE_UnRegister")))
         return EXIT_FAILURE;
-    }
 
     if (!(isp_lib->fnUnregisterAWB = (int(*)(int pipe, v4_isp_alg *library))
-        dlsym(isp_lib->handleAwb, "HI_MPI_AWB_UnRegister"))) {
-        fprintf(stderr, "[v4_isp] Failed to acquire symbol HI_MPI_AWB_UnRegister!\n");
+        hal_symbol_load("v4_isp", isp_lib->handleAwb, "HI_MPI_AWB_UnRegister")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

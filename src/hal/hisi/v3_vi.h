@@ -108,46 +108,32 @@ typedef struct {
 } v3_vi_impl;
 
 static int v3_vi_load(v3_vi_impl *vi_lib) {
-    if (!(vi_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[v3_vi] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(vi_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("v3_vi", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(vi_lib->fnDisableDevice = (int(*)(int device))
-        dlsym(vi_lib->handle, "HI_MPI_VI_DisableDev"))) {
-        fprintf(stderr, "[v3_vi] Failed to acquire symbol HI_MPI_VI_DisableDev!\n");
+        hal_symbol_load("v3_vi", vi_lib->handle, "HI_MPI_VI_DisableDev")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnEnableDevice = (int(*)(int device))
-        dlsym(vi_lib->handle, "HI_MPI_VI_EnableDev"))) {
-        fprintf(stderr, "[v3_vi] Failed to acquire symbol HI_MPI_VI_EnableDev!\n");
+        hal_symbol_load("v3_vi", vi_lib->handle, "HI_MPI_VI_EnableDev")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnSetDeviceConfig = (int(*)(int device, v3_vi_dev *config))
-        dlsym(vi_lib->handle, "HI_MPI_VI_SetDevAttr"))) {
-        fprintf(stderr, "[v3_vi] Failed to acquire symbol HI_MPI_VI_SetDevAttr!\n");
+        hal_symbol_load("v3_vi", vi_lib->handle, "HI_MPI_VI_SetDevAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnDisableChannel = (int(*)(int channel))
-        dlsym(vi_lib->handle, "HI_MPI_VI_DisableChn"))) {
-        fprintf(stderr, "[v3_vi] Failed to acquire symbol HI_MPI_VI_DisableChn!\n");
+        hal_symbol_load("v3_vi", vi_lib->handle, "HI_MPI_VI_DisableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnEnableChannel = (int(*)(int channel))
-        dlsym(vi_lib->handle, "HI_MPI_VI_EnableChn"))) {
-        fprintf(stderr, "[v3_vi] Failed to acquire symbol HI_MPI_VI_EnableChn!\n");
+        hal_symbol_load("v3_vi", vi_lib->handle, "HI_MPI_VI_EnableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnSetChannelConfig = (int(*)(int channel, v3_vi_chn *config))
-        dlsym(vi_lib->handle, "HI_MPI_VI_SetChnAttr"))) {
-        fprintf(stderr, "[v3_vi] Failed to acquire symbol HI_MPI_VI_SetChnAttr!\n");
+        hal_symbol_load("v3_vi", vi_lib->handle, "HI_MPI_VI_SetChnAttr")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

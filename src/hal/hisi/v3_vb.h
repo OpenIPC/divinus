@@ -30,34 +30,24 @@ typedef struct {
 } v3_vb_impl;
 
 static int v3_vb_load(v3_vb_impl *vb_lib) {
-    if (!(vb_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[v3_vb] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(vb_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("v3_vb", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(vb_lib->fnConfigPool = (int(*)(v3_vb_pool *config))
-        dlsym(vb_lib->handle, "HI_MPI_VB_SetConf"))) {
-        fprintf(stderr, "[v3_vb] Failed to acquire symbol HI_MPI_VB_SetConf!\n");
+        hal_symbol_load("v3_vb", vb_lib->handle, "HI_MPI_VB_SetConf")))
         return EXIT_FAILURE;
-    }
 
     if (!(vb_lib->fnConfigSupplement = (int(*)(v3_vb_supl *value))
-        dlsym(vb_lib->handle, "HI_MPI_VB_SetSupplementConf"))) {
-        fprintf(stderr, "[v3_vb] Failed to acquire symbol HI_MPI_VB_SetSupplementConf!\n");
+        hal_symbol_load("v3_vb", vb_lib->handle, "HI_MPI_VB_SetSupplementConf")))
         return EXIT_FAILURE;
-    }
 
     if (!(vb_lib->fnExit = (int(*)(void))
-        dlsym(vb_lib->handle, "HI_MPI_VB_Exit"))) {
-        fprintf(stderr, "[v3_vb] Failed to acquire symbol HI_MPI_VB_Exit!\n");
+        hal_symbol_load("v3_vb", vb_lib->handle, "HI_MPI_VB_Exit")))
         return EXIT_FAILURE;
-    }
 
     if (!(vb_lib->fnInit = (int(*)(void))
-        dlsym(vb_lib->handle, "HI_MPI_VB_Init"))) {
-        fprintf(stderr, "[v3_vb] Failed to acquire symbol HI_MPI_VB_Init!\n");
+        hal_symbol_load("v3_vb", vb_lib->handle, "HI_MPI_VB_Init")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }
