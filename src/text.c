@@ -88,7 +88,7 @@ int text_load_font(SFT *sft, const char *path, double size, SFT_LMetrics *lmtx)
 {
     SFT_Font *font = sft_loadfile(path);
     if (font == NULL)
-        TEXT_ERROR("sft_loadfile failed");
+        HAL_ERROR("text", "sft_loadfile failed");
     sft->font = font;
     sft->xScale = size;
     sft->yScale = size;
@@ -96,16 +96,16 @@ int text_load_font(SFT *sft, const char *path, double size, SFT_LMetrics *lmtx)
     sft->yOffset = 0.0;
     sft->flags = SFT_DOWNWARD_Y;
     if (sft_lmetrics(sft, lmtx) < 0)
-        TEXT_ERROR("sft_lmetrics failed");
+        HAL_ERROR("text", "sft_lmetrics failed");
     return EXIT_SUCCESS;
 }
 
 int text_load_glyph(const SFT *sft, SFT_UChar codepoint, SFT_Glyph *glyph, SFT_GMetrics *metrics)
 {
     if (sft_lookup(sft, codepoint, glyph) < 0)
-        TEXT_ERROR("sft_lookup failed");
+        HAL_ERROR("text", "sft_lookup failed");
     if (sft_gmetrics(sft, *glyph, metrics) < 0)
-        TEXT_ERROR("sft_gmetrics failed");
+        HAL_ERROR("text", "sft_gmetrics failed");
     return EXIT_SUCCESS;
 }
 

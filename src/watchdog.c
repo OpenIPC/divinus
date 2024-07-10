@@ -15,13 +15,13 @@ int watchdog_start(int timeout) {
     while (*path) {
         if (access(*path++, F_OK)) continue;
         if ((fd = open(*(path - 1), O_WRONLY)) == -1)
-            WATCHDOG_ERROR("%s could not be opened!\n", *(path - 1), fd--);
+            HAL_ERROR("watchdog", "%s could not be opened!\n", *(path - 1), fd--);
         break;
-    } if (!fd) WATCHDOG_ERROR("No matching device has been found!\n");
+    } if (!fd) HAL_ERROR("watchdog", "No matching device has been found!\n");
 
     ioctl(fd, WDIOC_SETTIMEOUT, &timeout);
 
-    fprintf(stderr, "[watchdog] Watchdog started!\n");
+    HAL_INFO("watchdog", "Watchdog started!\n");
     return EXIT_SUCCESS;
 }
 
@@ -31,5 +31,5 @@ void watchdog_stop(void) {
     close(fd);
     fd = 0;
 
-    fprintf(stderr, "[watchdog] Watchdog stopped!\n");
+    HAL_INFO("watchdog", "Watchdog stopped!\n");
 }

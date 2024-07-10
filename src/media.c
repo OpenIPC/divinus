@@ -305,14 +305,12 @@ int enable_audio(void) {
         case HAL_PLATFORM_T31: ret = t31_audio_init(app_config.audio_srate); break;
 #endif
     }
-    if (ret) {
-        fprintf(stderr, "Audio initialization failed with %#x!\n%s\n",
+    if (ret)
+        HAL_ERROR("media", "Audio initialization failed with %#x!\n%s\n",
             ret, errstr(ret));
-        return EXIT_FAILURE;
-    }
 
     if (shine_check_config(app_config.audio_srate, app_config.audio_bitrate) < 0)
-        fprintf(stderr, "Unsupported samplerate/bitrate configuration!\n");
+        HAL_ERROR("media", "MP3 samplerate/bitrate configuration is unsupported!\n");
     else {
         mp3Cnf.mpeg.mode = MONO;
         mp3Cnf.mpeg.bitr = app_config.audio_bitrate;
@@ -321,10 +319,9 @@ int enable_audio(void) {
         mp3Cnf.mpeg.original = 1;
         mp3Cnf.wave.channels = PCM_MONO;
         mp3Cnf.wave.samplerate = app_config.audio_srate;
-        if (!(mp3Enc = shine_initialise(&mp3Cnf))) {
-            fprintf(stderr, "MP3 encoder initialization failed!\n");
-            return EXIT_FAILURE;
-        }
+        if (!(mp3Enc = shine_initialise(&mp3Cnf)))
+            HAL_ERROR("media", "MP3 encoder initialization failed!\n");
+
         pcmSamp = shine_samples_per_pass(mp3Enc);
     }
 
@@ -333,32 +330,25 @@ int enable_audio(void) {
     size_t stacksize;
     pthread_attr_getstacksize(&thread_attr, &stacksize);
     size_t new_stacksize = 16384;
-    if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-        fprintf(stderr, "Can't set stack size %zu\n", new_stacksize);
-    }
+    if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+        HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
     if (pthread_create(
                     &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL)) {
-        fprintf(stderr, "Starting the audio capture thread failed!\n");
-        return EXIT_FAILURE;
+        HAL_ERROR("media", "Starting the audio capture thread failed!\n");
     }
-    if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-        fprintf(stderr, "Can't set stack size %zu\n", stacksize);
-    }
+    if (pthread_attr_setstacksize(&thread_attr, stacksize))
+        HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
     pthread_attr_destroy(&thread_attr);
 
     pthread_attr_init(&thread_attr);
     pthread_attr_getstacksize(&thread_attr, &stacksize);
-    if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-        fprintf(stderr, "Can't set stack size %zu\n", new_stacksize);
-    }
+    if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+        HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
     if (pthread_create(
-                    &aencPid, &thread_attr, (void *(*)(void *))aenc_thread, NULL)) {
-        fprintf(stderr, "Starting the audio encoding thread failed!\n");
-        return EXIT_FAILURE;
-    }
-    if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-        fprintf(stderr, "Can't set stack size %zu\n", stacksize);
-    }
+                    &aencPid, &thread_attr, (void *(*)(void *))aenc_thread, NULL))
+        HAL_ERROR("media", "Starting the audio encoding thread failed!\n");
+    if (pthread_attr_setstacksize(&thread_attr, stacksize))
+        HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
     pthread_attr_destroy(&thread_attr);
 
     return ret;
@@ -371,19 +361,13 @@ int disable_mjpeg(void) {
         if (!chnState[i].enable) continue;
         if (chnState[i].payload != HAL_VIDCODEC_MJPG) continue;
 
-        if (ret = unbind_channel(i, 1)) {
-            fprintf(stderr, 
-                "Unbinding channel %d failed with %#x!\n%s\n", 
+        if (ret = unbind_channel(i, 1))
+            HAL_ERROR("media", "Unbinding channel %d failed with %#x!\n%s\n", 
                 i, ret, errstr(ret));
-            return EXIT_FAILURE;
-        }
 
-        if (ret = disable_video(i, 1)) {
-            fprintf(stderr, 
-                "Disabling encoder %d failed with %#x!\n%s\n", 
+        if (ret = disable_video(i, 1))
+            HAL_ERROR("media", "Disabling encoder %d failed with %#x!\n%s\n", 
                 i, ret, errstr(ret));
-            return EXIT_FAILURE;
-        }
     }
 
     return EXIT_SUCCESS;
@@ -394,13 +378,10 @@ int enable_mjpeg(void) {
 
     int index = take_next_free_channel(true);
 
-    if (ret = create_channel(index, app_config.mjpeg_width, 
-        app_config.mjpeg_height, app_config.mjpeg_fps, 1)) {
-        fprintf(stderr, 
-            "Creating channel %d failed with %#x!\n%s\n", 
+    if (ret = create_channel(index, app_config.mjpeg_width,
+        app_config.mjpeg_height, app_config.mjpeg_fps, 1))
+        HAL_ERROR("media", "Creating channel %d failed with %#x!\n%s\n", 
             index, ret, errstr(ret));
-        return EXIT_FAILURE;
-    }
 
     {
         hal_vidconfig config;
@@ -425,20 +406,14 @@ int enable_mjpeg(void) {
 #endif
         }
 
-        if (ret) {
-            fprintf(stderr, 
-                "Creating encoder %d failed with %#x!\n%s\n", 
+        if (ret)
+            HAL_ERROR("media", "Creating encoder %d failed with %#x!\n%s\n", 
                 index, ret, errstr(ret));
-            return EXIT_FAILURE;
-        }
     }
 
-    if (ret = bind_channel(index, app_config.mjpeg_fps, 1)) {
-        fprintf(stderr, 
-            "Binding channel %d failed with %#x!\n%s\n",
+    if (ret = bind_channel(index, app_config.mjpeg_fps, 1))
+        HAL_ERROR("media", "Binding channel %d failed with %#x!\n%s\n",
             index, ret, errstr(ret));
-        return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }
@@ -451,19 +426,13 @@ int disable_mp4(void) {
         if (chnState[i].payload != HAL_VIDCODEC_H264 ||
             chnState[i].payload != HAL_VIDCODEC_H265) continue;
 
-        if (ret = unbind_channel(i, 1)) {
-            fprintf(stderr, 
-                "Unbinding channel %d failed with %#x!\n%s\n", 
+        if (ret = unbind_channel(i, 1))
+            HAL_ERROR("media", "Unbinding channel %d failed with %#x!\n%s\n", 
                 i, ret, errstr(ret));
-            return EXIT_FAILURE;
-        }
 
-        if (ret = disable_video(i, 1)) {
-            fprintf(stderr, 
-                "Disabling encoder %d failed with %#x!\n%s\n", 
+        if (ret = disable_video(i, 1))
+            HAL_ERROR("media", "Disabling encoder %d failed with %#x!\n%s\n", 
                 i, ret, errstr(ret));
-            return EXIT_FAILURE;
-        }
     }
 
     return EXIT_SUCCESS;
@@ -475,12 +444,9 @@ int enable_mp4(void) {
     int index = take_next_free_channel(true);
 
     if (ret = create_channel(index, app_config.mp4_width, 
-        app_config.mp4_height, app_config.mp4_fps, 0)) {
-        fprintf(stderr, 
-            "Creating channel %d failed with %#x!\n%s\n", 
+        app_config.mp4_height, app_config.mp4_fps, 0))
+        HAL_ERROR("media", "Creating channel %d failed with %#x!\n%s\n", 
             index, ret, errstr(ret));
-        return EXIT_FAILURE;
-    }
 
     {
         hal_vidconfig config;
@@ -508,24 +474,19 @@ int enable_mp4(void) {
 #endif
         }
 
-        if (ret) {
-            fprintf(stderr, 
-                "Creating encoder %d failed with %#x!\n%s\n", 
+        if (ret)
+            HAL_ERROR("media", "Creating encoder %d failed with %#x!\n%s\n", 
                 index, ret, errstr(ret));
             return EXIT_FAILURE;
-        }
 
         mp4_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
             app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC, 
             app_config.audio_bitrate, app_config.audio_srate);
     }
 
-    if (ret = bind_channel(index, app_config.mp4_fps, 0)) {
-        fprintf(stderr, 
-            "Binding channel %d failed with %#x!\n%s\n",
+    if (ret = bind_channel(index, app_config.mp4_fps, 0))
+        HAL_ERROR("media", "Binding channel %d failed with %#x!\n%s\n",
             index, ret, errstr(ret));
-        return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }
@@ -545,11 +506,9 @@ int start_sdk(void) {
         case HAL_PLATFORM_T31: ret = t31_hal_init(); break;
 #endif
     }
-    if (ret) {
-        fprintf(stderr, "HAL initialization failed with %#x!\n%s\n",
+    if (ret)
+        HAL_ERROR("media", "HAL initialization failed with %#x!\n%s\n",
             ret, errstr(ret));
-        return EXIT_FAILURE;
-    }
 
     switch (plat) {
 #if defined(__arm__)
@@ -594,19 +553,15 @@ int start_sdk(void) {
         case HAL_PLATFORM_T31: ret = t31_system_init(); break;
 #endif
     }
-    if (ret) {
-        fprintf(stderr, "System initialization failed with %#x!\n%s\n",
+    if (ret)
+        HAL_ERROR("media", "System initialization failed with %#x!\n%s\n",
             ret, errstr(ret));
-        return EXIT_FAILURE;
-    }
 
     if (app_config.audio_enable) {
         ret = enable_audio();
-        if (ret) {
-            fprintf(stderr, "Audio initialization failed with %#x!\n%s\n",
+        if (ret)
+            HAL_ERROR("media", "Audio initialization failed with %#x!\n%s\n",
                 ret, errstr(ret));
-            return EXIT_FAILURE;
-        }
     }
 
     short width = MAX(app_config.mp4_width, app_config.mjpeg_width);
@@ -630,11 +585,9 @@ int start_sdk(void) {
             app_config.flip, app_config.antiflicker, framerate); break;
 #endif
     }
-    if (ret) {
-        fprintf(stderr, "Pipeline creation failed with %#x!\n%s\n",
+    if (ret)
+        HAL_ERROR("media", "Pipeline creation failed with %#x!\n%s\n",
             ret, errstr(ret));
-        return EXIT_FAILURE;
-    }
 
     if (isp_thread) {
         pthread_attr_t thread_attr;
@@ -642,42 +595,33 @@ int start_sdk(void) {
         size_t stacksize;
         pthread_attr_getstacksize(&thread_attr, &stacksize);
         size_t new_stacksize = app_config.isp_thread_stack_size;
-        if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-            fprintf(stderr, "Can't set stack size %zu!\n", new_stacksize);
-        }
+        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu!\n", new_stacksize);
         if (pthread_create(
-                     &ispPid, &thread_attr, (void *(*)(void *))isp_thread, NULL)) {
-            fprintf(stderr, "Starting the imaging thread failed!\n");
-            return EXIT_FAILURE;
-        }
+                     &ispPid, &thread_attr, (void *(*)(void *))isp_thread, NULL))
+            HAL_ERROR("media", "Starting the imaging thread failed!\n");
         if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-            fprintf(stderr, "Can't set stack size %zu!\n", stacksize);
+            HAL_DANGER("media", "Can't set stack size %zu!\n", stacksize);
         }
         pthread_attr_destroy(&thread_attr);
     }
 
     if (app_config.mp4_enable) {
         ret = enable_mp4();
-        if (ret) {
-            fprintf(stderr, "MP4 initialization failed with %#x!\n", ret);
-            return EXIT_FAILURE;
-        }
+        if (ret)
+            HAL_ERROR("media", "MP4 initialization failed with %#x!\n", ret);
     }
 
     if (app_config.mjpeg_enable) {
         ret = enable_mjpeg();
-        if (ret) {
-            fprintf(stderr, "MJPEG initialization failed with %#x!\n", ret);
-            return EXIT_FAILURE;
-        }
+        if (ret)
+            HAL_ERROR("media", "MJPEG initialization failed with %#x!\n", ret);
     }
 
     if (app_config.jpeg_enable) {
         ret = jpeg_init();
-        if (ret) {
-            fprintf(stderr, "JPEG initialization failed with %#x!\n", ret);
-            return EXIT_FAILURE;
-        }
+        if (ret)
+            HAL_ERROR("media", "JPEG initialization failed with %#x!\n", ret);
     }
 
     {
@@ -686,17 +630,13 @@ int start_sdk(void) {
         size_t stacksize;
         pthread_attr_getstacksize(&thread_attr, &stacksize);
         size_t new_stacksize = app_config.venc_stream_thread_stack_size;
-        if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-            fprintf(stderr, "Can't set stack size %zu\n", new_stacksize);
-        }
+        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
         if (pthread_create(
-                     &vidPid, &thread_attr, (void *(*)(void *))vid_thread, NULL)) {
-            fprintf(stderr, "Starting the video encoding thread failed!\n");
-            return EXIT_FAILURE;
-        }
-        if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-            fprintf(stderr, "Can't set stack size %zu\n", stacksize);
-        }
+                     &vidPid, &thread_attr, (void *(*)(void *))vid_thread, NULL))
+            HAL_ERROR("media", "Starting the video encoding thread failed!\n");
+        if (pthread_attr_setstacksize(&thread_attr, stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
         pthread_attr_destroy(&thread_attr);
     }
 
@@ -711,7 +651,7 @@ int start_sdk(void) {
 #endif
         }
 
-    fprintf(stderr, "SDK has started successfully!\n");
+    HAL_INFO("media", "SDK has started successfully!\n");
 
     return EXIT_SUCCESS;
 }
@@ -787,6 +727,6 @@ int stop_sdk(void) {
 #endif
     }
 
-    fprintf(stderr, "SDK had stopped successfully!\n");
+    HAL_INFO("media", "SDK had stopped successfully!\n");
     return EXIT_SUCCESS;
 }

@@ -1,7 +1,5 @@
 #include "jpeg.h"
 
-#define tag "[jpeg] "
-
 int jpeg_index;
 bool jpeg_module_init = false;
 
@@ -22,11 +20,9 @@ int jpeg_init() {
     jpeg_index = take_next_free_channel(false);
 
     if (ret = create_channel(jpeg_index, app_config.jpeg_width, app_config.jpeg_height, 1, 1)) {
-        printf(
-            tag "Creating channel %d failed with %#x!\n%s\n", 
-            jpeg_index, ret, errstr(ret));
         pthread_mutex_unlock(&jpeg_mutex);
-        return EXIT_FAILURE;
+        HAL_ERROR("jpeg", "Creating channel %d failed with %#x!\n%s\n", 
+            jpeg_index, ret, errstr(ret));
     }
 
     {
@@ -53,18 +49,16 @@ int jpeg_init() {
         }
 
         if (ret) {
-            printf(
-                tag "Creating encoder %d failed with %#x!\n%s\n", 
-                jpeg_index, ret, errstr(ret));
             pthread_mutex_unlock(&jpeg_mutex);
-            return EXIT_FAILURE;
+            HAL_ERROR("jpeg", "Creating encoder %d failed with %#x!\n%s\n", 
+                jpeg_index, ret, errstr(ret));
         }
     }
 
 active:
     jpeg_module_init = true;
     pthread_mutex_unlock(&jpeg_mutex);
-    printf(tag "Module enabled!\n");
+    HAL_INFO("jpeg", "Module enabled!\n");
 
     return EXIT_SUCCESS;
 }
@@ -95,7 +89,7 @@ void jpeg_deinit() {
 active:
     jpeg_module_init = false;
     pthread_mutex_unlock(&jpeg_mutex);
-    printf(tag "Module disabled!\n");
+    HAL_INFO("jpeg", "Module disabled!\n");
 }
 
 int jpeg_get(short width, short height, char quality, char grayscale, 
@@ -103,8 +97,7 @@ int jpeg_get(short width, short height, char quality, char grayscale,
     pthread_mutex_lock(&jpeg_mutex);
     if (!jpeg_module_init) {
         pthread_mutex_unlock(&jpeg_mutex);
-        printf(tag "Module is not enabled!\n");
-        return EXIT_FAILURE;
+        HAL_ERROR("jpeg", "Module is not enabled!\n");
     }
     int ret;
 

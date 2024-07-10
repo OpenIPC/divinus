@@ -7,8 +7,6 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#define tag "[night] "
-
 static bool night_mode = false;
 pthread_t nightPid = 0;
 
@@ -33,11 +31,11 @@ void ircut_off() {
 void set_night_mode(bool night) {
     if (night == night_mode) return;
     if (night) {
-        printf(tag "Changing mode to NIGHT\n");
+        HAL_INFO("night", "Changing mode to NIGHT\n");
         ircut_off();
         set_grayscale(true);
     } else {
-        printf(tag "Changing mode to DAY\n");
+        HAL_INFO("night", "Changing mode to DAY\n");
         ircut_on();
         set_grayscale(false);
     }
@@ -56,7 +54,7 @@ void *night_thread(void) {
         int cnt = 0, tmp = 0, val;
 
         if ((adc_fd = open(app_config.adc_device, O_RDONLY | O_NONBLOCK)) <= 0) {
-            printf(tag "Could not open the ADC virtual device!\n");
+            HAL_DANGER("night", "Could not open the ADC virtual device!\n");
             return NULL;
         }
         struct timeval tv = { 
@@ -94,7 +92,7 @@ void *night_thread(void) {
     }
     usleep(10000);
     gpio_deinit();
-    printf(tag "Night mode thread is closing...\n");
+    HAL_INFO("night", "Night mode thread is closing...\n");
 }
 
 int start_monitor_light_sensor() {
@@ -104,11 +102,11 @@ int start_monitor_light_sensor() {
     pthread_attr_getstacksize(&thread_attr, &stacksize);
     size_t new_stacksize = 16 * 1024;
     if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-        printf(tag "Error:  Can't set stack size %zu\n", new_stacksize);
+        HAL_DANGER("night", "Error:  Can't set stack size %zu\n", new_stacksize);
     }
     pthread_create(&nightPid, &thread_attr, (void *(*)(void *))night_thread, NULL);
     if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-        printf(tag "Error:  Can't set stack size %zu\n", stacksize);
+        HAL_DANGER("night", "Error:  Can't set stack size %zu\n", stacksize);
     }
     pthread_attr_destroy(&thread_attr);
 }

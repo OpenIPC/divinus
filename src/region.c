@@ -1,7 +1,5 @@
 #include "region.h"
 
-#define tag "[region] "
-
 osd osds[MAX_OSD];
 pthread_t regionPid = 0;
 char timefmt[32] = DEF_TIMEFMT;
@@ -101,13 +99,13 @@ static inline int region_open_bitmap(char *path, FILE **file)
     unsigned short type;
 
     if (!path)
-        REGION_ERROR("Filename is empty!\n");
+        HAL_ERROR("region", "Filename is empty!\n");
     if (!(*file = fopen(path, "rb")))
-        REGION_ERROR("Opening the bitmap failed!\n");
+        HAL_ERROR("region", "Opening the bitmap failed!\n");
     if (fread(&type, 1, sizeof(type), *file) != sizeof(type))
-        REGION_ERROR("Reading the bitmap failed!\n");
+        HAL_ERROR("region", "Reading the bitmap failed!\n");
     if (type != 0x4d42)
-        REGION_ERROR("Only bitmap files are currently supported!\n");
+        HAL_ERROR("region", "Only bitmap files are currently supported!\n");
 
     return EXIT_SUCCESS;
 }
@@ -115,13 +113,13 @@ static inline int region_open_bitmap(char *path, FILE **file)
 int region_parse_bitmap(FILE **file, bitmapfile *bmpFile, bitmapinfo *bmpInfo)
 {
     if (fread(bmpFile, 1, sizeof(bitmapfile), *file) != sizeof(bitmapfile))
-        REGION_ERROR("Extracting the bitmap file header failed!\n");
+        HAL_ERROR("region", "Extracting the bitmap file header failed!\n");
     if (fread(bmpInfo, 1, sizeof(bitmapinfo), *file) != sizeof(bitmapinfo))
-        REGION_ERROR("Extracting the bitmap info failed!\n");
+        HAL_ERROR("region", "Extracting the bitmap info failed!\n");
     if (bmpInfo->bitCount < 24)
-        REGION_ERROR("Indexed or <3bpp bitmaps are not supported!\n");
+        HAL_ERROR("region", "Indexed or <3bpp bitmaps are not supported!\n");
     if (bmpInfo->bitCount != 32 && bmpInfo->compression)
-        REGION_ERROR("Bitfields and compressed modes are not supported!\n");
+        HAL_ERROR("region", "Bitfields and compressed modes are not supported!\n");
 
     return EXIT_SUCCESS;
 }
@@ -141,25 +139,25 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
         return EXIT_FAILURE;
 
     if (region_parse_bitmap(&file, &bmpFile, &bmpInfo))
-        REGION_ERROR("Bitmap file \"%s\" cannot be processed!\n", path);
+        HAL_ERROR("region", "Bitmap file \"%s\" cannot be processed!\n", path);
     
     bpp = bmpInfo.bitCount / 8;
     size = bmpInfo.width * abs(bmpInfo.height);
 
     if (fseek(file, bmpFile.offBits, 0))
-        REGION_ERROR("Navigating to the bitmap image data failed!\n");
+        HAL_ERROR("region", "Navigating to the bitmap image data failed!\n");
     if (!(buffer = malloc(size * bpp)))
-        REGION_ERROR("Allocating the bitmap input memory failed!\n");
+        HAL_ERROR("region", "Allocating the bitmap input memory failed!\n");
 
     if (fread(buffer, 1, (unsigned int)(size * bpp), file) != 
         (unsigned int)(size * bpp))
-        REGION_ERROR("Reading the bitmap image data failed!\n");
+        HAL_ERROR("region", "Reading the bitmap image data failed!\n");
 
     if (bmpInfo.height >= 0) {
         char *new  = malloc(size * bpp);
         int stride = bmpInfo.width * bpp;
         if (!new)
-            REGION_ERROR("Allocating the flipped bitmap memory failed!\n");
+            HAL_ERROR("region", "Allocating the flipped bitmap memory failed!\n");
         for (int h = 0; h < bmpInfo.height; h++)
             memcpy(new + (h * stride),
                 buffer + ((bmpInfo.height - 1) * stride) - (h * stride),
@@ -169,7 +167,7 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     }
 
     if (!(bitmap->data = malloc(size * 2)))
-        REGION_ERROR("Allocating the destination buffer failed!\n");
+        HAL_ERROR("region", "Allocating the destination buffer failed!\n");
 
     start = buffer;
     dest = bitmap->data;
@@ -347,11 +345,11 @@ int start_region_handler() {
     pthread_attr_getstacksize(&thread_attr, &stacksize);
     size_t new_stacksize = 320 * 1024;
     if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-        printf(tag "Can't set stack size %zu\n", new_stacksize);
+        HAL_DANGER("region", "Can't set stack size %zu\n", new_stacksize);
     }
     pthread_create(&regionPid, &thread_attr, (void *(*)(void *))region_thread, NULL);
     if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-        printf(tag "Error:  Can't set stack size %zu\n", stacksize);
+        HAL_DANGER("region", "Error:  Can't set stack size %zu\n", stacksize);
     }
     pthread_attr_destroy(&thread_attr);
 }
