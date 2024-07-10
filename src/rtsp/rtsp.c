@@ -263,7 +263,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
     char audioRtp[256] = "\r\n";
     char audioRtpfmt[16];
 
-    if (h->audioPt) {
+    if (h->audioPt != 255) {
         switch (h->audioPt) {
             case 0:
                 sprintf(audioRtpfmt, "PCMU");
@@ -911,7 +911,7 @@ rtsp_handle rtsp_create(unsigned char max_con, int priority)
 
     TALLOC(nh,return NULL);
 
-    nh->audioPt = -1;
+    nh->audioPt = 255;
     nh->max_con = max_con;
     nh->priority = priority;
 

@@ -35,7 +35,8 @@ typedef enum {
 
 typedef enum {
     HAL_AUDCODEC_UNSPEC,
-    HAL_AUDCODEC_MP3 = 0x69
+    HAL_AUDCODEC_MP3 = 0x69,
+    HAL_AUDCODEC_NONE = 0xFF
 } hal_audcodec;
 
 typedef enum {

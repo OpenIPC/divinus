@@ -125,7 +125,7 @@ struct __rtsp_obj_t {
     unsigned short  port;
     struct __time_stat_t stat;
     char isH265;
-    char audioPt;
+    unsigned char audioPt;
     mime_encoded_handle sprop_vps_b64;
     mime_encoded_handle sprop_sps_b64;
     mime_encoded_handle sprop_pps_b64;
