@@ -20,7 +20,7 @@ enum BufError write_vmhd(struct BitBuf *ptr);
 enum BufError write_smhd(struct BitBuf *ptr);
 enum BufError write_stbl(struct BitBuf *ptr, const struct MoovInfo *moov_info, char is_audio);
 enum BufError write_stsd(struct BitBuf *ptr, const struct MoovInfo *moov_info, char is_audio);
-enum BufError write_btrt(struct BitBuf *ptr);
+enum BufError write_btrt(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_esds(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_mp4a(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_avc1_hev1(struct BitBuf *ptr, const struct MoovInfo *moov_info);
@@ -541,7 +541,7 @@ enum BufError write_stsd(struct BitBuf *ptr, const struct MoovInfo *moov_info, c
     return BUF_OK;
 }
 
-enum BufError write_btrt(struct BitBuf *ptr) {
+enum BufError write_btrt(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -551,9 +551,9 @@ enum BufError write_btrt(struct BitBuf *ptr) {
     chk_err;
     err = put_u32_be(ptr, 0);
     chk_err; // 4 Buffer size
-    err = put_u32_be(ptr, 25636);
+    err = put_u32_be(ptr, moov_info->audio_bitrate * 1000);
     chk_err; // 4 Max bitrate
-    err = put_u32_be(ptr, 25636);
+    err = put_u32_be(ptr, moov_info->audio_bitrate * 1000);
     chk_err; // 4 Avg bitrate
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;
@@ -617,9 +617,9 @@ enum BufError write_DecoderConfig(struct BitBuf *ptr, const struct MoovInfo *moo
     chk_err; // streamType
     err = put_skip(ptr, 3);
     chk_err; // 3 bufferSize
-    err = put_u32_be(ptr, 128000);
+    err = put_u32_be(ptr, moov_info->audio_bitrate * 1000);
     chk_err; // 4 Max bitrate
-    err = put_u32_be(ptr, 128000);
+    err = put_u32_be(ptr, moov_info->audio_bitrate * 1000);
     chk_err; // 4 Avg bitrate
     err = put_u32_le_to_offset(ptr, var_len, varint32(ptr->offset - var_len - 4));
     chk_err;
@@ -780,7 +780,7 @@ enum BufError write_mp4a(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     chk_err; // 2 reserved
     err = write_esds(ptr, moov_info);
     chk_err;
-    err = write_btrt(ptr);
+    err = write_btrt(ptr, moov_info);
     chk_err;
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;

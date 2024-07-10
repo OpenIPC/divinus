@@ -56,10 +56,10 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 
 ### Roadmap
 
-- [ ] Alternative audio codecs
 - [ ] Assorted WebUI to handle media reconfiguration and live preview
 - [ ] Motion detection reimplementation
 - [ ] Hardware support improvement (older SoCs, general usage chips)
+- [ ] Alternative audio codecs
 
 
 ### Technical support and donations

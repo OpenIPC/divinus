@@ -25,7 +25,8 @@ struct Mp4State {
     uint32_t nals_count;
 };
 
-void mp4_set_config(short width, short height, char framerate, char acodec, int srate);
+void mp4_set_config(short width, short height, char framerate,
+    char acodec, unsigned short bitrate, unsigned int srate);
 
 void mp4_set_sps(const char *nal_data, const uint32_t nal_len, char is_h265);
 void mp4_set_pps(const char *nal_data, const uint32_t nal_len, char is_h265);

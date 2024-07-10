@@ -23,7 +23,10 @@ unsigned int pcmSamp;
 short pcmSrc[SHINE_MAX_SAMPLES];
 
 void *aenc_thread(void) {
-    const uint32_t mp3FrmSize = 1152;
+    const uint32_t mp3FrmSize = 
+        (app_config.audio_srate >= 32000 ? 144 : 72) *
+        (app_config.audio_bitrate * 1000) / 
+        app_config.audio_srate;
     
     while (keepRunning) {
         pthread_mutex_lock(&aencMtx);
@@ -514,7 +517,7 @@ int enable_mp4(void) {
 
         mp4_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
             app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC, 
-            app_config.audio_srate);
+            app_config.audio_bitrate, app_config.audio_srate);
     }
 
     if (ret = bind_channel(index, app_config.mp4_fps, 0)) {

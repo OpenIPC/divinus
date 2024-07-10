@@ -7,6 +7,7 @@
 uint32_t default_sample_size = 40000;
 
 unsigned int aud_samplerate = 0;
+unsigned short aud_bitrate = 0;
 short vid_width = 1920, vid_height = 1080;
 char aud_codec = 0, vid_framerate = 30;
 
@@ -58,12 +59,13 @@ enum BufError create_header(char is_h265) {
     chk_err return BUF_OK;
 }
 
-void mp4_set_config(short width, short height, char framerate, char acodec, int srate)
-{
+void mp4_set_config(short width, short height, char framerate,
+    char acodec, unsigned short bitrate, unsigned int srate) {
     vid_width = width;
     vid_height = height;
     vid_framerate = framerate;
     aud_codec = acodec;
+    aud_bitrate = bitrate;
     aud_samplerate = srate;
 }
 
@@ -103,7 +105,8 @@ enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     buf_moof.offset = 0;
     err = write_moof(
         &buf_moof, 0, 0, 0, default_sample_size, samples_info,
-        samples_info_len, samples_info + 1, buf_aud.offset >= 2304 ? 1 : 0);
+        samples_info_len, samples_info + 1, 
+        buf_aud.offset >= 2304 ? 1 : 0);
     chk_err;
 
     buf_mdat.offset = 0;

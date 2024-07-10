@@ -51,7 +51,8 @@ http_post:
 
 audio:
   enable: false
-  srate: 8000
+  srate: 48000
+  bitrate: 128
 
 rtsp:
   enable: true
