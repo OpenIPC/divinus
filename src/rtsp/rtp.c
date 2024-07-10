@@ -158,6 +158,7 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
     struct transfer_item_t *trans;
     struct nal_rtp_t *rtp = v;
     int track_id = rtp->packet.header.pt == 96 ? 0 : 1;
+    char attempts = 0;
 
     list_upcast(trans,e); 
 
@@ -169,26 +170,23 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
     rtp->packet.header.ssrc = htonl(con->ssrc);
     con->trans[track_id].rtp_seq += 1;
 
-    send_bytes = send(con->trans[track_id].server_rtp_fd,
-        &(rtp->packet),rtp->rtpsize,0);
-    
-    if(send_bytes == rtp->rtpsize) {
-        con->trans[track_id].rtcp_packet_cnt += 1;
-        con->trans[track_id].rtcp_octet += rtp->rtpsize;
-        return SUCCESS;
-    } 
+    do  {
+        send_bytes = send(con->trans[track_id].server_rtp_fd,
+            &(rtp->packet),rtp->rtpsize,0);
 
-    if(con->con_state != __CON_S_PLAYING) {
-        DBG("connection state changed before send\n");
-        return SUCCESS;
-    }
-
-    if(send_bytes == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)){
-        ERR("EAGAIN\n");
-        return FAILURE;
-    } 
+        if(send_bytes == rtp->rtpsize) {
+            con->trans[track_id].rtcp_packet_cnt += 1;
+            con->trans[track_id].rtcp_octet += rtp->rtpsize;
+            return SUCCESS;
+        } else if(con->con_state != __CON_S_PLAYING) {
+            DBG("connection state changed before send\n");
+            return SUCCESS;
+        } else
+            usleep(1000);
+    } while (++attempts < 10 && 
+        send_bytes == -1 && (errno == EAGAIN || errno == EWOULDBLOCK));
     
-    ERR("send:%d:%s\n",send_bytes,strerror(errno));
+    ERR("send:%d:%s\n", send_bytes, strerror(errno));
     return FAILURE;
 }
 
