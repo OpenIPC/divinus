@@ -1,7 +1,8 @@
 #pragma once
 
-#include "common.h"
+#include "app_config.h"
 #include "gpio.h"
+#include "hal/macros.h"
 #include "media.h"
 
 #include <pthread.h>

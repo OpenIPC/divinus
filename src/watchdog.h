@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.h"
+#include "hal/macros.h"
 
 #include <fcntl.h>
 #include <linux/watchdog.h>

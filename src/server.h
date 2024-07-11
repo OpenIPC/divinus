@@ -15,7 +15,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "common.h"
+#include "app_config.h"
+#include "hal/types.h"
 #include "jpeg.h"
 #include "media.h"
 #include "mp4/mp4.h"

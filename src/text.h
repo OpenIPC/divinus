@@ -1,7 +1,6 @@
 #pragma once
 
-#include "common.h"
-#include "hal/types.h"
+#include "hal/support.h"
 #include "lib/schrift.h"
 
 #include <string.h>

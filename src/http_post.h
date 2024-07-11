@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.h"
+#include "hal/macros.h"
 #include "hal/tools.h"
 #include "jpeg.h"
 #include "mp4/mp4.h"

@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <sys/select.h>
 
-#include "common.h"
 #include "error.h"
 #include "hal/types.h"
 #include "media.h"

@@ -1,4 +1,11 @@
-#include "common.h"
+#include "app_config.h"
+#include "hal/macros.h"
+#include "http_post.h"
+#include "media.h"
+#include "night.h"
+#include "rtsp/rtsp_server.h"
+#include "server.h"
+#include "watchdog.h"
 
 #include <getopt.h>
 #include <signal.h>
@@ -6,13 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "http_post.h"
-#include "media.h"
-#include "night.h"
-#include "rtsp/rtsp_server.h"
-#include "server.h"
-#include "watchdog.h"
 
 rtsp_handle rtspHandle;
 

@@ -1,4 +1,4 @@
-#include "common.h"
+#include "hal/macros.h"
 
 #include <errno.h>
 #include <fcntl.h>

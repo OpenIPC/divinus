@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.h"
+#include "app_config.h"
 #include "hal/support.h"
 #include "text.h"
 
