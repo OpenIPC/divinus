@@ -1,7 +1,5 @@
 #include "server.h"
 
-#define tag "[server] "
-
 char keepRunning = 1;
 
 enum StreamType {
@@ -295,13 +293,12 @@ struct jpegtask {
 void *send_jpeg_thread(void *vargp) {
     struct jpegtask task = *((struct jpegtask *)vargp);
     hal_jpegdata jpeg = {0};
-    printf(
-        tag "Requesting a JPEG snapshot (%ux%u, qfactor %u, color2Gray %d)...\n",
+    HAL_INFO("server", "Requesting a JPEG snapshot (%ux%u, qfactor %u, color2Gray %d)...\n",
         task.width, task.height, task.qfactor, task.color2Gray);
     int ret =
         jpeg_get(task.width, task.height, task.qfactor, task.color2Gray, &jpeg);
     if (ret) {
-        printf("Failed to receive a JPEG snapshot...\n");
+        HAL_DANGER("server", "Failed to receive a JPEG snapshot...\n");
         static char response[] =
             "HTTP/1.1 503 Internal Error\r\nContent-Length: 11\r\nConnection: "
             "close\r\n\r\nHello, 503!";
@@ -311,7 +308,7 @@ void *send_jpeg_thread(void *vargp) {
         close_socket_fd(task.client_fd);
         return NULL;
     }
-    printf(tag "JPEG snapshot has been received!\n");
+    HAL_INFO("server", "JPEG snapshot has been received!\n");
     char buf[1024];
     int buf_len = sprintf(
         buf,
@@ -323,7 +320,7 @@ void *send_jpeg_thread(void *vargp) {
     send_to_fd(task.client_fd, "\r\n", 2);
     close_socket_fd(task.client_fd);
     free(jpeg.data);
-    printf(tag "JPEG snapshot has been sent!\n");
+    HAL_INFO("server", "JPEG snapshot has been sent!\n");
     return NULL;
 }
 
@@ -497,7 +494,7 @@ void parse_request(int client_fd, char *request) {
     uri = strtok_r(NULL, " \t", &state);
     prot = strtok_r(NULL, " \t\r\n", &state);
 
-    fprintf(stderr, tag "\x1b[32mNew request: (%s) %s\n"
+    HAL_INFO("server", "\x1b[32mNew request: (%s) %s\n"
         "         Received from: %s\x1b[0m\n",
         method, uri, inet_ntoa(client_sock.sin_addr));
 
@@ -532,10 +529,10 @@ void parse_request(int client_fd, char *request) {
     while (l && total < paysize) {
         received = recv(client_fd, request + total, REQSIZE - total, 0);
         if (received < 0) {
-            fputs(tag "recv() error\n", stderr);
+            HAL_WARNING("server", "recv() error\n", stderr);
             break;
         } else if (!received) {
-            fputs(tag "Client disconnected unexpectedly\n", stderr);
+            HAL_WARNING("server", "Client disconnected unexpectedly\n", stderr);
             break;
         }
         total += received;
@@ -548,7 +545,7 @@ void *server_thread(void *vargp) {
     int server_fd = *((int *)vargp);
     int enable = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
-        printf(tag "setsockopt(SO_REUSEADDR) failed");
+        HAL_WARNING("server", "setsockopt(SO_REUSEADDR) failed");
         fflush(stdout);
     }
     struct sockaddr_in server, client;
@@ -557,7 +554,7 @@ void *server_thread(void *vargp) {
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     int res = bind(server_fd, (struct sockaddr *)&server, sizeof(server));
     if (res != 0) {
-        printf(tag "%s (%d)\n", strerror(errno), errno);
+        HAL_DANGER("server", "%s (%d)\n", strerror(errno), errno);
         keepRunning = 0;
         close_socket_fd(server_fd);
         return NULL;
@@ -575,9 +572,9 @@ void *server_thread(void *vargp) {
         total = 0;
         received = recv(client_fd, request, REQSIZE, 0);
         if (received < 0)
-            fputs(tag "recv() error\n", stderr);           
+            HAL_WARNING("server", "recv() error\n", stderr);           
         else if (!received)
-            fputs(tag "Client disconnected unexpectedly\n", stderr); 
+            HAL_WARNING("server", "Client disconnected unexpectedly\n", stderr); 
         total += received;
 
         if (total <= 0) continue;
@@ -1192,12 +1189,12 @@ void *server_thread(void *vargp) {
         free(request);
 
     close_socket_fd(server_fd);
-    printf(tag "Thread has exited\n");
+    HAL_INFO("server", "Thread has exited\n");
     return NULL;
 }
 
 void sig_handler(int signo) {
-    printf(tag "Graceful shutdown...\n");
+    HAL_INFO("server", "Graceful shutdown...\n");
     keepRunning = 0;
 }
 void epipe_handler(int signo) { printf("EPIPE\n"); }
@@ -1232,14 +1229,13 @@ int start_server() {
         size_t stacksize;
         pthread_attr_getstacksize(&thread_attr, &stacksize);
         size_t new_stacksize = app_config.web_server_thread_stack_size + REQSIZE;
-        if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-            printf(tag "Can't set stack size %zu\n", new_stacksize);
-        }
-        pthread_create(
-            &server_thread_id, &thread_attr, server_thread, (void *)&server_fd);
-        if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-            printf(tag "Can't set stack size %zu\n", stacksize);
-        }
+        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+            HAL_WARNING("server", "Can't set stack size %zu\n", new_stacksize);
+        if (pthread_create(
+            &server_thread_id, &thread_attr, server_thread, (void *)&server_fd))
+            HAL_ERROR("server", "Starting the server thread failed!\n");
+        if (pthread_attr_setstacksize(&thread_attr, stacksize))
+            HAL_DANGER("server", "Can't set stack size %zu\n", stacksize);
         pthread_attr_destroy(&thread_attr);
     }
 
@@ -1254,7 +1250,7 @@ int stop_server() {
     pthread_join(server_thread_id, NULL);
 
     pthread_mutex_destroy(&client_fds_mutex);
-    printf(tag "Shutting down server...\n");
+    HAL_INFO("server", "Shutting down server...\n");
 
     if (app_config.watchdog)
         watchdog_stop();

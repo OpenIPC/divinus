@@ -1,3 +1,5 @@
+#include "common.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/version.h>
@@ -13,14 +15,6 @@
 #else
 #include <string.h>
 #endif
-
-#define GPIO_ERROR(x, ...) \
-    do { \
-        fprintf(stderr, "[gpio] \033[31m"); \
-        fprintf(stderr, (x), ##__VA_ARGS__); \
-        fprintf(stderr, "\033[0m"); \
-        return EXIT_FAILURE; \
-    } while (0)
 
 void gpio_deinit(void);
 int gpio_init(void);

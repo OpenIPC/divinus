@@ -1,17 +1,5 @@
 #include "media.h"
 
-#include <pthread.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include "error.h"
-#include "http_post.h"
-#include "jpeg.h"
-#include "server.h"
-
 pthread_mutex_t aencMtx, chnMtx, mp4Mtx;
 pthread_t aencPid = 0, audPid = 0, ispPid = 0, vidPid = 0;
 
@@ -477,7 +465,6 @@ int enable_mp4(void) {
         if (ret)
             HAL_ERROR("media", "Creating encoder %d failed with %#x!\n%s\n", 
                 index, ret, errstr(ret));
-            return EXIT_FAILURE;
 
         mp4_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
             app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC, 

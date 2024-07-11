@@ -1,12 +1,5 @@
 #include "night.h"
 
-#include <pthread.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-
 static bool night_mode = false;
 pthread_t nightPid = 0;
 

@@ -137,10 +137,8 @@ static int i6c_rgn_load(i6c_rgn_impl *rgn_lib) {
         return EXIT_FAILURE;
 
     if (!(rgn_lib->fnGetChannelConfig = (int(*)(unsigned short chip, unsigned int handle, i6c_sys_bind *dest, i6c_rgn_chn *config))
-        hal_symbol_load("i6c_rgn", rgn_lib->handle, "MI_RGN_GetDisplayAttr"))) {
-        fprintf(stderr, "[i6c_rgn] Failed to acquire symbol MI_RGN_GetDisplayAttr!\n");
+        hal_symbol_load("i6c_rgn", rgn_lib->handle, "MI_RGN_GetDisplayAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnSetChannelConfig = (int(*)(unsigned short chip, unsigned int handle, i6c_sys_bind *dest, i6c_rgn_chn *config))
         hal_symbol_load("i6c_rgn", rgn_lib->handle, "MI_RGN_SetDisplayAttr")))

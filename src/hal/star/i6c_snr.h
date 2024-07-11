@@ -107,7 +107,7 @@ static int i6c_snr_load(i6c_snr_impl *snr_lib) {
         return EXIT_FAILURE;
 
     if (!(snr_lib->fnEnable = (int(*)(unsigned int sensor))
-        hal_symbol_load("i6c_snr", snr_lib->handle, "MI_SNR_Enable")));
+        hal_symbol_load("i6c_snr", snr_lib->handle, "MI_SNR_Enable")))
         return EXIT_FAILURE;
 
     if (!(snr_lib->fnSetFramerate = (int(*)(unsigned int sensor, unsigned int framerate))

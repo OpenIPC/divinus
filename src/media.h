@@ -1,10 +1,20 @@
 #pragma once
 
 #include "common.h"
+#include "error.h"
+#include "http_post.h"
 #include "lib/shine/layer3.h"
+#include "jpeg.h"
 #include "rtsp/rtsp_server.h"
+#include "server.h"
 
+#include <pthread.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 extern rtsp_handle rtspHandle;
 
