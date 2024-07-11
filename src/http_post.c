@@ -1,43 +1,19 @@
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <time.h>
-
-#include <errno.h>
-#include <pthread.h>
-#include <regex.h>
-#include <unistd.h>
-
-#include "mp4/mp4.h"
-#include "mp4/nal.h"
 #include "http_post.h"
-#include "jpeg.h"
-#include "hal/tools.h"
-
-#define tag "[http_post] "
 
 int post_send(hal_jpegdata *jpeg) {
     char *host_addr = app_config.http_post_host;
 
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-        printf(tag "socket creation failed...\n");
-        return 0;
-    }
+    if (sockfd == -1)
+        HAL_ERROR("http_post", "Socket creation failed!\n");
 
     struct addrinfo *server_addr;
     int ret = getaddrinfo(host_addr, "80", NULL, &server_addr);
     if (!ret) {
         const struct addrinfo *r;
         for (r = server_addr; r != NULL || ret != 0; r = r->ai_next)
-            ret =
-                connect(sockfd, server_addr->ai_addr, server_addr->ai_addrlen);
-        printf(tag "connected to the server '%s'..\n", host_addr);
+            ret = connect(sockfd, server_addr->ai_addr, server_addr->ai_addrlen);
+        HAL_INFO("http_post", "Successfully connected to %s!\n", host_addr);
 
         char time_url[256];
         {
@@ -86,7 +62,7 @@ int post_send(hal_jpegdata *jpeg) {
     }
     freeaddrinfo(server_addr);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 void *send_thread(void *vargp) {
@@ -106,13 +82,13 @@ void *send_thread(void *vargp) {
 
         if (jpeg_get(app_config.http_post_width, app_config.http_post_height,
                 app_config.http_post_qfactor, 3, &jpeg)) {
-            printf(tag "get_jpeg error!\n");
+            HAL_WARNING("http_post", "Grabbing the JPEG image has failed!\n");
             continue;
         }
         last_time = current_time;
 
         if (post_send(&jpeg)) {
-            printf(tag "post_send error!\n");
+            HAL_WARNING("http_post", "Sending the picture has failed!\n");
             continue;
         }
     }
@@ -126,12 +102,12 @@ void start_http_post_send() {
     size_t stacksize;
     pthread_attr_getstacksize(&thread_attr, &stacksize);
     size_t new_stacksize = 16 * 1024;
-    if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-        printf(tag "Can't set stack size %zu\n", new_stacksize);
-    }
-    pthread_create(&http_post_thread_id, &thread_attr, send_thread, NULL);
-    if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-        printf(tag "Can't set stack size %zu\n", stacksize);
-    }
+    if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+        HAL_DANGER("http_post", "Can't set stack size %zu\n", new_stacksize);
+    if (pthread_create(
+                    &http_post_thread_id, &thread_attr, send_thread, NULL))
+        HAL_DANGER("http_post", "Starting the HTTP poster thread failed!\n");
+    if (pthread_attr_setstacksize(&thread_attr, stacksize))
+        HAL_DANGER("http_post", "Can't set stack size %zu\n", stacksize);
     pthread_attr_destroy(&thread_attr);
 }
