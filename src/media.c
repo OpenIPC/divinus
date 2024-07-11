@@ -38,7 +38,7 @@ void *aenc_thread(void) {
             memcpy(mp3Buf.buf, mp3Buf.buf + mp3FrmSize, mp3Buf.offset);
         pthread_mutex_unlock(&aencMtx);
     }
-    fprintf(stderr, "[media] Shutting down audio encoding thread...\n");
+    HAL_INFO("media", "Shutting down audio encoding thread...\n");
 }
 
 int save_audio_stream(hal_audframe *frame) {
