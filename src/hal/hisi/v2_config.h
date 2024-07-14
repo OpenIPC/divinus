@@ -281,6 +281,12 @@ static enum ConfigError v2_parse_config_videv(
         &device->sync.timing.vsyncIntrlBack);
     if (err != CONFIG_OK)
         return err;
+    err = parse_int(ini, section, "datapath", 0, INT_MAX, &device->dataPath);
+    if (err != CONFIG_OK)
+        return err;
+    err = parse_int(ini, section, "inputdatatype", 0, INT_MAX, &device->rgbModeOn);
+    if (err != CONFIG_OK)
+        return err;
     err = parse_int(ini, section, "datarev", 0, INT_MAX, &device->dataRevOn);
     if (err != CONFIG_OK)
         return err;
@@ -297,10 +303,6 @@ static enum ConfigError v2_parse_config_videv(
     err = parse_int(ini, section, "devrect_h", 0, INT_MAX, &device->rect.height);
     if (err != CONFIG_OK)
         return err;
-    
-    if (device->intf == V2_VI_INTF_MIPI || device->intf == V2_VI_INTF_LVDS)
-        device->rgbModeOn = 1;
-    else device->rgbModeOn = 0;
 
     return CONFIG_OK;
 }

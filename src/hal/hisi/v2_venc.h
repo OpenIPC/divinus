@@ -13,15 +13,6 @@ typedef enum {
 } v2_venc_codec;
 
 typedef enum {
-    V2_VENC_GOPMODE_NORMALP,
-    V2_VENC_GOPMODE_DUALP,
-    V2_VENC_GOPMODE_SMARTP,
-    V2_VENC_GOPMODE_BIPREDB,
-    V2_VENC_GOPMODE_LOWDELAYB,
-    V2_VENC_GOPMODE_END
-} v2_venc_gopmode;
-
-typedef enum {
     V2_VENC_NALU_H264_BSLICE,
     V2_VENC_NALU_H264_PSLICE,
     V2_VENC_NALU_H264_ISLICE,
@@ -75,6 +66,8 @@ typedef struct {
     unsigned int profile;
     int byFrame;
     v2_common_dim pic;
+    unsigned int bFrameNum;
+    unsigned int refNum;
 } v2_venc_attr_h26x;
 
 typedef struct {
@@ -119,7 +112,6 @@ typedef struct {
     unsigned int maxBitrate;
     unsigned int maxQual;
     unsigned int minQual;
-    unsigned int minIQual;
 } v2_venc_rate_h26xvbr;
 
 typedef struct {
@@ -127,7 +119,7 @@ typedef struct {
     unsigned int statTime;
     unsigned int srcFps;
     unsigned int dstFps;
-    unsigned int bitrate;
+    unsigned int maxBitrate;
 } v2_venc_rate_h26xavbr;
 
 typedef struct {
@@ -136,7 +128,6 @@ typedef struct {
     unsigned int dstFps;
     unsigned int interQual;
     unsigned int predQual;
-    unsigned int bipredQual;
 } v2_venc_rate_h26xqp;
 
 typedef struct {

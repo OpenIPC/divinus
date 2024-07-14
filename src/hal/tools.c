@@ -1,14 +1,12 @@
 #include "tools.h"
 
-char *memstr(char *haystack, char *needle, int size, char needlesize)
-{
+char *memstr(char *haystack, char *needle, int size, char needlesize) {
 	for (char *p = haystack; p <= (haystack - needlesize + size); p++)
 		if (!memcmp(p, needle, needlesize)) return p;
 	return NULL;
 }
 
-unsigned int millis()
-{
+unsigned int millis() {
     struct timeval t;
     gettimeofday(&t, NULL);
     return t.tv_sec * 1000 + (t.tv_usec + 500) / 1000;

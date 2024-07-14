@@ -12,13 +12,7 @@
 enum {
     V2_SNR_CMD_CONF_DEV = 1,
     V2_SNR_CMD_CONF_EDGE,
-    V2_SNR_CMD_CONF_MSB,
-    V2_SNR_CMD_CONF_CMV,
-    V2_SNR_CMD_RST_SENS,
-    V2_SNR_CMD_UNRST_SENS,
-    V2_SNR_CMD_RST_MIPI,
-    V2_SNR_CMD_UNRST_MIPI,
-    V2_SNR_CMD_CONF_CROP
+    V2_SNR_CMD_CONF_MSB
 };
 
 typedef enum {
@@ -66,7 +60,6 @@ typedef struct {
 } v2_snr_mipi;
 
 typedef struct {
-    unsigned int device;
     v2_snr_input input;
     union {
         v2_snr_mipi mipi;

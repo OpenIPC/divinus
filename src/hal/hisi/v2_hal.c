@@ -334,8 +334,6 @@ void v2_pipeline_destroy(void)
     v2_vi.fnDisableChannel(_v2_vi_chn);
 
     v2_vi.fnDisableDevice(_v2_vi_dev);
-
-    v2_sensor_deconfig();
 }
 
 int v2_region_create(char handle, hal_rect rect, short opacity)
@@ -411,7 +409,6 @@ int v2_sensor_config(void) {
     int fd;
     v2_snr_dev config;
     memset(&config, 0, sizeof(config));
-    config.device = 0;
     config.input = v2_config.input_mode;
     if (config.input == V2_SNR_INPUT_MIPI)
         memcpy(&config.mipi, &v2_config.mipi, sizeof(v2_snr_mipi));
@@ -420,42 +417,18 @@ int v2_sensor_config(void) {
 
     if (!access(v2_snr_endp, F_OK))
         fd = open(v2_snr_endp, O_RDWR);
-    else fd = open("/dev/mipi", O_RDWR);
+    else
+        HAL_ERROR("v2_snr", "Imaging device doesn't exist, "
+            "maybe a kernel module is missing?\n");
     if (fd < 0)
         HAL_ERROR("v2_snr", "Opening imaging device has failed!\n");
 
-    ioctl(fd, _IOW(V2_SNR_IOC_MAGIC, V2_SNR_CMD_RST_MIPI, unsigned int), &config.device);
-
-    ioctl(fd, _IOW(V2_SNR_IOC_MAGIC, V2_SNR_CMD_RST_SENS, unsigned int), &config.device);
-    
     if (ioctl(fd, _IOW(V2_SNR_IOC_MAGIC, V2_SNR_CMD_CONF_DEV, v2_snr_dev), &config))
         HAL_ERROR("v2_snr", "Configuring imaging device has failed!\n");
-
-    ioctl(fd, _IOW(V2_SNR_IOC_MAGIC, V2_SNR_CMD_UNRST_MIPI, unsigned int), &config.device);
-
-    ioctl(fd, _IOW(V2_SNR_IOC_MAGIC, V2_SNR_CMD_UNRST_SENS, unsigned int), &config.device);
 
     close(fd);
 
     return EXIT_SUCCESS;
-}
-
-void v2_sensor_deconfig(void) {
-    int fd;
-    v2_snr_dev config;
-    config.device = 0;
-
-    if (!access(v2_snr_endp, F_OK))
-        fd = open(v2_snr_endp, O_RDWR);
-    else fd = open("/dev/mipi", O_RDWR);
-    if (fd < 0)
-        HAL_DANGER("v2_snr", "Opening imaging device has failed!\n");
-
-    ioctl(fd, _IOW(V2_SNR_IOC_MAGIC, V2_SNR_CMD_RST_SENS, unsigned int), &config.device);
-
-    ioctl(fd, _IOW(V2_SNR_IOC_MAGIC, V2_SNR_CMD_RST_MIPI, unsigned int), &config.device);
-
-    close(fd);
 }
 
 void v2_sensor_deinit(void)
@@ -544,17 +517,17 @@ int v2_video_create(char index, hal_vidconfig *config)
                 channel.rate.h265Vbr = (v2_venc_rate_h26xvbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
-                    .minQual = config->minQual, .minIQual = config->minQual }; break;
+                    .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V2_VENC_RATEMODE_H265QP;
                 channel.rate.h265Qp = (v2_venc_rate_h26xqp){ .gop = config->gop,
                     .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
-                    .predQual = config->minQual, .bipredQual = config->minQual }; break;
+                    .predQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V2_VENC_RATEMODE_H265AVBR;
                 channel.rate.h265Avbr = (v2_venc_rate_h26xavbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .bitrate = config->bitrate }; break;
+                    .maxBitrate = config->bitrate }; break;
             default:
                 HAL_ERROR("v2_venc", "H.265 encoder does not support this mode!");
         }
@@ -572,17 +545,17 @@ int v2_video_create(char index, hal_vidconfig *config)
                 channel.rate.h264Vbr = (v2_venc_rate_h26xvbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
-                    .minQual = config->minQual, .minIQual = config->minQual }; break;
+                    .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V2_VENC_RATEMODE_H264QP;
                 channel.rate.h264Qp = (v2_venc_rate_h26xqp){ .gop = config->gop,
                     .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
-                    .predQual = config->minQual, .bipredQual = config->minQual }; break;
+                    .predQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V2_VENC_RATEMODE_H264AVBR;
                 channel.rate.h264Avbr = (v2_venc_rate_h26xavbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .bitrate = config->bitrate }; break;
+                    .maxBitrate = config->bitrate }; break;
             default:
                 HAL_ERROR("v2_venc", "H.264 encoder does not support this mode!");
         }
@@ -594,6 +567,8 @@ int v2_video_create(char index, hal_vidconfig *config)
     attrib->byFrame = 1;
     attrib->pic.width = config->width;
     attrib->pic.height = config->height;
+    attrib->bFrameNum = 0;
+    attrib->refNum = 1;
 attach:
     if (ret = v2_venc.fnCreateChannel(index, &channel))
         return ret;

@@ -19,8 +19,8 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | SoC Family              | Audio Stream | JPEG Snapshot | fMP4 Stream | RTSP Stream | On-Screen Display* |
 |-------------------------|:------------:|:-------------:|:-----------:|:-----------:|:------------------:|
 | GM813x                  | ✗            | ✔️           | ✔️          | ✔️          | ✗                 |
-| Hi3516AV100[^1]         | ↻            | ↻            | ↻           | ↻           | ↻                 |
-| Hi3516CV200[^2]         | ↻            | ↻            | ↻           | ↻           | ↻                 |
+| Hi3516AV100[^1]         | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3516CV200[^2]         | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3516CV300[^3]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3516CV500[^4]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3516EV200[^5]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
