@@ -69,7 +69,7 @@ void hal_identify(void) {
             case 0xF1: // Pudding (6E)
             case 0xF2: // Ispahan (6B0)
                 plat = HAL_PLATFORM_I6;
-                strcpy(chipId, val == 0xEF ? 
+                strcpy(chipId, series == 0xEF ? 
                     "SSC32x" : "SSC33x");
                 chnCount = I6_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6_state;

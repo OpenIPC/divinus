@@ -579,7 +579,8 @@ int i6_video_create(char index, hal_vidconfig *config)
     attrib->maxHeight = config->height;
     attrib->maxWidth = config->width;
     attrib->bufSize = config->height * config->width;
-    attrib->profile = config->profile;
+    attrib->profile = MIN((series == 0xEF || config->codec == HAL_VIDCODEC_H265) ? 1 : 2,
+        config->profile);
     attrib->byFrame = 1;
     attrib->height = config->height;
     attrib->width = config->width;
@@ -836,7 +837,36 @@ void *i6_video_thread(void)
                             outPack[j].data = pack->data;
                             outPack[j].length = pack->length;
                             outPack[j].naluCnt = pack->packNum;
-                            switch (i6_state[i].payload) {
+                            if (series == 0xEF) {
+                                signed char n = 0;
+                                switch (i6_state[i].payload) {
+                                    case HAL_VIDCODEC_H264:
+                                        for (unsigned int p = 0; p < pack->length - 4; p++) {
+                                            if (outPack[j].data[p] || outPack[j].data[p + 1] ||
+                                                outPack[j].data[p + 2] || outPack[j].data[p + 3] != 1) continue;
+                                            outPack[0].nalu[n].type = outPack[j].data[p + 4] & 0x1F;
+                                            outPack[0].nalu[n++].offset = p;
+                                            if (n == (outPack[j].naluCnt)) break;
+                                        }
+                                        break;
+                                    case HAL_VIDCODEC_H265:
+                                        for (unsigned int p = 0; p < pack->length - 4; p++) {
+                                            if (outPack[j].data[p] || outPack[j].data[p + 1] ||
+                                                outPack[j].data[p + 2] || outPack[j].data[p + 3] != 1) continue;
+                                            outPack[0].nalu[n].type = (outPack[j].data[p + 4] & 0x7E) >> 1;
+                                            outPack[0].nalu[n++].offset = p;
+                                            if (n == (outPack[j].naluCnt)) break;
+                                        }
+                                        break;
+                                }
+
+                                outPack[0].naluCnt = n;
+                                outPack[0].nalu[n].offset = pack->length;
+                                for (n = 0; n < outPack[0].naluCnt; n++)
+                                    outPack[0].nalu[n].length = 
+                                        outPack[0].nalu[n + 1].offset -
+                                        outPack[0].nalu[n].offset;
+                            } else switch (i6_state[i].payload) {
                                 case HAL_VIDCODEC_H264:
                                     for (char k = 0; k < outPack[j].naluCnt; k++) {
                                         outPack[j].nalu[k].length =
