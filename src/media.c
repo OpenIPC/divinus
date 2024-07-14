@@ -155,6 +155,7 @@ void request_idr(void) {
         case HAL_PLATFORM_I6:  i6_video_request_idr(index); break;
         case HAL_PLATFORM_I6C: i6c_video_request_idr(index); break;
         case HAL_PLATFORM_I6F: i6f_video_request_idr(index); break;
+        case HAL_PLATFORM_V2:  v2_video_request_idr(index); break;
         case HAL_PLATFORM_V3:  v3_video_request_idr(index); break;
         case HAL_PLATFORM_V4:  v4_video_request_idr(index); break;
 #elif defined(__mips__)
@@ -171,6 +172,7 @@ void set_grayscale(bool active) {
         case HAL_PLATFORM_I6:  i6_channel_grayscale(active); break;
         case HAL_PLATFORM_I6C: i6c_channel_grayscale(active); break;
         case HAL_PLATFORM_I6F: i6f_channel_grayscale(active); break;
+        case HAL_PLATFORM_V2:  v2_channel_grayscale(active); break;
         case HAL_PLATFORM_V3:  v3_channel_grayscale(active); break;
         case HAL_PLATFORM_V4:  v4_channel_grayscale(active); break;
 #elif defined(__mips__)
@@ -204,6 +206,8 @@ int create_channel(char index, short width, short height, char framerate, char j
             app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_I6F: return i6f_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
+        case HAL_PLATFORM_V2:  return v2_channel_create(index, width, height,
+            app_config.mirror, app_config.flip, framerate);
         case HAL_PLATFORM_V3:  return v3_channel_create(index, width, height,
             app_config.mirror, app_config.flip, framerate);
         case HAL_PLATFORM_V4:  return v4_channel_create(index, app_config.mirror,
@@ -222,6 +226,7 @@ int bind_channel(char index, char framerate, char jpeg) {
         case HAL_PLATFORM_I6:  return i6_channel_bind(index, framerate);
         case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate);
         case HAL_PLATFORM_I6F: return i6f_channel_bind(index, framerate);
+        case HAL_PLATFORM_V2:  return v2_channel_bind(index);
         case HAL_PLATFORM_V3:  return v3_channel_bind(index);
         case HAL_PLATFORM_V4:  return v4_channel_bind(index);
 #elif defined(__mips__)
@@ -237,6 +242,7 @@ int unbind_channel(char index, char jpeg) {
         case HAL_PLATFORM_I6:  return i6_channel_unbind(index);
         case HAL_PLATFORM_I6C: return i6c_channel_unbind(index);
         case HAL_PLATFORM_I6F: return i6f_channel_unbind(index);
+        case HAL_PLATFORM_V2:  return v2_channel_unbind(index);
         case HAL_PLATFORM_V3:  return v3_channel_unbind(index);
         case HAL_PLATFORM_V4:  return v4_channel_unbind(index);
 #elif defined(__mips__)
@@ -252,6 +258,7 @@ int disable_video(char index, char jpeg) {
         case HAL_PLATFORM_I6:  return i6_video_destroy(index);
         case HAL_PLATFORM_I6C: return i6c_video_destroy(index);
         case HAL_PLATFORM_I6F: return i6f_video_destroy(index);
+        case HAL_PLATFORM_V2:  return v2_video_destroy(index);
         case HAL_PLATFORM_V3:  return v3_video_destroy(index);
         case HAL_PLATFORM_V4:  return v4_video_destroy(index);
 #elif defined(__mips__)
@@ -271,6 +278,7 @@ void disable_audio(void) {
         case HAL_PLATFORM_I6:  i6_audio_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_audio_deinit(); break;
         case HAL_PLATFORM_I6F: i6f_audio_deinit(); break;
+        case HAL_PLATFORM_V2:  v2_audio_deinit(); break;
         case HAL_PLATFORM_V3:  v3_audio_deinit(); break;
         case HAL_PLATFORM_V4:  v4_audio_deinit(); break;
 #elif defined(__mips__)
@@ -287,6 +295,7 @@ int enable_audio(void) {
         case HAL_PLATFORM_I6:  ret = i6_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_I6C: ret = i6c_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_I6F: ret = i6f_audio_init(app_config.audio_srate); break;
+        case HAL_PLATFORM_V2:  ret = v2_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V3:  ret = v3_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V4:  ret = v4_audio_init(app_config.audio_srate); break;
 #elif defined(__mips__)
@@ -387,6 +396,7 @@ int enable_mjpeg(void) {
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
             case HAL_PLATFORM_I6F: ret = i6f_video_create(index, &config); break;
+            case HAL_PLATFORM_V2:  ret = v2_video_create(index, &config); break;
             case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
             case HAL_PLATFORM_V4:  ret = v4_video_create(index, &config); break;
 #elif defined(__mips__)
@@ -455,6 +465,7 @@ int enable_mp4(void) {
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
             case HAL_PLATFORM_I6F: ret = i6f_video_create(index, &config); break;
+            case HAL_PLATFORM_V2:  ret = v2_video_create(index, &config); break;
             case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
             case HAL_PLATFORM_V4:  ret = v4_video_create(index, &config); break;
 #elif defined(__mips__)
@@ -487,6 +498,7 @@ int start_sdk(void) {
         case HAL_PLATFORM_I6:  ret = i6_hal_init(); break;
         case HAL_PLATFORM_I6C: ret = i6c_hal_init(); break;
         case HAL_PLATFORM_I6F: ret = i6f_hal_init(); break;
+        case HAL_PLATFORM_V2:  ret = v2_hal_init(); break;
         case HAL_PLATFORM_V3:  ret = v3_hal_init(); break;
         case HAL_PLATFORM_V4:  ret = v4_hal_init(); break;
 #elif defined(__mips__)
@@ -512,6 +524,10 @@ int start_sdk(void) {
             i6f_aud_cb = save_audio_stream;
             i6f_vid_cb = save_video_stream;
             break;
+        case HAL_PLATFORM_V2:
+            v2_aud_cb = save_audio_stream;
+            v2_vid_cb = save_video_stream;
+            break;
         case HAL_PLATFORM_V3:
             v3_aud_cb = save_audio_stream;
             v3_vid_cb = save_video_stream;
@@ -534,6 +550,7 @@ int start_sdk(void) {
         case HAL_PLATFORM_I6:  ret = i6_system_init(); break;
         case HAL_PLATFORM_I6C: ret = i6c_system_init(); break;
         case HAL_PLATFORM_I6F: ret = i6f_system_init(); break;
+        case HAL_PLATFORM_V2:  ret = v2_system_init(app_config.sensor_config); break;
         case HAL_PLATFORM_V3:  ret = v3_system_init(app_config.sensor_config); break;
         case HAL_PLATFORM_V4:  ret = v4_system_init(app_config.sensor_config); break;
 #elif defined(__mips__)
@@ -565,6 +582,7 @@ int start_sdk(void) {
             height, framerate); break;
         case HAL_PLATFORM_I6F: ret = i6f_pipeline_create(0, width,
             height, framerate); break;
+        case HAL_PLATFORM_V2:  ret = v2_pipeline_create(); break;
         case HAL_PLATFORM_V3:  ret = v3_pipeline_create(); break;
         case HAL_PLATFORM_V4:  ret = v4_pipeline_create(); break;
 #elif defined(__mips__)
@@ -655,6 +673,7 @@ int stop_sdk(void) {
         case HAL_PLATFORM_I6:  i6_video_destroy_all(); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy_all(); break;
         case HAL_PLATFORM_I6F: i6f_video_destroy_all(); break;
+        case HAL_PLATFORM_V2:  v2_video_destroy_all(); break;
         case HAL_PLATFORM_V3:  v3_video_destroy_all(); break;
         case HAL_PLATFORM_V4:  v4_video_destroy_all(); break;
 #elif defined(__mips__)
@@ -668,6 +687,7 @@ int stop_sdk(void) {
         case HAL_PLATFORM_I6:  i6_pipeline_destroy(); break;
         case HAL_PLATFORM_I6C: i6c_pipeline_destroy(); break;
         case HAL_PLATFORM_I6F: i6f_pipeline_destroy(); break;
+        case HAL_PLATFORM_V2:  v2_pipeline_destroy(); break;
         case HAL_PLATFORM_V3:  v3_pipeline_destroy(); break;
         case HAL_PLATFORM_V4:  v4_pipeline_destroy(); break;
 #elif defined(__mips__)
@@ -687,6 +707,7 @@ int stop_sdk(void) {
         case HAL_PLATFORM_I6:  i6_system_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_system_deinit(); break;
         case HAL_PLATFORM_I6F: i6f_system_deinit(); break;
+        case HAL_PLATFORM_V2:  v2_system_deinit(); break;
         case HAL_PLATFORM_V3:  v3_system_deinit(); break;
         case HAL_PLATFORM_V4:  v4_system_deinit(); break;
 #elif defined(__mips__)
@@ -696,6 +717,7 @@ int stop_sdk(void) {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_V2: v2_sensor_deinit(); break;
         case HAL_PLATFORM_V3: v3_sensor_deinit(); break;
         case HAL_PLATFORM_V4: v4_sensor_deinit(); break;
 #endif
@@ -707,6 +729,7 @@ int stop_sdk(void) {
         case HAL_PLATFORM_I6:  i6_hal_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_hal_deinit(); break;
         case HAL_PLATFORM_I6F: i6f_hal_deinit(); break;
+        case HAL_PLATFORM_V2:  v2_hal_deinit(); break;
         case HAL_PLATFORM_V3:  v3_hal_deinit(); break;
         case HAL_PLATFORM_V4:  v4_hal_deinit(); break;
 #elif defined(__mips__)

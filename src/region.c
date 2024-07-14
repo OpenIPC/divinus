@@ -249,6 +249,10 @@ void *region_thread(void)
                                 i6f_region_create(id, rect, osds[id].opal);
                                 i6f_region_setbitmap(id, &bitmap);
                                 break;
+                            case HAL_PLATFORM_V2:
+                                v2_region_create(id, rect, osds[id].opal);
+                                v2_region_setbitmap(id, &bitmap);
+                                break;
                             case HAL_PLATFORM_V3:
                                 v3_region_create(id, rect, osds[id].opal);
                                 v3_region_setbitmap(id, &bitmap);
@@ -293,6 +297,10 @@ void *region_thread(void)
                                 i6f_region_create(id, rect, osds[id].opal);
                                 i6f_region_setbitmap(id, &bitmap);
                                 break;
+                            case HAL_PLATFORM_V2:
+                                v2_region_create(id, rect, osds[id].opal);
+                                v2_region_setbitmap(id, &bitmap);
+                                break;
                             case HAL_PLATFORM_V3:
                                 v3_region_create(id, rect, osds[id].opal);
                                 v3_region_setbitmap(id, &bitmap);
@@ -317,6 +325,7 @@ void *region_thread(void)
                         case HAL_PLATFORM_I6:  i6_region_destroy(id); break;
                         case HAL_PLATFORM_I6C: i6c_region_destroy(id); break;
                         case HAL_PLATFORM_I6F: i6f_region_destroy(id); break;
+                        case HAL_PLATFORM_V2:  v2_region_destroy(id); break;
                         case HAL_PLATFORM_V3:  v3_region_destroy(id); break;
                         case HAL_PLATFORM_V4:  v4_region_destroy(id); break;
 #elif defined(__mips__)

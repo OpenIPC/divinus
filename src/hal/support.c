@@ -148,7 +148,7 @@ void hal_identify(void) {
         fclose(file);
     }
 
-    char v3series = 0;
+    char v2series = 0, v3series = 0;
 
     switch (val) {
         case 0x12040000:
@@ -157,7 +157,10 @@ void hal_identify(void) {
             val = 0x12020000;
             v3series = 1;
             break;
-        case 0x20080000: val = 0x20050000; break;
+        case 0x20080000:
+            val = 0x20050000;
+            v2series = 1;
+            break;
 
         default: return;
     }
@@ -179,6 +182,16 @@ void hal_identify(void) {
         chipId[9] = chipId[8];
         chipId[10] = chipId[9];
         chipId[11] = '\0';
+    }
+
+    if (v2series) {
+        plat = HAL_PLATFORM_V2;
+        chnCount = V2_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)v2_state;
+        aud_thread = v2_audio_thread;
+        isp_thread = v2_image_thread;
+        vid_thread = v2_video_thread;
+        return;    
     }
 
     if (v3series) {
