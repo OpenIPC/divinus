@@ -10,14 +10,12 @@ typedef struct {
 } i6_isp_impl;
 
 static int i6_isp_load(i6_isp_impl *isp_lib) {
-    if (!(isp_lib->handleIspAlgo = dlopen("libispalgo.so", RTLD_LAZY | RTLD_GLOBAL)))
-        HAL_ERROR("i6_isp", "Failed to load dependency library!\nError: %s\n", dlerror());
+    isp_lib->handleIspAlgo = dlopen("libispalgo.so", RTLD_LAZY | RTLD_GLOBAL);
 
-    if (!(isp_lib->handleCus3a = dlopen("libcus3a.so", RTLD_LAZY | RTLD_GLOBAL)))
-        return EXIT_FAILURE;
+    isp_lib->handleCus3a = dlopen("libcus3a.so", RTLD_LAZY | RTLD_GLOBAL);
 
     if (!(isp_lib->handle = dlopen("libmi_isp.so", RTLD_LAZY | RTLD_GLOBAL)))
-        return EXIT_FAILURE;
+        HAL_ERROR("i6_isp", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(isp_lib->fnLoadChannelConfig = (int(*)(int channel, char *path, unsigned int key))
         hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_API_CmdLoadBinFile")))
@@ -25,7 +23,7 @@ static int i6_isp_load(i6_isp_impl *isp_lib) {
 
     if (!(isp_lib->fnSetColorToGray = (int(*)(int channel, char *enable))
         hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_IQ_SetColorToGray")))
-            return EXIT_FAILURE;
+        return EXIT_FAILURE;
 
     return EXIT_SUCCESS;
 }

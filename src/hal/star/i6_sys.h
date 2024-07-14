@@ -84,11 +84,10 @@ typedef struct {
 } i6_sys_impl;
 
 static int i6_sys_load(i6_sys_impl *sys_lib) {
-    if (!(sys_lib->handleCamOsWrapper = dlopen("libcam_os_wrapper.so", RTLD_LAZY | RTLD_GLOBAL)))
-        HAL_ERROR("i6_sys", "Failed to load dependency library!\nError: %s\n", dlerror());
+    sys_lib->handleCamOsWrapper = dlopen("libcam_os_wrapper.so", RTLD_LAZY | RTLD_GLOBAL);
 
     if (!(sys_lib->handle = dlopen("libmi_sys.so", RTLD_LAZY | RTLD_GLOBAL)))
-        return EXIT_FAILURE;
+        HAL_ERROR("i6c_sys", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(sys_lib->fnExit = (int(*)(void))
         hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_Exit")))

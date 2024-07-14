@@ -345,9 +345,8 @@ static int i6_venc_load(i6_venc_impl *venc_lib) {
         hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_Query")))
         return EXIT_FAILURE;
 
-    if (!(venc_lib->fnSetSourceConfig = (int(*)(int channel, i6_venc_src_conf *config))
-        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_SetInputSourceConfig")))
-        return EXIT_FAILURE;  
+    venc_lib->fnSetSourceConfig = (int(*)(int channel, i6_venc_src_conf *config))
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_SetInputSourceConfig");  
 
     if (!(venc_lib->fnRequestIdr = (int(*)(int channel, char instant))
         hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_RequestIdr")))
