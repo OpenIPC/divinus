@@ -149,7 +149,7 @@ void request_idr(void) {
         index = i;
         break;
     }
-    if (index != 1) switch (plat) {
+    if (index != -1) switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  gm_video_request_idr(index); break;
         case HAL_PLATFORM_I6:  i6_video_request_idr(index); break;
