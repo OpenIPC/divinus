@@ -512,13 +512,15 @@ void i6c_region_deinit(void)
 
 void i6c_region_destroy(char handle)
 {
-    i6c_sys_bind channel = { .module = I6C_SYS_MOD_SCL,
-        .device = _i6c_scl_dev, .channel = _i6c_scl_chn };
-    
-    channel.port = 1;
-    i6c_rgn.fnDetachChannel(0, handle, &channel);
-    channel.port = 0;
-    i6c_rgn.fnDetachChannel(0, handle, &channel);
+    i6c_sys_bind channel = { .module = I6C_SYS_MOD_VENC,
+        .device = _i6c_venc_dev[0], .channel = 0, .port =_i6c_venc_port };
+
+    for (char i = 0; i < I6C_VENC_CHN_NUM; i++) {
+        if (!i6c_state[i].enable) continue;
+        channel.device = _i6c_venc_dev[i];
+        channel.channel = i;
+        i6c_rgn.fnDetachChannel(0, handle, &channel);
+    }
     i6c_rgn.fnDestroyRegion(0, handle);
 }
 
