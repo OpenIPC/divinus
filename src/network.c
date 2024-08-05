@@ -44,4 +44,5 @@ int start_mdns() {
 void stop_mdns() {
     if (mdns)
         mdnsd_stop(mdns);
+    mdns = NULL;
 }
