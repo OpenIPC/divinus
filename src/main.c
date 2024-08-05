@@ -2,6 +2,7 @@
 #include "hal/macros.h"
 #include "http_post.h"
 #include "media.h"
+#include "network.h"
 #include "night.h"
 #include "rtsp/rtsp_server.h"
 #include "server.h"
@@ -50,6 +51,9 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    if (app_config.mdns_enable)
+        start_mdns();
+
     start_server();
 
     if (app_config.rtsp_enable) {
@@ -88,6 +92,9 @@ int main(int argc, char *argv[]) {
     stop_sdk();
 
     stop_server();
+
+    if (app_config.mdns_enable)
+        stop_mdns();
 
     fprintf(stderr, "Main thread is shutting down...\n");
     return EXIT_SUCCESS;

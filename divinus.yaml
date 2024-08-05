@@ -18,6 +18,9 @@ isp:
 osd:
   enable: true
 
+mdns:
+  enable: false
+
 night_mode:
   enable: false
   ir_sensor_pin: 62
@@ -27,16 +30,6 @@ night_mode:
   pin_switch_delay_us: 150
   adc_device: /dev/sar_adc_drv
   adc_threshold: 128
-
-record:
-  enable: false
-  path: /sdcard/records
-  file_duration: 10
-  width: 3840
-  height: 2160
-  fps: 20
-  bitrate: 1024
-  profile: 2
 
 http_post:
   enable: false
