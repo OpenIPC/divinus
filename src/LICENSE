@@ -79,7 +79,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-The following software is included in this product under lib/shine: @toots/shine.
+The following software is included in this product under src/lib/shine: @toots/shine.
 A copy of the original source code may be downloaded from git+https://github.com/toots/shine
 It is accompanied by following license and notice below:
 

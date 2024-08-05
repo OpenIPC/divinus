@@ -9,7 +9,7 @@ This project strives to adopt a KISS "keep it simple, stupid!" structure while b
 
 Compared to most streamer software solutions available to this day, it attaches to the application-specific peripherals of a system-on-a-chip using an easy to understand HAL platform (hardware abstraction layer) proper to each chip series it supports.
 
-Since it is exclusively using dynamic linking, its executable remains particularly compact and can be run on a multitude of environments, including in a tethered context (e.g. running from a temporary filesystem on read-only systems).
+Since it is using runtime dynamic linking, its executable remains particularly compact and can be run on a multitude of environments, including in a tethered context (e.g. running from a temporary filesystem on read-only systems).
 
 In spite of these design choices, Divinus boasts numerous features that cater to a wide range of uses you will be able to make of it.
 
