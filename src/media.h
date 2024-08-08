@@ -31,7 +31,9 @@ int bind_channel(char index, char framerate, char jpeg);
 int unbind_channel(char index, char jpeg);
 int disable_video(char index, char jpeg);
 
-int disable_mp4(void);
-int enable_mp4(void);
+void disable_audio(void);
+int enable_audio(void);
 int disable_mjpeg(void);
 int enable_mjpeg(void);
+int disable_mp4(void);
+int enable_mp4(void);

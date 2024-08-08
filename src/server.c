@@ -410,29 +410,6 @@ int send_video_html(const int client_fd) {
     return 1;
 }
 
-int send_image_html(const int client_fd) {
-    char html[] = "<html>\n"
-                  "    <head>\n"
-                  "        <title>Snapshot</title>\n"
-                  "    </head>\n"
-                  "    <body>\n"
-                  "        <center>\n"
-                  "            <img src=\"image.jpg\"/>\n"
-                  "        </center>\n"
-                  "    </body>\n"
-                  "</html>";
-    char buf[1024];
-    int buf_len = sprintf(
-        buf,
-        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
-        "%lu\r\nConnection: close\r\n\r\n%s",
-        strlen(html), html);
-    buf[buf_len++] = 0;
-    send_to_fd(client_fd, buf, buf_len);
-    close_socket_fd(client_fd);
-    return 1;
-}
-
 #define REQSIZE 512 * 1024
 char response[256];
 char *method, *payload, *prot, *request, *query, *uri;
@@ -616,16 +593,12 @@ void *server_thread(void *vargp) {
             break;
         }
 
-        if (equals(uri, "/image.html") &&
-            app_config.jpeg_enable) {
-            send_image_html(client_fd);
-            continue;
-        }
         if (equals(uri, "/mjpeg.html") &&
             app_config.mjpeg_enable) {
             send_mjpeg_html(client_fd);
             continue;
         }
+
         if (equals(uri, "/video.html") &&
             app_config.mp4_enable) {
             send_video_html(client_fd);
@@ -768,16 +741,61 @@ void *server_thread(void *vargp) {
                 size_t stacksize;
                 pthread_attr_getstacksize(&thread_attr, &stacksize);
                 size_t new_stacksize = 16 * 1024;
-                if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-                    printf("[jpeg] Can't set stack size %ld\n", new_stacksize);
-                }
+                if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+                    HAL_DANGER("jpeg", "Can't set stack size %zu\n", new_stacksize);
                 pthread_create(
                     &thread_id, &thread_attr, send_jpeg_thread, (void *)&task);
-                if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-                    printf("[jpeg] Can't set stack size %ld\n", stacksize);
-                }
+                if (pthread_attr_setstacksize(&thread_attr, stacksize))
+                    HAL_DANGER("jpeg", "Can't set stack size %zu\n", stacksize);
                 pthread_attr_destroy(&thread_attr);
             }
+            continue;
+        }
+
+        if (app_config.audio_enable && equals(uri, "/api/audio")) {
+            int respLen;
+            if (equals(method, "GET")) {
+                if (!empty(query)) {
+                    char *remain;
+                    while (query) {
+                        char *value = split(&query, "&");
+                        if (!value || !*value) continue;
+                        unescape_uri(value);
+                        char *key = split(&value, "=");
+                        if (!key || !*key || !value || !*value) continue;
+                        if (equals(key, "bitrate")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.audio_bitrate = result;
+                        } else if (equals(key, "srate")) {
+                            short result = strtol(value, &remain, 10);
+                            if (remain != value)
+                                app_config.audio_srate = result;
+                        }
+                    }
+                }
+
+                disable_audio();
+                enable_audio();
+
+                respLen = sprintf(response,
+                    "HTTP/1.1 200 OK\r\n" \
+                    "Content-Type: application/json;charset=UTF-8\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "{\"bitrate\":%d,\"srate\":%d}", 
+                    app_config.audio_bitrate, app_config.audio_srate);
+            } else {
+                respLen = sprintf(response,
+                    "HTTP/1.1 400 Bad Request\r\n" \
+                    "Content-Type: text/plain\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "The server has no handler to the request.\r\n" \
+                );
+            }
+            send_to_fd(client_fd, response, respLen);
+            close_socket_fd(client_fd);
             continue;
         }
 
@@ -925,9 +943,9 @@ void *server_thread(void *vargp) {
                             if (remain != value)
                                 app_config.mp4_bitrate = result;
                         } else if (equals(key, "h265")) {
-                            if (equals(value, "true") || equals(value, "1"))
+                            if (equals_case(value, "true") || equals(value, "1"))
                                 app_config.mp4_codecH265 = 1;
-                            else if (equals(value, "false") || equals(value, "0"))
+                            else if (equals_case(value, "false") || equals(value, "0"))
                                 app_config.mp4_codecH265 = 0;
                         } else if (equals(key, "mode")) {
                             if (equals_case(value, "CBR"))
@@ -1005,9 +1023,9 @@ void *server_thread(void *vargp) {
                         char *key = split(&value, "=");
                         if (!key || !*key || !value || !*value) continue;
                         if (equals(key, "active")) {
-                            if (equals_case(value, "true") || equals_case(value, "1"))
+                            if (equals_case(value, "true") || equals(value, "1"))
                                 set_night_mode(1);
-                            else if (equals_case(value, "false") || equals_case(value, "0"))
+                            else if (equals_case(value, "false") || equals(value, "0"))
                                 set_night_mode(0);
                         }
                     }
