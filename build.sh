@@ -19,16 +19,18 @@ fi
 
 if [ "$1" = "arm-musl" ]; then
 	toolchain cortex_a7_thumb2-gcc13-musl-4_9 arm
-elif [ "$1" = "arm-muslhf" ]; then
-	toolchain cortex_a7_thumb2_hf-gcc13-musl-4_9 arm
-elif [ "$1" = "arm-glibc" ]; then
-	toolchain cortex_a7_thumb2_hf-gcc13-glibc-4_9 arm -lm
-elif [ "$1" = "arm9-musl" ]; then
+elif [ "$1" = "arm9-musl3" ]; then
+	toolchain arm926t-gcc13-musl-3_0 arm
+elif [ "$1" = "arm9-musl4" ]; then
 	toolchain arm926t-gcc13-musl-4_9 arm
 elif [ "$1" = "arm9-uclibc" ]; then
 	toolchain arm926t-gcc13-uclibc-3_3 arm
+elif [ "$1" = "armhf-glibc" ]; then
+	toolchain cortex_a7_thumb2_hf-gcc13-glibc-4_9 arm -lm
+elif [ "$1" = "armhf-musl" ]; then
+	toolchain cortex_a7_thumb2_hf-gcc13-musl-4_9 arm
 elif [ "$1" = "mips-musl" ]; then
 	toolchain mips_xburst-gcc13-musl-3_10 mipsel
 else
-	echo "Usage: $0 [arm-musl|arm-muslhf|arm-glibc|arm9-musl|arm9-uclibc|mips-musl]"
+	echo "Usage: $0 [arm-musl|arm9-musl3|arm9-musl4|arm9-uclibc|armhf-glibc|armhf-musl|mips-musl]"
 fi

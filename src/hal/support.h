@@ -1,6 +1,7 @@
 #include "types.h"
 #if defined(__arm__)
 #include "plus/gm_hal.h"
+#include "hisi/v1_hal.h"
 #include "hisi/v2_hal.h"
 #include "hisi/v3_hal.h"
 #include "hisi/v4_hal.h"
@@ -46,6 +47,7 @@ extern int series;
 
 #if defined(__arm__)
 extern hal_chnstate gm_state[GM_VENC_CHN_NUM];
+extern hal_chnstate v1_state[V1_VENC_CHN_NUM];
 extern hal_chnstate v2_state[V2_VENC_CHN_NUM];
 extern hal_chnstate v3_state[V3_VENC_CHN_NUM];
 extern hal_chnstate v4_state[V4_VENC_CHN_NUM];
