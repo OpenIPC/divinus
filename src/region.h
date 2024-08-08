@@ -19,12 +19,16 @@
 
 #include <ifaddrs.h>
 #include <linux/if_link.h>
+#include <linux/version.h>
 #include <pthread.h>
 #include <time.h>
 
 #ifdef __UCLIBC__
-#include <sys/sysinfo.h>
 extern int asprintf(char **restrict strp, const char *restrict fmt, ...);
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
+#include <sys/sysinfo.h>
 #else
 #include <linux/sysinfo.h>
 #endif
