@@ -1,5 +1,8 @@
 #include "server.h"
 
+IMPORT_STR(.rodata, "../res/index.html", indexhtml);
+extern const char indexhtml[];
+
 char keepRunning = 1;
 
 enum StreamType {
@@ -363,6 +366,20 @@ int send_file(const int client_fd, const char *path) {
     return 0;
 }
 
+int send_html(const int client_fd, const char *data) {
+    char *buf;
+    int buf_len = asprintf(
+        &buf,
+        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
+        "%ld\r\nConnection: close\r\n\r\n%s",
+        strlen(data), data);
+    buf[buf_len++] = 0;
+    send_to_fd(client_fd, buf, buf_len);
+    free(buf);
+    close_socket_fd(client_fd);
+    return 1;
+}
+
 int send_mjpeg_html(const int client_fd) {
     char html[] = "<html>\n"
                   "    <head>\n"
@@ -593,6 +610,11 @@ void *server_thread(void *vargp) {
             break;
         }
 
+        if (equals(uri, "/index.html")) {
+            send_html(client_fd, indexhtml);
+            continue;
+        }
+
         if (equals(uri, "/mjpeg.html") &&
             app_config.mjpeg_enable) {
             send_mjpeg_html(client_fd);
@@ -659,7 +681,7 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (equals(uri, "/video.mp4") && app_config.mp4_enable) {
+        if (app_config.mp4_enable && equals(uri, "/video.mp4")) {
             request_idr();
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Type: "
@@ -727,10 +749,11 @@ void *server_thread(void *vargp) {
                             if (remain != value)
                                 task.qfactor = result;
                         }
-                        else if (equals(key, "color2gray")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                task.color2Gray = result;
+                        else if (equals(key, "color2gray") || equals(key, "gray")) {
+                            if (equals_case(value, "true") || equals(value, "1")) 
+                                task.color2Gray = 1;
+                            else if (equals_case(value, "false") || equals(value, "0")) 
+                                task.color2Gray = 0;
                         }
                     }
                 }
@@ -773,10 +796,10 @@ void *server_thread(void *vargp) {
                                 app_config.audio_srate = result;
                         }
                     }
-                }
 
-                disable_audio();
-                enable_audio();
+                    disable_audio();
+                    enable_audio();
+                }
 
                 respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
@@ -824,10 +847,10 @@ void *server_thread(void *vargp) {
                                 app_config.jpeg_qfactor = result;
                         }
                     }
-                }
 
-                jpeg_deinit();
-                jpeg_init();
+                    jpeg_deinit();
+                    jpeg_init();
+                }
 
                 respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
@@ -882,10 +905,10 @@ void *server_thread(void *vargp) {
                                 app_config.mjpeg_mode = HAL_VIDMODE_QP;
                         }
                     }
-                }
 
-                disable_mjpeg();
-                enable_mjpeg();
+                    disable_mjpeg();
+                    enable_mjpeg();
+                }
 
                 char mode[5] = "\0";
                 switch (app_config.mjpeg_mode) {
@@ -967,10 +990,10 @@ void *server_thread(void *vargp) {
                                 app_config.mp4_profile = HAL_VIDPROFILE_HIGH;
                         }
                     }
-                }
 
-                disable_mp4();
-                enable_mp4();
+                    disable_mp4();
+                    enable_mp4();
+                }
 
                 char h265[6] = "false";
                 char mode[5] = "\0";
