@@ -380,53 +380,6 @@ int send_html(const int client_fd, const char *data) {
     return 1;
 }
 
-int send_mjpeg_html(const int client_fd) {
-    char html[] = "<html>\n"
-                  "    <head>\n"
-                  "        <title>Live stream - MJPEG</title>\n"
-                  "    </head>\n"
-                  "    <body>\n"
-                  "        <center>\n"
-                  "            <img src=\"mjpeg\" />\n"
-                  "        </center>\n"
-                  "    </body>\n"
-                  "</html>";
-    char buf[1024];
-    int buf_len = sprintf(
-        buf,
-        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
-        "%lu\r\nConnection: close\r\n\r\n%s",
-        strlen(html), html);
-    buf[buf_len++] = 0;
-    send_to_fd(client_fd, buf, buf_len);
-    close_socket_fd(client_fd);
-    return 1;
-}
-
-int send_video_html(const int client_fd) {
-    char html[] = "<html>\n"
-                  "    <head>\n"
-                  "        <title>Live stream - fMP4</title>\n"
-                  "    </head>\n"
-                  "    <body>\n"
-                  "        <center>\n"
-                  "            <video width=\"700\" src=\"video.mp4\" autoplay "
-                  "controls />\n"
-                  "        </center>\n"
-                  "    </body>\n"
-                  "</html>";
-    char buf[1024];
-    int buf_len = sprintf(
-        buf,
-        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
-        "%lu\r\nConnection: close\r\n\r\n%s",
-        strlen(html), html);
-    buf[buf_len++] = 0;
-    send_to_fd(client_fd, buf, buf_len);
-    close_socket_fd(client_fd);
-    return 1;
-}
-
 #define REQSIZE 512 * 1024
 char response[256];
 char *method, *payload, *prot, *request, *query, *uri;
@@ -610,20 +563,8 @@ void *server_thread(void *vargp) {
             break;
         }
 
-        if (equals(uri, "/index.html")) {
+        if (equals(uri, "/") || equals(uri, "/index.htm") || equals(uri, "/index.html")) {
             send_html(client_fd, indexhtml);
-            continue;
-        }
-
-        if (equals(uri, "/mjpeg.html") &&
-            app_config.mjpeg_enable) {
-            send_mjpeg_html(client_fd);
-            continue;
-        }
-
-        if (equals(uri, "/video.html") &&
-            app_config.mp4_enable) {
-            send_video_html(client_fd);
             continue;
         }
 
