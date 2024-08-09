@@ -1,10 +1,11 @@
 <html>
 <head>
-    <title>Divinus</title>
+	<title>Divinus</title>
 	<style>
-		*{box-sizing:border-box}*+*{margin:.5em 0}pre{overflow:auto}@media(min-width:35em){.col{display:table-cell}.\31{width:5%}.\33{width:22%}.\34{width:30%}.\35{width:40%}.\32{width:15%}.\36{width:50%}.row{display:table;border-spacing:1em 0}}.row,.w-100{width:100%}.card:focus,hr{outline:0;border:solid #fa0}.card,pre{padding:1em;border:solid #eee}.btn:hover,a:hover{opacity:.6}.c{padding:1em;margin:auto;font:1em/1.6 sans-serif}h6{font:400 1em sans-serif}h5{font:400 1.2em sans-serif}h3{font:400 2em sans-serif}h4{font:400 1.5em sans-serif}h2{font:400 2.2em sans-serif}h1{font:400 2.5em sans-serif}a{color:#fa0;text-decoration:none}.btn.primary{color:#fff;background:#fa0;border:solid #fa0}td,th{padding:1em;text-align:left;border-bottom:solid #eee}.btn{padding:1em;text-transform:uppercase;background:#fff;border:solid;font:.7em sans-serif}a.btn{display:inline-block}input,select{font-family:sans-serif}
+		*{box-sizing:border-box}*+*{margin:.5em 0}pre{overflow:auto}@media(min-width:50em){.col{display:table-cell}.\31{width:5%}.\33{width:22%}.\34{width:30%}.\35{width:40%}.\32{width:15%}.\36{width:50%}.row{display:table;border-spacing:1em 0;height:fit-content}}.row,.w-100{width:100%}.card:focus,hr{outline:0;border:solid #fa0}.card,pre{padding:1em;border:solid #eee}.btn:hover,a:hover{opacity:.6}.c{padding:1em;margin:auto;font:1em/1.6 sans-serif}h6{font:400 1em sans-serif}h5{font:400 1.2em sans-serif}h3{font:400 2em sans-serif}h4{font:400 1.5em sans-serif}h2{font:400 2.2em sans-serif}h1{font:400 2.5em sans-serif}a{color:#fa0;text-decoration:none}.btn.primary{color:#fff;background:#fa0;border:solid #fa0}td,th{padding:1em;text-align:left;border-bottom:solid #eee}.btn{padding:1em;text-transform:uppercase;background:#fff;border:solid;font:.7em sans-serif}a.btn{display:inline-block}input,select{font-family:sans-serif}
 		.white{color:#fff}.bg-white{background-color:#fff}.b-white{border-color:#fff}.gray{color:#ccc}.bg-gray{background-color:#ccc}.b-gray{border-color:#ccc}.black{color:#000}.bg-black{background-color:#000}.b-black{border-color:#000}.accent{color:#fa0}.bg-accent{background-color:#fa0}.b-accent{border-color:#fa0}.warning{color:#ffd600}.bg-warning{background-color:#ffd600}.b-warning{border-color:#ffd600}.error{color:#d50000}.bg-error{background-color:#d50000}.b-error{border-color:#d50000}.success{color:#00c853}.bg-success{background-color:#00c853}.b-success{border-color:#00c853}.info{color:#2962ff}.bg-info{background-color:#2962ff}.b-info{border-color:#2962ff}.m0{margin:0}.m1{margin:.5em}.m2{margin:1em}.m3{margin:2em}.m4{margin:4em}.mt0{margin-top:0}.mt1{margin-top:.5em}.mt2{margin-top:1em}.mt3{margin-top:2em}.mt4{margin-top:4em}.mr0{margin-right:0}.mr1{margin-right:.5em}.mr2{margin-right:1em}.mr3{margin-right:2em}.mr4{margin-right:4em}.mb0{margin-bottom:0}.mb1{margin-bottom:.5em}.mb2{margin-bottom:1em}.mb3{margin-bottom:2em}.mb4{margin-bottom:4em}.ml0{margin-left:0}.ml1{margin-left:.5em}.ml2{margin-left:1em}.ml3{margin-left:2em}.ml4{margin-left:4em}.p0{padding:0}.p1{padding:.5em}.p2{padding:1em}.p3{padding:2em}.p4{padding:4em}.pv0{padding-top:0;padding-bottom:0}.pv1{padding-top:.5em;padding-bottom:.5em}.pv2{padding-top:1em;padding-bottom:1em}.pv3{padding-top:2em;padding-bottom:2em}.pv4{padding-top:4em;padding-bottom:4em}.ph0{padding-right:0;padding-left:0}.ph1{padding-right:.5em;padding-left:.5em}.ph2{padding-right:1em;padding-left:1em}.ph3{padding-right:2em;padding-left:2em}.ph4{padding-right:4em;padding-left:4em}.gapless{border-spacing:0}.vc{position:relative;top:40%;transform:perspective(1px) translateY(-45%)}.pill{border-radius:9999px}.rounded{border-radius:4px}.tc{text-align:center}.mega{font-size:3.5em}.large{font-size:1.5em}.small{font-size:.7em}.caps{text-transform:uppercase}.tracked{letter-spacing:.1em}.vh-100{height:100vh}.inline{display:inline-block}.bold{font-weight:700}.normal{font-weight:400}.light{font-weight:300}.dim{opacity:1;transition:opacity .15s ease-in}.dim:focus,.dim:hover{opacity:.5;transition:opacity .15s ease-in}
-		dialog{display:block;border:0;padding:0!important}dialog:not(:target):not([open]){display:none}.hid{display:none}
+		@media(min-width:50em){.box > fieldset{height:100%}}.box{vertical-align:top}.box input,select{width:100%}.box td{padding:0.5em}.cont{max-width:64em}.menu .btn{margin:-1em 0;padding:0.75em}.right{float:right}.unl{border-bottom:2px solid}
+		dialog{display:block;border:0;padding:0!important}dialog:not(:target):not([open]){display:none}.hid{display:none !important}
 	</style>
 	<script>
 		var ua = window.navigator.userAgent;
@@ -12,14 +13,14 @@
 
 		function apiApply(endp) {
 			var dest = "/api/"+endp+"?", req = new XMLHttpRequest();
-            var elems = document.getElementsByTagName('*');
-            for (var i = 0; i < elems.length; i++) {
-                if (!elems[i].name || elems[i].name.lastIndexOf(endp + '_', 0)) continue;
-                dest += elems[i].name.substring(endp.length + 1) + '=' + elems[i].value + '&';
-            }
-            dest = dest.slice(0, -1);
-            req.open('GET', dest);
-            req.send();
+			var elems = document.getElementsByTagName('*');
+			for (var i = 0; i < elems.length; i++) {
+				if (!elems[i].id || elems[i].id.lastIndexOf(endp + '_', 0)) continue;
+				dest += elems[i].id.substring(endp.length + 1) + '=' + elems[i].value + '&';
+			}
+			dest = dest.slice(0, -1);
+			req.open('GET', dest);
+			req.send();
 		}
 
 		function apiRead(endp) {
@@ -31,12 +32,26 @@
 					if (!dec.hasOwnProperty(key)) continue;
 					var elem = document.getElementById(endp + '_' + key);
 					if (!elem) continue;
-					elem.value = dec[key];
+					if (elem.tagName == 'INPUT' || elem.tagName == 'SELECT')
+						elem.value = dec[key];
+					else
+						elem.innerHTML = dec[key];
 				}
 			}
 			req.open('GET', '/api/'+endp);
 			req.send();
 		}
+
+        function logged() {
+			var req = new XMLHttpRequest();
+			req.onreadystatechange = function() {
+                if (this.readyState != 4 || this.status != 200) return;
+                return req.getAllResponseHeaders().indexOf('WWW-Authenticate') !== -1;
+            }
+			req.open('GET', '/');
+			req.send();
+            return false;
+        }
 
 		function logout() {
 			if (isIe)
@@ -56,12 +71,22 @@
 				while (frame.firstChild) frame.removeChild(frame.firstChild);
 		}
 
+		function every5Sec() {
+			apiRead('status');
+		}
+
 		function onLoad() {
+            if (!logged())
+                document.getElementById('logout').classList += " hid";
+
 			apiRead('audio');
-            apiRead('mp4');
-			apiRead('mjpeg');
-            apiRead('jpeg');
+			apiRead('jpeg');
 			apiRead('night');
+			apiRead('mp4');
+			apiRead('mjpeg');
+
+			every5Sec();
+			setInterval(every5Sec, 5000);
 		}
 	</script>
 </head>
@@ -75,10 +100,9 @@
 		</div>
 	</noscript>
 	<dialog id="live" class="c vh-100 w-100">
-		<div class="c bg-black pv2 row">
+		<div class="c bg-black menu pv2 row">
 			<div class="col">
 				<b><a href="./" class="white ph2">Divinus</a></b>
-				<span class="ph2 gray">Live</span>
 				<a href="javascript:setSource('preview', 'video.mp4')" class="ph2">MP4</a>
 				<a href="javascript:setSource('preview', 'mjpeg')" class="ph2">MJPEG</a>
 				<a href="javascript:setSource('preview', '')" class="ph2">Stop</a>
@@ -87,148 +111,157 @@
 				<a class="btn primary" href="#!">Close</a>
 			</div>
 		</div>
-		<div id="preview" width="100%">
+		<div class="c cont">
+			<h2 class="unl">Live</h2>
+			<div id="preview" width="100%">
+		</div>
 	</dialog>
-    <dialog id="media" class="c vh-100 w-100">
-		<div class="c bg-black pv2 row">
+	<dialog id="media" class="c vh-100 w-100">
+		<div class="c bg-black menu pv2 row">
 			<div class="col">
 				<b><a href="./" class="white ph2">Divinus</a></b>
-				<span class="ph2 gray">Media</span>
 			</div>
 			<div class="1 col">
 				<a class="btn primary" href="#!">Close</a>
 			</div>
 		</div>
-        <div class="c row">
-            <fieldset>
-                <legend>Audio</legend>
-                <table>
-                    <tr>
-                        <td><label for="audio_bitrate">Bitrate (kbps)</label></td>
-                        <td><input type="number" id="audio_bitrate" name="audio_bitrate"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="audio_srate">Sample rate (Hz)</label></td>
-                        <td><input type="number" id="audio_srate" name="audio_srate"></td>
-                    </tr>
-                </table>
-                <a href="javascript:apiApply('audio')" class="btn">Apply</a>
-            </fieldset>
-        </div>
-        <div class="c row">
-            <fieldset>
-                <legend>MP4</legend>
-                <table>
-                    <tr>
-                        <td><label for="mp4_width">Width</label></td>
-                        <td><input type="number" id="mp4_width" name="mp4_width"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="mp4_height">Height</label>
-                        <td><input type="number" id="mp4_height" name="mp4_height"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="mp4_fps">Framerate</label></td>
-                        <td><input type="number" id="mp4_fps" name="mp4_fps"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="mp4_bitrate">Bitrate (kbps)</label></td>
-                        <td><input type="number" id="mp4_bitrate" name="mp4_bitrate"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="mp4_h265">Codec</label></td>
-                        <td><select id="mp4_h265" name="mp4_h265">
-                            <option value="false">H.264</option>
-                            <option value="true">H.265</option>
-                        </select></td>
-                    </tr>
-                    <tr>
-                        <td><label for="mp4_mode">Rate control</label></td>
-                        <td><select id="mp4_mode" name="mp4_mode">
-                            <option value="CBR">CBR</option>
-                            <option value="VBR">VBR</option>
-                            <option value="QP">QP</option>
-                            <option value="ABR">ABR</option>
-                            <option value="AVBR">AVBR</option>
-                        </select></td>
-                    </tr>
-                    <tr>
-                        <td><label for="mp4_profile">Profile</label></td>
-                        <td><select id="mp4_profile" name="mp4_profile">
-                            <option value="BP">Baseline</option>
-                            <option value="MP">Main</option>
-                            <option value="HP">High</option>
-                        </select></td>
-                    </tr>
-                </table>
-                <a href="javascript:apiApply('mp4')" class="btn">Apply</a>
-            </fieldset>
-        </div>
-        <div class="c row">
-            <fieldset>
-                <legend>MJPEG</legend>
-                <table>
-                    <tr>
-                        <td><label for="mjpeg_width">Width</label></td>
-                        <td><input type="number" id="mjpeg_width" name="mjpeg_width"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="mjpeg_height">Height</label></td>
-                        <td><input type="number" id="mjpeg_height" name="mjpeg_height"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="mjpeg_fps">Framerate</label></td>
-                        <td><input type="number" id="mjpeg_fps" name="mjpeg_fps"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="mjpeg_mode">Rate control</label></td>
-                        <td><select id="mjpeg_mode" name="mjpeg_mode">
-                            <option value="CBR">CBR</option>
-                            <option value="VBR">VBR</option>
-                            <option value="QP">QP</option>
-                        </select></td>
-                    </tr>
-                </table>
-                <a href="javascript:apiApply('mjpeg')" class="btn">Apply</a>
-            </fieldset>
-        </div>
-        <div class="c row">
-            <fieldset>
-                <legend>JPEG</legend>
-                <table>
-                    <tr>
-                        <td><label for="jpeg_width">Width</label></td>
-                        <td><input type="number" id="jpeg_width" name="jpeg_width"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="jpeg_height">Height</label></td>
-                        <td><input type="number" id="jpeg_height" name="jpeg_height"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="jpeg_qfactor">Quality (%)</label></td>
-                        <td><input type="number" id="jpeg_qfactor" name="jpeg_qfactor"></td>
-                    </tr>
-                </table>
-                <a href="javascript:apiApply('jpeg')" class="btn">Apply</a>
-            </fieldset>
-        </div>
-        <div class="c row">
-            <fieldset>
-                <legend>Night</legend>
-                <table>
-                    <tr>
-                        <td><label for="night_active">Manual</label></td>
-                        <td><select id="night_active" name="night_active">
-                            <option value="false">OFF</option>
-                            <option value="true">ON</option>
-                        </select></td>
-                    </tr>
-                </table>
-                <a href="javascript:apiApply('night')" class="btn">Apply</a>
-            </fieldset>
-        </div>
-    </dialog>
-	<div class="c bg-black pv2 row">
+		<div class="c cont">
+			<h2 class="unl">Media</h2>
+			<div class="row">
+				<div class="4 col box">
+					<fieldset>
+						<legend>Audio</legend>
+						<table class="w-100">
+							<tr>
+								<td><label for="audio_bitrate">Bitrate&nbsp;(kbps)</label></td>
+								<td><input type="number" id="audio_bitrate"></td>
+							</tr>
+							<tr>
+								<td><label for="audio_srate">Sample rate</label></td>
+								<td><input type="number" id="audio_srate"></td>
+							</tr>
+						</table>
+						<a href="javascript:apiApply('audio')" class="btn right">Apply</a>
+					</fieldset>
+				</div>
+				<div class="4 col box">
+					<fieldset>
+						<legend>JPEG</legend>
+						<table class="w-100">
+							<tr>
+								<td><label for="jpeg_width">Width</label></td>
+								<td><input type="number" id="jpeg_width"></td>
+							</tr>
+							<tr>
+								<td><label for="jpeg_height">Height</label></td>
+								<td><input type="number" id="jpeg_height"></td>
+							</tr>
+							<tr>
+								<td><label for="jpeg_qfactor">Quality&nbsp;(%)</label></td>
+								<td><input type="number" id="jpeg_qfactor"></td>
+							</tr>
+						</table>
+						<a href="javascript:apiApply('jpeg')" class="btn right">Apply</a>
+					</fieldset>
+				</div>
+				<div class="4 col box">
+					<fieldset>
+						<legend>Night</legend>
+						<table class="w-100">
+							<tr>
+								<td><label for="night_active">Manual</label></td>
+								<td><select id="night_active">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+						</table>
+						<a href="javascript:apiApply('night')" class="btn right">Apply</a>
+					</fieldset>
+				</div>
+			</div>
+			<div class="row">
+				<div class="6 col box">
+					<fieldset>
+						<legend>MP4</legend>
+						<table class="w-100">
+							<tr>
+								<td><label for="mp4_width">Width</label></td>
+								<td><input type="number" id="mp4_width"></td>
+							</tr>
+							<tr>
+								<td><label for="mp4_height">Height</label>
+								<td><input type="number" id="mp4_height"></td>
+							</tr>
+							<tr>
+								<td><label for="mp4_fps">Framerate</label></td>
+								<td><input type="number" id="mp4_fps"></td>
+							</tr>
+							<tr>
+								<td><label for="mp4_bitrate">Bitrate (kbps)</label></td>
+								<td><input type="number" id="mp4_bitrate"></td>
+							</tr>
+							<tr>
+								<td><label for="mp4_h265">Codec</label></td>
+								<td><select id="mp4_h265">
+									<option value="false">H.264</option>
+									<option value="true">H.265</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="mp4_mode">Rate control</label></td>
+								<td><select id="mp4_mode">
+									<option value="CBR">CBR</option>
+									<option value="VBR">VBR</option>
+									<option value="QP">QP</option>
+									<option value="ABR">ABR</option>
+									<option value="AVBR">AVBR</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="mp4_profile">Profile</label></td>
+								<td><select id="mp4_profile">
+									<option value="BP">Baseline</option>
+									<option value="MP">Main</option>
+									<option value="HP">High</option>
+								</select></td>
+							</tr>
+						</table>
+						<a href="javascript:apiApply('mp4')" class="btn right">Apply</a>
+					</fieldset>
+				</div>
+				<div class="6 col box">
+					<fieldset>
+						<legend>MJPEG</legend>
+						<table class="w-100">
+							<tr>
+								<td><label for="mjpeg_width">Width</label></td>
+								<td><input type="number" id="mjpeg_width"></td>
+							</tr>
+							<tr>
+								<td><label for="mjpeg_height">Height</label></td>
+								<td><input type="number" id="mjpeg_height"></td>
+							</tr>
+							<tr>
+								<td><label for="mjpeg_fps">Framerate</label></td>
+								<td><input type="number" id="mjpeg_fps"></td>
+							</tr>
+							<tr>
+								<td><label for="mjpeg_mode">Rate control</label></td>
+								<td><select id="mjpeg_mode">
+									<option value="CBR">CBR</option>
+									<option value="VBR">VBR</option>
+									<option value="QP">QP</option>
+								</select></td>
+							</tr>
+						</table>
+						<a href="javascript:apiApply('mjpeg')" class="btn right">Apply</a>
+					</fieldset>
+				</div>
+			</div>
+		</div>
+	</dialog>
+	<div class="c bg-black menu pv2 row">
 		<div class="col">
 			<b><a href="./" class="ph2 white">Divinus</a></b>
 			<a href="#live" class="ph2 white">Live</a>
@@ -236,8 +269,17 @@
 			<a href="image.jpg" class="ph2 white" target="_blank">Snapshot</a>
 		</div>
 		<div class="1 col">
-			<a href="javascript:logout()" class="btn ph2 black">Logout</a>
+			<a id="logout" href="javascript:logout()" class="btn ph2 black">Logout</a>
 		</div>
+	</div>
+	<div class="c cont">
+		<h2 class="unl">Status</h2>
+		<p>
+			<b>Chip identifier:</b> <span id="status_chip"></span><br>
+			<b>Load charge:</b> <span id="status_loadavg"></span><br>
+			<b>Memory usage:</b> <span id="status_memory"></span><br>
+			<b>Uptime:</b> <span id="status_uptime"></span><br>
+		</p>
 	</div>
 </body>
 </html>

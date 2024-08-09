@@ -1114,6 +1114,43 @@ void *server_thread(void *vargp) {
             continue;
         }
 
+        if (equals(uri, "/api/status")) {
+            int respLen;
+            if (equals(method, "GET")) {
+                struct sysinfo si;
+                sysinfo(&si);
+                char memory[16], uptime[48];
+                short used = (si.freeram + si.bufferram) / 1024 / 1024;
+                short total = si.totalram / 1024 / 1024;
+                sprintf(memory, "%d/%dMB", used, total);
+                if (si.uptime > 86400)
+                    sprintf(uptime, "%ld days, %ld:%02ld:%02ld", si.uptime / 86400, (si.uptime % 86400) / 3600, (si.uptime % 3600) / 60, si.uptime % 60);
+                else if (si.uptime > 3600)
+                    sprintf(uptime, "%ld:%02ld:%02ld", si.uptime / 3600, (si.uptime % 3600) / 60, si.uptime % 60);
+                else
+                    sprintf(uptime, "%ld:%02ld", si.uptime / 60, si.uptime % 60);
+                respLen = sprintf(response,
+                    "HTTP/1.1 200 OK\r\n" \
+                    "Content-Type: application/json;charset=UTF-8\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "{\"chip\":\"%s\",\"loadavg\":[%.2f,%.2f,%.2f],\"memory\":\"%s\",\"uptime\":\"%s\"}",
+                    chipId, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0,
+                    memory, uptime);
+            } else {
+                respLen = sprintf(response,
+                    "HTTP/1.1 400 Bad Request\r\n" \
+                    "Content-Type: text/plain\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "The server has no handler to the request.\r\n" \
+                );
+            }
+            send_to_fd(client_fd, response, respLen);
+            close_socket_fd(client_fd);
+            continue;
+        }
+
         if (starts_with(uri, "/api/time")) {
             int respLen;
             if (equals(method, "GET")) {
