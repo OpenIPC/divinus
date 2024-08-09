@@ -417,13 +417,11 @@ static enum ConfigError v1_parse_config_isp(
     err = parse_int(ini, "isp_image", "isp_w", 0, INT_MAX, &value);
     if (err != CONFIG_OK)
         return err;
-    tim->width = value;
-    img->width = tim->width;
+    img->width = tim->width = value;
     err = parse_int(ini, "isp_image", "isp_h", 0, INT_MAX, &value);
     if (err != CONFIG_OK)
         return err;
-    tim->height = value;
-    img->height = tim->height;
+    img->height = tim->height = value;
     err = parse_int(
         ini, "isp_image", "isp_framerate", 0, INT_MAX, &value);
     if (err != CONFIG_OK)

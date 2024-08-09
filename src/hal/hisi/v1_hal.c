@@ -258,6 +258,8 @@ int v1_pipeline_create(void)
     if (ret = v1_vi.fnEnableChannel(_v1_vi_chn))
         return ret;
 
+    if (ret = v1_snr_drv.fnInit())
+        return ret;
     if (ret = v1_snr_drv.fnRegisterCallback())
         return ret;
     
@@ -266,13 +268,13 @@ int v1_pipeline_create(void)
     if (ret = v1_isp.fnRegisterAWB(&v1_awb_lib))
         return ret;
 
+    if (ret = v1_isp.fnInit())
+        return ret;
     if (ret = v1_isp.fnSetWDRMode(&v1_config.mode))
         return ret;
     if (ret = v1_isp.fnSetImageConfig(&v1_config.img))
         return ret;
     if (ret = v1_isp.fnSetInputTiming(&v1_config.tim))
-        return ret;
-    if (ret = v1_isp.fnInit())
         return ret;
     
     {
@@ -420,11 +422,13 @@ int v1_sensor_init(char *name, char *obj)
             break;
     } if (!v1_snr_drv.handle)
         HAL_ERROR("v1_snr", "Failed to load the sensor driver");
-    
+
+    if (!(v1_snr_drv.fnInit = (int(*)(void))dlsym(v1_snr_drv.handle, "sensor_init")))
+        HAL_ERROR("v1_snr", "Failed to connect the init function");
     if (!(v1_snr_drv.fnRegisterCallback = (int(*)(void))dlsym(v1_snr_drv.handle, "sensor_register_callback")))
         HAL_ERROR("v1_snr", "Failed to connect the callback register function");
     if (!(v1_snr_drv.fnUnRegisterCallback = (int(*)(void))dlsym(v1_snr_drv.handle, "sensor_unregister_callback")))
-        HAL_ERROR("v1_snr", "Failed to connect the callback register function");
+        HAL_ERROR("v1_snr", "Failed to connect the callback unregister function");
 
     return EXIT_SUCCESS;
 }

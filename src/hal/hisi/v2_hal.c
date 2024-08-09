@@ -453,7 +453,7 @@ int v2_sensor_init(char *name, char *obj)
     if (!(v2_snr_drv.fnRegisterCallback = (int(*)(void))dlsym(v2_snr_drv.handle, "sensor_register_callback")))
         HAL_ERROR("v2_snr", "Failed to connect the callback register function");
     if (!(v2_snr_drv.fnUnRegisterCallback = (int(*)(void))dlsym(v2_snr_drv.handle, "sensor_unregister_callback")))
-        HAL_ERROR("v2_snr", "Failed to connect the callback register function");
+        HAL_ERROR("v2_snr", "Failed to connect the callback unregister function");
 
     return EXIT_SUCCESS;
 }

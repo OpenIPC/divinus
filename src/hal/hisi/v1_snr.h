@@ -70,8 +70,7 @@ typedef struct {
 typedef struct {
     void *handle;
 
+    int (*fnInit)(void);
     int (*fnRegisterCallback)(void);
     int (*fnUnRegisterCallback)(void);
 } v1_snr_drv_impl;
-
-static const char v1_snr_endp[] = {"/dev/hi_mipi"};
