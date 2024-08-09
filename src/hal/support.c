@@ -166,14 +166,15 @@ void hal_identify(void) {
     }
 
     unsigned SCSYSID[4] = {0};
+    unsigned int out = 0;
     for (int i = 0; i < 4; i++) {
-        if (!hal_registry(val + 0xEE0 + i * 4, (unsigned*)&SCSYSID[i], OP_READ)) break;
-        if (!i && (SCSYSID[i] >> 16 & 0xFF)) { val = SCSYSID[i]; break; }
-        val |= (SCSYSID[i] & 0xFF) << i * 8;
+        if (!hal_registry(val + 0xEE0 + (i * 4), (unsigned*)&SCSYSID[i], OP_READ)) break;
+        if (!i && (SCSYSID[i] >> 16 & 0xFF)) { out = SCSYSID[i]; break; }
+        out |= (SCSYSID[i] & 0xFF) << i * 8;
     }
 
     sprintf(chipId, "%s%X", 
-        ((val >> 28) == 0x7) ? "GK" : "Hi", val);
+        ((out >> 28) == 0x7) ? "GK" : "Hi", out);
     if (chipId[6] == '0') {
         chipId[6] = 'V';
     } else {
