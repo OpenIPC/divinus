@@ -41,7 +41,7 @@ _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supp
 _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matricial formats and covers are to follow_
 
 [^1]: Hi3516AV100 and Hi3516DV100
-[^2]: Hi3516CV100, Hi3518CV100, Hi3518EV100 and Hi3518AV100
+[^2]: Hi3516CV100, Hi3518AV100, Hi3518CV100 and Hi3518EV100
 [^3]: Hi3516CV200 and Hi3518EV20\[0/1\]
 [^4]: Hi3516CV300 and Hi3516EV100
 [^5]: Hi3516AV300, Hi3516CV500 and Hi3516DV300

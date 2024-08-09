@@ -148,7 +148,7 @@ void hal_identify(void) {
         fclose(file);
     }
 
-    char v1series = 0, v2series = 0, v3series = 0;
+    char v2series = 0, v3series = 0;
 
     switch (val) {
         case 0x12040000:
@@ -172,11 +172,6 @@ void hal_identify(void) {
         if (!i && (SCSYSID[i] >> 16 & 0xFF)) { out = SCSYSID[i]; break; }
         out |= (SCSYSID[i] & 0xFF) << i * 8;
     }
-    
-    if (out == 0x35180100) {
-        v1series = 1;
-        v2series = 0;
-    }
 
     sprintf(chipId, "%s%X", 
         ((out >> 28) == 0x7) ? "GK" : "Hi", out);
@@ -190,7 +185,7 @@ void hal_identify(void) {
         chipId[11] = '\0';
     }
 
-    if (v1series) {
+    if (out == 0x35180100) {
         plat = HAL_PLATFORM_V1;
         chnCount = V1_VENC_CHN_NUM;
         chnState = (hal_chnstate*)v1_state;
