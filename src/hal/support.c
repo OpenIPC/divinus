@@ -172,6 +172,11 @@ void hal_identify(void) {
         if (!i && (SCSYSID[i] >> 16 & 0xFF)) { out = SCSYSID[i]; break; }
         out |= (SCSYSID[i] & 0xFF) << i * 8;
     }
+    
+    if (out == 0x35180100) {
+        v1series = 1;
+        v2series = 0;
+    }
 
     sprintf(chipId, "%s%X", 
         ((out >> 28) == 0x7) ? "GK" : "Hi", out);
