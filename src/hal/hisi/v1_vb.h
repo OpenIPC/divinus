@@ -48,7 +48,7 @@ inline static unsigned int v1_buffer_calculate_vi(
     unsigned int width, unsigned int height, v1_common_pixfmt pixFmt,
 	v1_common_compr compr, unsigned int alignWidth)
 {
-	unsigned int bitWidth;
+	unsigned int bitWidth = 16;
     unsigned int size = 0, stride = 0;
     unsigned int cmpRatioLine = 1600, cmpRatioFrame = 2000;
 
@@ -58,15 +58,6 @@ inline static unsigned int v1_buffer_calculate_vi(
 		alignWidth = 64;
 	else
 		alignWidth = ALIGN_UP(alignWidth, 16);
-
-	switch (pixFmt) {
-	    case V1_PIXFMT_RGB_BAYER_8BPP:  bitWidth = 8;  break;
-	    case V1_PIXFMT_RGB_BAYER_10BPP: bitWidth = 10; break;
-	    case V1_PIXFMT_RGB_BAYER_12BPP: bitWidth = 12; break;
-	    case V1_PIXFMT_RGB_BAYER_14BPP: bitWidth = 14; break; 
-	    case V1_PIXFMT_RGB_BAYER_16BPP: bitWidth = 16; break;
-	    default: bitWidth = 0; break;
-	}
 
 	if (compr == V1_COMPR_NONE) {
 		stride = ALIGN_UP(ALIGN_UP(width * bitWidth, 8) / 8,
@@ -93,7 +84,7 @@ inline static unsigned int v1_buffer_calculate_venc(short width, short height, v
         CEILING_2_POWER(height, alignWidth) *
         (pixFmt == V1_PIXFMT_YUV422SP ? 2 : 1.5);
     unsigned int headSize = 16 * height;
-    if (pixFmt == V1_PIXFMT_YUV422SP || pixFmt >= V1_PIXFMT_RGB_BAYER_8BPP)
+    if (pixFmt == V1_PIXFMT_YUV422SP || pixFmt == V1_PIXFMT_RGB_BAYER)
         headSize *= 2;
     else if (pixFmt == V1_PIXFMT_YUV420SP)
         headSize *= 3;

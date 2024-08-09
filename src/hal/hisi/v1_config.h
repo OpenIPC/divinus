@@ -357,10 +357,6 @@ static enum ConfigError v1_parse_config_vichn(
             "PIXEL_FORMAT_RGB_888",
             "PIXEL_FORMAT_RGB_8888",
             "PIXEL_FORMAT_RGB_PLANAR_888",
-            "PIXEL_FORMAT_RGB_BAYER_8BPP",
-            "PIXEL_FORMAT_RGB_BAYER_10BPP",
-            "PIXEL_FORMAT_RGB_BAYER_12BPP",
-            "PIXEL_FORMAT_RGB_BAYER_14BPP",
             "PIXEL_FORMAT_RGB_BAYER",
             "PIXEL_FORMAT_YUV_A422",
             "PIXEL_FORMAT_YUV_A444",
@@ -374,7 +370,8 @@ static enum ConfigError v1_parse_config_vichn(
             "PIXEL_FORMAT_YUYV_PACKAGE_422",
             "PIXEL_FORMAT_VYUY_PACKAGE_422",
             "PIXEL_FORMAT_YCbCr_PLANAR",
-            "PIXEL_FORMAT_YUV_400"};
+            "PIXEL_FORMAT_RGB_422",
+            "PIXEL_FORMAT_RGB_420"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             ini, section, "pixformat", (void *)&channel->pixFmt,

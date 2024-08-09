@@ -228,9 +228,6 @@ int v1_pipeline_create(void)
 {
     int ret;
 
-    if (ret = v1_sensor_config())
-        return ret;
-
     if (ret = v1_vi.fnSetDeviceConfig(_v1_vi_dev, &v1_config.videv))
         return ret;
     if (ret = v1_vi.fnEnableDevice(_v1_vi_dev))
@@ -403,32 +400,6 @@ int v1_region_setbitmap(int handle, hal_bitmap *bitmap)
         .size.height = bitmap->dim.height, .size.width = bitmap->dim.width };
 
     return v1_rgn.fnSetBitmap(handle, &nativeBmp);
-}
-
-int v1_sensor_config(void) {
-    int fd;
-    v1_snr_dev config;
-    memset(&config, 0, sizeof(config));
-    config.input = v1_config.input_mode;
-    if (config.input == V1_SNR_INPUT_MIPI)
-        memcpy(&config.mipi, &v1_config.mipi, sizeof(v1_snr_mipi));
-    else if (config.input == V1_SNR_INPUT_LVDS)
-        memcpy(&config.lvds, &v1_config.lvds, sizeof(v1_snr_lvds));
-
-    if (!access(v1_snr_endp, F_OK))
-        fd = open(v1_snr_endp, O_RDWR);
-    else
-        HAL_ERROR("v1_snr", "Imaging device doesn't exist, "
-            "maybe a kernel module is missing?\n");
-    if (fd < 0)
-        HAL_ERROR("v1_snr", "Opening imaging device has failed!\n");
-
-    if (ioctl(fd, _IOW(V1_SNR_IOC_MAGIC, V1_SNR_CMD_CONF_DEV, v1_snr_dev), &config))
-        HAL_ERROR("v1_snr", "Configuring imaging device has failed!\n");
-
-    close(fd);
-
-    return EXIT_SUCCESS;
 }
 
 void v1_sensor_deinit(void)

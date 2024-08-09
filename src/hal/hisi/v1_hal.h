@@ -45,7 +45,6 @@ void v1_region_destroy(char handle);
 int v1_region_setbitmap(int handle, hal_bitmap *bitmap);
 
 void v1_sensor_deconfig(void);
-int v1_sensor_config(void);
 void v1_sensor_deinit(void);
 int v1_sensor_init(char *name, char *obj);
 
