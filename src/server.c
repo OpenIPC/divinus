@@ -552,12 +552,10 @@ void *server_thread(void *vargp) {
         }
 
         if (equals(uri, "/exit")) {
-            // exit
-            char response2[] = "HTTP/1.1 200 OK\r\nContent-Length: "
-                              "11\r\nConnection: close\r\n\r\nClosing...";
-            send_to_fd(
-                client_fd, response2,
-                sizeof(response2) - 1);
+            int respLen = sprintf(
+                response, "HTTP/1.1 200 OK\r\nContent-Length: 11\r\n"
+                        "Connection: close\r\n\r\nClosing...");
+            send_to_fd(client_fd, response, respLen);
             close_socket_fd(client_fd);
             keepRunning = 0;
             break;
