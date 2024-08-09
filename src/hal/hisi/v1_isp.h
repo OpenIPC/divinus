@@ -5,32 +5,43 @@
 extern int (*fnISP_AlgRegisterDehaze)(int);
 extern int (*fnISP_AlgRegisterDrc)(int);
 
+typedef enum {
+    V1_ISP_WIN_NONE,
+    V1_ISP_WIN_HORIZ,
+    V1_ISP_WIN_VERT,
+    V1_ISP_WIN_BOTH
+} v1_isp_win;
+
 typedef struct {
     int id;
     char libName[20];
 } v1_isp_alg;
 
 typedef struct {
-    v1_common_rect capt;
-    float framerate;
+    unsigned short width, height, framerate;
     v1_common_bayer bayer;
-} v1_isp_dev;
+} v1_isp_img;
+
+typedef struct {
+    v1_isp_win mode;
+    unsigned short x, width, y, height;
+} v1_isp_tim;
 
 typedef struct {
     void *handle, *handleAwb, *handleAe;
 
-    int (*fnExit)(int device);
-    int (*fnInit)(int device);
-    int (*fnMemInit)(int device);
-    int (*fnRun)(int device);
+    int (*fnExit)(void);
+    int (*fnInit)(void);
+    int (*fnRun)(void);
 
-    int (*fnSetDeviceConfig)(int device, v1_isp_dev *config);
-    int (*fnSetWDRMode)(int device, v1_common_wdr *mode);
+    int (*fnSetImageConfig)(v1_isp_img *config);
+    int (*fnSetInputTiming)(v1_isp_tim *config);
+    int (*fnSetWDRMode)(v1_common_wdr *mode);
 
-    int (*fnRegisterAE)(int device, v1_isp_alg *library);
-    int (*fnRegisterAWB)(int device, v1_isp_alg *library);
-    int (*fnUnregisterAE)(int device, v1_isp_alg *library);
-    int (*fnUnregisterAWB)(int device, v1_isp_alg *library);
+    int (*fnRegisterAE)(v1_isp_alg *library);
+    int (*fnRegisterAWB)(v1_isp_alg *library);
+    int (*fnUnregisterAE)(v1_isp_alg *library);
+    int (*fnUnregisterAWB)(v1_isp_alg *library);
 } v1_isp_impl;
 
 static int v1_isp_load(v1_isp_impl *isp_lib) {
@@ -43,43 +54,43 @@ static int v1_isp_load(v1_isp_impl *isp_lib) {
         hal_symbol_load("v1_isp", isp_lib->handle, "ISP_AlgRegisterDrc")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnExit = (int(*)(int device))
+    if (!(isp_lib->fnExit = (int(*)(void))
         hal_symbol_load("v1_isp", isp_lib->handle, "HI_MPI_ISP_Exit")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnInit = (int(*)(int device))
+    if (!(isp_lib->fnInit = (int(*)(void))
         hal_symbol_load("v1_isp", isp_lib->handle, "HI_MPI_ISP_Init")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnMemInit = (int(*)(int device))
-        hal_symbol_load("v1_isp", isp_lib->handle, "HI_MPI_ISP_MemInit")))
-        return EXIT_FAILURE;
-
-    if (!(isp_lib->fnRun = (int(*)(int device))
+    if (!(isp_lib->fnRun = (int(*)(void))
         hal_symbol_load("v1_isp", isp_lib->handle, "HI_MPI_ISP_Run")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnSetDeviceConfig = (int(*)(int device, v1_isp_dev *config))
-        hal_symbol_load("v1_isp", isp_lib->handle, "HI_MPI_ISP_SetPubAttr")))
+    if (!(isp_lib->fnSetImageConfig = (int(*)(v1_isp_img *config))
+        hal_symbol_load("v1_isp", isp_lib->handle, "HI_MPI_ISP_SetImageAttr")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnSetWDRMode = (int(*)(int device, v1_common_wdr *mode))
-        hal_symbol_load("v1_isp", isp_lib->handle, "HI_MPI_ISP_SetWDRMode")))
+    if (!(isp_lib->fnSetInputTiming = (int(*)(v1_isp_tim *config))
+        hal_symbol_load("v1_isp", isp_lib->handle, "HI_MPI_ISP_SetInputTiming")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnRegisterAE = (int(*)(int device, v1_isp_alg *library))
+    if (!(isp_lib->fnSetWDRMode = (int(*)(v1_common_wdr *mode))
+        hal_symbol_load("v1_isp", isp_lib->handle, "HI_MPI_ISP_SetWdrAttr")))
+        return EXIT_FAILURE;
+
+    if (!(isp_lib->fnRegisterAE = (int(*)(v1_isp_alg *library))
         hal_symbol_load("v1_isp", isp_lib->handleAe, "HI_MPI_AE_Register")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnRegisterAWB = (int(*)(int device, v1_isp_alg *library))
+    if (!(isp_lib->fnRegisterAWB = (int(*)(v1_isp_alg *library))
         hal_symbol_load("v1_isp", isp_lib->handleAwb, "HI_MPI_AWB_Register")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnUnregisterAE = (int(*)(int device, v1_isp_alg *library))
+    if (!(isp_lib->fnUnregisterAE = (int(*)(v1_isp_alg *library))
         hal_symbol_load("v1_isp", isp_lib->handleAe, "HI_MPI_AE_UnRegister")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnUnregisterAWB = (int(*)(int device, v1_isp_alg *library))
+    if (!(isp_lib->fnUnregisterAWB = (int(*)(v1_isp_alg *library))
         hal_symbol_load("v1_isp", isp_lib->handleAwb, "HI_MPI_AWB_UnRegister")))
         return EXIT_FAILURE;
 

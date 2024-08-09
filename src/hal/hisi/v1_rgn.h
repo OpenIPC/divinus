@@ -137,7 +137,7 @@ static int v1_rgn_load(v1_rgn_impl *rgn_lib) {
         return EXIT_FAILURE;
 
     if (!(rgn_lib->fnDetachChannel = (int(*)(unsigned int handle, v1_sys_bind *dest))
-        hal_symbol_load("v1_rgn", rgn_lib->handle, "HI_MPI_RGN_DetachFromChn")))
+        hal_symbol_load("v1_rgn", rgn_lib->handle, "HI_MPI_RGN_DetachFrmChn")))
         return EXIT_FAILURE;
 
     if (!(rgn_lib->fnGetChannelConfig = (int(*)(unsigned int handle, v1_sys_bind *dest, v1_rgn_chn *config))

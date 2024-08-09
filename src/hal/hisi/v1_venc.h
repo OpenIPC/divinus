@@ -234,11 +234,9 @@ typedef struct {
     int (*fnCreateChannel)(int channel, v1_venc_chn *config);
     int (*fnGetChannelConfig)(int channel, v1_venc_chn *config);
     int (*fnDestroyChannel)(int channel);
-    int (*fnResetChannel)(int channel);
     int (*fnSetChannelConfig)(int channel, v1_venc_chn *config);
     int (*fnSetColorToGray)(int channel, int *active);
 
-    int (*fnFreeDescriptor)(int channel);
     int (*fnGetDescriptor)(int channel);
 
     int (*fnGetJpegParam)(int channel, v1_venc_jpg *param);
@@ -271,20 +269,12 @@ static int v1_venc_load(v1_venc_impl *venc_lib) {
         hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_GetChnAttr")))
         return EXIT_FAILURE;
 
-    if (!(venc_lib->fnResetChannel = (int(*)(int channel))
-        hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_ResetChn")))
-        return EXIT_FAILURE;
-
     if (!(venc_lib->fnSetChannelConfig = (int(*)(int channel, v1_venc_chn *config))
         hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_SetChnAttr")))
         return EXIT_FAILURE;
 
     if (!(venc_lib->fnSetColorToGray = (int(*)(int channel, int *active))
-        hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_SetColor2Grey")))
-        return EXIT_FAILURE;
-
-    if (!(venc_lib->fnFreeDescriptor = (int(*)(int channel))
-        hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_CloseFd")))
+        hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_SetColor2GreyConf")))
         return EXIT_FAILURE;
 
     if (!(venc_lib->fnGetDescriptor = (int(*)(int channel))

@@ -28,7 +28,8 @@ typedef struct {
     v1_snr_lvds lvds;
 
     // [isp_image]
-    v1_isp_dev isp;
+    v1_isp_img img;
+    v1_isp_tim tim;
 
     // [vi_dev]
     v1_vi_dev videv;
@@ -404,33 +405,39 @@ static enum ConfigError v1_parse_config_vichn(
 }
 
 static enum ConfigError v1_parse_config_isp(
-    struct IniConfig *ini, const char *section, v1_isp_dev *isp) {
+    struct IniConfig *ini, const char *section, v1_isp_img *img, v1_isp_tim *tim) {
     enum ConfigError err;
 
-    err = parse_int(ini, "isp_image", "isp_x", 0, INT_MAX, &isp->capt.x);
-    if (err != CONFIG_OK)
-        return err;
-    err = parse_int(ini, "isp_image", "isp_y", 0, INT_MAX, &isp->capt.y);
-    if (err != CONFIG_OK)
-        return err;
-    err = parse_int(ini, "isp_image", "isp_w", 0, INT_MAX, &isp->capt.width);
-    if (err != CONFIG_OK)
-        return err;
-    err = parse_int(ini, "isp_image", "isp_h", 0, INT_MAX, &isp->capt.height);
-    if (err != CONFIG_OK)
-        return err;
     int value;
+    err = parse_int(ini, "isp_image", "isp_x", 0, INT_MAX, &value);
+    if (err != CONFIG_OK)
+        return err;
+    tim->x = value;
+    err = parse_int(ini, "isp_image", "isp_y", 0, INT_MAX, &value);
+    if (err != CONFIG_OK)
+        return err;
+    tim->y = value;
+    err = parse_int(ini, "isp_image", "isp_w", 0, INT_MAX, &value);
+    if (err != CONFIG_OK)
+        return err;
+    tim->width = value;
+    img->width = tim->width;
+    err = parse_int(ini, "isp_image", "isp_h", 0, INT_MAX, &value);
+    if (err != CONFIG_OK)
+        return err;
+    tim->height = value;
+    img->height = tim->height;
     err = parse_int(
         ini, "isp_image", "isp_framerate", 0, INT_MAX, &value);
     if (err != CONFIG_OK)
         return err;
-    else isp->framerate = value * 1.0f;
+    img->framerate = value;
     {
         const char *possible_values[] = {
             "BAYER_RGGB", "BAYER_GRBG", "BAYER_GBRG", "BAYER_BGGR"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
-            ini, "isp_image", "isp_bayer", (void*)&isp->bayer,
+            ini, "isp_image", "isp_bayer", (void*)&img->bayer,
             possible_values, count, 0);
         if (err != CONFIG_OK)
             return err;
@@ -522,7 +529,7 @@ static enum ConfigError v1_parse_sensor_config(char *path, v1_config_impl *confi
     }
 
     // [isp_image]
-    err = v1_parse_config_isp(&ini, "isp_image", &config->isp);
+    err = v1_parse_config_isp(&ini, "isp_image", &config->img, &config->tim);
     if (err != CONFIG_OK)
         goto RET_ERR;
 

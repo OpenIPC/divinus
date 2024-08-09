@@ -2,10 +2,6 @@
 
 #include "v1_common.h"
 
-typedef enum {
-    V1_VB_JPEG_MASK = 0x1
-} v1_vb_supl;
-
 typedef struct {
     unsigned int count;
     struct {
@@ -19,7 +15,6 @@ typedef struct {
     void *handle;
 
     int (*fnConfigPool)(v1_vb_pool *config);
-    int (*fnConfigSupplement)(v1_vb_supl *value);
     int (*fnExit)(void);
     int (*fnInit)(void);
 } v1_vb_impl;
@@ -30,10 +25,6 @@ static int v1_vb_load(v1_vb_impl *vb_lib) {
 
     if (!(vb_lib->fnConfigPool = (int(*)(v1_vb_pool *config))
         hal_symbol_load("v1_vb", vb_lib->handle, "HI_MPI_VB_SetConf")))
-        return EXIT_FAILURE;
-
-    if (!(vb_lib->fnConfigSupplement = (int(*)(v1_vb_supl *value))
-        hal_symbol_load("v1_vb", vb_lib->handle, "HI_MPI_VB_SetSupplementConf")))
         return EXIT_FAILURE;
 
     if (!(vb_lib->fnExit = (int(*)(void))

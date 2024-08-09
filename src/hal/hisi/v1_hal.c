@@ -161,7 +161,7 @@ int v1_channel_create(char index, short width, short height, char mirror, char f
     {
         v1_vpss_chn channel;
         memset(&channel, 0, sizeof(channel));
-        channel.srcFps = v1_config.isp.framerate;
+        channel.srcFps = v1_config.img.framerate;
         channel.dstFps = framerate;
         channel.mirror = mirror;
         channel.flip = flip;
@@ -219,7 +219,7 @@ void *v1_image_thread(void)
 {
     int ret;
 
-    if (ret = v1_isp.fnRun(_v1_isp_dev))
+    if (ret = v1_isp.fnRun())
         HAL_DANGER("v1_isp", "Operation failed with %#x!\n", ret);
     HAL_INFO("v1_isp", "Shutting down ISP thread...\n");
 }
@@ -253,8 +253,8 @@ int v1_pipeline_create(void)
         channel.compress = V1_COMPR_NONE;
         channel.mirror = 0;
         channel.flip = 0;
-        channel.srcFps = v1_config.isp.framerate;
-        channel.dstFps = v1_config.isp.framerate;
+        channel.srcFps = v1_config.img.framerate;
+        channel.dstFps = v1_config.img.framerate;
         if (ret = v1_vi.fnSetChannelConfig(_v1_vi_chn, &channel))
             return ret;
     }
@@ -264,18 +264,18 @@ int v1_pipeline_create(void)
     if (ret = v1_snr_drv.fnRegisterCallback())
         return ret;
     
-    if (ret = v1_isp.fnRegisterAE(_v1_vi_dev, &v1_ae_lib))
+    if (ret = v1_isp.fnRegisterAE(&v1_ae_lib))
         return ret;
-    if (ret = v1_isp.fnRegisterAWB(_v1_vi_dev, &v1_awb_lib))
-        return ret;
-    if (ret = v1_isp.fnMemInit(_v1_vi_dev))
+    if (ret = v1_isp.fnRegisterAWB(&v1_awb_lib))
         return ret;
 
-    if (ret = v1_isp.fnSetWDRMode(_v1_vi_dev, &v1_config.mode))
+    if (ret = v1_isp.fnSetWDRMode(&v1_config.mode))
         return ret;
-    if (ret = v1_isp.fnSetDeviceConfig(_v1_vi_dev, &v1_config.isp))
+    if (ret = v1_isp.fnSetImageConfig(&v1_config.img))
         return ret;
-    if (ret = v1_isp.fnInit(_v1_vi_dev))
+    if (ret = v1_isp.fnSetInputTiming(&v1_config.tim))
+        return ret;
+    if (ret = v1_isp.fnInit())
         return ret;
     
     {
@@ -308,9 +308,9 @@ int v1_pipeline_create(void)
 
 void v1_pipeline_destroy(void)
 {
-    v1_isp.fnExit(_v1_vi_dev);
-    v1_isp.fnUnregisterAE(_v1_vi_dev, &v1_ae_lib);
-    v1_isp.fnUnregisterAWB(_v1_vi_dev, &v1_awb_lib);
+    v1_isp.fnExit();
+    v1_isp.fnUnregisterAE(&v1_ae_lib);
+    v1_isp.fnUnregisterAWB(&v1_awb_lib);
 
     v1_snr_drv.fnUnRegisterCallback();
 
@@ -676,8 +676,6 @@ abort:
         v1_venc.fnFreeStream(index, &strm);
     }
 
-    v1_venc.fnFreeDescriptor(index);
-
     v1_venc.fnStopReceiving(index);
 
     v1_channel_unbind(index);
@@ -840,9 +838,6 @@ int v1_system_init(char *snrConfig)
         pool.comm[0].blockCnt = 4;
 
         if (ret = v1_vb.fnConfigPool(&pool))
-            return ret;
-        v1_vb_supl supl = V1_VB_JPEG_MASK;
-        if (ret = v1_vb.fnConfigSupplement(&supl))
             return ret;
         if (ret = v1_vb.fnInit())
             return ret;
