@@ -121,10 +121,6 @@ static int v1_sys_load(v1_sys_impl *sys_lib) {
         hal_symbol_load("v1_sys", sys_lib->handle, "HI_MPI_SYS_UnBind")))
         return EXIT_FAILURE;
 
-    if (!(sys_lib->fnGetViVpssMode = (int(*)(unsigned int *onlineOn))
-        hal_symbol_load("v1_sys", sys_lib->handle, "HI_MPI_SYS_GetViVpssMode")))
-        return EXIT_FAILURE;
-
     return EXIT_SUCCESS;
 }
 

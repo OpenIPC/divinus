@@ -17,7 +17,7 @@ typedef struct {
 } v1_isp_dev;
 
 typedef struct {
-    void *handle, *handleAwb, *handleAe, *handleDefog, *handleIrAuto;
+    void *handle, *handleAwb, *handleAe;
 
     int (*fnExit)(int device);
     int (*fnInit)(int device);
@@ -36,14 +36,8 @@ typedef struct {
 static int v1_isp_load(v1_isp_impl *isp_lib) {
     if (!(isp_lib->handle = dlopen("libisp.so", RTLD_LAZY | RTLD_GLOBAL)) ||
         !(isp_lib->handleAe = dlopen("lib_hiae.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-        !(isp_lib->handleAwb = dlopen("lib_hiawb.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-        !(isp_lib->handleDefog = dlopen("lib_hidefog.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-        !(isp_lib->handleIrAuto = dlopen("lib_hiirauto.so", RTLD_LAZY | RTLD_GLOBAL)))
+        !(isp_lib->handleAwb = dlopen("lib_hiawb.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("v1_isp", "Failed to load library!\nError: %s\n", dlerror());
-
-    if (!(fnISP_AlgRegisterDehaze = (int(*)(int))
-        hal_symbol_load("v1_isp", isp_lib->handleDefog, "ISP_AlgRegisterDehaze")))
-        return EXIT_FAILURE;
 
     if (!(fnISP_AlgRegisterDrc = (int(*)(int))
         hal_symbol_load("v1_isp", isp_lib->handle, "ISP_AlgRegisterDrc")))
