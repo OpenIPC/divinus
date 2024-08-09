@@ -42,24 +42,6 @@
 			req.send();
 		}
 
-        function logged() {
-			var req = new XMLHttpRequest();
-			req.onreadystatechange = function() {
-                if (this.readyState != 4 || this.status != 200) return;
-                return req.getAllResponseHeaders().indexOf('WWW-Authenticate') !== -1;
-            }
-			req.open('GET', '/');
-			req.send();
-            return false;
-        }
-
-		function logout() {
-			if (isIe)
-				document.execCommand('ClearAuthenticationCache', 'false');
-			else
-				window.location = window.location.href.replace('://', '://log:out@');
-		}
-
 		function setSource(id, src) {
 			var frame = document.getElementById(id), ext = ".mp4";
 			if (frame.firstChild) frame.firstChild.src = "#";
@@ -76,9 +58,6 @@
 		}
 
 		function onLoad() {
-            if (!logged())
-                document.getElementById('logout').classList += " hid";
-
 			apiRead('audio');
 			apiRead('jpeg');
 			apiRead('night');
@@ -267,9 +246,6 @@
 			<a href="#live" class="ph2 white">Live</a>
 			<a href="#media" class="ph2 white">Media</a>
 			<a href="image.jpg" class="ph2 white" target="_blank">Snapshot</a>
-		</div>
-		<div class="1 col">
-			<a id="logout" href="javascript:logout()" class="btn ph2 black">Logout</a>
 		</div>
 	</div>
 	<div class="c cont">
