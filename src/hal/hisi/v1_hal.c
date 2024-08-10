@@ -258,8 +258,6 @@ int v1_pipeline_create(void)
     if (ret = v1_vi.fnEnableChannel(_v1_vi_chn))
         return ret;
 
-    if (ret = v1_snr_drv.fnInit())
-        return ret;
     if (ret = v1_snr_drv.fnRegisterCallback())
         return ret;
     
@@ -274,6 +272,7 @@ int v1_pipeline_create(void)
         return ret;
     if (ret = v1_isp.fnSetImageConfig(&v1_config.img))
         return ret;
+    v1_config.tim.mode = V1_ISP_WIN_BOTH;
     if (ret = v1_isp.fnSetInputTiming(&v1_config.tim))
         return ret;
     
@@ -423,8 +422,6 @@ int v1_sensor_init(char *name, char *obj)
     } if (!v1_snr_drv.handle)
         HAL_ERROR("v1_snr", "Failed to load the sensor driver");
 
-    if (!(v1_snr_drv.fnInit = (int(*)(void))dlsym(v1_snr_drv.handle, "sensor_init")))
-        HAL_ERROR("v1_snr", "Failed to connect the init function");
     if (!(v1_snr_drv.fnRegisterCallback = (int(*)(void))dlsym(v1_snr_drv.handle, "sensor_register_callback")))
         HAL_ERROR("v1_snr", "Failed to connect the callback register function");
     if (!(v1_snr_drv.fnUnRegisterCallback = (int(*)(void))dlsym(v1_snr_drv.handle, "sensor_unregister_callback")))
@@ -447,9 +444,10 @@ int v1_video_create(char index, hal_vidconfig *config)
         channel.attrib.jpg.bufSize =
             config->height * config->width * 2;
         channel.attrib.jpg.byFrame = 1;
+        channel.attrib.jpg.fieldOrFrame = 0;
+        channel.attrib.jpg.priority = 0;
         channel.attrib.jpg.pic.width = config->width;
         channel.attrib.jpg.pic.height = config->height;
-        channel.attrib.jpg.dcfThumbs = 0;
         goto attach;
     } else if (config->codec == HAL_VIDCODEC_MJPG) {
         channel.attrib.codec = V1_VENC_CODEC_MJPG;
@@ -458,6 +456,9 @@ int v1_video_create(char index, hal_vidconfig *config)
         channel.attrib.mjpg.bufSize = 
             config->height * config->width * 2;
         channel.attrib.mjpg.byFrame = 1;
+        channel.attrib.mjpg.mainStrmOn = index ? 0 : 1;
+        channel.attrib.mjpg.fieldOrFrame = 0;
+        channel.attrib.mjpg.priority = 0;
         channel.attrib.mjpg.pic.width = config->width;
         channel.attrib.mjpg.pic.height = config->height;
         switch (config->mode) {
@@ -507,12 +508,22 @@ int v1_video_create(char index, hal_vidconfig *config)
     attrib->bufSize = config->height * config->width * 2;
     attrib->profile = config->profile;
     attrib->byFrame = 1;
+    attrib->fieldOn = 0;
+    attrib->mainStrmOn = index ? 0 : 1;
+    attrib->priority = 0;
+    attrib->fieldOrFrame = 0;
     attrib->pic.width = config->width;
     attrib->pic.height = config->height;
     attrib->bFrameNum = 0;
     attrib->refNum = 1;
 attach:
+    if (ret = v1_venc.fnCreateGroup(_v1_venc_dev))
+        return ret;
+
     if (ret = v1_venc.fnCreateChannel(index, &channel))
+        return ret;
+
+    if (ret = v1_venc.fnRegisterChannel(_v1_venc_dev, index))
         return ret;
 
     if (config->codec != HAL_VIDCODEC_JPG && 
@@ -542,7 +553,13 @@ int v1_video_destroy(char index)
             return ret;
     }
 
+    if (ret = v1_venc.fnUnregisterChannel(index))
+        return ret;
+
     if (ret = v1_venc.fnDestroyChannel(index))
+        return ret;
+
+    if (ret = v1_venc.fnDestroyGroup(_v1_venc_dev))
         return ret;
     
     if (ret = v1_vpss.fnDisableChannel(_v1_vpss_grp, index))
@@ -809,8 +826,8 @@ int v1_system_init(char *snrConfig)
                 v1_config.vichn.capt.width : v1_config.videv.rect.width,
             v1_config.vichn.capt.height ? 
                 v1_config.vichn.capt.height : v1_config.videv.rect.height,
-            V1_PIXFMT_YUV420SP, alignWidth);
-        pool.comm[0].blockCnt = 4;
+            alignWidth);
+        pool.comm[0].blockCnt = 12;
 
         if (ret = v1_vb.fnConfigPool(&pool))
             return ret;

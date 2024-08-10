@@ -2,18 +2,8 @@
 
 #include "v1_common.h"
 
-#include <asm/ioctl.h>
-#include <fcntl.h>
-
-#define V1_SNR_IOC_MAGIC 'm'
 #define V1_SNR_LANE_NUM 8
 #define V1_SNR_WDR_VC_NUM 4
-
-enum {
-    V1_SNR_CMD_CONF_DEV = 1,
-    V1_SNR_CMD_CONF_EDGE,
-    V1_SNR_CMD_CONF_MSB
-};
 
 typedef enum {
     V1_SNR_INPUT_MIPI,
@@ -60,17 +50,8 @@ typedef struct {
 } v1_snr_mipi;
 
 typedef struct {
-    v1_snr_input input;
-    union {
-        v1_snr_mipi mipi;
-        v1_snr_lvds lvds;
-    };
-} v1_snr_dev;
-
-typedef struct {
     void *handle;
 
-    int (*fnInit)(void);
     int (*fnRegisterCallback)(void);
     int (*fnUnRegisterCallback)(void);
 } v1_snr_drv_impl;

@@ -47,6 +47,10 @@ typedef struct {
     unsigned int bufSize;
     unsigned int profile;
     int byFrame;
+    int fieldOn;
+    int mainStrmOn;
+    unsigned int priority;
+    int fieldOrFrame;
     v1_common_dim pic;
     unsigned int bFrameNum;
     unsigned int refNum;
@@ -56,6 +60,9 @@ typedef struct {
     v1_common_dim maxPic;
     unsigned int bufSize;
     int byFrame;
+    int mainStrmOn;
+    int fieldOrFrame;
+    unsigned int priority;
     v1_common_dim pic;
 } v1_venc_attr_mjpg;
 
@@ -63,8 +70,9 @@ typedef struct {
     v1_common_dim maxPic;
     unsigned int bufSize;
     int byFrame;
+    int fieldOrFrame;
+    unsigned int priority;
     v1_common_dim pic;
-    int dcfThumbs;
 } v1_venc_attr_jpg;
 
 typedef struct {
@@ -231,6 +239,11 @@ typedef struct {
 typedef struct {
     void *handle;
 
+    int (*fnCreateGroup)(int group);
+    int (*fnDestroyGroup)(int group);
+    int (*fnRegisterChannel)(int group, int channel);
+    int (*fnUnregisterChannel)(int channel);
+
     int (*fnCreateChannel)(int channel, v1_venc_chn *config);
     int (*fnGetChannelConfig)(int channel, v1_venc_chn *config);
     int (*fnDestroyChannel)(int channel);
@@ -256,6 +269,22 @@ typedef struct {
 static int v1_venc_load(v1_venc_impl *venc_lib) {
     if (!(venc_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("v1_venc", "Failed to load library!\nError: %s\n", dlerror());
+
+    if (!(venc_lib->fnCreateGroup = (int(*)(int group))
+        hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_CreateGroup")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnDestroyGroup = (int(*)(int group))
+        hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_DestroyGroup")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnRegisterChannel = (int(*)(int group, int channel))
+        hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_RegisterChn")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnUnregisterChannel = (int(*)(int channel))
+        hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_UnRegisterChn")))
+        return EXIT_FAILURE;
 
     if (!(venc_lib->fnCreateChannel = (int(*)(int channel, v1_venc_chn *config))
         hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_CreateChn")))
