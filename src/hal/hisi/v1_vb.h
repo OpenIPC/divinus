@@ -44,10 +44,11 @@ static void v1_vb_unload(v1_vb_impl *vb_lib) {
     memset(vb_lib, 0, sizeof(*vb_lib));
 }
 
-inline static unsigned int v1_buffer_calculate_venc(short width, short height,
+inline static unsigned int v1_buffer_calculate_venc(short width, short height, v1_common_pixfmt pixFmt,
     unsigned int alignWidth)
 {
     unsigned int bufSize = CEILING_2_POWER(width, alignWidth) *
-        CEILING_2_POWER(height, alignWidth) * 2;
+        CEILING_2_POWER(height, alignWidth) *
+        (pixFmt == V1_PIXFMT_YUV422SP ? 2 : 1.5);
     return bufSize;
 }

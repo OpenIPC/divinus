@@ -228,6 +228,24 @@ int v1_pipeline_create(void)
 {
     int ret;
 
+    if (ret = v1_snr_drv.fnRegisterCallback())
+        return ret;
+    
+    if (ret = v1_isp.fnRegisterAE(&v1_ae_lib))
+        return ret;
+    if (ret = v1_isp.fnRegisterAWB(&v1_awb_lib))
+        return ret;
+
+    if (ret = v1_isp.fnInit())
+        return ret;
+    if (ret = v1_isp.fnSetWDRMode(&v1_config.mode))
+        return ret;
+    if (ret = v1_isp.fnSetImageConfig(&v1_config.img))
+        return ret;
+    v1_config.tim.mode = V1_ISP_WIN_BOTH;
+    if (ret = v1_isp.fnSetInputTiming(&v1_config.tim))
+        return ret;
+    
     if (ret = v1_vi.fnSetDeviceConfig(_v1_vi_dev, &v1_config.videv))
         return ret;
     if (ret = v1_vi.fnEnableDevice(_v1_vi_dev))
@@ -258,24 +276,6 @@ int v1_pipeline_create(void)
     if (ret = v1_vi.fnEnableChannel(_v1_vi_chn))
         return ret;
 
-    if (ret = v1_snr_drv.fnRegisterCallback())
-        return ret;
-    
-    if (ret = v1_isp.fnRegisterAE(&v1_ae_lib))
-        return ret;
-    if (ret = v1_isp.fnRegisterAWB(&v1_awb_lib))
-        return ret;
-
-    if (ret = v1_isp.fnInit())
-        return ret;
-    if (ret = v1_isp.fnSetWDRMode(&v1_config.mode))
-        return ret;
-    if (ret = v1_isp.fnSetImageConfig(&v1_config.img))
-        return ret;
-    v1_config.tim.mode = V1_ISP_WIN_BOTH;
-    if (ret = v1_isp.fnSetInputTiming(&v1_config.tim))
-        return ret;
-    
     {
         v1_vpss_grp group;
         memset(&group, 0, sizeof(group));
@@ -306,12 +306,6 @@ int v1_pipeline_create(void)
 
 void v1_pipeline_destroy(void)
 {
-    v1_isp.fnExit();
-    v1_isp.fnUnregisterAE(&v1_ae_lib);
-    v1_isp.fnUnregisterAWB(&v1_awb_lib);
-
-    v1_snr_drv.fnUnRegisterCallback();
-
     for (char grp = 0; grp < V1_VPSS_GRP_NUM; grp++)
     {
         for (char chn = 0; chn < V1_VPSS_CHN_NUM; chn++)
@@ -332,6 +326,12 @@ void v1_pipeline_destroy(void)
     v1_vi.fnDisableChannel(_v1_vi_chn);
 
     v1_vi.fnDisableDevice(_v1_vi_dev);
+
+    v1_isp.fnExit();
+    v1_isp.fnUnregisterAE(&v1_ae_lib);
+    v1_isp.fnUnregisterAWB(&v1_awb_lib);
+
+    v1_snr_drv.fnUnRegisterCallback();
 }
 
 int v1_region_create(char handle, hal_rect rect, short opacity)
@@ -517,13 +517,13 @@ int v1_video_create(char index, hal_vidconfig *config)
     attrib->bFrameNum = 0;
     attrib->refNum = 1;
 attach:
-    if (ret = v1_venc.fnCreateGroup(_v1_venc_dev))
+    if (ret = v1_venc.fnCreateGroup(_v1_vpss_grp))
         return ret;
 
     if (ret = v1_venc.fnCreateChannel(index, &channel))
         return ret;
 
-    if (ret = v1_venc.fnRegisterChannel(_v1_venc_dev, index))
+    if (ret = v1_venc.fnRegisterChannel(_v1_vpss_grp, index))
         return ret;
 
     if (config->codec != HAL_VIDCODEC_JPG && 
@@ -808,14 +808,11 @@ int v1_system_init(char *snrConfig)
     if (v1_parse_sensor_config(snrConfig, &v1_config) != CONFIG_OK)
         HAL_ERROR("v1_sys", "Can't load sensor config\n");
 
-    if (ret = v1_sensor_init(v1_config.dll_file, v1_config.sensor_type))
-        return ret;
-
     v1_sys.fnExit();
     v1_vb.fnExit();
 
     {
-        int alignWidth = 16;
+        int alignWidth = 64;
         v1_vb_pool pool;
 
         memset(&pool, 0, sizeof(pool)); 
@@ -826,8 +823,8 @@ int v1_system_init(char *snrConfig)
                 v1_config.vichn.capt.width : v1_config.videv.rect.width,
             v1_config.vichn.capt.height ? 
                 v1_config.vichn.capt.height : v1_config.videv.rect.height,
-            alignWidth);
-        pool.comm[0].blockCnt = 12;
+            V1_PIXFMT_YUV420SP, alignWidth);
+        pool.comm[0].blockCnt = 8;
 
         if (ret = v1_vb.fnConfigPool(&pool))
             return ret;
@@ -838,6 +835,9 @@ int v1_system_init(char *snrConfig)
             return ret;
     }
     if (ret = v1_sys.fnInit())
+        return ret;
+
+    if (ret = v1_sensor_init(v1_config.dll_file, v1_config.sensor_type))
         return ret;
 
     return EXIT_SUCCESS;
