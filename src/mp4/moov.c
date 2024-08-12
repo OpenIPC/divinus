@@ -553,7 +553,7 @@ enum BufError write_btrt(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     chk_err; // 4 Buffer size
     err = put_u32_be(ptr, moov_info->audio_bitrate * 1000);
     chk_err; // 4 Max bitrate
-    err = put_u32_be(ptr, moov_info->audio_bitrate * 1000);
+    err = put_u32_be(ptr, moov_info->audio_bitrate * 1000 - 1);
     chk_err; // 4 Avg bitrate
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;
@@ -619,7 +619,7 @@ enum BufError write_DecoderConfig(struct BitBuf *ptr, const struct MoovInfo *moo
     chk_err; // 3 bufferSize
     err = put_u32_be(ptr, moov_info->audio_bitrate * 1000);
     chk_err; // 4 Max bitrate
-    err = put_u32_be(ptr, moov_info->audio_bitrate * 1000);
+    err = put_u32_be(ptr, moov_info->audio_bitrate * 1000 - 1);
     chk_err; // 4 Avg bitrate
     err = put_u32_le_to_offset(ptr, var_len, varint32(ptr->offset - var_len - 4));
     chk_err;
@@ -675,7 +675,7 @@ enum BufError write_TagAudioSpecificConfig(
         bitstream |= moov_info->audio_samplerate;
         used_bits += 24;
     }
-    int channels = 1;
+    int channels = moov_info->audio_channels;
     bitstream <<= 4;
     bitstream |= channels;
     used_bits += 4;
@@ -768,7 +768,7 @@ enum BufError write_mp4a(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     chk_err; // 1 dataref index
     err = put_skip(ptr, 8);
     chk_err; // 8 reserved
-    err = put_u16_be(ptr, 2);
+    err = put_u16_be(ptr, moov_info->audio_channels);
     chk_err; // 2 channel count
     err = put_u16_be(ptr, 16);
     chk_err; // 2 sample size

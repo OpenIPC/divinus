@@ -8,6 +8,7 @@ uint32_t default_sample_size = 40000;
 
 unsigned int aud_samplerate = 0;
 unsigned short aud_bitrate = 0;
+char aud_channels = 0;
 short vid_width = 1920, vid_height = 1080;
 char aud_codec = 0, vid_framerate = 30;
 
@@ -35,6 +36,8 @@ enum BufError create_header(char is_h265) {
     struct MoovInfo moov_info;
     memset(&moov_info, 0, sizeof(struct MoovInfo));
     moov_info.audio_codec = aud_codec;
+    moov_info.audio_bitrate = aud_bitrate;
+    moov_info.audio_channels = aud_channels;
     moov_info.audio_samplerate = aud_samplerate;
     moov_info.is_h265 = is_h265 & 1;
     moov_info.profile_idc = 100;
@@ -59,13 +62,14 @@ enum BufError create_header(char is_h265) {
     chk_err return BUF_OK;
 }
 
-void mp4_set_config(short width, short height, char framerate,
-    char acodec, unsigned short bitrate, unsigned int srate) {
+void mp4_set_config(short width, short height, char framerate, char acodec,
+    unsigned short bitrate, char channels, unsigned int srate) {
     vid_width = width;
     vid_height = height;
     vid_framerate = framerate;
     aud_codec = acodec;
     aud_bitrate = bitrate;
+    aud_channels = channels;
     aud_samplerate = srate;
 }
 

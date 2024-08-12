@@ -5,6 +5,7 @@
 struct MoovInfo {
     char audio_codec;
     unsigned short audio_bitrate;
+    unsigned char audio_channels;
     unsigned int audio_samplerate;
     char is_h265;
     uint8_t profile_idc;

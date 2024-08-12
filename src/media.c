@@ -490,7 +490,7 @@ int enable_mp4(void) {
 
         mp4_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
             app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC, 
-            app_config.audio_bitrate, app_config.audio_srate);
+            app_config.audio_bitrate, 1, app_config.audio_srate);
     }
 
     if (ret = bind_channel(index, app_config.mp4_fps, 0))
