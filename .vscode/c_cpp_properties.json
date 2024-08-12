@@ -1,25 +1,19 @@
 {
     "configurations": [
       {
-        "name": "arm-glibc",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__"],
-        "compilerPath": "toolchain/cortex_a7_thumb2_hf-gcc13-glibc-4_9/bin/arm-openipc-linux-gnueabihf-gcc",
-        "cStandard": "c11"
-      },{
         "name": "arm-musl",
         "includePath": ["${workspaceFolder}/**"],
         "defines": ["__arm__"],
         "compilerPath": "toolchain/cortex_a7_thumb2_hf-gcc13-musl-4_9/bin/arm-openipc-linux-musleabihf-gcc",
         "cStandard": "c11"
       },{
-        "name": "arm-muslhf",
+        "name": "arm9-musl3",
         "includePath": ["${workspaceFolder}/**"],
         "defines": ["__arm__"],
-        "compilerPath": "toolchain/cortex_a7_thumb2-gcc13-musl-4_9/bin/arm-openipc-linux-musleabi-gcc",
+        "compilerPath": "toolchain/arm926t-gcc13-musl-3_0/bin/arm-openipc-linux-musleabi-gcc",
         "cStandard": "c11"
       },{
-        "name": "arm9-musl",
+        "name": "arm9-musl4",
         "includePath": ["${workspaceFolder}/**"],
         "defines": ["__arm__"],
         "compilerPath": "toolchain/arm926t-gcc13-musl-4_9/bin/arm-openipc-linux-musleabi-gcc",
@@ -29,6 +23,18 @@
         "includePath": ["${workspaceFolder}/**"],
         "defines": ["__arm__"],
         "compilerPath": "toolchain/arm926t-gcc13-uclibc-3_3/bin/arm-openipc-linux-uclibcgnueabi-gcc",
+        "cStandard": "c11"
+      },{
+        "name": "armhf-glibc",
+        "includePath": ["${workspaceFolder}/**"],
+        "defines": ["__arm__"],
+        "compilerPath": "toolchain/cortex_a7_thumb2_hf-gcc13-glibc-4_9/bin/arm-openipc-linux-gnueabihf-gcc",
+        "cStandard": "c11"
+      },{
+        "name": "armhf-musl",
+        "includePath": ["${workspaceFolder}/**"],
+        "defines": ["__arm__"],
+        "compilerPath": "toolchain/cortex_a7_thumb2-gcc13-musl-4_9/bin/arm-openipc-linux-musleabi-gcc",
         "cStandard": "c11"
       },{
         "name": "mips-musl",

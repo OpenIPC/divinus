@@ -25,7 +25,6 @@ int start_mdns() {
         struct sockaddr_in *addr = (struct sockaddr_in *)ifa->ifa_addr;
         
         if (!configured) {
-
             HAL_INFO("mdns", "Setting hostname %s...\n", hostname);
             mdnsd_set_hostname(mdns, uts.nodename, addr->sin_addr.s_addr);
             configured = 1;
