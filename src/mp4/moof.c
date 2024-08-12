@@ -259,7 +259,7 @@ write_tfdt(struct BitBuf *ptr, const uint64_t base_media_decode_time, char is_au
     else
         pos_video_media_decode_time = ptr->offset;
     err = put_u64_be(ptr, base_media_decode_time);
-    chk_err; // 4 baseMediaDecodeTime
+    chk_err; // 8 baseMediaDecodeTime
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
     chk_err;
     return BUF_OK;
