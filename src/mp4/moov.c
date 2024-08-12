@@ -193,7 +193,7 @@ enum BufError write_mvhd(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     chk_err; // 4 Selection duration
     err = put_u32_be(ptr, 0);
     chk_err; // 4 Current time
-    err = put_u32_be(ptr, 2);
+    err = put_u32_be(ptr, 3);
     chk_err; // 4 Next track ID
 
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
