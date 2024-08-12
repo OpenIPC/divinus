@@ -6,7 +6,7 @@
 
 uint32_t default_sample_size = 40000;
 
-unsigned int aud_samplerate = 0;
+unsigned int aud_samplerate = 0, aud_framesize = 0;
 unsigned short aud_bitrate = 0;
 char aud_channels = 0;
 short vid_width = 1920, vid_height = 1080;
@@ -71,6 +71,10 @@ void mp4_set_config(short width, short height, char framerate, char acodec,
     aud_bitrate = bitrate;
     aud_channels = channels;
     aud_samplerate = srate;
+    aud_framesize = 
+        (aud_samplerate >= 32000 ? 144 : 72) *
+        (aud_bitrate * 1000) / 
+        aud_samplerate;
 }
 
 void mp4_set_sps(const char *nal_data, const uint32_t nal_len, char is_h265) {
@@ -99,23 +103,20 @@ enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     struct SampleInfo samples_info[2];
     memset(samples_info, 0, sizeof(samples_info));
     samples_info[0].size = nal_len + 4; // add size of sample
-    samples_info[0].composition_offset = default_sample_size;
-    samples_info[0].decode_time = default_sample_size;
     samples_info[0].duration = default_sample_size;
     samples_info[0].flags = is_iframe ? 0 : 65536;
     samples_info[1].size = buf_aud.offset;
-    samples_info[1].duration = default_sample_size;
+    samples_info[1].duration = buf_aud.offset / aud_framesize * aud_samplerate;
 
     buf_moof.offset = 0;
     err = write_moof(
         &buf_moof, 0, 0, 0, default_sample_size, samples_info,
-        samples_info_len, samples_info + 1, 
-        buf_aud.offset >= 2304 ? 1 : 0);
+        samples_info_len, samples_info + 1, 1);
     chk_err;
 
     buf_mdat.offset = 0;
     err = write_mdat(&buf_mdat, nal_data, nal_len, 
-        buf_aud.buf, buf_aud.offset >= 2304 ? buf_aud.offset : 0);
+        buf_aud.buf, buf_aud.offset);
     chk_err;
 
     buf_aud.offset = 0;
@@ -138,8 +139,11 @@ enum BufError mp4_set_state(struct Mp4State *state) {
             &buf_moof, pos_sequence_number, state->sequence_number);
     chk_err if (pos_base_data_offset > 0) err = put_u64_be_to_offset(
         &buf_moof, pos_base_data_offset, state->base_data_offset);
-    chk_err if (pos_base_media_decode_time > 0) err = put_u64_be_to_offset(
-        &buf_moof, pos_base_media_decode_time,
+    chk_err if (pos_audio_media_decode_time > 0) err = put_u64_be_to_offset(
+        &buf_moof, pos_audio_media_decode_time,
+        state->base_media_decode_time);
+    chk_err if (pos_video_media_decode_time > 0) err = put_u64_be_to_offset(
+        &buf_moof, pos_video_media_decode_time,
         state->base_media_decode_time);
     chk_err state->sequence_number++;
     state->base_data_offset += buf_moof.offset + buf_mdat.offset;

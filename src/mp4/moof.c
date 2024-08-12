@@ -4,7 +4,8 @@
 
 uint32_t pos_sequence_number = 0;
 uint32_t pos_base_data_offset = 0;
-uint32_t pos_base_media_decode_time = 0;
+uint32_t pos_audio_media_decode_time = 0;
+uint32_t pos_video_media_decode_time = 0;
 
 struct DataOffsetPos {
     bool data_offset_present;
@@ -23,7 +24,7 @@ enum BufError write_tfhd(
     const uint64_t base_data_offset, const uint32_t default_sample_size,
     const uint32_t default_sample_duration, char is_audio);
 enum BufError
-write_tfdt(struct BitBuf *ptr, const uint64_t base_media_decode_time);
+write_tfdt(struct BitBuf *ptr, const uint64_t base_media_decode_time, char is_audio);
 enum BufError write_trun(
     struct BitBuf *ptr, const struct SampleInfo *samples_info,
     const uint32_t samples_info_count, struct DataOffsetPos *data_offset, char is_audio);
@@ -149,7 +150,7 @@ enum BufError write_traf(
         ptr, sequence_number, base_data_offset, samples_info[0].size, 
         default_sample_duration, is_audio);
     chk_err;
-    err = write_tfdt(ptr, base_media_decode_time);
+    err = write_tfdt(ptr, base_media_decode_time, is_audio);
     chk_err;
     err = write_trun(ptr, samples_info, samples_info_len, data_offset, is_audio);
     chk_err;
@@ -236,7 +237,7 @@ enum BufError write_tfhd(
 }
 
 enum BufError
-write_tfdt(struct BitBuf *ptr, const uint64_t base_media_decode_time) {
+write_tfdt(struct BitBuf *ptr, const uint64_t base_media_decode_time, char is_audio) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
     err = put_u32_be(ptr, 0);
@@ -253,7 +254,10 @@ write_tfdt(struct BitBuf *ptr, const uint64_t base_media_decode_time) {
     chk_err;
     err = put_u8(ptr, 0);
     chk_err; // 3 flags
-    pos_base_media_decode_time = ptr->offset;
+    if (is_audio)
+        pos_audio_media_decode_time = ptr->offset;
+    else
+        pos_video_media_decode_time = ptr->offset;
     err = put_u64_be(ptr, base_media_decode_time);
     chk_err; // 4 baseMediaDecodeTime
     err = put_u32_be_to_offset(ptr, start_atom, ptr->offset - start_atom);
@@ -277,8 +281,6 @@ enum BufError write_trun(
     const bool first_sample_flags_present = false;
     const bool sample_duration_present = true;
     const bool sample_size_present = true;
-    const bool sample_flags_present = true;
-    const bool sample_composition_time_offsets_present = true;
     {
         uint64_t flags = 0x0;
         if (data_offset_present) {
@@ -293,12 +295,6 @@ enum BufError write_trun(
         if (sample_size_present) {
             flags = flags | 0x000200;
         } // 0x000200 sample-size-present
-        if (sample_flags_present) {
-            flags = flags | 0x000400;
-        } // 0x000400 sample-flags-present
-        if (sample_composition_time_offsets_present) {
-            flags = flags | 0x000800;
-        } // 0x000800 sample-composition-time-offsets-present
         err = put_u8(ptr, flags >> 16);
         chk_err;
         
@@ -333,14 +329,6 @@ enum BufError write_trun(
         if (sample_size_present) {
             err = put_u32_be(ptr, sample_info.size);
             chk_err; // 4 sample_size
-        }
-        if (sample_flags_present) {
-            err = put_u32_be(ptr, sample_info.flags);
-            chk_err; // 4 sample_flags
-        }
-        if (sample_composition_time_offsets_present) {
-            err = put_i32_be(ptr, sample_info.composition_offset);
-            chk_err; // 4 sample_composition_offset
         }
     }
 

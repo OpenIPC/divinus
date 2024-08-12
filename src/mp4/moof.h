@@ -4,13 +4,11 @@
 
 extern uint32_t pos_sequence_number;
 extern uint32_t pos_base_data_offset;
-extern uint32_t pos_base_media_decode_time;
+extern uint32_t pos_audio_media_decode_time;
+extern uint32_t pos_video_media_decode_time;
 
 struct SampleInfo {
     uint32_t duration;
-    uint32_t decode_time;
-    uint32_t composition_time;
-    uint32_t composition_offset;
     uint32_t size;
     uint32_t flags;
 };
