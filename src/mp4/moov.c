@@ -720,9 +720,9 @@ enum BufError write_ObjectDescriptor(struct BitBuf *ptr, const struct MoovInfo *
     chk_err; // flags
     err = write_DecoderConfig(ptr, moov_info);
     chk_err;
-    err = write_TagAudioSpecificConfig(ptr, moov_info);
-    chk_err;
     err = write_SLConfigDescriptor(ptr);
+    chk_err;
+    err = write_TagAudioSpecificConfig(ptr, moov_info);
     chk_err;
     err = put_u32_le_to_offset(ptr, var_len, varint32(ptr->offset - var_len - 4));
     chk_err;

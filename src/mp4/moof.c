@@ -277,11 +277,11 @@ enum BufError write_trun(
 
     err = put_u8(ptr, 0);
     chk_err; // 1 version
-    const bool data_offset_present = true;
-    const bool first_sample_flags_present = false;
-    const bool sample_duration_present = true;
-    const bool sample_size_present = true;
-    const bool sample_flags_present = true;
+    bool data_offset_present = true;
+    bool first_sample_flags_present = false;
+    bool sample_duration_present = !is_audio;
+    bool sample_size_present = !is_audio;
+    bool sample_flags_present = !is_audio;
     {
         uint64_t flags = 0x0;
         if (data_offset_present) {
@@ -319,7 +319,7 @@ enum BufError write_trun(
         err = put_i32_be(ptr, 0);
         chk_err; // 4 fake data_offset
     }
-
+    
     if (first_sample_flags_present) {
         err = put_u32_be(ptr, is_audio ? 0 : 33554432);
         chk_err; // 4 first_sample_flags
