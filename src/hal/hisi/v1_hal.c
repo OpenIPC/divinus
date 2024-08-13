@@ -23,8 +23,7 @@ char _v1_aud_chn = 0;
 char _v1_aud_dev = 0;
 char _v1_isp_chn = 0;
 char _v1_isp_dev = 0;
-char _v1_venc_dev = 0;
-char _v1_venc_grp = 1;
+char _v1_venc_grp = 0;
 char _v1_vi_chn = 0;
 char _v1_vi_dev = 0;
 char _v1_vpss_chn = 0;
@@ -147,7 +146,7 @@ int v1_channel_bind(char index)
         v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
             .device = _v1_vpss_grp, .channel = index };
         v1_sys_bind dest = { .module = V1_SYS_MOD_VENC,
-            .device = _v1_venc_dev, .channel = index };
+            .device = _v1_venc_grp, .channel = index };
         if (ret = v1_sys.fnBind(&source, &dest))
             return ret;
     }
@@ -208,7 +207,7 @@ int v1_channel_unbind(char index)
         v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
             .device = _v1_vpss_grp, .channel = index };
         v1_sys_bind dest = { .module = V1_SYS_MOD_VENC,
-            .device = _v1_venc_dev, .channel = index };
+            .device = _v1_venc_grp, .channel = index };
         if (ret = v1_sys.fnUnbind(&source, &dest))
             return ret;
     }
@@ -345,7 +344,7 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
     int ret;
 
     v1_sys_bind channel = { .module = V1_SYS_MOD_VENC,
-        .device = _v1_venc_dev, .channel = 0 };
+        .device = _v1_venc_grp, .channel = 0 };
     v1_rgn_cnf region, regionCurr;
     v1_rgn_chn attrib, attribCurr;
 
@@ -395,7 +394,7 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
 void v1_region_destroy(char handle)
 {
     v1_sys_bind channel = { .module = V1_SYS_MOD_VENC,
-        .device = _v1_venc_dev, .channel = 0 };
+        .device = _v1_venc_grp, .channel = 0 };
     
     v1_rgn.fnDetachChannel(handle, &channel);
     v1_rgn.fnDestroyRegion(handle);
@@ -525,8 +524,6 @@ int v1_video_create(char index, hal_vidconfig *config)
     attrib->bFrameNum = 0;
     attrib->refNum = 1;
 attach:
-    if (ret = v1_venc.fnDestroyGroup(_v1_venc_grp))
-        return ret;
     if (ret = v1_venc.fnCreateGroup(_v1_venc_grp))
         return ret;
 
@@ -558,7 +555,7 @@ int v1_video_destroy(char index)
         v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
             .device = _v1_vpss_grp, .channel = index };
         v1_sys_bind dest = { .module = V1_SYS_MOD_VENC,
-            .device = _v1_venc_dev, .channel = index };
+            .device = _v1_venc_grp, .channel = index };
         if (ret = v1_sys.fnUnbind(&source, &dest))
             return ret;
     }
@@ -834,7 +831,7 @@ int v1_system_init(char *snrConfig)
             v1_config.vichn.capt.height ? 
                 v1_config.vichn.capt.height : v1_config.videv.rect.height,
             V1_PIXFMT_YUV420SP, alignWidth);
-        pool.comm[0].blockCnt = 8;
+        pool.comm[0].blockCnt = 5;
 
         if (ret = v1_vb.fnConfigPool(&pool))
             return ret;
