@@ -281,6 +281,7 @@ enum BufError write_trun(
     const bool first_sample_flags_present = false;
     const bool sample_duration_present = true;
     const bool sample_size_present = true;
+    const bool sample_flags_present = true;
     {
         uint64_t flags = 0x0;
         if (data_offset_present) {
@@ -295,6 +296,9 @@ enum BufError write_trun(
         if (sample_size_present) {
             flags = flags | 0x000200;
         } // 0x000200 sample-size-present
+        if (sample_flags_present) {
+            flags = flags | 0x000400;
+        } // 0x000400 sample-flags-present
         err = put_u8(ptr, flags >> 16);
         chk_err;
         
@@ -329,6 +333,10 @@ enum BufError write_trun(
         if (sample_size_present) {
             err = put_u32_be(ptr, sample_info.size);
             chk_err; // 4 sample_size
+        }
+        if (sample_flags_present) {
+            err = put_u32_be(ptr, sample_info.flags);
+            chk_err; // 4 sample_flags
         }
     }
 
