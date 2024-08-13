@@ -99,17 +99,19 @@ enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     char is_iframe) {
     enum BufError err;
 
-    struct SampleInfo samples_info[9];
+    struct SampleInfo samples_info[2];
     memset(samples_info, 0, sizeof(samples_info));
     samples_info[0].size = nal_len + 4; // add size of sample
     samples_info[0].duration = default_sample_size;
     samples_info[0].flags = is_iframe ? 0 : 65536;
     samples_info[1].size = buf_aud.offset;
+    samples_info[1].duration = default_sample_size * 
+        buf_aud.offset / (aud_bitrate * 25 / 6.f);
 
     buf_moof.offset = 0;
     err = write_moof(
         &buf_moof, 0, 0, 0, default_sample_size, samples_info,
-        1, samples_info + 1, buf_aud.offset / aud_framesize);
+        1, samples_info + 1, 1);
     chk_err;
 
     buf_mdat.offset = 0;
