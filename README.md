@@ -30,12 +30,13 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | Hi3519V100[^10]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3519AV100             | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3559AV100             | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| RV11xx[^11]             | ↻            | ↻            | ↻           | ↻           | ↻                 |
 | T31 series              | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6[^11]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6b0[^12]        | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6e[^13]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6c[^14]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6f[^15]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6[^12]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6b0[^13]        | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6e[^14]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6c[^15]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6f[^16]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
@@ -51,11 +52,12 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 [^8]: Hi3516DV200, Hi3516EV200/300 and Hi3518EV300
 [^9]: GK7202V300, GK7205V200/300 and GK7605V100
 [^10]: Hi3516AV200 and Hi3519V101
-[^11]: SSC323, SSC325\(D/DE\) and SSC327\(D/DE/Q\)
-[^12]: SSC33\[3/5/7\]\(DE\)
-[^13]: SSC30K\[D/Q\], SSC336\[D/Q\], SSC338\[D/G/Q\] and SSC339G
-[^14]: SSC377\(D/DE/QE\) or SSC378\[DE/QE\]
-[^15]: SSC379G
+[^11]: RV110\[3/7/8/9\] and RV1106\(G2/G3\)
+[^12]: SSC323, SSC325\(D/DE\) and SSC327\(D/DE/Q\)
+[^13]: SSC33\[3/5/7\]\(DE\)
+[^14]: SSC30K\[D/Q\], SSC336\[D/Q\], SSC338\[D/G/Q\] and SSC339G
+[^15]: SSC377\(D/DE/QE\) or SSC378\[DE/QE\]
+[^16]: SSC379G
 
 
 ### Documentation
