@@ -18,41 +18,44 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 
 | SoC Family              | Audio Stream | JPEG Snapshot | fMP4 Stream | RTSP Stream | On-Screen Display* |
 |-------------------------|:------------:|:-------------:|:-----------:|:-----------:|:------------------:|
-| GM813x                  | ✗            | ✔️           | ✔️          | ✔️          | ✗                 |
-| Hi3516AV100[^1]         | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| Hi3516CV100[^2]         | ↻            | ↻            | ↻           | ↻           | ↻                 |
-| Hi3516CV200[^3]         | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
-| Hi3516CV300[^4]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| Hi3516CV500[^5]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| Hi3516EV200[^6]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| GK7205V200[^7]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| Hi3519V100[^8]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| CV181x[^1]              | ↻            | ↻            | ↻           | ↻           | ↻                 |
+| GM813x[^2]              | ✗            | ✔️           | ✔️          | ✔️          | ✗                 |
+| Hi3516AV100[^3]         | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3516CV100[^4]         | ↻            | ↻            | ↻           | ↻           | ↻                 |
+| Hi3516CV200[^5]         | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3516CV300[^6]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3516CV500[^7]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3516EV200[^8]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| GK7205V200[^9]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| Hi3519V100[^10]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3519AV100             | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3559AV100             | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | T31 series              | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6[^9]           | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6b0[^10]        | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6e[^11]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6c[^12]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6f[^13]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6[^11]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6b0[^12]        | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6e[^13]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6c[^14]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6f[^15]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
 _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matricial formats and covers are to follow_
 
-[^1]: Hi3516AV100 and Hi3516DV100
-[^2]: Hi3516CV100, Hi3518AV100, Hi3518CV100 and Hi3518EV100
-[^3]: Hi3516CV200 and Hi3518EV20\[0/1\]
-[^4]: Hi3516CV300 and Hi3516EV100
-[^5]: Hi3516AV300, Hi3516CV500 and Hi3516DV300
-[^6]: Hi3516DV200, Hi3516EV200/300 and Hi3518EV300
-[^7]: GK7202V300, GK7205V200/300 and GK7605V100
-[^8]: Hi3516AV200 and Hi3519V101
-[^9]: SSC323, SSC325(D/DE) and SSC327(D/DE/Q)
-[^10]: SSC333/35/37(DE)
-[^11]: SSC30K\[D/Q\], SSC336\[D/Q\], SSC338\[D/G/Q\] and SSC339G
-[^12]: SSC377(D/DE/QE) or SSC378\[DE/QE\]
-[^13]: SSC379G
+[^1]: CV181x[C/H], SG2000 and SG2002
+[^2]: GM8135(S), GM8136(S) and GM8138(S)
+[^3]: Hi3516AV100 and Hi3516DV100
+[^4]: Hi3516CV100, Hi3518AV100, Hi3518CV100 and Hi3518EV100
+[^5]: Hi3516CV200 and Hi3518EV20\[0/1\]
+[^6]: Hi3516CV300 and Hi3516EV100
+[^7]: Hi3516AV300, Hi3516CV500 and Hi3516DV300
+[^8]: Hi3516DV200, Hi3516EV200/300 and Hi3518EV300
+[^9]: GK7202V300, GK7205V200/300 and GK7605V100
+[^10]: Hi3516AV200 and Hi3519V101
+[^11]: SSC323, SSC325(D/DE) and SSC327(D/DE/Q)
+[^12]: SSC333/35/37(DE)
+[^13]: SSC30K\[D/Q\], SSC336\[D/Q\], SSC338\[D/G/Q\] and SSC339G
+[^14]: SSC377(D/DE/QE) or SSC378\[DE/QE\]
+[^15]: SSC379G
 
 
 ### Documentation
