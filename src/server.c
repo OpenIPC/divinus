@@ -499,7 +499,7 @@ const char error404[] = "HTTP/1.1 404 Not Found\r\n" \
                         "\r\n" \
                         "The requested URL was not found.\r\n";
 
-static void send_and_close(int client_fd, const char *buf, ssize_t size) {
+static void send_and_close(int client_fd, char *buf, ssize_t size) {
     send_to_fd(client_fd, buf, size);
     close_socket_fd(client_fd);
 }
@@ -761,7 +761,7 @@ void *server_thread(void *vargp) {
                     "{\"bitrate\":%d,\"srate\":%d}", 
                     app_config.audio_bitrate, app_config.audio_srate);
                 send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, error400, strlen(error400));
+            } else send_and_close(client_fd, (char*)error400, strlen(error400));
             continue;
         }
 
@@ -802,7 +802,7 @@ void *server_thread(void *vargp) {
                     "{\"width\":%d,\"height\":%d,\"qfactor\":%d}", 
                     app_config.jpeg_width, app_config.jpeg_height, app_config.jpeg_qfactor);
                 send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, error400, strlen(error400));
+            } else send_and_close(client_fd, (char*)error400, strlen(error400));
             continue;
         }
 
@@ -857,7 +857,7 @@ void *server_thread(void *vargp) {
                     app_config.mjpeg_width, app_config.mjpeg_height, app_config.mjpeg_fps, mode,
                     app_config.mjpeg_bitrate);
                 send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, error400, strlen(error400));
+            } else send_and_close(client_fd, (char*)error400, strlen(error400));
             continue;
         }
 
@@ -943,7 +943,7 @@ void *server_thread(void *vargp) {
                     app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps, h265, mode,
                     profile, app_config.mp4_bitrate);
                 send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, error400, strlen(error400));
+            } else send_and_close(client_fd, (char*)error400, strlen(error400));
             continue;
         }
 
@@ -973,7 +973,7 @@ void *server_thread(void *vargp) {
                     "{\"active\":%s}", 
                     night_mode_is_enabled() ? "true" : "false");
                 send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, error400, strlen(error400));
+            } else send_and_close(client_fd, (char*)error400, strlen(error400));
             continue;
         }
 
@@ -1097,7 +1097,7 @@ void *server_thread(void *vargp) {
                     chipId, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0,
                     memory, uptime);
                 send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, error400, strlen(error400));       
+            } else send_and_close(client_fd, (char*)error400, strlen(error400));       
             continue;
         }
 
@@ -1130,14 +1130,14 @@ void *server_thread(void *vargp) {
                     "\r\n" \
                     "{\"fmt\":\"%s\",\"ts\":%d}", timefmt, t.tv_sec);
                 send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, error400, strlen(error400));    
+            } else send_and_close(client_fd, (char*)error400, strlen(error400));    
             continue;
         }
 
         if (app_config.web_enable_static && send_file(client_fd, uri))
             continue;
 
-        send_and_close(client_fd, error404, strlen(error400));
+        send_and_close(client_fd, (char*)error404, strlen(error400));
     }
 
     if (request)

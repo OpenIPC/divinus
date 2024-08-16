@@ -9,7 +9,7 @@ struct AppConfig app_config;
 
 static inline void *open_app_config(FILE **file, const char *flags) {
     const char *paths[] = {"./divinus.yaml", "/etc/divinus.yaml"};
-    char **path = paths;
+    const char **path = paths;
     *file = NULL;
 
     while (*path) {
@@ -31,7 +31,7 @@ int save_app_config(void) {
     if (!file)
         HAL_ERROR("app_config", "Can't open config file for writing\n");
 
-    fputs(file,   "system:\n");
+    fprintf(file, "system:\n");
     fprintf(file, "  sensor_config: %s\n", app_config.sensor_config);
     fprintf(file, "  web_port: %d\n", app_config.web_port);
     fprintf(file, "  web_enable_auth: %s\n", app_config.web_enable_auth ? "true" : "false");
@@ -43,7 +43,7 @@ int save_app_config(void) {
     fprintf(file, "  web_server_thread_stack_size: %d\n", app_config.web_server_thread_stack_size);
     fprintf(file, "  watchdog: %d\n", app_config.watchdog);
 
-    fputs(file,   "night_mode:\n");
+    fprintf(file, "night_mode:\n");
     fprintf(file, "  enable: %s\n", app_config.night_mode_enable ? "true" : "false");
     fprintf(file, "  ir_sensor_pin: %d\n", app_config.ir_sensor_pin);
     fprintf(file, "  check_interval_s: %d\n", app_config.check_interval_s);
@@ -53,23 +53,23 @@ int save_app_config(void) {
     fprintf(file, "  adc_device: %s\n", app_config.adc_device);
     fprintf(file, "  adc_threshold: %d\n", app_config.adc_threshold);
 
-    fputs(file,   "isp:\n");
+    fprintf(file, "isp:\n");
     fprintf(file, "  mirror: %s\n", app_config.mirror ? "true" : "false");
     fprintf(file, "  flip: %s\n", app_config.flip ? "true" : "false");
     fprintf(file, "  antiflicker: %d\n", app_config.antiflicker);
 
-    fputs(file,   "rtsp:\n");
+    fprintf(file, "rtsp:\n");
     fprintf(file, "  enable: %s\n", app_config.rtsp_enable ? "true" : "false");
 
-    fputs(file,   "mdns:\n");
+    fprintf(file, "mdns:\n");
     fprintf(file, "  enable: %s\n", app_config.mdns_enable ? "true" : "false");
 
-    fputs(file,   "audio:\n");
+    fprintf(file, "audio:\n");
     fprintf(file, "  enable: %s\n", app_config.audio_enable ? "true" : "false");
     fprintf(file, "  bitrate: %d\n", app_config.audio_bitrate);
     fprintf(file, "  srate: %d\n", app_config.audio_srate);
 
-    fputs(file,   "mp4:\n");
+    fprintf(file, "mp4:\n");
     fprintf(file, "  enable: %s\n", app_config.mp4_enable ? "true" : "false");
     fprintf(file, "  codec: %s\n", app_config.mp4_codecH265 ? "H.265" : "H.264");
     fprintf(file, "  mode: %d\n", app_config.mp4_mode);
@@ -79,16 +79,16 @@ int save_app_config(void) {
     fprintf(file, "  profile: %s\n", app_config.mp4_profile);
     fprintf(file, "  bitrate: %d\n", app_config.mp4_bitrate);
 
-    fputs(file,   "osd:\n");
+    fprintf(file, "osd:\n");
     fprintf(file, "  enable: %s\n", app_config.osd_enable ? "true" : "false");
 
-    fputs(file,   "jpeg:\n");
+    fprintf(file, "jpeg:\n");
     fprintf(file, "  enable: %s\n", app_config.jpeg_enable ? "true" : "false");
     fprintf(file, "  width: %d\n", app_config.jpeg_width);
     fprintf(file, "  height: %d\n", app_config.jpeg_height);
     fprintf(file, "  qfactor: %d\n", app_config.jpeg_qfactor);
 
-    fputs(file,   "mjpeg:\n");
+    fprintf(file, "mjpeg:\n");
     fprintf(file, "  enable: %s\n", app_config.mjpeg_enable ? "true" : "false");
     fprintf(file, "  mode: %d\n", app_config.mjpeg_mode);
     fprintf(file, "  width: %d\n", app_config.mjpeg_width);
@@ -96,7 +96,7 @@ int save_app_config(void) {
     fprintf(file, "  fps: %d\n", app_config.mjpeg_fps);
     fprintf(file, "  bitrate: %d\n", app_config.mjpeg_bitrate);
 
-    fputs(file,   "http_post:\n");
+    fprintf(file, "http_post:\n");
     fprintf(file, "  enable: %s\n", app_config.http_post_enable ? "true" : "false");
     fprintf(file, "  host: %s\n", app_config.http_post_host);
     fprintf(file, "  url: %s\n", app_config.http_post_url);

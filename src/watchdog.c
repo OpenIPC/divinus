@@ -10,7 +10,7 @@ void watchdog_reset(void) {
 int watchdog_start(int timeout) {
     if (fd) return EXIT_SUCCESS;
     const char* paths[] = {"/dev/watchdog0", "/dev/watchdog"};
-    char **path = paths;
+    const char **path = paths;
 
     while (*path) {
         if (access(*path++, F_OK)) continue;
