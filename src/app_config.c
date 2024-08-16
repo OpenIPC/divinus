@@ -5,23 +5,43 @@
 #include <stdlib.h>
 #include <string.h>
 
+const char *appconf_paths[] = {"./divinus.yaml", "/etc/divinus.yaml"};
+
 struct AppConfig app_config;
 
 static inline void *open_app_config(FILE **file, const char *flags) {
-    const char *paths[] = {"./divinus.yaml", "/etc/divinus.yaml"};
-    const char **path = paths;
+    const char **path = appconf_paths;
     *file = NULL;
 
     while (*path) {
         if (access(*path++, F_OK)) continue;
         if (*flags == 'w') {
-            remove("./divinus.yaml.bak");
-            rename("./divinus.yaml", "./divinus.yaml.bak");
+            char *bkPath;
+            asprintf(&bkPath, "%s.bak", *(path - 1));
+            remove(bkPath);
+            rename(*(path - 1), bkPath);
+            free(bkPath);
         }
-        *file = fopen(*path, flags);
+        *file = fopen(*(path - 1), flags);
         break;
     }
+
     return *file;
+}
+
+void restore_app_config(void) {
+    const char **path = appconf_paths;
+
+    while (*path) {
+        char *bkPath;
+        asprintf(&bkPath, "%s.bak", *path);
+        if (!access(bkPath, F_OK)) {
+            remove(*path);
+            rename(bkPath, *path);
+        }
+        free(bkPath);
+        path++;
+    }
 }
 
 int save_app_config(void) {

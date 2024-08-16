@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 rtsp_handle rtspHandle;
+char graceful = 0;
 
 int main(int argc, char *argv[]) {
     hal_identify();
@@ -97,6 +98,9 @@ int main(int argc, char *argv[]) {
 
     if (app_config.mdns_enable)
         stop_mdns();
+
+    if (!graceful)
+        restore_app_config();
 
     fprintf(stderr, "Main thread is shutting down...\n");
     return EXIT_SUCCESS;

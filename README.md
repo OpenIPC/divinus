@@ -65,8 +65,6 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 
 ### Roadmap
 
-- [ ] Writing config changes
-- [ ] Safe mode feature
 - [ ] Additional WebUI functionalities
 - [ ] Motion detection reimplementation
 - [ ] Hardware support improvement (older SoCs, general usage chips)

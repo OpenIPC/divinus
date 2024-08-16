@@ -78,3 +78,4 @@ struct AppConfig {
 
 extern struct AppConfig app_config;
 enum ConfigError parse_app_config(void);
+void restore_app_config(void);
