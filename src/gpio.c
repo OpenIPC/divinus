@@ -1,9 +1,6 @@
 #include "gpio.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 8, 0)
-const char *paths[] = {"/dev/gpiochip0", "/sys/class/gpio/gpiochip0"};
-const char **path = paths;
-
 int fd_gpio = 0;
 
 char gpio_count = 0;
@@ -15,6 +12,8 @@ void gpio_deinit(void) {
 }
 
 int gpio_init(void) {
+    const char *paths[] = {"/dev/gpiochip0", "/sys/class/gpio/gpiochip0"};
+    char **path = paths;
     while (*path) {
         if (access(*path++, F_OK)) continue;
         if ((fd_gpio = open(*(path - 1), O_RDWR)) < 0)
