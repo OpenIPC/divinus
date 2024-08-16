@@ -92,7 +92,7 @@ int save_app_config(void) {
     fprintf(file, "  width: %d\n", app_config.mp4_width);
     fprintf(file, "  height: %d\n", app_config.mp4_height);
     fprintf(file, "  fps: %d\n", app_config.mp4_fps);
-    fprintf(file, "  profile: %s\n", app_config.mp4_profile);
+    fprintf(file, "  profile: %d\n", app_config.mp4_profile);
     fprintf(file, "  bitrate: %d\n", app_config.mp4_bitrate);
 
     fprintf(file, "osd:\n");

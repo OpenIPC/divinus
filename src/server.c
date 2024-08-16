@@ -765,7 +765,7 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.audio_enable && equals(uri, "/api/cmd")) {
+        if (equals(uri, "/api/cmd")) {
             if (equals(method, "GET")) {
                 int result = -1;
                 if (!empty(query)) {
