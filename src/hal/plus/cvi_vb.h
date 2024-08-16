@@ -22,7 +22,7 @@ typedef struct {
 } cvi_vb_impl;
 
 static int cvi_vb_load(cvi_vb_impl *vb_lib) {
-    if (!(vb_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL)))
+    if (!(vb_lib->handle = dlopen("libsys.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("cvi_vb", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(vb_lib->fnConfigPool = (int(*)(cvi_vb_pool *config))
