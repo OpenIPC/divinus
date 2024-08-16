@@ -488,6 +488,22 @@ void parse_request(int client_fd, char *request) {
     payload = strtok_r(NULL, "\r\n", &state);
 }
 
+const char error400[] = "HTTP/1.1 400 Bad Request\r\n" \
+                        "Content-Type: text/plain\r\n" \
+                        "Connection: close\r\n" \
+                        "\r\n" \
+                        "The server has no handler to the request.\r\n";
+const char error404[] = "HTTP/1.1 404 Not Found\r\n" \
+                        "Content-Type: text/plain\r\n" \
+                        "Connection: close\r\n" \
+                        "\r\n" \
+                        "The requested URL was not found.\r\n";
+
+static void send_and_close(int client_fd, const char *buf, ssize_t size) {
+    send_to_fd(client_fd, buf, size);
+    close_socket_fd(client_fd);
+}
+
 void *server_thread(void *vargp) {
     int server_fd = *((int *)vargp);
     int enable = 1;
@@ -545,8 +561,7 @@ void *server_thread(void *vargp) {
                     "WWW-Authenticate: Basic realm=\"Access the camera services\"\r\n" \
                     "Connection: close\r\n\r\n"
                 );
-                send_to_fd(client_fd, response, respLen);
-                close_socket_fd(client_fd);
+                send_and_close(client_fd, response, respLen);
                 continue;
             }
         }
@@ -555,8 +570,7 @@ void *server_thread(void *vargp) {
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Length: 11\r\n"
                         "Connection: close\r\n\r\nClosing...");
-            send_to_fd(client_fd, response, respLen);
-            close_socket_fd(client_fd);
+            send_and_close(client_fd, response, respLen);
             keepRunning = 0;
             break;
         }
@@ -715,7 +729,6 @@ void *server_thread(void *vargp) {
         }
 
         if (app_config.audio_enable && equals(uri, "/api/audio")) {
-            int respLen;
             if (equals(method, "GET")) {
                 if (!empty(query)) {
                     char *remain;
@@ -740,29 +753,19 @@ void *server_thread(void *vargp) {
                     enable_audio();
                 }
 
-                respLen = sprintf(response,
+                int respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
                     "Content-Type: application/json;charset=UTF-8\r\n" \
                     "Connection: close\r\n" \
                     "\r\n" \
                     "{\"bitrate\":%d,\"srate\":%d}", 
                     app_config.audio_bitrate, app_config.audio_srate);
-            } else {
-                respLen = sprintf(response,
-                    "HTTP/1.1 400 Bad Request\r\n" \
-                    "Content-Type: text/plain\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "The server has no handler to the request.\r\n" \
-                );
-            }
-            send_to_fd(client_fd, response, respLen);
-            close_socket_fd(client_fd);
+                send_and_close(client_fd, response, respLen);
+            } else send_and_close(client_fd, error400, strlen(error400));
             continue;
         }
 
         if (app_config.jpeg_enable && equals(uri, "/api/jpeg")) {
-            int respLen;
             if (equals(method, "GET")) {
                 if (!empty(query)) {
                     char *remain;
@@ -791,29 +794,19 @@ void *server_thread(void *vargp) {
                     jpeg_init();
                 }
 
-                respLen = sprintf(response,
+                int respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
                     "Content-Type: application/json;charset=UTF-8\r\n" \
                     "Connection: close\r\n" \
                     "\r\n" \
                     "{\"width\":%d,\"height\":%d,\"qfactor\":%d}", 
                     app_config.jpeg_width, app_config.jpeg_height, app_config.jpeg_qfactor);
-            } else {
-                respLen = sprintf(response,
-                    "HTTP/1.1 400 Bad Request\r\n" \
-                    "Content-Type: text/plain\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "The server has no handler to the request.\r\n" \
-                );
-            }
-            send_to_fd(client_fd, response, respLen);
-            close_socket_fd(client_fd);
+                send_and_close(client_fd, response, respLen);
+            } else send_and_close(client_fd, error400, strlen(error400));
             continue;
         }
 
         if (app_config.mjpeg_enable && equals(uri, "/api/mjpeg")) {
-            int respLen;
             if (equals(method, "GET")) {
                 if (!empty(query)) {
                     char *remain;
@@ -855,7 +848,7 @@ void *server_thread(void *vargp) {
                     case HAL_VIDMODE_VBR: strcpy(mode, "VBR"); break;
                     case HAL_VIDMODE_QP: strcpy(mode, "QP"); break;
                 }
-                respLen = sprintf(response,
+                int respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
                     "Content-Type: application/json;charset=UTF-8\r\n" \
                     "Connection: close\r\n" \
@@ -863,22 +856,12 @@ void *server_thread(void *vargp) {
                     "{\"width\":%d,\"height\":%d,\"fps\":%d,\"mode\":\"%s\",\"bitrate\":%d}", 
                     app_config.mjpeg_width, app_config.mjpeg_height, app_config.mjpeg_fps, mode,
                     app_config.mjpeg_bitrate);
-            } else {
-                respLen = sprintf(response,
-                    "HTTP/1.1 400 Bad Request\r\n" \
-                    "Content-Type: text/plain\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "The server has no handler to the request.\r\n" \
-                );
-            }
-            send_to_fd(client_fd, response, respLen);
-            close_socket_fd(client_fd);
+                send_and_close(client_fd, response, respLen);
+            } else send_and_close(client_fd, error400, strlen(error400));
             continue;
         }
 
         if (app_config.mp4_enable && equals(uri, "/api/mp4")) {
-            int respLen;
             if (equals(method, "GET")) {
                 if (!empty(query)) {
                     char *remain;
@@ -951,7 +934,7 @@ void *server_thread(void *vargp) {
                     case HAL_VIDPROFILE_MAIN: strcpy(profile, "MP"); break;
                     case HAL_VIDPROFILE_HIGH: strcpy(profile, "HP"); break;
                 }
-                respLen = sprintf(response,
+                int respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
                     "Content-Type: application/json;charset=UTF-8\r\n" \
                     "Connection: close\r\n" \
@@ -959,22 +942,12 @@ void *server_thread(void *vargp) {
                     "{\"width\":%d,\"height\":%d,\"fps\":%d,\"h265\":%s,\"mode\":\"%s\",\"profile\":\"%s\",\"bitrate\":%d}", 
                     app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps, h265, mode,
                     profile, app_config.mp4_bitrate);
-            } else {
-                respLen = sprintf(response,
-                    "HTTP/1.1 400 Bad Request\r\n" \
-                    "Content-Type: text/plain\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "The server has no handler to the request.\r\n" \
-                );
-            }
-            send_to_fd(client_fd, response, respLen);
-            close_socket_fd(client_fd);
+                send_and_close(client_fd, response, respLen);
+            } else send_and_close(client_fd, error400, strlen(error400));
             continue;
         }
 
         if (app_config.night_mode_enable && equals(uri, "/api/night")) {
-            int respLen;
             if (equals(method, "GET")) {
                 if (app_config.ir_sensor_pin == 999 && !empty(query)) {
                     char *remain;
@@ -992,24 +965,15 @@ void *server_thread(void *vargp) {
                         }
                     }
                 }
-                respLen = sprintf(response,
+                int respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
                     "Content-Type: application/json;charset=UTF-8\r\n" \
                     "Connection: close\r\n" \
                     "\r\n" \
                     "{\"active\":%s}", 
                     night_mode_is_enabled() ? "true" : "false");
-            } else {
-                respLen = sprintf(response,
-                    "HTTP/1.1 400 Bad Request\r\n" \
-                    "Content-Type: text/plain\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "The server has no handler to the request.\r\n" \
-                );
-            }
-            send_to_fd(client_fd, response, respLen);
-            close_socket_fd(client_fd);
+                send_and_close(client_fd, response, respLen);
+            } else send_and_close(client_fd, error400, strlen(error400));
             continue;
         }
 
@@ -1053,8 +1017,7 @@ void *server_thread(void *vargp) {
                         "The payload must be presented as multipart/form-data.\r\n" \
                     );
                 }
-                send_to_fd(client_fd, response, respLen);
-                close_socket_fd(client_fd);
+                send_and_close(client_fd, response, respLen);
                 continue;
             }
             else if (!empty(query))
@@ -1107,13 +1070,11 @@ void *server_thread(void *vargp) {
                 "\r\n" \
                 "{\"id\":%d,\"color\":%#x,\"opal\":%d\"pos\":[%d,%d],\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\"}", 
                 id, osds[id].color, osds[id].opal, osds[id].posx, osds[id].posy, osds[id].font, osds[id].size, osds[id].text);
-            send_to_fd(client_fd, response, respLen);
-            close_socket_fd(client_fd);
+            send_and_close(client_fd, response, respLen);
             continue;
         }
 
         if (equals(uri, "/api/status")) {
-            int respLen;
             if (equals(method, "GET")) {
                 struct sysinfo si;
                 sysinfo(&si);
@@ -1127,7 +1088,7 @@ void *server_thread(void *vargp) {
                     sprintf(uptime, "%ld:%02ld:%02ld", si.uptime / 3600, (si.uptime % 3600) / 60, si.uptime % 60);
                 else
                     sprintf(uptime, "%ld:%02ld", si.uptime / 60, si.uptime % 60);
-                respLen = sprintf(response,
+                int respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
                     "Content-Type: application/json;charset=UTF-8\r\n" \
                     "Connection: close\r\n" \
@@ -1135,22 +1096,12 @@ void *server_thread(void *vargp) {
                     "{\"chip\":\"%s\",\"loadavg\":[%.2f,%.2f,%.2f],\"memory\":\"%s\",\"uptime\":\"%s\"}",
                     chipId, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0,
                     memory, uptime);
-            } else {
-                respLen = sprintf(response,
-                    "HTTP/1.1 400 Bad Request\r\n" \
-                    "Content-Type: text/plain\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "The server has no handler to the request.\r\n" \
-                );
-            }
-            send_to_fd(client_fd, response, respLen);
-            close_socket_fd(client_fd);
+                send_and_close(client_fd, response, respLen);
+            } else send_and_close(client_fd, error400, strlen(error400));       
             continue;
         }
 
         if (starts_with(uri, "/api/time")) {
-            int respLen;
             if (equals(method, "GET")) {
                 struct timespec t;
                 if (!empty(query)) {
@@ -1172,34 +1123,21 @@ void *server_thread(void *vargp) {
                     }
                 }
                 clock_gettime(CLOCK_REALTIME, &t);
-                respLen = sprintf(response,
+                int respLen = sprintf(response,
                     "HTTP/1.1 200 OK\r\n" \
                     "Content-Type: application/json;charset=UTF-8\r\n" \
                     "Connection: close\r\n" \
                     "\r\n" \
                     "{\"fmt\":\"%s\",\"ts\":%d}", timefmt, t.tv_sec);
-            } else {
-                respLen = sprintf(response,
-                    "HTTP/1.1 400 Bad Request\r\n" \
-                    "Content-Type: text/plain\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "The server has no handler to the request.\r\n" \
-                );
-            }
-            send_to_fd(client_fd, response, respLen);
-            close_socket_fd(client_fd);
+                send_and_close(client_fd, response, respLen);
+            } else send_and_close(client_fd, error400, strlen(error400));    
             continue;
         }
 
         if (app_config.web_enable_static && send_file(client_fd, uri))
             continue;
 
-        static char response2[] = "HTTP/1.1 404 Not Found\r\nContent-Length: "
-                                 "11\r\nConnection: close\r\n\r\n";
-        send_to_fd(
-            client_fd, response2, sizeof(response2) - 1);
-        close_socket_fd(client_fd);
+        send_and_close(client_fd, error404, strlen(error400));
     }
 
     if (request)

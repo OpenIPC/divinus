@@ -60,13 +60,13 @@ enum ConfigError parse_app_config(void) {
     enum ConfigError err;
     find_sections(&ini);
 
-    if (plat == HAL_PLATFORM_V3 || plat == HAL_PLATFORM_V4) {
-        err = parse_param_value(
-            &ini, "system", "sensor_config", app_config.sensor_config);
-        if (err != CONFIG_OK)
+    if (plat != HAL_PLATFORM_GM) {
+        err = parse_param_value(&ini, "system", "sensor_config", app_config.sensor_config);
+        if (err != CONFIG_OK && 
+            (plat == HAL_PLATFORM_V1 || plat == HAL_PLATFORM_V2 ||
+             plat == HAL_PLATFORM_V3 || plat == HAL_PLATFORM_V4))
             goto RET_ERR;
-    } else if (plat != HAL_PLATFORM_GM)
-        parse_param_value(&ini, "system", "sensor_config", app_config.sensor_config);
+    }
     int port;
     err = parse_int(&ini, "system", "web_port", 1, INT_MAX, &port);
     if (err != CONFIG_OK)
