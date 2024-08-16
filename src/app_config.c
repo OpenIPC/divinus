@@ -16,30 +16,26 @@ static inline void *open_app_config(FILE **file, const char *flags) {
     while (*path) {
         if (access(*path++, F_OK)) continue;
         if (*flags == 'w') {
-            char *bkPath;
-            asprintf(&bkPath, "%s.bak", *(path - 1));
+            char bkPath[32];
+            sprintf(bkPath, "%s.bak", *(path - 1));
             remove(bkPath);
             rename(*(path - 1), bkPath);
-            free(bkPath);
         }
         *file = fopen(*(path - 1), flags);
         break;
     }
-
-    return *file;
 }
 
 void restore_app_config(void) {
     const char **path = appconf_paths;
 
     while (*path) {
-        char *bkPath;
-        asprintf(&bkPath, "%s.bak", *path);
+        char bkPath[32];
+        sprintf(bkPath, "%s.bak", *path);
         if (!access(bkPath, F_OK)) {
             remove(*path);
             rename(bkPath, *path);
         }
-        free(bkPath);
         path++;
     }
 }

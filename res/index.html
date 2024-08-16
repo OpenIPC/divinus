@@ -45,6 +45,21 @@
 			req.send();
 		}
 
+		function saveConfig() {
+			var req = new XMLHttpRequest();
+			req.onreadystatechange = function() {
+				if (this.readyState != 4 || this.status != 200) return;
+				var dec = JSON.parse(req.responseText);
+				for (var key in dec) {
+					if (!dec.hasOwnProperty(key)) continue;
+					if (key == 'code' && dec[key] !== 0)
+						return alert('Failed to save configuration!');
+				}
+			}
+			req.open('GET', '/api/cmd?save');
+			req.send();
+		}
+
 		function setSource(id, src) {
 			var frame = document.getElementById(id), ext = ".mp4";
 			if (frame.firstChild) frame.firstChild.src = "#";
@@ -105,6 +120,7 @@
 		<div class="c bg-black menu pv2 row">
 			<div class="col">
 				<b><label for="media-modal" class="lbl-modal ph2 white">Divinus</label></b>
+				<a href="javascript:saveConfig()" class="ph2">Save</a>
 				<label for="media-modal" class="btn primary close">Close</label>
 			</div>
 		</div>

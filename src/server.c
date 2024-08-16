@@ -765,6 +765,39 @@ void *server_thread(void *vargp) {
             continue;
         }
 
+        if (app_config.audio_enable && equals(uri, "/api/cmd")) {
+            if (equals(method, "GET")) {
+                int result = -1;
+                if (!empty(query)) {
+                    char *remain;
+                    while (query) {
+                        char *value = split(&query, "&");
+                        if (!value || !*value) continue;
+                        unescape_uri(value);
+                        char *key = split(&value, "=");
+                        if (!key || !*key) continue;
+                        if (equals(key, "save")) {
+                            result = save_app_config();
+                            if (!result)
+                                HAL_INFO("server", "Configuration saved!\n");
+                            else
+                                HAL_WARNING("server", "Failed to save configuration!\n");
+                            break;
+                        }
+                    }
+                }
+
+                int respLen = sprintf(response,
+                    "HTTP/1.1 200 OK\r\n" \
+                    "Content-Type: application/json;charset=UTF-8\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "{\"code\":%d}", result);
+                send_and_close(client_fd, response, respLen);
+            } else send_and_close(client_fd, (char*)error400, strlen(error400));
+            continue;
+        }
+
         if (app_config.jpeg_enable && equals(uri, "/api/jpeg")) {
             if (equals(method, "GET")) {
                 if (!empty(query)) {
