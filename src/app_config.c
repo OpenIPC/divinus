@@ -174,8 +174,9 @@ enum ConfigError parse_app_config(void) {
     struct IniConfig ini;
     memset(&ini, 0, sizeof(struct IniConfig));
 
-    if (!open_config(&ini, "./divinus.yaml") &&
-            !open_config(&ini, "/etc/divinus.yaml")) {
+    FILE *file;
+    open_app_config(&file, "r");
+    if (!open_config(&ini, &file))  {
         printf("Can't find config divinus.yaml in:\n"
             "    ./divinus.yaml\n    /etc/divinus.yaml\n");
         return -1;

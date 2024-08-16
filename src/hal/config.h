@@ -34,7 +34,7 @@ enum ConfigError {
     CONFIG_SENSOR_NOT_FOUND,
 };
 
-bool open_config(struct IniConfig *ini, const char *path);
+bool open_config(struct IniConfig *ini, FILE **file);
 enum ConfigError find_sections(struct IniConfig *ini);
 enum ConfigError section_pos(
     struct IniConfig *ini, const char *section, int *start_pos, int *end_pos);

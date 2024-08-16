@@ -276,31 +276,30 @@ enum ConfigError parse_uint32(
     return CONFIG_OK;
 }
 
-bool open_config(struct IniConfig *ini, const char *path) {
-    FILE *file = fopen(path, "rb");
-    if (!file)
+bool open_config(struct IniConfig *ini, FILE **file) {
+    if (!*file)
         return false;
 
-    fseek(file, 0, SEEK_END);
-    size_t length = ftell(file);
-    fseek(file, 0, SEEK_SET);
+    fseek(*file, 0, SEEK_END);
+    size_t length = ftell(*file);
+    fseek(*file, 0, SEEK_SET);
 
     ini->str = malloc(length + 1);
     if (!ini->str) {
         printf("Can't allocate buf in parse_sensor_config\n");
-        fclose(file);
+        fclose(*file);
         return false;
     }
 
-    size_t n = fread(ini->str, 1, length, file);
+    size_t n = fread(ini->str, 1, length, *file);
     if (n != length) {
-        printf("Can't read all file %s\n", path);
-        fclose(file);
+        printf("Can't read all file\n");
+        fclose(*file);
         free(ini->str);
         return false;
     }
 
-    fclose(file);
+    fclose(*file);
     ini->str[length] = 0;
 
     return true;
