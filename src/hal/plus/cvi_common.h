@@ -10,6 +10,9 @@
 #include "../types.h"
 
 #define CVI_VI_PIPE_NUM 4
+// Non-Sophgo chips support up to 4 channels
+#define CVI_VPSS_CHN_NUM 3
+#define CVI_VPSS_GRP_NUM 16
 
 typedef enum {
     CVI_BAYER_BG,
