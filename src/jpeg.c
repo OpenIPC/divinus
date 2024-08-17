@@ -12,9 +12,7 @@ int jpeg_init() {
 
     switch (plat) {
 #if defined(__arm__)
-        case HAL_PLATFORM_GM:
-            if (app_config.mjpeg_enable) goto active;
-            break;
+        case HAL_PLATFORM_GM: goto active;
 #elif defined(__mips__)
         case HAL_PLATFORM_T31:
             if (app_config.mjpeg_enable) goto active;
