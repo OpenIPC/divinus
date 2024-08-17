@@ -12,7 +12,7 @@ gm_venc_fds _gm_venc_fds[GM_VENC_CHN_NUM];
 void* _gm_cap_dev;
 void* _gm_cap_grp;
 void* _gm_venc_dev[GM_VENC_CHN_NUM];
-int   _gm_venc_sz[GM_VENC_CHN_NUM] = { 0 };
+int   _gm_venc_sz[GM_VENC_CHN_NUM] = {0};
 
 void gm_hal_deinit(void)
 {

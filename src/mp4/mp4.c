@@ -71,10 +71,13 @@ void mp4_set_config(short width, short height, char framerate, char acodec,
     aud_bitrate = bitrate;
     aud_channels = channels;
     aud_samplerate = srate;
-    aud_framesize = 
-        (aud_samplerate >= 32000 ? 144 : 72) *
-        (aud_bitrate * 1000) / 
-        aud_samplerate;
+    if (aud_samplerate > 0) {
+        aud_framesize = 
+            (aud_samplerate >= 32000 ? 144 : 72) *
+            (aud_bitrate * 1000) / 
+            aud_samplerate;
+    } else aud_framesize = 384;
+
 }
 
 void mp4_set_sps(const char *nal_data, const uint32_t nal_len, char is_h265) {
