@@ -174,14 +174,13 @@ void gm_video_request_idr(char index)
 int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata *jpeg)
 {
     int ret;
-    unsigned int length = 1 * 1024 * 1024;
-    char *buffer = malloc(length);
+    char *buffer = malloc(GM_MAX_SNAP);
 
     gm_venc_snap snap;
     snap.bind = _gm_venc_fds[0].bind;
     snap.quality = quality;
     snap.buffer = buffer;
-    snap.length = length;
+    snap.length = GM_MAX_SNAP;
     snap.dest.width = MIN(width, GM_VENC_SNAP_WIDTH_MAX);
     snap.dest.height = MIN(height, GM_VENC_SNAP_HEIGHT_MAX);
 
@@ -189,7 +188,7 @@ int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata
         goto abort;
 
     jpeg->data = buffer;
-    jpeg->jpegSize = jpeg->length = length;
+    jpeg->jpegSize = jpeg->length = ret;
     return EXIT_SUCCESS;
 
 abort:

@@ -6,6 +6,7 @@
 #include "gm_venc.h"
 
 #define GM_LIB_API "1.0"
+#define GM_MAX_SNAP (1024 * 1024)
 
 extern char keepRunning;
 
