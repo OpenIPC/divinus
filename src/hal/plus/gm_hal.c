@@ -177,8 +177,7 @@ int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata
     unsigned int length = 1 * 1024 * 1024;
     char *buffer = malloc(length);
 
-    GM_DECLARE(gm_lib, snap, gm_venc_snap, "snapshot");
-    int size = sizeof(gm_venc_snap);
+    gm_venc_snap snap;
     snap.bind = _gm_venc_fds[0].bind;
     snap.quality = quality;
     snap.buffer = buffer;
