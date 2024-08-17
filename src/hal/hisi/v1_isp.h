@@ -2,7 +2,6 @@
 
 #include "v1_common.h"
 
-extern int (*fnISP_AlgRegisterDehaze)(int);
 extern int (*fnISP_AlgRegisterDrc)(int);
 
 typedef enum {

@@ -106,7 +106,7 @@ enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     samples_info[0].flags = is_iframe ? 0 : 65536;
     samples_info[1].size = buf_aud.offset;
     samples_info[1].duration = default_sample_size * 
-        buf_aud.offset / (aud_bitrate * 25 / 6.f);
+        buf_aud.offset / (aud_bitrate * 25 / 6);
 
     buf_moof.offset = 0;
     err = write_moof(

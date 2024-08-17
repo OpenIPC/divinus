@@ -149,7 +149,7 @@ typedef struct {
 typedef struct {
     int (*pfnRegisterCallback)(int pipe, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
     int (*pfnUnRegisterCallback)(int pipe, v4_isp_alg *aeLibrary, v4_isp_alg *awbLibrary);
-    int (*pfnSetBusInfo)(int pipe, v4_snr_bus unSNSBusInfo);
+    int (*pfnSetBusInfo)(int pipe, v4_snr_bus bus);
     void (*pfnStandby)(int pipe);
     void (*pfnRestart)(int pipe);
     void (*pfnMirrorFlip)(int pipe, v4_isp_dir mode);
