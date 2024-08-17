@@ -11,10 +11,15 @@ int jpeg_init() {
     pthread_mutex_lock(&jpeg_mutex);
 
     switch (plat) {
-        case HAL_PLATFORM_GM: goto active;
+#if defined(__arm__)
+        case HAL_PLATFORM_GM:
+            if (app_config.mjpeg_enable) goto active;
+            break;
+#elif defined(__mips__)
         case HAL_PLATFORM_T31:
             if (app_config.mjpeg_enable) goto active;
             break;
+#endif
     }
 
     jpeg_index = take_next_free_channel(false);

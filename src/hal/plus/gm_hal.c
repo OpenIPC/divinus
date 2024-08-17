@@ -65,7 +65,7 @@ int gm_pipeline_create(char mirror, char flip)
     {
         GM_DECLARE(gm_lib, config, gm_cap_cnf, "gm_cap_attr_t");
         config.channel = 0;
-        config.output = GM_CAP_OUT_SCALER2;
+        config.output = GM_CAP_OUT_SCALER1;
 
         gm_lib.fnSetDeviceConfig(_gm_cap_dev, &config);
     }
