@@ -93,6 +93,12 @@ int v2_audio_init(int samplerate)
     if (ret = v2_aud.fnEnableDevice(_v2_aud_dev))
         return ret;
     
+    {
+        v2_aud_para para;
+        para.userFrmDepth = 30;
+        if (ret = v2_aud.fnSetChannelParam(_v2_aud_dev, _v2_aud_chn, &para))
+            return ret;
+    }
     if (ret = v2_aud.fnEnableChannel(_v2_aud_dev, _v2_aud_chn))
         return ret;
 

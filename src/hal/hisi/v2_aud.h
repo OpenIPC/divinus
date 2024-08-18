@@ -53,6 +53,10 @@ typedef struct {
 } v2_aud_efrm;
 
 typedef struct {
+    unsigned int userFrmDepth;
+} v2_aud_para;
+
+typedef struct {
     void *handle;
     
     int (*fnDisableDevice)(int device);
@@ -61,6 +65,7 @@ typedef struct {
 
     int (*fnDisableChannel)(int device, int channel);
     int (*fnEnableChannel)(int device, int channel);
+    int (*fnSetChannelParam)(int device, int channel, v2_aud_para *param);
 
     int (*fnFreeFrame)(int device, int channel, v2_aud_frm *frame, v2_aud_efrm *encFrame);
     int (*fnGetFrame)(int device, int channel, v2_aud_frm *frame, v2_aud_efrm *encFrame, int millis);
@@ -88,6 +93,10 @@ static int v2_aud_load(v2_aud_impl *aud_lib) {
 
     if (!(aud_lib->fnEnableChannel = (int(*)(int device, int channel))
         hal_symbol_load("v2_aud", aud_lib->handle, "HI_MPI_AI_EnableChn")))
+        return EXIT_FAILURE;
+
+    if (!(aud_lib->fnSetChannelParam = (int(*)(int device, int channel, v2_aud_para *param))
+        hal_symbol_load("v2_aud", aud_lib->handle, "HI_MPI_AI_SetChnParam")))
         return EXIT_FAILURE;
 
     if (!(aud_lib->fnFreeFrame = (int(*)(int device, int channel, v2_aud_frm *frame, v2_aud_efrm *encFrame))
