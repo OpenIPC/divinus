@@ -18,8 +18,9 @@ typedef struct {
 typedef struct {
     v1_common_dim dest;
     v1_common_pixfmt pixFmt;
-    int enhOn;
-    int dciOn;
+    int drOn;
+    int dbOn;
+    int ieOn;
     int nredOn;
     int histEn;
     // Accepts values from 0-2 (auto, off, on)

@@ -145,7 +145,7 @@ int v1_channel_bind(char index)
     {
         v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
             .device = _v1_vpss_grp, .channel = index };
-        v1_sys_bind dest = { .module = V1_SYS_MOD_VENC,
+        v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP,
             .device = _v1_venc_grp, .channel = index };
         if (ret = v1_sys.fnBind(&source, &dest))
             return ret;
@@ -206,7 +206,7 @@ int v1_channel_unbind(char index)
     {
         v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
             .device = _v1_vpss_grp, .channel = index };
-        v1_sys_bind dest = { .module = V1_SYS_MOD_VENC,
+        v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP,
             .device = _v1_venc_grp, .channel = index };
         if (ret = v1_sys.fnUnbind(&source, &dest))
             return ret;
@@ -343,7 +343,7 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
 {
     int ret;
 
-    v1_sys_bind channel = { .module = V1_SYS_MOD_VENC,
+    v1_sys_bind channel = { .module = V1_SYS_MOD_GROUP,
         .device = _v1_venc_grp, .channel = 0 };
     v1_rgn_cnf region, regionCurr;
     v1_rgn_chn attrib, attribCurr;
@@ -393,7 +393,7 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
 
 void v1_region_destroy(char handle)
 {
-    v1_sys_bind channel = { .module = V1_SYS_MOD_VENC,
+    v1_sys_bind channel = { .module = V1_SYS_MOD_GROUP,
         .device = _v1_venc_grp, .channel = 0 };
     
     v1_rgn.fnDetachChannel(handle, &channel);
@@ -521,8 +521,6 @@ int v1_video_create(char index, hal_vidconfig *config)
     attrib->fieldOrFrame = 0;
     attrib->pic.width = config->width;
     attrib->pic.height = config->height;
-    attrib->bFrameNum = 0;
-    attrib->refNum = 1;
 attach:
     if (ret = v1_venc.fnCreateGroup(_v1_venc_grp))
         return ret;
@@ -554,7 +552,7 @@ int v1_video_destroy(char index)
     {
         v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
             .device = _v1_vpss_grp, .channel = index };
-        v1_sys_bind dest = { .module = V1_SYS_MOD_VENC,
+        v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP,
             .device = _v1_venc_grp, .channel = index };
         if (ret = v1_sys.fnUnbind(&source, &dest))
             return ret;
@@ -750,7 +748,7 @@ void *v1_video_thread(void)
                     }
                     stream.count = stat.curPacks;
 
-                    if (ret = v1_venc.fnGetStream(i, &stream, 40)) {
+                    if (ret = v1_venc.fnGetStream(i, &stream, 0)) {
                         HAL_DANGER("v1_venc", "Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;

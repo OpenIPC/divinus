@@ -52,8 +52,6 @@ typedef struct {
     unsigned int priority;
     int fieldOrFrame;
     v1_common_dim pic;
-    unsigned int bFrameNum;
-    unsigned int refNum;
 } v1_venc_attr_h264;
 
 typedef struct {
