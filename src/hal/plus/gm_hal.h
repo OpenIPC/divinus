@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gm_common.h"
+#include "gm_aud.h"
 #include "gm_cap.h"
 #include "gm_osd.h"
 #include "gm_venc.h"
@@ -16,6 +17,10 @@ extern int (*gm_vid_cb)(char, hal_vidstream*);
 
 void gm_hal_deinit(void);
 int gm_hal_init(void);
+
+void gm_audio_deinit(void);
+int gm_audio_init(int samplerate);
+void *gm_audio_thread(void);
 
 int gm_channel_bind(char index);
 int gm_channel_unbind(char index);
@@ -66,8 +71,8 @@ typedef struct {
     void* (*fnBind)(void *group, void *source, void *dest);
     int   (*fnUnbind)(void *group);
 
-    int   (*fnPollStream)(gm_venc_fds *fds, int count, int millis);
-    int   (*fnReceiveStream)(gm_venc_strm *strms, int count);
+    int   (*fnPollStream)(gm_common_pollfd *fds, int count, int millis);
+    int   (*fnReceiveStream)(gm_common_strm *strms, int count);
 
     int   (*fnSnapshot)(gm_venc_snap *snapshot, int millis);
 
@@ -122,11 +127,11 @@ static int gm_lib_load(gm_lib_impl *aio_lib) {
         hal_symbol_load("gm_lib", aio_lib->handle, "gm_unbind")))
         return EXIT_FAILURE;
 
-    if (!(aio_lib->fnPollStream = (int(*)(gm_venc_fds *fds, int count, int millis))
+    if (!(aio_lib->fnPollStream = (int(*)(gm_common_pollfd *fds, int count, int millis))
         hal_symbol_load("gm_lib", aio_lib->handle, "gm_poll")))
         return EXIT_FAILURE;
 
-    if (!(aio_lib->fnReceiveStream = (int(*)(gm_venc_strm *strms, int count))
+    if (!(aio_lib->fnReceiveStream = (int(*)(gm_common_strm *strms, int count))
         hal_symbol_load("gm_lib", aio_lib->handle, "gm_recv_multi_bitstreams")))
         return EXIT_FAILURE;
 

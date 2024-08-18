@@ -104,6 +104,7 @@ void hal_identify(void) {
         }
         chnCount = GM_VENC_CHN_NUM;
         chnState = (hal_chnstate*)gm_state;
+        aud_thread = gm_audio_thread;
         vid_thread = gm_video_thread;
         return;
     }

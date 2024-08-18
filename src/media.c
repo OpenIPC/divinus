@@ -282,6 +282,7 @@ void disable_audio(void) {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  gm_audio_deinit(); break;
         case HAL_PLATFORM_I6:  i6_audio_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_audio_deinit(); break;
         case HAL_PLATFORM_I6F: i6f_audio_deinit(); break;
@@ -300,6 +301,7 @@ int enable_audio(void) {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_GM:  ret = gm_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_I6:  ret = i6_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_I6C: ret = i6c_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_I6F: ret = i6f_audio_init(app_config.audio_srate); break;
@@ -523,7 +525,10 @@ int start_sdk(void) {
 
     switch (plat) {
 #if defined(__arm__)
-        case HAL_PLATFORM_GM:  gm_vid_cb = save_video_stream; break;
+        case HAL_PLATFORM_GM:
+            gm_aud_cb = save_audio_stream;
+            gm_vid_cb = save_video_stream;
+            break;
         case HAL_PLATFORM_I6:
             i6_aud_cb = save_audio_stream;
             i6_vid_cb = save_video_stream;

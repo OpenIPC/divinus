@@ -5,10 +5,13 @@
 gm_lib_impl gm_lib;
 
 hal_chnstate gm_state[GM_VENC_CHN_NUM] = {0};
+gm_common_pollfd _gm_aud_fds[GM_AUD_CHN_NUM], _gm_venc_fds[GM_VENC_CHN_NUM];
 int (*gm_aud_cb)(hal_audframe*);
 int (*gm_vid_cb)(char, hal_vidstream*);
 
-gm_venc_fds _gm_venc_fds[GM_VENC_CHN_NUM];
+void* _gm_aenc_dev;
+void* _gm_ain_dev;
+void* _gm_aud_grp;
 void* _gm_cap_dev;
 void* _gm_cap_grp;
 void* _gm_venc_dev[GM_VENC_CHN_NUM];
@@ -27,6 +30,118 @@ int gm_hal_init(void)
         return ret;
 
     return EXIT_SUCCESS;
+}
+
+void gm_audio_deinit(void)
+{
+    gm_lib.fnUnbind(_gm_aud_fds[0].bind);
+    _gm_aud_fds[0].bind = NULL;
+    _gm_aud_fds[0].evType = 0;
+
+    gm_lib.fnRefreshGroup(_gm_aud_grp);
+
+    gm_lib.fnDestroyDevice(_gm_aenc_dev);
+
+    gm_lib.fnDestroyDevice(_gm_ain_dev);
+}
+
+int gm_audio_init(int samplerate)
+{
+    int ret;
+
+    _gm_aud_grp = gm_lib.fnCreateGroup();
+
+    _gm_ain_dev = gm_lib.fnCreateDevice(GM_LIB_DEV_AUDIN);
+    {
+        GM_DECLARE(gm_lib, config, gm_ain_cnf, "gm_audio_grab_attr_t");
+        config.channel = 0;
+        config.rate = samplerate;
+        config.frmNum = 16;
+        config.chnNum = 1;
+        gm_lib.fnSetDeviceConfig(_gm_ain_dev, &config);
+    }
+
+    _gm_aenc_dev = gm_lib.fnCreateDevice(GM_LIB_DEV_AUDENC);
+    {
+        GM_DECLARE(gm_lib, config, gm_aenc_cnf, "gm_audio_enc_attr_t");
+        config.codec = GM_AENC_TYPE_PCM;
+        config.bitrate = 32000;
+        config.packNumPerFrm = 2048;
+        gm_lib.fnSetDeviceConfig(_gm_aenc_dev, &config);
+    }
+
+    _gm_aud_fds[0].bind = gm_lib.fnBind(_gm_aud_grp, _gm_ain_dev, _gm_aenc_dev);
+    _gm_aud_fds[0].evType = GM_POLL_READ;
+
+    if ((ret = gm_lib.fnRefreshGroup(_gm_aud_grp)) < 0)
+        return ret;
+
+    return EXIT_SUCCESS;
+}
+
+void *gm_audio_thread(void)
+{
+    int ret;
+    gm_common_strm stream[GM_AUD_CHN_NUM];
+    memset(stream, 0, sizeof(stream));
+
+    int bufSize = 0;
+    for (char i = 0; i < GM_AUD_CHN_NUM; i++)
+        bufSize += 12800;
+    unsigned long long sequence = 0;
+
+    char *bsData = malloc(bufSize);
+    if (!bsData) goto abort;
+
+    while (keepRunning) {
+        ret = gm_lib.fnPollStream(_gm_aud_fds, GM_AUD_CHN_NUM, 500);
+        if (ret == GM_ERR_TIMEOUT) {
+            HAL_WARNING("gm_aud", "Main stream loop timed out!\n");
+            continue;
+        }
+
+        for (char i = 0; i < GM_AUD_CHN_NUM; i++) {
+            if (_gm_aud_fds[i].event.type != GM_POLL_READ)
+                continue;
+            if (_gm_aud_fds[i].event.bsLength > bufSize) {
+                HAL_WARNING("gm_aud", "Bitstream buffer needs %d bytes "
+                    "more, dropping the upcoming data!\n",
+                    _gm_aud_fds[i].event.bsLength - bufSize);
+                continue;
+            }
+
+            stream[i].bind = _gm_aud_fds[i].bind;
+            stream[i].pack.bsData = bsData;
+            stream[i].pack.bsLength = bufSize;
+            stream[i].pack.mdData = 0;
+            stream[i].pack.mdLength = 0;
+        }
+
+        if ((ret = gm_lib.fnReceiveStream(stream, GM_AUD_CHN_NUM)) < 0)
+            HAL_WARNING("gm_aud", "Receiving the streams failed "
+                "with %#x!\n", ret);
+        else for (char i = 0; i < GM_AUD_CHN_NUM; i++) {
+            if (!stream[i].bind) continue;
+            if (stream[i].ret < 0)
+                HAL_WARNING("gm_aud", "Failed to the receive bitstream on "
+                    "channel %d with %#x!\n", i, stream[i].ret);
+            else if (!stream[i].ret && gm_vid_cb) {
+                gm_common_pack *pack = &stream[i].pack;
+                if (gm_aud_cb) {
+                    hal_audframe outFrame;
+                    outFrame.channelCnt = 1;
+                    outFrame.data[0] = pack->bsData;
+                    outFrame.length[0] = pack->bsSize;
+                    outFrame.seq = sequence++;
+                    outFrame.timestamp = pack->timestamp;
+                    (gm_aud_cb)(&outFrame);
+                }
+            }
+        }        
+    }
+abort:
+    HAL_INFO("gm_venc", "Shutting down encoding thread...\n");
+    free(bsData);
 }
 
 int gm_channel_bind(char index)
@@ -199,7 +314,7 @@ abort:
 void *gm_video_thread(void)
 {
     int ret;
-    gm_venc_strm stream[GM_VENC_CHN_NUM];
+    gm_common_strm stream[GM_VENC_CHN_NUM];
     memset(stream, 0, sizeof(stream));
 
     int bufSize = 0;
@@ -242,7 +357,7 @@ void *gm_video_thread(void)
                 HAL_WARNING("gm_venc", "Failed to the receive bitstream on "
                     "channel %d with %#x!\n", i, stream[i].ret);
             else if (!stream[i].ret && gm_vid_cb) {
-                gm_venc_pack *pack = &stream[i].pack;
+                gm_common_pack *pack = &stream[i].pack;
                 hal_vidstream outStrm;
                 hal_vidpack outPack[1];
 

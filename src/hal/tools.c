@@ -1,64 +1,5 @@
 #include "tools.h"
 
-char *memstr(char *haystack, char *needle, int size, char needlesize) {
-	for (char *p = haystack; p <= (haystack - needlesize + size); p++)
-		if (!memcmp(p, needle, needlesize)) return p;
-	return NULL;
-}
-
-unsigned int millis() {
-    struct timeval t;
-    gettimeofday(&t, NULL);
-    return t.tv_sec * 1000 + (t.tv_usec + 500) / 1000;
-}
-
-const char *get_extension(const char *path) {
-    const char *dot = strrchr(path, '.');
-    if (!dot || dot == path)
-        return "";
-    return dot + 1;
-}
-
-const char *get_mimetype(const char *path) {
-    const char *ext = get_extension(path);
-    if (!strlen(ext))
-        return "";
-    if (!strncmp(ext, "html", strlen("html")))
-        return "text/html";
-    else if (!strncmp(ext, "css", strlen("css")))
-        return "text/css";
-    else if (!strncmp(ext, "js", strlen("js")))
-        return "application/javascript";
-    else if (!strncmp(ext, "json", strlen("json")))
-        return "application/json";
-    else if (!strncmp(ext, "jpg", strlen("jpg")))
-        return "image/jpeg";
-    else if (!strncmp(ext, "jpeg", strlen("jpeg")))
-        return "image/jpeg";
-    else if (!strncmp(ext, "gif", strlen("gif")))
-        return "image/gif";
-    else if (!strncmp(ext, "png", strlen("png")))
-        return "image/png";
-    else if (!strncmp(ext, "svg", strlen("svg")))
-        return "image/svg+xml";
-    else if (!strncmp(ext, "mp4", strlen("mp4")))
-        return "video/mp4";
-    return "";
-}
-
-#define MAX_ERROR_MSG 0x1000
-int compile_regex(regex_t *r, const char *regex_text) {
-    int status = regcomp(r, regex_text, REG_EXTENDED | REG_NEWLINE | REG_ICASE);
-    if (status != 0) {
-        char error_message[MAX_ERROR_MSG];
-        regerror(status, r, error_message, MAX_ERROR_MSG);
-        printf("Error compiling regex '%s': %s\n", regex_text, error_message);
-        fflush(stdout);
-        return -1;
-    }
-    return 1;
-}
-
 static const char basis_64[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -93,6 +34,30 @@ int base64_encode(char *encoded, const char *string, int len) {
     *p++ = '\0';
     return p - encoded;
 }
+
+
+#define REG_ERR_LEN 0x1000
+
+int compile_regex(regex_t *r, const char *regex_text) {
+    int status = regcomp(r, regex_text, REG_EXTENDED | REG_NEWLINE | REG_ICASE);
+    if (status != 0) {
+        char error_message[REG_ERR_LEN];
+        regerror(status, r, error_message, REG_ERR_LEN);
+        printf("Error compiling regex '%s': %s\n", regex_text, error_message);
+        fflush(stdout);
+        return -1;
+    }
+    return 1;
+}
+
+
+const char *get_extension(const char *path) {
+    const char *dot = strrchr(path, '.');
+    if (!dot || dot == path)
+        return "";
+    return dot + 1;
+}
+
 
 bool get_uint64(char *str, char *pattern, uint64_t *value) {
     char reg_buf[128];
@@ -144,4 +109,18 @@ bool get_uint8(char *str, char *pattern, uint8_t *value) {
         return false;
     *value = val64;
     return true;
+}
+
+
+char *memstr(char *haystack, char *needle, int size, char needlesize) {
+	for (char *p = haystack; p <= (haystack - needlesize + size); p++)
+		if (!memcmp(p, needle, needlesize)) return p;
+	return NULL;
+}
+
+
+unsigned int millis() {
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    return t.tv_sec * 1000 + (t.tv_usec + 500) / 1000;
 }
