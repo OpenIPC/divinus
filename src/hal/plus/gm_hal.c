@@ -195,6 +195,57 @@ void gm_pipeline_destroy(void)
     gm_lib.fnDestroyGroup(_gm_cap_grp);
 }
 
+int gm_region_create(char handle, hal_rect rect, short opacity)
+{
+    if (opacity == 0) opacity = GM_OSD_OPAL_0;
+    else if (opacity < 32) opacity = GM_OSD_OPAL_12_5;
+    else if (opacity < 64) opacity = GM_OSD_OPAL_25;
+    else if (opacity < 96) opacity = GM_OSD_OPAL_37_5;
+    else if (opacity < 128) opacity = GM_OSD_OPAL_50;
+    else if (opacity < 160) opacity = GM_OSD_OPAL_62_5;
+    else if (opacity < 192) opacity = GM_OSD_OPAL_75;
+    else opacity = GM_OSD_OPAL_100;
+
+    gm_osd_cnf config = {
+        .channel = handle + 4,
+        .enabled = 1,
+        .x = rect.x,
+        .y = rect.y,
+        .opacity = opacity,
+        .zoom = GM_OSD_ZOOM_1X,
+        .align = GM_ALIGN_TOP_LEFT,
+        .osgChan = handle + 4
+    };
+    gm_lib.fnSetRegionConfig(_gm_cap_dev, &config);
+
+    return EXIT_SUCCESS;
+}
+
+void gm_region_destroy(char handle)
+{
+    gm_osd_cnf config = { .channel = handle, .enabled = 0 };
+    gm_lib.fnSetRegionConfig(_gm_cap_dev, &config);
+}
+
+int gm_region_setbitmap(char handle, hal_bitmap *bitmap)
+{   
+    gm_osd_imgs bitmaps = {
+        .image = {
+            {
+                .exists = 1,
+                .buffer = bitmap->data,
+                .length = bitmap->dim.width * bitmap->dim.height * 2,
+                .width = bitmap->dim.width,
+                .height = bitmap->dim.height,
+                .osgChan = handle + 4
+            }, {0}, {0}, {0}
+        }, .reserved = {0}
+    };
+    gm_lib.fnSetRegionBitmaps(&bitmaps);
+
+    return EXIT_SUCCESS;
+}
+
 int gm_video_create(char index, hal_vidconfig *config)
 {
     _gm_venc_dev[index] = gm_lib.fnCreateDevice(GM_LIB_DEV_VIDENC);

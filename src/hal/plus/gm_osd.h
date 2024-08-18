@@ -1,6 +1,16 @@
 #pragma once
 
 typedef enum {
+    GM_ALIGN_TOP_LEFT,
+    GM_ALIGN_TOP_CENTER,
+    GM_ALIGN_TOP_RIGHT,
+    GM_ALIGN_BOTTOM_LEFT,
+    GM_ALIGN_BOTTOM_CENTER,
+    GM_ALIGN_BOTTOM_RIGHT,
+    GM_ALIGN_CENTER
+} gm_osd_align;
+
+typedef enum {
     GM_OSD_DIM_16PX,
     GM_OSD_DIM_32PX,
     GM_OSD_DIM_64PX,
@@ -35,13 +45,13 @@ typedef struct {
     unsigned int y;
     gm_osd_opal opacity;
     gm_osd_zoom zoom;
-    int align;
-    int osgChan;
+    gm_osd_align align;
+    unsigned short osgChan;
     char reserved[18];
 } gm_osd_cnf;
 
 typedef struct {
-    int chnExists;
+    int exists;
     // Uses YUV422 pixel format
     char *buffer;
     // Must not exceed 16384 bytes, 8192 bytes for some chips
@@ -49,7 +59,7 @@ typedef struct {
     gm_osd_dim width;
     gm_osd_dim height;
     int osgTpColor;
-    unsigned short osgChn;
+    unsigned short osgChan;
     char reserved[14];
 } gm_osd_img;
 

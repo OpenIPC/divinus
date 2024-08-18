@@ -28,6 +28,10 @@ int gm_channel_unbind(char index);
 int gm_pipeline_create(char mirror, char flip);
 void gm_pipeline_destroy(void);
 
+int gm_region_create(char handle, hal_rect rect, short opacity);
+void gm_region_destroy(char handle);
+int gm_region_setbitmap(char handle, hal_bitmap *bitmap);
+
 int gm_video_create(char index, hal_vidconfig *config);
 int gm_video_destroy(char index);
 int gm_video_destroy_all(void);
@@ -117,6 +121,14 @@ static int gm_lib_load(gm_lib_impl *aio_lib) {
 
     if (!(aio_lib->fnRefreshGroup = (int(*)(void *group))
         hal_symbol_load("gm_lib", aio_lib->handle, "gm_apply")))
+        return EXIT_FAILURE;
+
+    if (!(aio_lib->fnSetRegionBitmaps = (int(*)(gm_osd_imgs *bitmaps))
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_set_osd_mark_image")))
+        return EXIT_FAILURE;
+
+    if (!(aio_lib->fnSetRegionConfig = (int(*)(void *device, gm_osd_cnf *config))
+        hal_symbol_load("gm_lib", aio_lib->handle, "gm_set_osd_mark")))
         return EXIT_FAILURE;
 
     if (!(aio_lib->fnBind = (void*(*)(void *group, void *source, void *dest))
