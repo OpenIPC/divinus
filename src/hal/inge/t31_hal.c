@@ -485,7 +485,7 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
             goto abort;
         }
 
-        if (t31_venc.fnStartReceiving(index)) {
+        if (ret = t31_venc.fnStartReceiving(index)) {
             HAL_DANGER("t31_venc", "Requesting one frame "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
@@ -509,7 +509,7 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
     if (FD_ISSET(fd, &readFds)) {
         t31_venc_stat stat;
-        if (t31_venc.fnQuery(index, &stat)) {
+        if (ret = t31_venc.fnQuery(index, &stat)) {
             HAL_DANGER("t31_venc", "Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;

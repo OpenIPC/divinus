@@ -662,7 +662,7 @@ int v3_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     }
 
     unsigned int count = 1;
-    if (v3_venc.fnStartReceivingEx(index, &count)) {
+    if (ret = v3_venc.fnStartReceivingEx(index, &count)) {
         HAL_DANGER("v3_venc", "Requesting one frame "
             "%d failed with %#x!\n", index, ret);
         goto abort;
@@ -685,7 +685,7 @@ int v3_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
     if (FD_ISSET(fd, &readFds)) {
         v3_venc_stat stat;
-        if (v3_venc.fnQuery(index, &stat)) {
+        if (ret = v3_venc.fnQuery(index, &stat)) {
             HAL_DANGER("v3_venc", "Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;

@@ -760,7 +760,7 @@ int i6c_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
     }
 
     unsigned int count = 1;
-    if (i6c_venc.fnStartReceivingEx(_i6c_venc_dev[index], index, &count)) {
+    if (ret = i6c_venc.fnStartReceivingEx(_i6c_venc_dev[index], index, &count)) {
         HAL_DANGER("i6c_venc", "Requesting one frame "
             "%d failed with %#x!\n", index, ret);
         goto abort;
@@ -783,7 +783,7 @@ int i6c_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 
     if (FD_ISSET(fd, &readFds)) {
         i6c_venc_stat stat;
-        if (i6c_venc.fnQuery(_i6c_venc_dev[index], index, &stat)) {
+        if (ret = i6c_venc.fnQuery(_i6c_venc_dev[index], index, &stat)) {
             HAL_DANGER("i6c_venc", "Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
