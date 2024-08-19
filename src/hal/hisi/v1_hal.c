@@ -848,19 +848,4 @@ int v1_system_init(char *snrConfig)
     return EXIT_SUCCESS;
 }
 
-#include <sys/stat.h>
-
-struct v1_stat {
-    char padding[16];
-    int st_mode;
-};
-
-int sTaT(const char *path, struct v1_stat *buf)
-{
-    struct stat st;
-    int ret = stat(path, &st);
-    buf->st_mode = st.st_mode;
-    return ret;
-}
-
 #endif

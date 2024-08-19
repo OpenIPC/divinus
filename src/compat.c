@@ -6,6 +6,23 @@
 
 #ifndef __UCLIBC__
 void __stdin(void) {}
+
+#ifndef __GLIBC__
+#include <sys/stat.h>
+
+struct _stat_ {
+    char padding[16];
+    int st_mode;
+};
+
+int sTaT(const char *path, struct _stat_ *buf)
+{
+    struct stat st;
+    int ret = stat(path, &st);
+    buf->st_mode = st.st_mode;
+    return ret;
+}
+#endif
 #endif
 
 void __assert(void) {}
