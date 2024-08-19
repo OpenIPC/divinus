@@ -2,7 +2,7 @@
 
 #include "v1_common.h"
 
-#define V1_VPSS_CHN_NUM 11
+#define V1_VPSS_CHN_NUM 8
 #define V1_VPSS_GRP_NUM 32
 
 typedef struct {

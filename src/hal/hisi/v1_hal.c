@@ -817,7 +817,7 @@ int v1_system_init(char *snrConfig)
     v1_vb.fnExit();
 
     {
-        int alignWidth = 64;
+        int alignWidth = 16;
         v1_vb_pool pool;
 
         memset(&pool, 0, sizeof(pool)); 
@@ -829,7 +829,7 @@ int v1_system_init(char *snrConfig)
             v1_config.vichn.capt.height ? 
                 v1_config.vichn.capt.height : v1_config.videv.rect.height,
             V1_PIXFMT_YUV420SP, alignWidth);
-        pool.comm[0].blockCnt = 5;
+        pool.comm[0].blockCnt = 4;
 
         if (ret = v1_vb.fnConfigPool(&pool))
             return ret;
