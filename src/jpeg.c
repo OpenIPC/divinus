@@ -127,6 +127,7 @@ int jpeg_get(short width, short height, char quality, char grayscale,
         if (jpeg->data)
             free(jpeg->data);
         jpeg->data = NULL;
+        pthread_mutex_unlock(&jpeg_mutex);
         return EXIT_FAILURE;
     }
 
