@@ -1112,9 +1112,9 @@ void *server_thread(void *vargp) {
                 struct sysinfo si;
                 sysinfo(&si);
                 char memory[16], uptime[48];
-                short used = (si.freeram + si.bufferram) / 1024 / 1024;
+                short free = (si.freeram + si.bufferram) / 1024 / 1024;
                 short total = si.totalram / 1024 / 1024;
-                sprintf(memory, "%d/%dMB", used, total);
+                sprintf(memory, "%d/%dMB", total - free, total);
                 if (si.uptime > 86400)
                     sprintf(uptime, "%ld days, %ld:%02ld:%02ld", si.uptime / 86400, (si.uptime % 86400) / 3600, (si.uptime % 3600) / 60, si.uptime % 60);
                 else if (si.uptime > 3600)
