@@ -253,9 +253,7 @@ enum ConfigError parse_app_config(void) {
         goto RET_ERR;
     parse_int(&ini, "isp", "antiflicker", -1, 60, &app_config.antiflicker);
 
-    err = parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
-    if (err != CONFIG_OK)
-        goto RET_ERR;
+    parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
 
     parse_bool(&ini, "mdns", "enable", &app_config.mdns_enable);
 

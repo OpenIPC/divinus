@@ -39,6 +39,8 @@ typedef enum {
     V1_VENC_RATEMODE_MJPGVBR,
     V1_VENC_RATEMODE_MJPGABR,
     V1_VENC_RATEMODE_MJPGQP,
+    V1_VENC_RATEMODE_H264CBRv2 = 13,
+    V1_VENC_RATEMODE_H264VBRv2,
     V1_VENC_RATEMODE_END
 } v1_venc_ratemode;
 
@@ -174,21 +176,14 @@ typedef union {
 } v1_venc_nalu;
 
 typedef struct {
-    v1_venc_nalu packType;
-    unsigned int offset;
-    unsigned int length;
-} v1_venc_packinfo;
-
-typedef struct {
-    unsigned int addr;
-    unsigned char *data;
-    unsigned int length;
+    unsigned int addr[2];
+    unsigned char *data[2];
+    unsigned int length[2];
     unsigned long long timestamp;
+    int endField;
     int endFrame;
     v1_venc_nalu naluType;
     unsigned int offset;
-    unsigned int packNum;
-    v1_venc_packinfo packetInfo[8];
 } v1_venc_pack;
 
 typedef struct {
@@ -214,8 +209,6 @@ typedef struct {
     unsigned int refSliceType;
     unsigned int refType;
     unsigned int updAttrCnt;
-    unsigned int startQual;
-    int pSkipOn;
 } v1_venc_strminfo_h264;
 
 typedef struct {
@@ -254,7 +247,7 @@ typedef struct {
     int (*fnSetJpegParam)(int channel, v1_venc_jpg *param);
 
     int (*fnFreeStream)(int channel, v1_venc_strm *stream);
-    int (*fnGetStream)(int channel, v1_venc_strm *stream, unsigned int timeout);
+    int (*fnGetStream)(int channel, v1_venc_strm *stream, int blockingOn);
 
     int (*fnQuery)(int channel, v1_venc_stat* stats);
 
@@ -320,7 +313,7 @@ static int v1_venc_load(v1_venc_impl *venc_lib) {
         hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_ReleaseStream")))
         return EXIT_FAILURE;
 
-    if (!(venc_lib->fnGetStream = (int(*)(int channel, v1_venc_strm *stream, unsigned int timeout))
+    if (!(venc_lib->fnGetStream = (int(*)(int channel, v1_venc_strm *stream, int blockingOn))
         hal_symbol_load("v1_venc", venc_lib->handle, "HI_MPI_VENC_GetStream")))
         return EXIT_FAILURE;
 

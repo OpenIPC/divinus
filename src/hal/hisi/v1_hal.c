@@ -92,7 +92,7 @@ int v1_audio_init(int samplerate)
     }
     if (ret = v1_aud.fnEnableDevice(_v1_aud_dev))
         return ret;
-    
+
     if (ret = v1_aud.fnEnableChannel(_v1_aud_dev, _v1_aud_chn))
         return ret;
 
@@ -513,8 +513,8 @@ int v1_video_create(char index, hal_vidconfig *config)
     attrib->maxPic.width = config->width;
     attrib->maxPic.height = config->height;
     attrib->bufSize = config->height * config->width * 2;
-    attrib->profile = config->profile;
-    attrib->byFrame = 1;
+    attrib->profile = MIN(config->profile, 1);
+    attrib->byFrame = 0;
     attrib->fieldOn = 0;
     attrib->mainStrmOn = index ? 0 : 1;
     attrib->priority = 0;
@@ -656,8 +656,8 @@ int v1_video_snapshot_grab(char index, hal_jpegdata *jpeg)
             jpeg->jpegSize = 0;
             for (unsigned int i = 0; i < strm.count; i++) {
                 v1_venc_pack *pack = &strm.packet[i];
-                unsigned int packLen = pack->length - pack->offset;
-                unsigned char *packData = pack->data + pack->offset;
+                unsigned int packLen = pack->length[0] + pack->length[1] - pack->offset;
+                unsigned char *packData = pack->data[0] + pack->offset;
 
                 unsigned int newLen = jpeg->jpegSize + packLen;
                 if (newLen > jpeg->length) {
@@ -761,10 +761,10 @@ void *v1_video_thread(void)
                         outStrm.seq = stream.sequence;
                         for (int j = 0; j < stream.count; j++) {
                             v1_venc_pack *pack = &stream.packet[j];
-                            outPack[j].data = pack->data;
-                            outPack[j].length = pack->length;
+                            outPack[j].data = pack->data[0];
+                            outPack[j].length = pack->length[0] + pack->length[1];
                             outPack[j].naluCnt = 1;
-                            outPack[j].nalu[0].length = pack->length;
+                            outPack[j].nalu[0].length = pack->length[0] + pack->length[1];
                             outPack[j].nalu[0].offset = pack->offset;
                             switch (v1_state[i].payload) {
                                 case HAL_VIDCODEC_H264:
@@ -829,7 +829,7 @@ int v1_system_init(char *snrConfig)
             v1_config.vichn.capt.height ? 
                 v1_config.vichn.capt.height : v1_config.videv.rect.height,
             V1_PIXFMT_YUV420SP, alignWidth);
-        pool.comm[0].blockCnt = 4;
+        pool.comm[0].blockCnt = 5;
 
         if (ret = v1_vb.fnConfigPool(&pool))
             return ret;
