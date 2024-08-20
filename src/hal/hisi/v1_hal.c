@@ -23,7 +23,6 @@ char _v1_aud_chn = 0;
 char _v1_aud_dev = 0;
 char _v1_isp_chn = 0;
 char _v1_isp_dev = 0;
-char _v1_venc_grp = 0;
 char _v1_vi_chn = 0;
 char _v1_vi_dev = 0;
 char _v1_vpss_chn = 0;
@@ -146,7 +145,7 @@ int v1_channel_bind(char index)
         v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
             .device = _v1_vpss_grp, .channel = index };
         v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP,
-            .device = _v1_venc_grp, .channel = index };
+            .device = index, .channel = 0 };
         if (ret = v1_sys.fnBind(&source, &dest))
             return ret;
     }
@@ -207,7 +206,7 @@ int v1_channel_unbind(char index)
         v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
             .device = _v1_vpss_grp, .channel = index };
         v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP,
-            .device = _v1_venc_grp, .channel = index };
+            .device = index, .channel = 0 };
         if (ret = v1_sys.fnUnbind(&source, &dest))
             return ret;
     }
@@ -343,8 +342,8 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
 {
     int ret;
 
-    v1_sys_bind channel = { .module = V1_SYS_MOD_GROUP,
-        .device = _v1_venc_grp, .channel = 0 };
+    v1_sys_bind channel = { .module = V1_SYS_MOD_VPSS,
+        .device = _v1_vpss_grp, .channel = 0 };
     v1_rgn_cnf region, regionCurr;
     v1_rgn_chn attrib, attribCurr;
 
@@ -393,8 +392,8 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
 
 void v1_region_destroy(char handle)
 {
-    v1_sys_bind channel = { .module = V1_SYS_MOD_GROUP,
-        .device = _v1_venc_grp, .channel = 0 };
+    v1_sys_bind channel = { .module = V1_SYS_MOD_VPSS,
+        .device = _v1_vpss_grp, .channel = 0 };
     
     v1_rgn.fnDetachChannel(handle, &channel);
     v1_rgn.fnDestroyRegion(handle);
@@ -450,7 +449,7 @@ int v1_video_create(char index, hal_vidconfig *config)
         channel.attrib.jpg.maxPic.height = config->height;
         channel.attrib.jpg.bufSize =
             config->height * config->width * 2;
-        channel.attrib.jpg.byFrame = 1;
+        channel.attrib.jpg.byFrame = 0;
         channel.attrib.jpg.fieldOrFrame = 0;
         channel.attrib.jpg.priority = 0;
         channel.attrib.jpg.pic.width = config->width;
@@ -462,8 +461,8 @@ int v1_video_create(char index, hal_vidconfig *config)
         channel.attrib.mjpg.maxPic.height = config->height;
         channel.attrib.mjpg.bufSize = 
             config->height * config->width * 2;
-        channel.attrib.mjpg.byFrame = 1;
-        channel.attrib.mjpg.mainStrmOn = index ? 0 : 1;
+        channel.attrib.mjpg.byFrame = 0;
+        channel.attrib.mjpg.mainStrmOn = 1;
         channel.attrib.mjpg.fieldOrFrame = 0;
         channel.attrib.mjpg.priority = 0;
         channel.attrib.mjpg.pic.width = config->width;
@@ -522,13 +521,13 @@ int v1_video_create(char index, hal_vidconfig *config)
     attrib->pic.width = config->width;
     attrib->pic.height = config->height;
 attach:
-    if (ret = v1_venc.fnCreateGroup(_v1_venc_grp))
+    if (ret = v1_venc.fnCreateGroup(index))
         return ret;
 
     if (ret = v1_venc.fnCreateChannel(index, &channel))
         return ret;
 
-    if (ret = v1_venc.fnRegisterChannel(_v1_venc_grp, index))
+    if (ret = v1_venc.fnRegisterChannel(index, index))
         return ret;
 
     if (config->codec != HAL_VIDCODEC_JPG && 
@@ -553,7 +552,7 @@ int v1_video_destroy(char index)
         v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
             .device = _v1_vpss_grp, .channel = index };
         v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP,
-            .device = _v1_venc_grp, .channel = index };
+            .device = index, .channel = 0 };
         if (ret = v1_sys.fnUnbind(&source, &dest))
             return ret;
     }
@@ -564,7 +563,7 @@ int v1_video_destroy(char index)
     if (ret = v1_venc.fnDestroyChannel(index))
         return ret;
 
-    if (ret = v1_venc.fnDestroyGroup(_v1_venc_grp))
+    if (ret = v1_venc.fnDestroyGroup(index))
         return ret;
     
     if (ret = v1_vpss.fnDisableChannel(_v1_vpss_grp, index))
