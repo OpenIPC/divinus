@@ -515,7 +515,7 @@ int v1_video_create(char index, hal_vidconfig *config)
     attrib->profile = MIN(config->profile, 1);
     attrib->byFrame = 0;
     attrib->fieldOn = 0;
-    attrib->mainStrmOn = index ? 0 : 1;
+    attrib->mainStrmOn = 1;
     attrib->priority = 0;
     attrib->fieldOrFrame = 0;
     attrib->pic.width = config->width;

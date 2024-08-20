@@ -50,5 +50,11 @@ inline static unsigned int v1_buffer_calculate_venc(short width, short height, v
     unsigned int bufSize = CEILING_2_POWER(width, alignWidth) *
         CEILING_2_POWER(height, alignWidth) *
         (pixFmt == V1_PIXFMT_YUV422SP ? 2 : 1.5);
-    return bufSize;
+    unsigned int headSize = 16 * height;
+    if (pixFmt == V1_PIXFMT_YUV422SP)
+        headSize *= 2;
+    else if (pixFmt == V1_PIXFMT_YUV420SP)
+        headSize *= 3;
+        headSize >>= 1;
+    return bufSize + headSize;
 }
