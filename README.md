@@ -32,11 +32,12 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | Hi3559AV100             | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | RV11xx[^11]             | ↻            | ↻            | ↻           | ↻           | ↻                 |
 | T31 series              | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6[^12]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6b0[^13]        | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6e[^14]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6c[^15]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6f[^16]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity3[^12]          | ↻            | ↻            | ↻           | ↻           | ↻                 |
+| infinity6[^13]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6b0[^14]        | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6e[^15]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6c[^16]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| infinity6f[^17]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
@@ -53,11 +54,12 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 [^9]: GK7202V300, GK7205V200/300 and GK7605V100
 [^10]: Hi3516AV200 and Hi3519V101
 [^11]: RV110\[3/7/8/9\] and RV1106\(G2/G3\)
-[^12]: SSC323, SSC325\(D/DE\) and SSC327\(D/DE/Q\)
-[^13]: SSC33\[3/5/7\]\(DE\)
-[^14]: SSC30K\[D/Q\], SSC336\[D/Q\], SSC338\[D/G/Q\] and SSC339G
-[^15]: SSC377\(D/DE/QE\) or SSC378\[DE/QE\]
-[^16]: SSC379G
+[^12]: MSC313E, MSC316\[DC/Q\] and MSC318
+[^13]: SSC323, SSC325\(D/DE\) and SSC327\(D/DE/Q\)
+[^14]: SSC33\[3/5/7\]\(DE\)
+[^15]: SSC30K\[D/Q\], SSC336\[D/Q\], SSC338\[D/G/Q\] and SSC339G
+[^16]: SSC377\(D/DE/QE\) or SSC378\[DE/QE\]
+[^17]: SSC379G
 
 
 ### Documentation
