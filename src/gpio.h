@@ -1,5 +1,3 @@
-#include "hal/macros.h"
-
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/version.h>
@@ -15,6 +13,8 @@
 #else
 #include <string.h>
 #endif
+
+#include "hal/macros.h"
 
 void gpio_deinit(void);
 int gpio_init(void);

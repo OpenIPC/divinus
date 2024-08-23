@@ -21,38 +21,14 @@ char graceful = 0;
 int main(int argc, char *argv[]) {
     hal_identify();
 
-    switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_GM:
-            fprintf(stderr, "Divinus for grainmedia\n"); break;
-        case HAL_PLATFORM_I6:
-            fprintf(stderr, "Divinus for infinity6(b0/e)\n"); break;
-        case HAL_PLATFORM_I6C:
-            fprintf(stderr, "Divinus for infinity6c\n"); break;
-        case HAL_PLATFORM_I6F:
-            fprintf(stderr, "Divinus for infinity6f\n"); break;
-        case HAL_PLATFORM_V1:
-            fprintf(stderr, "Divinus for hisi-gen1\n"); break;
-        case HAL_PLATFORM_V2:
-            fprintf(stderr, "Divinus for hisi-gen2\n"); break;
-        case HAL_PLATFORM_V3:
-            fprintf(stderr, "Divinus for hisi-gen3\n"); break;
-        case HAL_PLATFORM_V4:
-            fprintf(stderr, "Divinus for hisi-gen4\n"); break;
-#elif defined(__mips__)
-        case HAL_PLATFORM_T31:
-            fprintf(stderr, "Divinus for ingenic t31\n"); break;
-#endif
-        default:
-            fprintf(stderr, "Unsupported chip family! Quitting...\n");
-            return EXIT_FAILURE;
-    }
-    fprintf(stderr, "Chip ID: %s\n", chipId);
+    if (!*family)
+        HAL_ERROR("hal", "Unsupported chip family! Quitting...\n");
 
-    if (parse_app_config() != CONFIG_OK) {
-        fprintf(stderr, "Can't load app config 'divinus.yaml'\n");
-        return EXIT_FAILURE;
-    }
+    fprintf(stderr, "Divinus for %s\n", family);
+    fprintf(stderr, "Chip ID: %s\n", chip);
+
+    if (parse_app_config() != CONFIG_OK)
+        HAL_ERROR("hal", "Can't load app config 'divinus.yaml'\n");
 
     if (app_config.mdns_enable)
         start_mdns();
@@ -61,11 +37,11 @@ int main(int argc, char *argv[]) {
 
     if (app_config.rtsp_enable) {
         rtspHandle = rtsp_create(RTSP_MAXIMUM_CONNECTIONS, 2);
-        fprintf(stderr, "RTSP server started, listening for clients...\n");
+        HAL_INFO("rtsp", "Started listening for clients...\n");
     }
 
     if (start_sdk())
-        return EXIT_FAILURE;
+        HAL_ERROR("hal", "Failed to start SDK!\n");
 
     if (app_config.night_mode_enable)
         start_monitor_light_sensor();
@@ -83,7 +59,7 @@ int main(int argc, char *argv[]) {
 
     if (app_config.rtsp_enable) {
         rtsp_finish(rtspHandle);
-        fprintf(stderr, "RTSP server has closed!\n");
+        HAL_INFO("rtsp", "Server has closed!\n");
     }
 
     if (app_config.osd_enable)

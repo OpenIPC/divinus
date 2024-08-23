@@ -1127,7 +1127,7 @@ void *server_thread(void *vargp) {
                     "Connection: close\r\n" \
                     "\r\n" \
                     "{\"chip\":\"%s\",\"loadavg\":[%.2f,%.2f,%.2f],\"memory\":\"%s\",\"uptime\":\"%s\"}",
-                    chipId, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0,
+                    chip, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0,
                     memory, uptime);
                 send_and_close(client_fd, response, respLen);
             } else send_and_close(client_fd, (char*)error400, strlen(error400));       

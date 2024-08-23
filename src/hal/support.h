@@ -41,7 +41,8 @@ extern void *vid_thread;
 extern char chnCount;
 extern hal_chnstate *chnState;
 
-extern char chipId[16];
+extern char chip[16];
+extern char family[32];
 extern hal_platform plat;
 extern int series;
 

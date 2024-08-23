@@ -16,6 +16,12 @@
 #include <time.h>
 #include <unistd.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
+#include <sys/sysinfo.h>
+#else
+#include <linux/sysinfo.h>
+#endif
+
 #include "app_config.h"
 #include "hal/types.h"
 #include "jpeg.h"
@@ -24,12 +30,6 @@
 #include "mp4/nal.h"
 #include "region.h"
 #include "watchdog.h"
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
-#include <sys/sysinfo.h>
-#else
-#include <linux/sysinfo.h>
-#endif
 
 #define IMPORT_BIN(sect, file, sym) asm (\
     ".section " #sect "\n"                  /* Change section */\

@@ -1,5 +1,7 @@
 #include "http_post.h"
 
+pthread_t httpPostPid = 0;
+
 int post_send(hal_jpegdata *jpeg) {
     char *host_addr = app_config.http_post_host;
 
@@ -95,8 +97,6 @@ void *send_thread(void *vargp) {
 }
 
 void start_http_post_send() {
-    pthread_t http_post_thread_id = 0;
-
     pthread_attr_t thread_attr;
     pthread_attr_init(&thread_attr);
     size_t stacksize;
@@ -105,9 +105,13 @@ void start_http_post_send() {
     if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
         HAL_DANGER("http_post", "Can't set stack size %zu\n", new_stacksize);
     if (pthread_create(
-                    &http_post_thread_id, &thread_attr, send_thread, NULL))
+                    &httpPostPid, &thread_attr, send_thread, NULL))
         HAL_DANGER("http_post", "Starting the HTTP poster thread failed!\n");
     if (pthread_attr_setstacksize(&thread_attr, stacksize))
         HAL_DANGER("http_post", "Can't set stack size %zu\n", stacksize);
     pthread_attr_destroy(&thread_attr);
+}
+
+void stop_http_post_send() {
+    pthread_join(httpPostPid, NULL);
 }

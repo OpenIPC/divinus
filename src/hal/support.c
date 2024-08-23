@@ -6,7 +6,9 @@ void *vid_thread = NULL;
 
 char chnCount = 0;
 hal_chnstate *chnState = NULL;
-char chipId[16] = "unknown";
+
+char chip[16] = "unknown";
+char family[32] = {0};
 hal_platform plat = HAL_PLATFORM_UNK;
 int series = 0;
 
@@ -69,8 +71,9 @@ void hal_identify(void) {
             case 0xF1: // Pudding (6E)
             case 0xF2: // Ispahan (6B0)
                 plat = HAL_PLATFORM_I6;
-                strcpy(chipId, series == 0xEF ? 
+                strcpy(chip, series == 0xEF ? 
                     "SSC32x" : "SSC33x");
+                strcpy(family, "infinity6(b/e0)");
                 chnCount = I6_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6_state;
                 aud_thread = i6_audio_thread;
@@ -78,7 +81,8 @@ void hal_identify(void) {
                 return;
             case 0xF9:
                 plat = HAL_PLATFORM_I6C;
-                strcpy(chipId, "SSC37x");
+                strcpy(chip, "SSC37x");
+                strcpy(family, "infinity6c");
                 chnCount = I6C_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6c_state;
                 aud_thread = i6c_audio_thread;
@@ -86,7 +90,8 @@ void hal_identify(void) {
                 return;
             case 0xFB:
                 plat = HAL_PLATFORM_I6F;
-                strcpy(chipId, "SSC37x");
+                strcpy(chip, "SSC379G");
+                strcpy(family, "infinity6f");
                 chnCount = I6F_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6f_state;
                 aud_thread = i6f_audio_thread;
@@ -96,10 +101,11 @@ void hal_identify(void) {
     
     if (!access("/dev/vpd", 0)) {
         plat = HAL_PLATFORM_GM;
-        strcpy(chipId, "GM813x");
+        strcpy(chip, "GM813x");
+        strcpy(family, "grainmedia");
         if (file = fopen("/proc/pmu/chipver", "r")) {
             fgets(line, 200, file);
-            sscanf(line, "%4s", chipId + 2);
+            sscanf(line, "%4s", chip + 2);
             fclose(file);
         }
         chnCount = GM_VENC_CHN_NUM;
@@ -120,16 +126,17 @@ void hal_identify(void) {
             case 0x31:
                 plat = HAL_PLATFORM_T31;
                 switch (type >> 16) {
-                    case 0x2222: sprintf(chipId, "T31X");  break;
-                    case 0x3333: sprintf(chipId, "T31L");  break;
-                    case 0x4444: sprintf(chipId, "T31A");  break;
-                    case 0x5555: sprintf(chipId, "T31ZL"); break;
-                    case 0x6666: sprintf(chipId, "T31ZX"); break;
-                    case 0xcccc: sprintf(chipId, "T31AL"); break;
-                    case 0xdddd: sprintf(chipId, "T31ZC"); break;
-                    case 0xeeee: sprintf(chipId, "T31LC"); break;
-                    default:     sprintf(chipId, "T31N");  break;
+                    case 0x2222: sprintf(chip, "T31X");  break;
+                    case 0x3333: sprintf(chip, "T31L");  break;
+                    case 0x4444: sprintf(chip, "T31A");  break;
+                    case 0x5555: sprintf(chip, "T31ZL"); break;
+                    case 0x6666: sprintf(chip, "T31ZX"); break;
+                    case 0xcccc: sprintf(chip, "T31AL"); break;
+                    case 0xdddd: sprintf(chip, "T31ZC"); break;
+                    case 0xeeee: sprintf(chip, "T31LC"); break;
+                    default:     sprintf(chip, "T31N");  break;
                 }
+                strcpy(family, "ingenic t31"); break;
                 chnCount = T31_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)t31_state;
                 aud_thread = t31_audio_thread;
@@ -174,20 +181,21 @@ void hal_identify(void) {
         out |= (SCSYSID[i] & 0xFF) << i * 8;
     }
 
-    sprintf(chipId, "%s%X", 
+    sprintf(chip, "%s%X", 
         ((out >> 28) == 0x7) ? "GK" : "Hi", out);
-    if (chipId[6] == '0') {
-        chipId[6] = 'V';
+    if (chip[6] == '0') {
+        chip[6] = 'V';
     } else {
-        chipId[8] = chipId[7];
-        chipId[7] = 'V';
-        chipId[9] = chipId[8];
-        chipId[10] = chipId[9];
-        chipId[11] = '\0';
+        chip[8] = chip[7];
+        chip[7] = 'V';
+        chip[9] = chip[8];
+        chip[10] = chip[9];
+        chip[11] = '\0';
     }
 
     if (out == 0x35180100) {
         plat = HAL_PLATFORM_V1;
+        strcpy(family, "hisi-gen1");
         chnCount = V1_VENC_CHN_NUM;
         chnState = (hal_chnstate*)v1_state;
         aud_thread = v1_audio_thread;
@@ -196,6 +204,7 @@ void hal_identify(void) {
         return;    
     } else if (v2series) {
         plat = HAL_PLATFORM_V2;
+        strcpy(family, "hisi-gen2");
         chnCount = V2_VENC_CHN_NUM;
         chnState = (hal_chnstate*)v2_state;
         aud_thread = v2_audio_thread;
@@ -204,6 +213,7 @@ void hal_identify(void) {
         return;    
     } else if (v3series) {
         plat = HAL_PLATFORM_V3;
+        strcpy(family, "hisi-gen3");
         chnCount = V3_VENC_CHN_NUM;
         chnState = (hal_chnstate*)v3_state;
         aud_thread = v3_audio_thread;
@@ -213,6 +223,7 @@ void hal_identify(void) {
     }
 
     plat = HAL_PLATFORM_V4;
+    strcpy(family, "hisi-gen4");
     chnCount = V4_VENC_CHN_NUM;
     chnState = (hal_chnstate*)v4_state;
     aud_thread = v4_audio_thread;
