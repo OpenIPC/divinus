@@ -84,7 +84,7 @@ int v1_audio_init(int samplerate)
         config.expandOn = 0;
         config.frmNum = 30;
         config.packNumPerFrm = 320;
-        config.chnNum = 1;
+        config.chnNum = 2;
         config.syncRxClkOn = 0;
         if (ret = v1_aud.fnSetDeviceConfig(_v1_aud_dev, &config))
             return ret;
@@ -449,7 +449,7 @@ int v1_video_create(char index, hal_vidconfig *config)
         channel.attrib.jpg.maxPic.height = config->height;
         channel.attrib.jpg.bufSize =
             config->height * config->width * 2;
-        channel.attrib.jpg.byFrame = 0;
+        channel.attrib.jpg.byFrame = 1;
         channel.attrib.jpg.fieldOrFrame = 0;
         channel.attrib.jpg.priority = 0;
         channel.attrib.jpg.pic.width = config->width;
@@ -461,7 +461,7 @@ int v1_video_create(char index, hal_vidconfig *config)
         channel.attrib.mjpg.maxPic.height = config->height;
         channel.attrib.mjpg.bufSize = 
             config->height * config->width * 2;
-        channel.attrib.mjpg.byFrame = 0;
+        channel.attrib.mjpg.byFrame = 1;
         channel.attrib.mjpg.mainStrmOn = 1;
         channel.attrib.mjpg.fieldOrFrame = 0;
         channel.attrib.mjpg.priority = 0;

@@ -541,10 +541,10 @@ int v4_sensor_init(char *name, char *obj)
         if (v4_snr_drv.handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL))
             break;
     } if (!v4_snr_drv.handle)
-        HAL_ERROR("v4_snr", "Failed to load the sensor driver");
+        HAL_ERROR("v4_snr", "Failed to load the sensor driver\n");
     
     if (!(v4_snr_drv.obj = (v4_snr_obj*)dlsym(v4_snr_drv.handle, obj)))
-        HAL_ERROR("v4_snr", "Failed to connect the sensor object");
+        HAL_ERROR("v4_snr", "Failed to connect the sensor object\n");
 
     return EXIT_SUCCESS;
 }

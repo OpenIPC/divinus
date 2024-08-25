@@ -10,6 +10,8 @@
 #include "star/i6f_hal.h"
 #elif defined(__mips__)
 #include "inge/t31_hal.h"
+#elif defined(__riscv) || defined(__riscv__)
+#include "plus/cvi_hal.h"
 #endif
 
 #include <errno.h>

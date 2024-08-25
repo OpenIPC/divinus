@@ -65,7 +65,7 @@ void hal_identify(void) {
 
 #ifdef __arm__
     if (!access("/proc/mi_modules", 0) && 
-        hal_registry(0x1F003C00, &series, OP_READ))
+        hal_registry(0x1F003C00, &series, OP_READ)) {
         switch (series) {
             case 0xEF: // Macaron (6)
             case 0xF1: // Pudding (6E)
@@ -98,16 +98,17 @@ void hal_identify(void) {
                 vid_thread = i6f_video_thread;
                 return;
         }
+    }
     
     if (!access("/dev/vpd", 0)) {
         plat = HAL_PLATFORM_GM;
         strcpy(chip, "GM813x");
-        strcpy(family, "grainmedia");
         if (file = fopen("/proc/pmu/chipver", "r")) {
             fgets(line, 200, file);
             sscanf(line, "%4s", chip + 2);
             fclose(file);
         }
+        strcpy(family, "grainmedia");
         chnCount = GM_VENC_CHN_NUM;
         chnState = (hal_chnstate*)gm_state;
         aud_thread = gm_audio_thread;
@@ -229,5 +230,16 @@ void hal_identify(void) {
     aud_thread = v4_audio_thread;
     isp_thread = v4_image_thread;
     vid_thread = v4_video_thread;
+#endif
+
+#if defined(__riscv) || defined(__riscv__)
+        if (!access("/proc/cvi", 0)) {
+        plat = HAL_PLATFORM_CVI;
+        strcpy(family, "CV181x");
+        chnCount = CVI_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)cvi_state;
+        aud_thread = cvi_audio_thread;
+        vid_thread = cvi_video_thread;
+    }
 #endif
 }

@@ -105,7 +105,9 @@ typedef struct {
     // Accepts values from 0-2 (yuv, rgb, early yuv)
     int rgbMode;
     cvi_common_dim size;
-    cvi_vi_wdr wdr;
+    cvi_common_wdr wdrMode;
+	unsigned int wdrCacheLine;
+	char wdrSynthOn;
     cvi_common_bayer bayerMode;
     unsigned int chnNum;
     unsigned int snrFps;

@@ -20,6 +20,7 @@
 
 typedef enum {
     HAL_PLATFORM_UNK,
+    HAL_PLATFORM_CVI,
     HAL_PLATFORM_GM,
     HAL_PLATFORM_I3,
     HAL_PLATFORM_I6,

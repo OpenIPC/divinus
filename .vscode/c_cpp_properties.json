@@ -42,6 +42,12 @@
         "defines": ["__mips__"],
         "compilerPath": "toolchain/mips_xburst-gcc13-musl-3_10/bin/mipsel-openipc-linux-musl-gcc",
         "cStandard": "c11"    
+      },{
+        "name": "riscv64-musl",
+        "includePath": ["${workspaceFolder}/**"],
+        "defines": ["__riscv", "__riscv__"],
+        "compilerPath": "toolchain/riscv64-lp64d--musl--stable-2024.05-1/bin/riscv64-linux-gcc",
+        "cStandard": "c11"    
       }
     ],
     "version": 4

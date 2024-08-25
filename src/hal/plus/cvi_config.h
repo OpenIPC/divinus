@@ -315,7 +315,8 @@ static enum ConfigError cvi_parse_sensor_config(char *path, cvi_config_impl *con
     enum ConfigError err;
 
     // load config file to string
-    if (!open_config(&ini, path))
+    FILE *file = fopen(path, "r");
+    if (!open_config(&ini, &file))
         return (enum ConfigError)-1;
 
     find_sections(&ini);

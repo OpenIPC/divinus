@@ -64,7 +64,7 @@ typedef struct {
 } cvi_sys_ver;
 
 typedef struct {
-    void *handle, *handleVoiceEngine, *handleVqe, *handleMisc;
+    void *handle;
     
     int (*fnExit)(void);
     int (*fnGetChipId)(unsigned int *chip);
@@ -79,10 +79,7 @@ typedef struct {
 } cvi_sys_impl;
 
 static int cvi_sys_load(cvi_sys_impl *sys_lib) {
-    if (!(sys_lib->handleMisc = dlopen("libmisc.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-        !(sys_lib->handleVqe = dlopen("libcvi_vqe.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-        !(sys_lib->handleVoiceEngine = dlopen("libcvi_VoiceEngine.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-        !(sys_lib->handle = dlopen("libsys.so", RTLD_LAZY | RTLD_GLOBAL)))
+    if (!(sys_lib->handle = dlopen("libsys.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("cvi_sys", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(sys_lib->fnExit = (int(*)(void))
@@ -121,12 +118,6 @@ static int cvi_sys_load(cvi_sys_impl *sys_lib) {
 }
 
 static void cvi_sys_unload(cvi_sys_impl *sys_lib) {
-    if (sys_lib->handleMisc) dlclose(sys_lib->handleMisc);
-    sys_lib->handleMisc = NULL;
-    if (sys_lib->handleVqe) dlclose(sys_lib->handleVqe);
-    sys_lib->handleVqe = NULL;
-    if (sys_lib->handleVoiceEngine) dlclose(sys_lib->handleVoiceEngine);
-    sys_lib->handleVoiceEngine = NULL;
     if (sys_lib->handle) dlclose(sys_lib->handle);
     sys_lib->handle = NULL;
     memset(sys_lib, 0, sizeof(*sys_lib));

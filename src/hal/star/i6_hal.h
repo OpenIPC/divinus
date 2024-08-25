@@ -19,10 +19,10 @@ extern int (*i6_vid_cb)(char, hal_vidstream*);
 
 void i6_hal_deinit(void);
 int i6_hal_init(void);
-void *i6_audio_thread(void);
 
 void i6_audio_deinit(void);
 int i6_audio_init(int samplerate);
+void *i6_audio_thread(void);
 
 int i6_channel_bind(char index, char framerate);
 int i6_channel_create(char index, short width, short height, char mirror, char flip, char jpeg);
