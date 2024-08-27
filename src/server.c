@@ -1,5 +1,8 @@
 #include "server.h"
 
+#define MAX_CLIENTS 50
+#define REQSIZE 512 * 1024
+
 IMPORT_STR(.rodata, "../res/index.html", indexhtml);
 extern const char indexhtml[];
 
@@ -21,9 +24,34 @@ struct Client {
     unsigned int nalCnt;
 };
 
-#define MAX_CLIENTS 50
 struct Client client_fds[MAX_CLIENTS];
 pthread_mutex_t client_fds_mutex;
+
+char response[256];
+char *method, *payload, *prot, *request, *query, *uri;
+int paysize, received, total = 0;
+
+typedef struct {
+    char *name, *value;
+} header_t;
+
+header_t reqhdr[17] = {{"\0", "\0"}};
+
+const char error400[] = "HTTP/1.1 400 Bad Request\r\n" \
+                        "Content-Type: text/plain\r\n" \
+                        "Connection: close\r\n" \
+                        "\r\n" \
+                        "The server has no handler to the request.\r\n";
+const char error404[] = "HTTP/1.1 404 Not Found\r\n" \
+                        "Content-Type: text/plain\r\n" \
+                        "Connection: close\r\n" \
+                        "\r\n" \
+                        "The requested resource was not found.\r\n";
+const char error405[] = "HTTP/1.1 405 Method Not Allowed\r\n" \
+                        "Content-Type: text/plain\r\n" \
+                        "Connection: close\r\n" \
+                        "\r\n" \
+                        "This method is not handled by this server.\r\n";
 
 void close_socket_fd(int socket_fd) {
     shutdown(socket_fd, SHUT_RDWR);
@@ -64,6 +92,11 @@ int send_to_client(int i, char *buf, ssize_t size) {
         return -1;
     }
     return 0;
+}
+
+static void send_and_close(int client_fd, char *buf, ssize_t size) {
+    send_to_fd(client_fd, buf, size);
+    close_socket_fd(client_fd);
 }
 
 void send_h26x_to_client(char index, hal_vidstream *stream) {
@@ -305,10 +338,7 @@ void *send_jpeg_thread(void *vargp) {
         static char response[] =
             "HTTP/1.1 503 Internal Error\r\nContent-Length: 11\r\nConnection: "
             "close\r\n\r\nHello, 503!";
-        send_to_fd(
-            task.client_fd, response,
-            sizeof(response) - 1); // zero ending string!
-        close_socket_fd(task.client_fd);
+        send_and_close(task.client_fd, response, sizeof(response) - 1); // zero ending string!
         return NULL;
     }
     HAL_INFO("server", "JPEG snapshot has been received!\n");
@@ -363,58 +393,23 @@ int send_file(const int client_fd, const char *path) {
         close_socket_fd(client_fd);
         return 1;
     }
+    send_and_close(client_fd, (char*)error404, strlen(error404));
     return 0;
 }
 
-int send_html(const int client_fd, const char *data) {
+void send_html(const int client_fd, const char *data) {
     char *buf;
     int buf_len = asprintf(
         &buf,
-        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
-        "%ld\r\nConnection: close\r\n\r\n%s",
+        "HTTP/1.1 200 OK\r\n" \
+        "Content-Type: text/html\r\n" \
+        "Content-Length: %ld\r\n" \
+        "Connection: close\r\n" \
+        "\r\n%s",
         strlen(data), data);
     buf[buf_len++] = 0;
-    send_to_fd(client_fd, buf, buf_len);
+    send_and_close(client_fd, buf, buf_len);
     free(buf);
-    close_socket_fd(client_fd);
-    return 1;
-}
-
-#define REQSIZE 512 * 1024
-char response[256];
-char *method, *payload, *prot, *request, *query, *uri;
-int paysize, received, total = 0;
-
-typedef struct {
-    char *name, *value;
-} header_t;
-
-header_t reqhdr[17] = {{"\0", "\0"}};
-
-void unescape_uri(char *uri)
-{
-    char *src = uri;
-    char *dst = uri;
-
-    while (*src && !isspace((int)(*src)) && (*src != '%'))
-        src++;
-
-    dst = src;
-    while (*src && !isspace((int)(*src)))
-    {
-        *dst++ = (*src == '+') ? ' ' :
-                 ((*src == '%') && src[1] && src[2]) ?
-                 ((*++src & 0x0F) + 9 * (*src > '9')) * 16 + ((*++src & 0x0F) + 9 * (*src > '9')) :
-                 *src;
-        src++;
-    }
-    *dst = '\0';
-}
-
-char *split(char **input, char *sep) {
-    char *curr = (char *)"";
-    while (curr && !curr[0] && *input) curr = strsep(input, sep);
-    return (curr);
 }
 
 char *request_header(const char *name)
@@ -488,24 +483,8 @@ void parse_request(int client_fd, char *request) {
     payload = strtok_r(NULL, "\r\n", &state);
 }
 
-const char error400[] = "HTTP/1.1 400 Bad Request\r\n" \
-                        "Content-Type: text/plain\r\n" \
-                        "Connection: close\r\n" \
-                        "\r\n" \
-                        "The server has no handler to the request.\r\n";
-const char error404[] = "HTTP/1.1 404 Not Found\r\n" \
-                        "Content-Type: text/plain\r\n" \
-                        "Connection: close\r\n" \
-                        "\r\n" \
-                        "The requested URL was not found.\r\n";
-
-static void send_and_close(int client_fd, char *buf, ssize_t size) {
-    send_to_fd(client_fd, buf, size);
-    close_socket_fd(client_fd);
-}
-
 void *server_thread(void *vargp) {
-    int server_fd = *((int *)vargp);
+    int ret, server_fd = *((int *)vargp);
     int enable = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
         HAL_WARNING("server", "setsockopt(SO_REUSEADDR) failed");
@@ -515,8 +494,7 @@ void *server_thread(void *vargp) {
     server.sin_family = AF_INET;
     server.sin_port = htons(app_config.web_port);
     server.sin_addr.s_addr = htonl(INADDR_ANY);
-    int res = bind(server_fd, (struct sockaddr *)&server, sizeof(server));
-    if (res != 0) {
+    if (ret = bind(server_fd, (struct sockaddr *)&server, sizeof(server))) {
         HAL_DANGER("server", "%s (%d)\n", strerror(errno), errno);
         keepRunning = 0;
         close_socket_fd(server_fd);
@@ -543,6 +521,11 @@ void *server_thread(void *vargp) {
         if (total <= 0) continue;
 
         parse_request(client_fd, request);
+
+        if (!EQUALS(method, "GET") || !EQUALS(method, "POST")) {
+            send_and_close(client_fd, (char*)error405, strlen(error405));
+            continue;
+        }
 
         if (app_config.web_enable_auth) {
             char *auth = request_header("Authorization");
@@ -638,8 +621,8 @@ void *server_thread(void *vargp) {
             request_idr();
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Type: "
-                        "video/mp4\r\nTransfer-Encoding: "
-                        "chunked\r\nConnection: keep-alive\r\n\r\n");
+                        "video/mp4\r\nTransfer-Encoding: chunked\r\n"
+                        "Connection: keep-alive\r\n\r\n");
             send_to_fd(client_fd, response, respLen);
             pthread_mutex_lock(&client_fds_mutex);
             for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
@@ -655,9 +638,9 @@ void *server_thread(void *vargp) {
 
         if (app_config.mjpeg_enable && EQUALS(uri, "/mjpeg")) {
             int respLen = sprintf(
-                response, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nPragma: "
-                        "no-cache\r\nConnection: close\r\nContent-Type: "
-                        "multipart/x-mixed-replace; "
+                response, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\n"
+                        "Pragma: no-cache\r\nConnection: close\r\n"
+                        "Content-Type: multipart/x-mixed-replace; "
                         "boundary=boundarydonotcross\r\n\r\n");
             send_to_fd(client_fd, response, respLen);
             pthread_mutex_lock(&client_fds_mutex);
@@ -729,291 +712,290 @@ void *server_thread(void *vargp) {
         }
 
         if (app_config.audio_enable && EQUALS(uri, "/api/audio")) {
-            if (EQUALS(method, "GET")) {
-                if (!EMPTY(query)) {
-                    char *remain;
-                    while (query) {
-                        char *value = split(&query, "&");
-                        if (!value || !*value) continue;
-                        unescape_uri(value);
-                        char *key = split(&value, "=");
-                        if (!key || !*key || !value || !*value) continue;
-                        if (EQUALS(key, "bitrate")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.audio_bitrate = result;
-                        } else if (EQUALS(key, "srate")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.audio_srate = result;
-                        }
+            if (!EMPTY(query)) {
+                char *remain;
+                while (query) {
+                    char *value = split(&query, "&");
+                    if (!value || !*value) continue;
+                    unescape_uri(value);
+                    char *key = split(&value, "=");
+                    if (!key || !*key || !value || !*value) continue;
+                    if (EQUALS(key, "bitrate")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.audio_bitrate = result;
+                    } else if (EQUALS(key, "srate")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.audio_srate = result;
                     }
-
-                    disable_audio();
-                    enable_audio();
                 }
 
-                int respLen = sprintf(response,
-                    "HTTP/1.1 200 OK\r\n" \
-                    "Content-Type: application/json;charset=UTF-8\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "{\"bitrate\":%d,\"srate\":%d}", 
-                    app_config.audio_bitrate, app_config.audio_srate);
-                send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, (char*)error400, strlen(error400));
+                disable_audio();
+                enable_audio();
+            }
+
+            int respLen = sprintf(response,
+                "HTTP/1.1 200 OK\r\n" \
+                "Content-Type: application/json;charset=UTF-8\r\n" \
+                "Connection: close\r\n" \
+                "\r\n" \
+                "{\"bitrate\":%d,\"srate\":%d}", 
+                app_config.audio_bitrate, app_config.audio_srate);
+            send_and_close(client_fd, response, respLen);
             continue;
         }
 
         if (EQUALS(uri, "/api/cmd")) {
-            if (EQUALS(method, "GET")) {
-                int result = -1;
-                if (!EMPTY(query)) {
-                    char *remain;
-                    while (query) {
-                        char *value = split(&query, "&");
-                        if (!value || !*value) continue;
-                        unescape_uri(value);
-                        char *key = split(&value, "=");
-                        if (!key || !*key) continue;
-                        if (EQUALS(key, "save")) {
-                            result = save_app_config();
-                            if (!result)
-                                HAL_INFO("server", "Configuration saved!\n");
-                            else
-                                HAL_WARNING("server", "Failed to save configuration!\n");
-                            break;
-                        }
+            int result = -1;
+            if (!EMPTY(query)) {
+                char *remain;
+                while (query) {
+                    char *value = split(&query, "&");
+                    if (!value || !*value) continue;
+                    unescape_uri(value);
+                    char *key = split(&value, "=");
+                    if (!key || !*key) continue;
+                    if (EQUALS(key, "save")) {
+                        result = save_app_config();
+                        if (!result)
+                            HAL_INFO("server", "Configuration saved!\n");
+                        else
+                            HAL_WARNING("server", "Failed to save configuration!\n");
+                        break;
                     }
                 }
+            }
 
-                int respLen = sprintf(response,
-                    "HTTP/1.1 200 OK\r\n" \
-                    "Content-Type: application/json;charset=UTF-8\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "{\"code\":%d}", result);
-                send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, (char*)error400, strlen(error400));
+            int respLen = sprintf(response,
+                "HTTP/1.1 200 OK\r\n" \
+                "Content-Type: application/json;charset=UTF-8\r\n" \
+                "Connection: close\r\n" \
+                "\r\n" \
+                "{\"code\":%d}", result);
+            send_and_close(client_fd, response, respLen);
             continue;
         }
 
-        if (app_config.jpeg_enable && EQUALS(uri, "/api/jpeg")) {
-            if (EQUALS(method, "GET")) {
-                if (!EMPTY(query)) {
-                    char *remain;
-                    while (query) {
-                        char *value = split(&query, "&");
-                        if (!value || !*value) continue;
-                        unescape_uri(value);
-                        char *key = split(&value, "=");
-                        if (!key || !*key || !value || !*value) continue;
-                        if (EQUALS(key, "width")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.jpeg_width = result;
-                        } else if (EQUALS(key, "height")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.jpeg_height = result;
-                        } else if (EQUALS(key, "qfactor")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.jpeg_qfactor = result;
-                        }
+        if (EQUALS(uri, "/api/jpeg")) {
+            if (!EMPTY(query)) {
+                char *remain;
+                while (query) {
+                    char *value = split(&query, "&");
+                    if (!value || !*value) continue;
+                    unescape_uri(value);
+                    char *key = split(&value, "=");
+                    if (!key || !*key || !value || !*value) continue;
+                    if (EQUALS(key, "width")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.jpeg_width = result;
+                    } else if (EQUALS(key, "height")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.jpeg_height = result;
+                    } else if (EQUALS(key, "qfactor")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.jpeg_qfactor = result;
                     }
-
-                    jpeg_deinit();
-                    jpeg_init();
                 }
 
-                int respLen = sprintf(response,
-                    "HTTP/1.1 200 OK\r\n" \
-                    "Content-Type: application/json;charset=UTF-8\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "{\"width\":%d,\"height\":%d,\"qfactor\":%d}", 
-                    app_config.jpeg_width, app_config.jpeg_height, app_config.jpeg_qfactor);
-                send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, (char*)error400, strlen(error400));
+                jpeg_deinit();
+                if (app_config.jpeg_enable) jpeg_init();
+            }
+
+            int respLen = sprintf(response,
+                "HTTP/1.1 200 OK\r\n" \
+                "Content-Type: application/json;charset=UTF-8\r\n" \
+                "Connection: close\r\n" \
+                "\r\n" \
+                "{\"width\":%d,\"height\":%d,\"qfactor\":%d}", 
+                app_config.jpeg_width, app_config.jpeg_height, app_config.jpeg_qfactor);
+            send_and_close(client_fd, response, respLen);
             continue;
         }
 
-        if (app_config.mjpeg_enable && EQUALS(uri, "/api/mjpeg")) {
-            if (EQUALS(method, "GET")) {
-                if (!EMPTY(query)) {
-                    char *remain;
-                    while (query) {
-                        char *value = split(&query, "&");
-                        if (!value || !*value) continue;
-                        unescape_uri(value);
-                        char *key = split(&value, "=");
-                        if (!key || !*key || !value || !*value) continue;
-                        if (EQUALS(key, "width")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.mjpeg_width = result;
-                        } else if (EQUALS(key, "height")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.mjpeg_height = result;
-                        } else if (EQUALS(key, "fps")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.mjpeg_fps = result;
-                        } else if (EQUALS(key, "mode")) {
-                            if (EQUALS_CASE(value, "CBR"))
-                                app_config.mjpeg_mode = HAL_VIDMODE_CBR;
-                            else if (EQUALS_CASE(value, "VBR"))
-                                app_config.mjpeg_mode = HAL_VIDMODE_VBR;
-                            else if (EQUALS_CASE(value, "QP"))
-                                app_config.mjpeg_mode = HAL_VIDMODE_QP;
-                        }
+        if (EQUALS(uri, "/api/mjpeg")) {
+            if (!EMPTY(query)) {
+                char *remain;
+                while (query) {
+                    char *value = split(&query, "&");
+                    if (!value || !*value) continue;
+                    unescape_uri(value);
+                    char *key = split(&value, "=");
+                    if (!key || !*key || !value || !*value) continue;
+                    if (EQUALS(key, "width")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.mjpeg_width = result;
+                    } else if (EQUALS(key, "height")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.mjpeg_height = result;
+                    } else if (EQUALS(key, "fps")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.mjpeg_fps = result;
+                    } else if (EQUALS(key, "mode")) {
+                        if (EQUALS_CASE(value, "CBR"))
+                            app_config.mjpeg_mode = HAL_VIDMODE_CBR;
+                        else if (EQUALS_CASE(value, "VBR"))
+                            app_config.mjpeg_mode = HAL_VIDMODE_VBR;
+                        else if (EQUALS_CASE(value, "QP"))
+                            app_config.mjpeg_mode = HAL_VIDMODE_QP;
                     }
-
-                    disable_mjpeg();
-                    enable_mjpeg();
                 }
 
-                char mode[5] = "\0";
-                switch (app_config.mjpeg_mode) {
-                    case HAL_VIDMODE_CBR: strcpy(mode, "CBR"); break;
-                    case HAL_VIDMODE_VBR: strcpy(mode, "VBR"); break;
-                    case HAL_VIDMODE_QP: strcpy(mode, "QP"); break;
-                }
-                int respLen = sprintf(response,
-                    "HTTP/1.1 200 OK\r\n" \
-                    "Content-Type: application/json;charset=UTF-8\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "{\"width\":%d,\"height\":%d,\"fps\":%d,\"mode\":\"%s\",\"bitrate\":%d}", 
-                    app_config.mjpeg_width, app_config.mjpeg_height, app_config.mjpeg_fps, mode,
-                    app_config.mjpeg_bitrate);
-                send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, (char*)error400, strlen(error400));
+                disable_mjpeg();
+                if (app_config.mjpeg_enable) enable_mjpeg();
+            }
+
+            char mode[5] = "\0";
+            switch (app_config.mjpeg_mode) {
+                case HAL_VIDMODE_CBR: strcpy(mode, "CBR"); break;
+                case HAL_VIDMODE_VBR: strcpy(mode, "VBR"); break;
+                case HAL_VIDMODE_QP: strcpy(mode, "QP"); break;
+            }
+            int respLen = sprintf(response,
+                "HTTP/1.1 200 OK\r\n" \
+                "Content-Type: application/json;charset=UTF-8\r\n" \
+                "Connection: close\r\n" \
+                "\r\n" \
+                "{\"width\":%d,\"height\":%d,\"fps\":%d,\"mode\":\"%s\",\"bitrate\":%d}", 
+                app_config.mjpeg_width, app_config.mjpeg_height, app_config.mjpeg_fps, mode,
+                app_config.mjpeg_bitrate);
+            send_and_close(client_fd, response, respLen);
             continue;
         }
 
-        if (app_config.mp4_enable && EQUALS(uri, "/api/mp4")) {
-            if (EQUALS(method, "GET")) {
-                if (!EMPTY(query)) {
-                    char *remain;
-                    while (query) {
-                        char *value = split(&query, "&");
-                        if (!value || !*value) continue;
-                        unescape_uri(value);
-                        char *key = split(&value, "=");
-                        if (!key || !*key || !value || !*value) continue;
-                        if (EQUALS(key, "width")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.mp4_width = result;
-                        } else if (EQUALS(key, "height")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.mp4_height = result;
-                        } else if (EQUALS(key, "fps")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.mp4_fps = result;
-                        } else if (EQUALS(key, "bitrate")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain != value)
-                                app_config.mp4_bitrate = result;
-                        } else if (EQUALS(key, "h265")) {
-                            if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
-                                app_config.mp4_codecH265 = 1;
-                            else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
-                                app_config.mp4_codecH265 = 0;
-                        } else if (EQUALS(key, "mode")) {
-                            if (EQUALS_CASE(value, "CBR"))
-                                app_config.mp4_mode = HAL_VIDMODE_CBR;
-                            else if (EQUALS_CASE(value, "VBR"))
-                                app_config.mp4_mode = HAL_VIDMODE_VBR;
-                            else if (EQUALS_CASE(value, "QP"))
-                                app_config.mp4_mode = HAL_VIDMODE_QP;
-                            else if (EQUALS_CASE(value, "ABR"))
-                                app_config.mp4_mode = HAL_VIDMODE_ABR;
-                            else if (EQUALS_CASE(value, "AVBR"))
-                                app_config.mp4_mode = HAL_VIDMODE_AVBR;
-                        } else if (EQUALS(key, "profile")) {
-                            if (EQUALS_CASE(value, "BP") || EQUALS_CASE(value, "BASELINE"))
-                                app_config.mp4_profile = HAL_VIDPROFILE_BASELINE;
-                            else if (EQUALS_CASE(value, "MP") || EQUALS_CASE(value, "MAIN"))
-                                app_config.mp4_profile = HAL_VIDPROFILE_MAIN;
-                            else if (EQUALS_CASE(value, "HP") || EQUALS_CASE(value, "HIGH"))
-                                app_config.mp4_profile = HAL_VIDPROFILE_HIGH;
-                        }
+        if (EQUALS(uri, "/api/mp4")) {
+            if (!EMPTY(query)) {
+                char *remain;
+                while (query) {
+                    char *value = split(&query, "&");
+                    if (!value || !*value) continue;
+                    unescape_uri(value);
+                    char *key = split(&value, "=");
+                    if (!key || !*key || !value || !*value) continue;
+                    if (EQUALS(key, "width")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.mp4_width = result;
+                    } else if (EQUALS(key, "height")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.mp4_height = result;
+                    } else if (EQUALS(key, "fps")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.mp4_fps = result;
+                    } else if (EQUALS(key, "bitrate")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain != value)
+                            app_config.mp4_bitrate = result;
+                    } else if (EQUALS(key, "h265")) {
+                        if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                            app_config.mp4_codecH265 = 1;
+                        else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                            app_config.mp4_codecH265 = 0;
+                    } else if (EQUALS(key, "mode")) {
+                        if (EQUALS_CASE(value, "CBR"))
+                            app_config.mp4_mode = HAL_VIDMODE_CBR;
+                        else if (EQUALS_CASE(value, "VBR"))
+                            app_config.mp4_mode = HAL_VIDMODE_VBR;
+                        else if (EQUALS_CASE(value, "QP"))
+                            app_config.mp4_mode = HAL_VIDMODE_QP;
+                        else if (EQUALS_CASE(value, "ABR"))
+                            app_config.mp4_mode = HAL_VIDMODE_ABR;
+                        else if (EQUALS_CASE(value, "AVBR"))
+                            app_config.mp4_mode = HAL_VIDMODE_AVBR;
+                    } else if (EQUALS(key, "profile")) {
+                        if (EQUALS_CASE(value, "BP") || EQUALS_CASE(value, "BASELINE"))
+                            app_config.mp4_profile = HAL_VIDPROFILE_BASELINE;
+                        else if (EQUALS_CASE(value, "MP") || EQUALS_CASE(value, "MAIN"))
+                            app_config.mp4_profile = HAL_VIDPROFILE_MAIN;
+                        else if (EQUALS_CASE(value, "HP") || EQUALS_CASE(value, "HIGH"))
+                            app_config.mp4_profile = HAL_VIDPROFILE_HIGH;
                     }
-
-                    disable_mp4();
-                    enable_mp4();
                 }
 
-                char h265[6] = "false";
-                char mode[5] = "\0";
-                char profile[3] = "\0";
-                if (app_config.mp4_codecH265)
-                    strcpy(h265, "true");
-                switch (app_config.mp4_mode) {
-                    case HAL_VIDMODE_CBR: strcpy(mode, "CBR"); break;
-                    case HAL_VIDMODE_VBR: strcpy(mode, "VBR"); break;
-                    case HAL_VIDMODE_QP: strcpy(mode, "QP"); break;
-                    case HAL_VIDMODE_ABR: strcpy(mode, "ABR"); break;
-                    case HAL_VIDMODE_AVBR: strcpy(mode, "AVBR"); break;
-                }
-                switch (app_config.mp4_profile) {
-                    case HAL_VIDPROFILE_BASELINE: strcpy(profile, "BP"); break;
-                    case HAL_VIDPROFILE_MAIN: strcpy(profile, "MP"); break;
-                    case HAL_VIDPROFILE_HIGH: strcpy(profile, "HP"); break;
-                }
-                int respLen = sprintf(response,
-                    "HTTP/1.1 200 OK\r\n" \
-                    "Content-Type: application/json;charset=UTF-8\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "{\"width\":%d,\"height\":%d,\"fps\":%d,\"h265\":%s,\"mode\":\"%s\",\"profile\":\"%s\",\"bitrate\":%d}", 
-                    app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps, h265, mode,
-                    profile, app_config.mp4_bitrate);
-                send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, (char*)error400, strlen(error400));
+                disable_mp4();
+                if (app_config.mp4_enable) enable_mp4();
+            }
+
+            char h265[6] = "false";
+            char mode[5] = "\0";
+            char profile[3] = "\0";
+            if (app_config.mp4_codecH265)
+                strcpy(h265, "true");
+            switch (app_config.mp4_mode) {
+                case HAL_VIDMODE_CBR: strcpy(mode, "CBR"); break;
+                case HAL_VIDMODE_VBR: strcpy(mode, "VBR"); break;
+                case HAL_VIDMODE_QP: strcpy(mode, "QP"); break;
+                case HAL_VIDMODE_ABR: strcpy(mode, "ABR"); break;
+                case HAL_VIDMODE_AVBR: strcpy(mode, "AVBR"); break;
+            }
+            switch (app_config.mp4_profile) {
+                case HAL_VIDPROFILE_BASELINE: strcpy(profile, "BP"); break;
+                case HAL_VIDPROFILE_MAIN: strcpy(profile, "MP"); break;
+                case HAL_VIDPROFILE_HIGH: strcpy(profile, "HP"); break;
+            }
+            int respLen = sprintf(response,
+                "HTTP/1.1 200 OK\r\n" \
+                "Content-Type: application/json;charset=UTF-8\r\n" \
+                "Connection: close\r\n" \
+                "\r\n" \
+                "{\"width\":%d,\"height\":%d,\"fps\":%d,\"h265\":%s,\"mode\":\"%s\",\"profile\":\"%s\",\"bitrate\":%d}", 
+                app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps, h265, mode,
+                profile, app_config.mp4_bitrate);
+            send_and_close(client_fd, response, respLen);
             continue;
         }
 
         if (app_config.night_mode_enable && EQUALS(uri, "/api/night")) {
-            if (EQUALS(method, "GET")) {
-                if (app_config.ir_sensor_pin == 999 && !EMPTY(query)) {
-                    char *remain;
-                    while (query) {
-                        char *value = split(&query, "&");
-                        if (!value || !*value) continue;
-                        unescape_uri(value);
-                        char *key = split(&value, "=");
-                        if (!key || !*key || !value || !*value) continue;
-                        if (EQUALS(key, "active")) {
-                            if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
-                                set_night_mode(1);
-                            else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
-                                set_night_mode(0);
-                        }
+            if (app_config.ir_sensor_pin == 999 && !EMPTY(query)) {
+                char *remain;
+                while (query) {
+                    char *value = split(&query, "&");
+                    if (!value || !*value) continue;
+                    unescape_uri(value);
+                    char *key = split(&value, "=");
+                    if (!key || !*key || !value || !*value) continue;
+                    if (EQUALS(key, "active")) {
+                        if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                            set_night_mode(1);
+                        else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                            set_night_mode(0);
                     }
                 }
-                int respLen = sprintf(response,
-                    "HTTP/1.1 200 OK\r\n" \
-                    "Content-Type: application/json;charset=UTF-8\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "{\"active\":%s}", 
-                    night_mode_is_enabled() ? "true" : "false");
-                send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, (char*)error400, strlen(error400));
+            }
+            int respLen = sprintf(response,
+                "HTTP/1.1 200 OK\r\n" \
+                "Content-Type: application/json;charset=UTF-8\r\n" \
+                "Connection: close\r\n" \
+                "\r\n" \
+                "{\"active\":%s}", 
+                night_mode_is_enabled() ? "true" : "false");
+            send_and_close(client_fd, response, respLen);
             continue;
         }
 
-        if (app_config.osd_enable && STARTS_WITH(uri, "/api/osd/") &&
-            uri[9] && uri[9] >= '0' && uri[9] <= (MAX_OSD - 1 + '0')) {
-            char id = uri[9] - '0';
+        if (app_config.osd_enable && STARTS_WITH(uri, "/api/osd/")) {
+            char *remain;
             int respLen;
+            short id = strtol(uri + 9, &remain, 10);
+            if (remain != uri + 9 || id < 0 || id >= MAX_OSD) {
+                respLen = sprintf(response,
+                    "HTTP/1.1 404 Not Found\r\n" \
+                    "Content-Type: text/plain\r\n" \
+                    "Connection: close\r\n" \
+                    "\r\n" \
+                    "The requested OSD ID was not found.\r\n" \
+                );
+                send_and_close(client_fd, response, respLen);
+                continue;
+            }
             if (EQUALS(method, "POST")) {
                 char *type = request_header("Content-Type");
                 if (STARTS_WITH(type, "multipart/form-data")) {
@@ -1035,12 +1017,6 @@ void *server_thread(void *vargp) {
 
                     strcpy(osds[id].text, "");
                     osds[id].updt = 1;
-
-                    respLen = sprintf(response,
-                        "HTTP/1.1 200 OK\r\n" \
-                        "Connection: close\r\n" \
-                        "\r\n" \
-                    );
                 } else {
                     respLen = sprintf(response,
                         "HTTP/1.1 415 Unsupported Media Type\r\n" \
@@ -1049,11 +1025,11 @@ void *server_thread(void *vargp) {
                         "\r\n" \
                         "The payload must be presented as multipart/form-data.\r\n" \
                     );
+                    send_and_close(client_fd, response, respLen);
+                    continue;
                 }
-                send_and_close(client_fd, response, respLen);
-                continue;
             }
-            else if (!EMPTY(query))
+            if (!EMPTY(query))
             {
                 char *remain;
                 while (query) {
@@ -1108,69 +1084,65 @@ void *server_thread(void *vargp) {
         }
 
         if (EQUALS(uri, "/api/status")) {
-            if (EQUALS(method, "GET")) {
-                struct sysinfo si;
-                sysinfo(&si);
-                char memory[16], uptime[48];
-                short free = (si.freeram + si.bufferram) / 1024 / 1024;
-                short total = si.totalram / 1024 / 1024;
-                sprintf(memory, "%d/%dMB", total - free, total);
-                if (si.uptime > 86400)
-                    sprintf(uptime, "%ld days, %ld:%02ld:%02ld", si.uptime / 86400, (si.uptime % 86400) / 3600, (si.uptime % 3600) / 60, si.uptime % 60);
-                else if (si.uptime > 3600)
-                    sprintf(uptime, "%ld:%02ld:%02ld", si.uptime / 3600, (si.uptime % 3600) / 60, si.uptime % 60);
-                else
-                    sprintf(uptime, "%ld:%02ld", si.uptime / 60, si.uptime % 60);
-                int respLen = sprintf(response,
-                    "HTTP/1.1 200 OK\r\n" \
-                    "Content-Type: application/json;charset=UTF-8\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "{\"chip\":\"%s\",\"loadavg\":[%.2f,%.2f,%.2f],\"memory\":\"%s\",\"uptime\":\"%s\"}",
-                    chip, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0,
-                    memory, uptime);
-                send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, (char*)error400, strlen(error400));       
+            struct sysinfo si;
+            sysinfo(&si);
+            char memory[16], uptime[48];
+            short free = (si.freeram + si.bufferram) / 1024 / 1024;
+            short total = si.totalram / 1024 / 1024;
+            sprintf(memory, "%d/%dMB", total - free, total);
+            if (si.uptime > 86400)
+                sprintf(uptime, "%ld days, %ld:%02ld:%02ld", si.uptime / 86400, (si.uptime % 86400) / 3600, (si.uptime % 3600) / 60, si.uptime % 60);
+            else if (si.uptime > 3600)
+                sprintf(uptime, "%ld:%02ld:%02ld", si.uptime / 3600, (si.uptime % 3600) / 60, si.uptime % 60);
+            else
+                sprintf(uptime, "%ld:%02ld", si.uptime / 60, si.uptime % 60);
+            int respLen = sprintf(response,
+                "HTTP/1.1 200 OK\r\n" \
+                "Content-Type: application/json;charset=UTF-8\r\n" \
+                "Connection: close\r\n" \
+                "\r\n" \
+                "{\"chip\":\"%s\",\"loadavg\":[%.2f,%.2f,%.2f],\"memory\":\"%s\",\"uptime\":\"%s\"}",
+                chip, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0,
+                memory, uptime);
+            send_and_close(client_fd, response, respLen);      
             continue;
         }
 
-        if (STARTS_WITH(uri, "/api/time")) {
-            if (EQUALS(method, "GET")) {
-                struct timespec t;
-                if (!EMPTY(query)) {
-                    char *remain;
-                    while (query) {
-                        char *value = split(&query, "&");
-                        if (!value || !*value) continue;
-                        unescape_uri(value);
-                        char *key = split(&value, "=");
-                        if (!key || !*key || !value || !*value) continue;
-                        if (EQUALS(key, "fmt")) {
-                            strncpy(timefmt, value, 32);
-                        } else if (EQUALS(key, "ts")) {
-                            short result = strtol(value, &remain, 10);
-                            if (remain == value) continue;
-                            t.tv_sec = result;
-                            clock_settime(CLOCK_REALTIME, &t);
-                        }
+        if (EQUALS(uri, "/api/time")) {
+            struct timespec t;
+            if (!EMPTY(query)) {
+                char *remain;
+                while (query) {
+                    char *value = split(&query, "&");
+                    if (!value || !*value) continue;
+                    unescape_uri(value);
+                    char *key = split(&value, "=");
+                    if (!key || !*key || !value || !*value) continue;
+                    if (EQUALS(key, "fmt")) {
+                        strncpy(timefmt, value, 32);
+                    } else if (EQUALS(key, "ts")) {
+                        short result = strtol(value, &remain, 10);
+                        if (remain == value) continue;
+                        t.tv_sec = result;
+                        clock_settime(CLOCK_REALTIME, &t);
                     }
                 }
-                clock_gettime(CLOCK_REALTIME, &t);
-                int respLen = sprintf(response,
-                    "HTTP/1.1 200 OK\r\n" \
-                    "Content-Type: application/json;charset=UTF-8\r\n" \
-                    "Connection: close\r\n" \
-                    "\r\n" \
-                    "{\"fmt\":\"%s\",\"ts\":%d}", timefmt, t.tv_sec);
-                send_and_close(client_fd, response, respLen);
-            } else send_and_close(client_fd, (char*)error400, strlen(error400));    
+            }
+            clock_gettime(CLOCK_REALTIME, &t);
+            int respLen = sprintf(response,
+                "HTTP/1.1 200 OK\r\n" \
+                "Content-Type: application/json;charset=UTF-8\r\n" \
+                "Connection: close\r\n" \
+                "\r\n" \
+                "{\"fmt\":\"%s\",\"ts\":%d}", timefmt, t.tv_sec);
+            send_and_close(client_fd, response, respLen);
             continue;
         }
 
         if (app_config.web_enable_static && send_file(client_fd, uri))
             continue;
 
-        send_and_close(client_fd, (char*)error404, strlen(error400));
+        send_and_close(client_fd, (char*)error400, strlen(error400));
     }
 
     if (request)

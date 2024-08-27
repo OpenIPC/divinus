@@ -111,16 +111,39 @@ bool get_uint8(char *str, char *pattern, uint8_t *value) {
     return true;
 }
 
-
 char *memstr(char *haystack, char *needle, int size, char needlesize) {
 	for (char *p = haystack; p <= (haystack - needlesize + size); p++)
 		if (!memcmp(p, needle, needlesize)) return p;
 	return NULL;
 }
 
-
 unsigned int millis() {
     struct timeval t;
     gettimeofday(&t, NULL);
     return t.tv_sec * 1000 + (t.tv_usec + 500) / 1000;
+}
+
+char *split(char **input, char *sep) {
+    char *curr = (char *)"";
+    while (curr && !curr[0] && *input) curr = strsep(input, sep);
+    return (curr);
+}
+
+void unescape_uri(char *uri) {
+    char *src = uri;
+    char *dst = uri;
+
+    while (*src && !isspace((int)(*src)) && (*src != '%'))
+        src++;
+
+    dst = src;
+    while (*src && !isspace((int)(*src)))
+    {
+        *dst++ = (*src == '+') ? ' ' :
+                 ((*src == '%') && src[1] && src[2]) ?
+                 ((*++src & 0x0F) + 9 * (*src > '9')) * 16 + ((*++src & 0x0F) + 9 * (*src > '9')) :
+                 *src;
+        src++;
+    }
+    *dst = '\0';
 }

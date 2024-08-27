@@ -1,7 +1,6 @@
 #pragma once
 
 #include <arpa/inet.h>
-#include <ctype.h>
 #include <errno.h>
 #include <linux/version.h>
 #include <netinet/in.h>
