@@ -476,10 +476,10 @@ void parse_request(int client_fd, char *request) {
     while (l && total < paysize) {
         received = recv(client_fd, request + total, REQSIZE - total, 0);
         if (received < 0) {
-            HAL_WARNING("server", "recv() error\n", stderr);
+            HAL_WARNING("server", "recv() error\n");
             break;
         } else if (!received) {
-            HAL_WARNING("server", "Client disconnected unexpectedly\n", stderr);
+            HAL_WARNING("server", "Client disconnected unexpectedly\n");
             break;
         }
         total += received;
@@ -535,9 +535,9 @@ void *server_thread(void *vargp) {
         total = 0;
         received = recv(client_fd, request, REQSIZE, 0);
         if (received < 0)
-            HAL_WARNING("server", "recv() error\n", stderr);           
+            HAL_WARNING("server", "recv() error\n");           
         else if (!received)
-            HAL_WARNING("server", "Client disconnected unexpectedly\n", stderr); 
+            HAL_WARNING("server", "Client disconnected unexpectedly\n"); 
         total += received;
 
         if (total <= 0) continue;
@@ -554,7 +554,7 @@ void *server_thread(void *vargp) {
             strcpy(valid, "Basic ");
             base64_encode(valid + 6, cred, strlen(cred));
             
-            if (!auth || !equals(auth, valid)) {
+            if (!auth || !EQUALS(auth, valid)) {
                 int respLen = sprintf(response,
                     "HTTP/1.1 401 Unauthorized\r\n" \
                     "Content-Type: text/plain\r\n" \
@@ -566,7 +566,7 @@ void *server_thread(void *vargp) {
             }
         }
 
-        if (equals(uri, "/exit")) {
+        if (EQUALS(uri, "/exit")) {
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Length: 11\r\n"
                         "Connection: close\r\n\r\nClosing...");
@@ -575,12 +575,12 @@ void *server_thread(void *vargp) {
             break;
         }
 
-        if (equals(uri, "/") || equals(uri, "/index.htm") || equals(uri, "/index.html")) {
+        if (EQUALS(uri, "/") || EQUALS(uri, "/index.htm") || EQUALS(uri, "/index.html")) {
             send_html(client_fd, indexhtml);
             continue;
         }
 
-        if (app_config.audio_enable && equals(uri, "/audio.mp3")) {
+        if (app_config.audio_enable && EQUALS(uri, "/audio.mp3")) {
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Type: "
                         "audio/mpeg\r\nTransfer-Encoding: "
@@ -597,7 +597,7 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.audio_enable && equals(uri, "/audio.pcm")) {
+        if (app_config.audio_enable && EQUALS(uri, "/audio.pcm")) {
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Type: "
                         "audio/pcm\r\nTransfer-Encoding: "
@@ -614,8 +614,8 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if ((!app_config.mp4_codecH265 && equals(uri, "/video.264")) ||
-            (app_config.mp4_codecH265 && equals(uri, "/video.265"))) {
+        if ((!app_config.mp4_codecH265 && EQUALS(uri, "/video.264")) ||
+            (app_config.mp4_codecH265 && EQUALS(uri, "/video.265"))) {
             request_idr();
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Type: "
@@ -634,7 +634,7 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.mp4_enable && equals(uri, "/video.mp4")) {
+        if (app_config.mp4_enable && EQUALS(uri, "/video.mp4")) {
             request_idr();
             int respLen = sprintf(
                 response, "HTTP/1.1 200 OK\r\nContent-Type: "
@@ -653,7 +653,7 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.mjpeg_enable && equals(uri, "/mjpeg")) {
+        if (app_config.mjpeg_enable && EQUALS(uri, "/mjpeg")) {
             int respLen = sprintf(
                 response, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\nPragma: "
                         "no-cache\r\nConnection: close\r\nContent-Type: "
@@ -671,7 +671,7 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.jpeg_enable && starts_with(uri, "/image.jpg")) {
+        if (app_config.jpeg_enable && STARTS_WITH(uri, "/image.jpg")) {
             {
                 struct jpegtask task;
                 task.client_fd = client_fd;
@@ -680,32 +680,32 @@ void *server_thread(void *vargp) {
                 task.qfactor = app_config.jpeg_qfactor;
                 task.color2Gray = 0;
 
-                if (!empty(query)) {
+                if (!EMPTY(query)) {
                     char *remain;
                     while (query) {
                         char *value = split(&query, "&");
                         if (!value || !*value) continue;
                         char *key = split(&value, "=");
                         if (!key || !*key || !value || !*value) continue;
-                        if (equals(key, "width")) {
+                        if (EQUALS(key, "width")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 task.width = result;
                         }
-                        else if (equals(key, "height")) {
+                        else if (EQUALS(key, "height")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 task.height = result;
                         }
-                        else if (equals(key, "qfactor")) {
+                        else if (EQUALS(key, "qfactor")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 task.qfactor = result;
                         }
-                        else if (equals(key, "color2gray") || equals(key, "gray")) {
-                            if (equals_case(value, "true") || equals(value, "1")) 
+                        else if (EQUALS(key, "color2gray") || EQUALS(key, "gray")) {
+                            if (EQUALS_CASE(value, "true") || EQUALS(value, "1")) 
                                 task.color2Gray = 1;
-                            else if (equals_case(value, "false") || equals(value, "0")) 
+                            else if (EQUALS_CASE(value, "false") || EQUALS(value, "0")) 
                                 task.color2Gray = 0;
                         }
                     }
@@ -728,9 +728,9 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.audio_enable && equals(uri, "/api/audio")) {
-            if (equals(method, "GET")) {
-                if (!empty(query)) {
+        if (app_config.audio_enable && EQUALS(uri, "/api/audio")) {
+            if (EQUALS(method, "GET")) {
+                if (!EMPTY(query)) {
                     char *remain;
                     while (query) {
                         char *value = split(&query, "&");
@@ -738,11 +738,11 @@ void *server_thread(void *vargp) {
                         unescape_uri(value);
                         char *key = split(&value, "=");
                         if (!key || !*key || !value || !*value) continue;
-                        if (equals(key, "bitrate")) {
+                        if (EQUALS(key, "bitrate")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.audio_bitrate = result;
-                        } else if (equals(key, "srate")) {
+                        } else if (EQUALS(key, "srate")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.audio_srate = result;
@@ -765,10 +765,10 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (equals(uri, "/api/cmd")) {
-            if (equals(method, "GET")) {
+        if (EQUALS(uri, "/api/cmd")) {
+            if (EQUALS(method, "GET")) {
                 int result = -1;
-                if (!empty(query)) {
+                if (!EMPTY(query)) {
                     char *remain;
                     while (query) {
                         char *value = split(&query, "&");
@@ -776,7 +776,7 @@ void *server_thread(void *vargp) {
                         unescape_uri(value);
                         char *key = split(&value, "=");
                         if (!key || !*key) continue;
-                        if (equals(key, "save")) {
+                        if (EQUALS(key, "save")) {
                             result = save_app_config();
                             if (!result)
                                 HAL_INFO("server", "Configuration saved!\n");
@@ -798,9 +798,9 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.jpeg_enable && equals(uri, "/api/jpeg")) {
-            if (equals(method, "GET")) {
-                if (!empty(query)) {
+        if (app_config.jpeg_enable && EQUALS(uri, "/api/jpeg")) {
+            if (EQUALS(method, "GET")) {
+                if (!EMPTY(query)) {
                     char *remain;
                     while (query) {
                         char *value = split(&query, "&");
@@ -808,15 +808,15 @@ void *server_thread(void *vargp) {
                         unescape_uri(value);
                         char *key = split(&value, "=");
                         if (!key || !*key || !value || !*value) continue;
-                        if (equals(key, "width")) {
+                        if (EQUALS(key, "width")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.jpeg_width = result;
-                        } else if (equals(key, "height")) {
+                        } else if (EQUALS(key, "height")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.jpeg_height = result;
-                        } else if (equals(key, "qfactor")) {
+                        } else if (EQUALS(key, "qfactor")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.jpeg_qfactor = result;
@@ -839,9 +839,9 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.mjpeg_enable && equals(uri, "/api/mjpeg")) {
-            if (equals(method, "GET")) {
-                if (!empty(query)) {
+        if (app_config.mjpeg_enable && EQUALS(uri, "/api/mjpeg")) {
+            if (EQUALS(method, "GET")) {
+                if (!EMPTY(query)) {
                     char *remain;
                     while (query) {
                         char *value = split(&query, "&");
@@ -849,24 +849,24 @@ void *server_thread(void *vargp) {
                         unescape_uri(value);
                         char *key = split(&value, "=");
                         if (!key || !*key || !value || !*value) continue;
-                        if (equals(key, "width")) {
+                        if (EQUALS(key, "width")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.mjpeg_width = result;
-                        } else if (equals(key, "height")) {
+                        } else if (EQUALS(key, "height")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.mjpeg_height = result;
-                        } else if (equals(key, "fps")) {
+                        } else if (EQUALS(key, "fps")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.mjpeg_fps = result;
-                        } else if (equals(key, "mode")) {
-                            if (equals_case(value, "CBR"))
+                        } else if (EQUALS(key, "mode")) {
+                            if (EQUALS_CASE(value, "CBR"))
                                 app_config.mjpeg_mode = HAL_VIDMODE_CBR;
-                            else if (equals_case(value, "VBR"))
+                            else if (EQUALS_CASE(value, "VBR"))
                                 app_config.mjpeg_mode = HAL_VIDMODE_VBR;
-                            else if (equals_case(value, "QP"))
+                            else if (EQUALS_CASE(value, "QP"))
                                 app_config.mjpeg_mode = HAL_VIDMODE_QP;
                         }
                     }
@@ -894,9 +894,9 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.mp4_enable && equals(uri, "/api/mp4")) {
-            if (equals(method, "GET")) {
-                if (!empty(query)) {
+        if (app_config.mp4_enable && EQUALS(uri, "/api/mp4")) {
+            if (EQUALS(method, "GET")) {
+                if (!EMPTY(query)) {
                     char *remain;
                     while (query) {
                         char *value = split(&query, "&");
@@ -904,44 +904,44 @@ void *server_thread(void *vargp) {
                         unescape_uri(value);
                         char *key = split(&value, "=");
                         if (!key || !*key || !value || !*value) continue;
-                        if (equals(key, "width")) {
+                        if (EQUALS(key, "width")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.mp4_width = result;
-                        } else if (equals(key, "height")) {
+                        } else if (EQUALS(key, "height")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.mp4_height = result;
-                        } else if (equals(key, "fps")) {
+                        } else if (EQUALS(key, "fps")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.mp4_fps = result;
-                        } else if (equals(key, "bitrate")) {
+                        } else if (EQUALS(key, "bitrate")) {
                             short result = strtol(value, &remain, 10);
                             if (remain != value)
                                 app_config.mp4_bitrate = result;
-                        } else if (equals(key, "h265")) {
-                            if (equals_case(value, "true") || equals(value, "1"))
+                        } else if (EQUALS(key, "h265")) {
+                            if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
                                 app_config.mp4_codecH265 = 1;
-                            else if (equals_case(value, "false") || equals(value, "0"))
+                            else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
                                 app_config.mp4_codecH265 = 0;
-                        } else if (equals(key, "mode")) {
-                            if (equals_case(value, "CBR"))
+                        } else if (EQUALS(key, "mode")) {
+                            if (EQUALS_CASE(value, "CBR"))
                                 app_config.mp4_mode = HAL_VIDMODE_CBR;
-                            else if (equals_case(value, "VBR"))
+                            else if (EQUALS_CASE(value, "VBR"))
                                 app_config.mp4_mode = HAL_VIDMODE_VBR;
-                            else if (equals_case(value, "QP"))
+                            else if (EQUALS_CASE(value, "QP"))
                                 app_config.mp4_mode = HAL_VIDMODE_QP;
-                            else if (equals_case(value, "ABR"))
+                            else if (EQUALS_CASE(value, "ABR"))
                                 app_config.mp4_mode = HAL_VIDMODE_ABR;
-                            else if (equals_case(value, "AVBR"))
+                            else if (EQUALS_CASE(value, "AVBR"))
                                 app_config.mp4_mode = HAL_VIDMODE_AVBR;
-                        } else if (equals(key, "profile")) {
-                            if (equals_case(value, "BP") || equals_case(value, "BASELINE"))
+                        } else if (EQUALS(key, "profile")) {
+                            if (EQUALS_CASE(value, "BP") || EQUALS_CASE(value, "BASELINE"))
                                 app_config.mp4_profile = HAL_VIDPROFILE_BASELINE;
-                            else if (equals_case(value, "MP") || equals_case(value, "MAIN"))
+                            else if (EQUALS_CASE(value, "MP") || EQUALS_CASE(value, "MAIN"))
                                 app_config.mp4_profile = HAL_VIDPROFILE_MAIN;
-                            else if (equals_case(value, "HP") || equals_case(value, "HIGH"))
+                            else if (EQUALS_CASE(value, "HP") || EQUALS_CASE(value, "HIGH"))
                                 app_config.mp4_profile = HAL_VIDPROFILE_HIGH;
                         }
                     }
@@ -980,9 +980,9 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.night_mode_enable && equals(uri, "/api/night")) {
-            if (equals(method, "GET")) {
-                if (app_config.ir_sensor_pin == 999 && !empty(query)) {
+        if (app_config.night_mode_enable && EQUALS(uri, "/api/night")) {
+            if (EQUALS(method, "GET")) {
+                if (app_config.ir_sensor_pin == 999 && !EMPTY(query)) {
                     char *remain;
                     while (query) {
                         char *value = split(&query, "&");
@@ -990,10 +990,10 @@ void *server_thread(void *vargp) {
                         unescape_uri(value);
                         char *key = split(&value, "=");
                         if (!key || !*key || !value || !*value) continue;
-                        if (equals(key, "active")) {
-                            if (equals_case(value, "true") || equals(value, "1"))
+                        if (EQUALS(key, "active")) {
+                            if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
                                 set_night_mode(1);
-                            else if (equals_case(value, "false") || equals(value, "0"))
+                            else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
                                 set_night_mode(0);
                         }
                     }
@@ -1010,13 +1010,13 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (app_config.osd_enable && starts_with(uri, "/api/osd/") &&
+        if (app_config.osd_enable && STARTS_WITH(uri, "/api/osd/") &&
             uri[9] && uri[9] >= '0' && uri[9] <= (MAX_OSD - 1 + '0')) {
             char id = uri[9] - '0';
             int respLen;
-            if (equals(method, "POST")) {
+            if (EQUALS(method, "POST")) {
                 char *type = request_header("Content-Type");
-                if (starts_with(type, "multipart/form-data")) {
+                if (STARTS_WITH(type, "multipart/form-data")) {
                     char *bound = strstr(type, "boundary=") + strlen("boundary=");
 
                     char *payloadb = strstr(payload, bound);
@@ -1053,7 +1053,7 @@ void *server_thread(void *vargp) {
                 send_and_close(client_fd, response, respLen);
                 continue;
             }
-            else if (!empty(query))
+            else if (!EMPTY(query))
             {
                 char *remain;
                 while (query) {
@@ -1062,33 +1062,33 @@ void *server_thread(void *vargp) {
                     unescape_uri(value);
                     char *key = split(&value, "=");
                     if (!key || !*key || !value || !*value) continue;
-                    if (equals(key, "font"))
-                        strcpy(osds[id].font, !empty(value) ? value : DEF_FONT);
-                    else if (equals(key, "text"))
+                    if (EQUALS(key, "font"))
+                        strcpy(osds[id].font, !EMPTY(value) ? value : DEF_FONT);
+                    else if (EQUALS(key, "text"))
                         strcpy(osds[id].text, value);
-                    else if (equals(key, "size")) {
+                    else if (EQUALS(key, "size")) {
                         double result = strtod(value, &remain);
                         if (remain == value) continue;
                         osds[id].size = (result != 0 ? result : DEF_SIZE);
                     }
-                    else if (equals(key, "color")) {
+                    else if (EQUALS(key, "color")) {
                         char base = 16;
                         if (strlen(value) > 1 && value[1] == 'x') base = 0;
                         short result = strtol(value, &remain, base);
                         if (remain != value)
                             osds[id].color = result;
                     }
-                    else if (equals(key, "opal")) {
+                    else if (EQUALS(key, "opal")) {
                         short result = strtol(value, &remain, 10);
                         if (remain != value)
                             osds[id].opal = result & 0xFF;
                     }
-                    else if (equals(key, "posx")) {
+                    else if (EQUALS(key, "posx")) {
                         short result = strtol(value, &remain, 10);
                         if (remain != value)
                             osds[id].posx = result;
                     }
-                    else if (equals(key, "posy")) {
+                    else if (EQUALS(key, "posy")) {
                         short result = strtol(value, &remain, 10);
                         if (remain != value)
                             osds[id].posy = result;
@@ -1107,8 +1107,8 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (equals(uri, "/api/status")) {
-            if (equals(method, "GET")) {
+        if (EQUALS(uri, "/api/status")) {
+            if (EQUALS(method, "GET")) {
                 struct sysinfo si;
                 sysinfo(&si);
                 char memory[16], uptime[48];
@@ -1134,10 +1134,10 @@ void *server_thread(void *vargp) {
             continue;
         }
 
-        if (starts_with(uri, "/api/time")) {
-            if (equals(method, "GET")) {
+        if (STARTS_WITH(uri, "/api/time")) {
+            if (EQUALS(method, "GET")) {
                 struct timespec t;
-                if (!empty(query)) {
+                if (!EMPTY(query)) {
                     char *remain;
                     while (query) {
                         char *value = split(&query, "&");
@@ -1145,9 +1145,9 @@ void *server_thread(void *vargp) {
                         unescape_uri(value);
                         char *key = split(&value, "=");
                         if (!key || !*key || !value || !*value) continue;
-                        if (equals(key, "fmt")) {
+                        if (EQUALS(key, "fmt")) {
                             strncpy(timefmt, value, 32);
-                        } else if (equals(key, "ts")) {
+                        } else if (EQUALS(key, "ts")) {
                             short result = strtol(value, &remain, 10);
                             if (remain == value) continue;
                             t.tv_sec = result;

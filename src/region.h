@@ -9,10 +9,6 @@
 #include <unistd.h>
 #include <time.h>
 
-#ifdef __UCLIBC__
-extern int asprintf(char **restrict strp, const char *restrict fmt, ...);
-#endif
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
 #include <sys/sysinfo.h>
 #else

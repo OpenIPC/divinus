@@ -21,20 +21,11 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#ifndef CEILING
-#define CEILING_POS(X) ((X-(int)(X)) > 0 ? (int)(X+1) : (int)(X))
-#define CEILING_NEG(X) (int)(X)
-#define CEILING(X) ( ((X) > 0) ? CEILING_POS(X) : CEILING_NEG(X) )
+#ifdef __UCLIBC__
+extern int asprintf(char **restrict strp, const char *restrict fmt, ...);
 #endif
 
-#define starts_with(a, b) !strncmp(a, b, strlen(b))
-#define equals(a, b) !strcmp(a, b)
-#define equals_case(a, b) !strcasecmp(a, b)
-#define ends_with(a, b)      \
-    size_t alen = strlen(a); \
-    size_t blen = strlen(b); \
-    return (alen > blen) && strcmp(a + alen - blen, b);
-#define empty(x) (x[0] == '\0')
+void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off);
 
 extern void *aud_thread;
 extern void *isp_thread;
@@ -63,5 +54,3 @@ extern hal_chnstate t31_state[T31_VENC_CHN_NUM];
 
 bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op);
 void hal_identify(void);
-
-void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off);

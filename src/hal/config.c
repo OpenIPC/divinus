@@ -239,8 +239,8 @@ enum ConfigError parse_uint64(
     if (!*end) {
         if (res < min || res > max) {
             HAL_DANGER("config",
-                "Can't parse param '%s' value '%s'. Value '%lld' is not in a "
-                "range [%lld; %lld].\n",
+                "Can't parse param '%s' value '%s'. Value '%lu' is not in a "
+                "range [%lu; %lu].\n",
                 param_name, param_value, res, min, max);
             return CONFIG_PARAM_ISNT_IN_RANGE;
         }
