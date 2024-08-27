@@ -2,21 +2,11 @@
 
 #include <ifaddrs.h>
 #include <linux/if_link.h>
-#include <linux/version.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
-
-// Newer versions of musl have UAPI headers 
-// that redefine struct sysinfo
-#if defined(__GLIBC__) || defined(__UCLIBC__) \
-    || LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
-#include <sys/sysinfo.h>
-#else
-#include <linux/sysinfo.h>
-#endif
 
 #include "app_config.h"
 #include "hal/support.h"
@@ -32,8 +22,6 @@
 #define MAX_OSD 8
 
 extern char keepRunning;
-
-extern int sysinfo (struct sysinfo *__info);
 
 typedef struct {
     unsigned int size;

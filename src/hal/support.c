@@ -66,28 +66,79 @@ void hal_identify(void) {
 #ifdef __arm__
     if (!access("/proc/mi_modules", F_OK) && 
         hal_registry(0x1F003C00, &series, OP_READ)) {
+        char package[4] = {0};
+        short memory = 0;
+
+        plat = HAL_PLATFORM_I6;
+        chnCount = I6_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)i6_state;
+        aud_thread = i6_audio_thread;
+        vid_thread = i6_video_thread;
+
+        if (file = fopen("/proc/cmdline", "r")) {
+            fgets(line, 200, file);
+            char *remain, *capacity = strstr(line, "LX_MEM=");
+            memory = (short)(strtol(capacity + 7, &remain, 16) >> 20);
+            fclose(file);
+        }
+
+        if (file = fopen("/sys/devices/soc0/machine", "r")) {
+            fgets(line, 200, file);
+            char *board = strstr(line, "SSC");
+            strncpy(package, board + 4, 3);
+            fclose(file);
+        }
+
         switch (series) {
-            case 0xEF: // Macaron (6)
-            case 0xF1: // Pudding (6E)
-            case 0xF2: // Ispahan (6B0)
-                plat = HAL_PLATFORM_I6;
-                strcpy(chip, series == 0xEF ? 
-                    "SSC32x" : "SSC33x");
-                strcpy(family, "infinity6(b/e0)");
-                chnCount = I6_VENC_CHN_NUM;
-                chnState = (hal_chnstate*)i6_state;
-                aud_thread = i6_audio_thread;
-                vid_thread = i6_video_thread;
-                return;
+            case 0xEF:
+                if (memory > 128)
+                    strcpy(chip, "SSC327Q");
+                else if (memory > 64) 
+                    strcpy(chip, "SSC32[5/7]D");
+                else 
+                    strcpy(chip, "SSC32[3/5/7]");
+                if (package[2] == 'B' && chip[strlen(chip) - 1] != 'Q')
+                    strcat(chip, "E");
+                strcpy(family, "infinity6");
+                break;
+            case 0xF1:
+                if (package[2] == 'A')
+                    strcpy(chip, "SSC33[8/9]G");
+                else {
+                    if (sysconf(_SC_NPROCESSORS_ONLN) == 1)
+                        strcpy(chip, "SSC30K");
+                    else
+                        strcpy(chip, "SSC33[6/8]");
+                    if (memory > 128)
+                        strcat(chip, "D");
+                    else if (memory > 64)
+                        strcat(chip, "Q");
+                }
+                strcpy(family, "infinity6e");
+                break;
+            case 0xF2: 
+                strcpy(chip, "SSC33[3/5/7]");
+                if (memory > 64)
+                    strcat(chip, "D");
+                if (package[2] == 'B')
+                    strcat(chip, "E");
+                strcpy(family, "infinity6b0");
+                break;
             case 0xF9:
                 plat = HAL_PLATFORM_I6C;
-                strcpy(chip, "SSC37x");
+                strcpy(chip, "SSC37[7/8]");
+                if (memory > 128)
+                    strcat(chip, "Q");
+                else if (memory > 64)
+                    strcat(chip, "D");
+                if (package[2] == 'D')
+                    strcat(chip, "E");
                 strcpy(family, "infinity6c");
                 chnCount = I6C_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)i6c_state;
                 aud_thread = i6c_audio_thread;
                 vid_thread = i6c_video_thread;
-                return;
+                break;
             case 0xFB:
                 plat = HAL_PLATFORM_I6F;
                 strcpy(chip, "SSC379G");
@@ -96,7 +147,10 @@ void hal_identify(void) {
                 chnState = (hal_chnstate*)i6f_state;
                 aud_thread = i6f_audio_thread;
                 vid_thread = i6f_video_thread;
-                return;
+                break;
+            default:
+                plat = HAL_PLATFORM_UNK;
+                break;
         }
     }
     

@@ -2,7 +2,6 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
-#include <linux/version.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <regex.h>
@@ -14,15 +13,6 @@
 #include <sys/socket.h>
 #include <time.h>
 #include <unistd.h>
-
-// Newer versions of musl have UAPI headers 
-// that redefine struct sysinfo
-#if defined(__GLIBC__) || defined(__UCLIBC__) \
-    || LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
-#include <sys/sysinfo.h>
-#else
-#include <linux/sysinfo.h>
-#endif
 
 #include "app_config.h"
 #include "hal/types.h"
