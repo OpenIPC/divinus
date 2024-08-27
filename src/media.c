@@ -700,7 +700,7 @@ int start_sdk(void) {
         pthread_attr_destroy(&thread_attr);
     }
 
-    if (!access(app_config.sensor_config, 0) && !sleep(1))
+    if (!access(app_config.sensor_config, F_OK) && !sleep(1))
         switch (plat) {
 #if defined(__arm__)
             case HAL_PLATFORM_I6:  i6_config_load(app_config.sensor_config); break;

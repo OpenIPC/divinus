@@ -43,7 +43,7 @@ _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supp
 
 _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matricial formats and covers are to follow_
 
-[^1]: CV181x\[C/H\], SG2000 and SG2002
+[^1]: CV181x\[C/H\], SG200\[0/2\]
 [^2]: GM813\[5/6/8\]\(S\)
 [^3]: Hi3516AV100 and Hi3516DV100
 [^4]: Hi3516CV100, Hi3518AV100, Hi3518CV100 and Hi3518EV100

@@ -328,7 +328,7 @@ void *send_jpeg_thread(void *vargp) {
 }
 
 int send_file(const int client_fd, const char *path) {
-    if (access(path, F_OK) != -1) { // file exists
+    if (access(path, F_OK) != -1) {
         const char *mime = (path);
         FILE *file = fopen(path, "r");
         if (file == NULL) {

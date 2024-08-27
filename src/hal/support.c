@@ -64,7 +64,7 @@ void hal_identify(void) {
     char line[200] = {0};
 
 #ifdef __arm__
-    if (!access("/proc/mi_modules", 0) && 
+    if (!access("/proc/mi_modules", F_OK) && 
         hal_registry(0x1F003C00, &series, OP_READ)) {
         switch (series) {
             case 0xEF: // Macaron (6)
@@ -100,7 +100,7 @@ void hal_identify(void) {
         }
     }
     
-    if (!access("/dev/vpd", 0)) {
+    if (!access("/dev/vpd", F_OK)) {
         plat = HAL_PLATFORM_GM;
         strcpy(chip, "GM813x");
         if (file = fopen("/proc/pmu/chipver", "r")) {
@@ -118,7 +118,7 @@ void hal_identify(void) {
 #endif
 
 #ifdef __mips__
-    if (!access("/proc/jz", 0) && 
+    if (!access("/proc/jz", F_OK) && 
         hal_registry(0x1300002C, &val, OP_READ)) {
         unsigned int type;
         hal_registry(0x13540238, &type, OP_READ);
@@ -233,7 +233,7 @@ void hal_identify(void) {
 #endif
 
 #if defined(__riscv) || defined(__riscv__)
-        if (!access("/proc/cvi", 0)) {
+        if (!access("/proc/cvi", F_OK)) {
         plat = HAL_PLATFORM_CVI;
         strcpy(family, "CV181x");
         chnCount = CVI_VENC_CHN_NUM;

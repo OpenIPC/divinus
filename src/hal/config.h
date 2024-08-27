@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "macros.h"
 #include "tools.h"
 
 #define MAX_SECTIONS 16
