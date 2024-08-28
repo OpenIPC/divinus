@@ -522,7 +522,7 @@ void *server_thread(void *vargp) {
 
         parse_request(client_fd, request);
 
-        if (!EQUALS(method, "GET") || !EQUALS(method, "POST")) {
+        if (!EQUALS(method, "GET") && !EQUALS(method, "POST")) {
             send_and_close(client_fd, (char*)error405, strlen(error405));
             continue;
         }

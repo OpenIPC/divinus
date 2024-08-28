@@ -105,7 +105,7 @@ void hal_identify(void) {
                 if (package[2] == 'A')
                     strcpy(chip, "SSC33[8/9]G");
                 else {
-                    if (sysconf(_SC_NPROCESSORS_ONLN) == 1)
+                    if (sysconf(_SC_NPROCESSORS_CONF) == 1)
                         strcpy(chip, "SSC30K");
                     else
                         strcpy(chip, "SSC33[6/8]");
@@ -287,7 +287,7 @@ void hal_identify(void) {
 #endif
 
 #if defined(__riscv) || defined(__riscv__)
-        if (!access("/proc/cvi", F_OK)) {
+    if (!access("/proc/cvi", F_OK)) {
         plat = HAL_PLATFORM_CVI;
         strcpy(family, "CV181x");
         chnCount = CVI_VENC_CHN_NUM;
