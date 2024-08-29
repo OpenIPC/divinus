@@ -529,6 +529,7 @@ int start_sdk(void) {
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  ret = gm_hal_init(); break;
+        case HAL_PLATFORM_I3:  ret = i3_hal_init(); break;
         case HAL_PLATFORM_I6:  ret = i6_hal_init(); break;
         case HAL_PLATFORM_I6C: ret = i6c_hal_init(); break;
         case HAL_PLATFORM_I6F: ret = i6f_hal_init(); break;
@@ -596,6 +597,7 @@ int start_sdk(void) {
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  ret = gm_system_init(); break;
+        case HAL_PLATFORM_I3:  ret = i3_system_init(); break;
         case HAL_PLATFORM_I6:  ret = i6_system_init(); break;
         case HAL_PLATFORM_I6C: ret = i6c_system_init(); break;
         case HAL_PLATFORM_I6F: ret = i6f_system_init(); break;
@@ -703,6 +705,7 @@ int start_sdk(void) {
     if (!access(app_config.sensor_config, F_OK) && !sleep(1))
         switch (plat) {
 #if defined(__arm__)
+            case HAL_PLATFORM_I3:  i3_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_I6:  i6_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_I6C: i6c_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_I6F: i6f_config_load(app_config.sensor_config); break;
@@ -765,6 +768,7 @@ int stop_sdk(void) {
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  gm_system_deinit(); break;
+        case HAL_PLATFORM_I3:  i3_system_deinit(); break;
         case HAL_PLATFORM_I6:  i6_system_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_system_deinit(); break;
         case HAL_PLATFORM_I6F: i6f_system_deinit(); break;
@@ -791,6 +795,7 @@ int stop_sdk(void) {
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  gm_hal_deinit(); break;
+        case HAL_PLATFORM_I3:  i3_hal_deinit(); break;
         case HAL_PLATFORM_I6:  i6_hal_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_hal_deinit(); break;
         case HAL_PLATFORM_I6F: i6f_hal_deinit(); break;

@@ -5,6 +5,7 @@
 #include "hisi/v2_hal.h"
 #include "hisi/v3_hal.h"
 #include "hisi/v4_hal.h"
+#include "star/i3_hal.h"
 #include "star/i6_hal.h"
 #include "star/i6c_hal.h"
 #include "star/i6f_hal.h"
@@ -57,6 +58,7 @@ extern hal_chnstate v1_state[V1_VENC_CHN_NUM];
 extern hal_chnstate v2_state[V2_VENC_CHN_NUM];
 extern hal_chnstate v3_state[V3_VENC_CHN_NUM];
 extern hal_chnstate v4_state[V4_VENC_CHN_NUM];
+extern hal_chnstate i3_state[I3_VENC_CHN_NUM];
 extern hal_chnstate i6_state[I6_VENC_CHN_NUM];
 extern hal_chnstate i6c_state[I6C_VENC_CHN_NUM];
 extern hal_chnstate i6f_state[I6F_VENC_CHN_NUM];

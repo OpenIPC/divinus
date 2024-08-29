@@ -10,7 +10,7 @@ extern "C" {
 /******************************************************************************
  *              DATA STRUCTURES
  ******************************************************************************/
-typedef unsigned int hash_key_t;
+typedef long unsigned int hash_key_t;
 
 struct __hash_table {
     struct list_head_t *pool;

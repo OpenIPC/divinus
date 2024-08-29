@@ -152,6 +152,20 @@ void hal_identify(void) {
                 plat = HAL_PLATFORM_UNK;
                 break;
         }
+    } else if (!access("/proc/mstar/kernel", 0) && 
+        hal_registry(0x1F2025A4, &val, OP_READ)) {
+        plat = HAL_PLATFORM_I3;
+        switch (val & 0xF000) {
+            case 0x6000: strcpy(chip, "MSC313E"); break;
+            case 0x7000: strcpy(chip, "MSC316DC"); break;
+            case 0x8000: strcpy(chip, "MSC318"); break;
+        }
+        strcpy(family, "infinity3");
+        chnCount = I3_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)i3_state;
+        //aud_thread = i3_audio_thread;
+        //vid_thread = i3_video_thread;
+        return;
     }
     
     if (!access("/dev/vpd", F_OK)) {
