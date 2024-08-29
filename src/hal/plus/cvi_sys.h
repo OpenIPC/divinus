@@ -64,7 +64,7 @@ typedef struct {
 } cvi_sys_ver;
 
 typedef struct {
-    void *handle;
+    void *handle, *handleAtomic;
     
     int (*fnExit)(void);
     int (*fnGetChipId)(unsigned int *chip);
@@ -79,7 +79,8 @@ typedef struct {
 } cvi_sys_impl;
 
 static int cvi_sys_load(cvi_sys_impl *sys_lib) {
-    if (!(sys_lib->handle = dlopen("libsys.so", RTLD_LAZY | RTLD_GLOBAL)))
+    if (!(sys_lib->handleAtomic = dlopen("libatomic.so.1", RTLD_LAZY | RTLD_GLOBAL)) ||
+        !(sys_lib->handle = dlopen("libsys.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("cvi_sys", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(sys_lib->fnExit = (int(*)(void))
@@ -120,5 +121,7 @@ static int cvi_sys_load(cvi_sys_impl *sys_lib) {
 static void cvi_sys_unload(cvi_sys_impl *sys_lib) {
     if (sys_lib->handle) dlclose(sys_lib->handle);
     sys_lib->handle = NULL;
+    if (sys_lib->handleAtomic) dlclose(sys_lib->handleAtomic);
+    sys_lib->handleAtomic = NULL;
     memset(sys_lib, 0, sizeof(*sys_lib));
 }

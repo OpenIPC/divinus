@@ -5,7 +5,7 @@
 typedef struct {
     unsigned int count;
     struct {
-        unsigned long long blockSize;
+        unsigned int blockSize;
         unsigned int blockCnt;
         // Accepts values from 0-2 (none, nocache, cached)
         int rempVirt;

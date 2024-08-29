@@ -226,16 +226,16 @@ int cvi_pipeline_create(void)
 {
     int ret;
 
+    cvi_vpss.fnDestroyGroup(_cvi_vpss_grp);
+
     {
         cvi_sys_oper mode[4];
         cvi_sys.fnGetViVpssMode((cvi_sys_oper**)&mode);
-        mode[_cvi_vi_dev] = CVI_SYS_OPER_VIOFF_VPSSON;
+        for (int i = 0; i < 4; i++)
+            mode[i] = CVI_SYS_OPER_VIOFF_VPSSOFF;
         if (ret = cvi_sys.fnSetViVpssMode((cvi_sys_oper**)&mode))
             return ret;
     }
-
-    if (ret = cvi_sensor_config())
-        return ret;
 
     if (ret = cvi_vi.fnSetDeviceConfig(_cvi_vi_dev, &cvi_config.videv))
         return ret;
@@ -287,13 +287,6 @@ int cvi_pipeline_create(void)
     }
     if (ret = cvi_vi.fnEnableChannel(_cvi_vi_pipe, _cvi_vi_chn))
         return ret;
-
-    {
-        cvi_snr_bus bus;
-        bus.i2c = 0;
-        if (ret = cvi_snr_drv.obj->pfnSetBusInfo(_cvi_vi_pipe, bus))
-            return ret;
-    }
 
     if (ret = cvi_snr_drv.obj->pfnRegisterCallback(_cvi_vi_pipe, &cvi_ae_lib, &cvi_awb_lib))
         return ret;
@@ -369,8 +362,6 @@ void cvi_pipeline_destroy(void)
     cvi_vi.fnDestroyPipe(_cvi_vi_pipe);
 
     cvi_vi.fnDisableDevice(_cvi_vi_dev);
-
-    cvi_sensor_deconfig();
 }
 
 int cvi_region_create(char handle, hal_rect rect, short opacity)
@@ -456,7 +447,7 @@ int cvi_sensor_config(void) {
     cvi_isp.fnResetSensor(device, 1);
 
     cvi_isp.fnResetIntf(device, 1);
-    
+
     cvi_isp.fnSetIntfConfig(_cvi_vi_pipe, &config);
 
     cvi_isp.fnSetSensorClock(device, 1);
@@ -487,7 +478,8 @@ void cvi_sensor_deinit(void)
 int cvi_sensor_init(char *name, char *obj)
 {
     char path[128];
-    char* dirs[] = {"%s", "./%s", "/usr/lib/sensors/%s"};
+    char* dirs[] = {"%s", "./%s", "/usr/lib/sensors/%s", "/usr/lib/%s",
+        "/mnt/system/lib/%s", "/mnt/system/lib/libsns_full.so"};
     char **dir = dirs;
 
     while (*dir) {
@@ -883,17 +875,23 @@ int cvi_system_init(char *snrConfig)
         return ret;
 
     cvi_sys.fnExit();
-    //cvi_vb.fnExit();
+    cvi_vb.fnExit();
 
-    /*{
+    {
         cvi_vb_pool pool;
-        memset(&pool, 0, sizeof(pool)); 
+        memset(&pool, 0, sizeof(pool));
+
+        pool.count = 2;
+        pool.comm[0].blockSize = 1920 * 1080 * 3;
+        pool.comm[0].blockCnt = 4;
+        pool.comm[1].blockSize = 1920 * 1080 * 3;
+        pool.comm[1].blockCnt = 4;
 
         if (ret = cvi_vb.fnConfigPool(&pool))
             return ret;
-    }*/
-    //if (ret = cvi_vb.fnInit())
-    //    return ret;
+    }
+    if (ret = cvi_vb.fnInit())
+        return ret;
 
     if (ret = cvi_sys.fnInit())
         return ret;

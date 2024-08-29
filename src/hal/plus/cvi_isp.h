@@ -51,7 +51,8 @@ static int cvi_isp_load(cvi_isp_impl *isp_lib) {
     if (!(isp_lib->handle = dlopen("libisp.so", RTLD_LAZY | RTLD_GLOBAL)) ||
         !(isp_lib->handleAlgo = dlopen("libisp_algo.so", RTLD_LAZY | RTLD_GLOBAL)) ||
         !(isp_lib->handleAe = dlopen("libae.so", RTLD_LAZY | RTLD_GLOBAL)) ||
-        !(isp_lib->handleAwb = dlopen("libawb.so", RTLD_LAZY | RTLD_GLOBAL)));
+        !(isp_lib->handleAwb = dlopen("libawb.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("cvi_isp", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(isp_lib->fnExit = (int(*)(int pipe))
         hal_symbol_load("cvi_isp", isp_lib->handle, "CVI_ISP_Exit")))

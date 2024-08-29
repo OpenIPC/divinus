@@ -194,21 +194,21 @@ typedef struct {
 } cvi_snr_init;
 
 typedef struct {
-    int (*pfnRegisterCallback)(int pipe, cvi_isp_alg *aeLibrary, cvi_isp_alg *awbLibrary);
-    int (*pfnUnRegisterCallback)(int pipe, cvi_isp_alg *aeLibrary, cvi_isp_alg *awbLibrary);
-    int (*pfnSetBusInfo)(int pipe, cvi_snr_bus bus);
+    int  (*pfnRegisterCallback)(int pipe, cvi_isp_alg *aeLibrary, cvi_isp_alg *awbLibrary);
+    int  (*pfnUnRegisterCallback)(int pipe, cvi_isp_alg *aeLibrary, cvi_isp_alg *awbLibrary);
+    int  (*pfnSetBusInfo)(int pipe, cvi_snr_bus bus);
     void (*pfnStandby)(int pipe);
     void (*pfnRestart)(int pipe);
     void (*pfnMirrorFlip)(int pipe, cvi_isp_dir mode);
-    int (*pfnWriteReg)(int pipe, int addr, int data);
-    int (*pfnReadReg)(int pipe, int addr);
-    int (*pfnSetInit)(int pipe, cvi_snr_init *config);
-    int (*pfnPatchRxAttr)(cvi_snr_init *config);
+    int  (*pfnWriteReg)(int pipe, int addr, int data);
+    int  (*pfnReadReg)(int pipe, int addr);
+    int  (*pfnSetInit)(int pipe, cvi_snr_init *config);
+    int  (*pfnPatchRxAttr)(cvi_snr_init *config);
     void (*pfnPatchI2cAddr)(int addr);
-	int (*pfnGetRxAttr)(int pipe, cvi_snr_dev *device);
-	int (*pfnExpSensorCb)(void *config);
-	int (*pfnExpAeCb)(void *config);
-    int (*pfnSnsProbe)(int pipe);
+	int  (*pfnGetRxAttr)(int pipe, cvi_snr_dev *device);
+	int  (*pfnExpSensorCb)(void *config);
+	int  (*pfnExpAeCb)(void *config);
+    int  (*pfnSnsProbe)(int pipe);
 } cvi_snr_obj;
 
 typedef struct {
@@ -216,4 +216,4 @@ typedef struct {
     cvi_snr_obj *obj;
 } cvi_snr_drv_impl;
 
-static const char cvi_snr_endp[] = {"/dev/cvi-mipi-tx"};
+static const char cvi_snr_endp[] = {"/dev/cvi-mipi-rx"};

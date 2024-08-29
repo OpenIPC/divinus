@@ -78,11 +78,11 @@ typedef enum {
 
 typedef struct {
     char rcnRefShareBufOn;
+    char singleBufLumaOn;
 } cvi_venc_attr_h264;
 
 typedef struct {
     char rcnRefShareBufOn;
-    char singleBufLumaOn;
 } cvi_venc_attr_h265;
 
 typedef struct {
@@ -90,6 +90,7 @@ typedef struct {
     unsigned char numThumbs;
     cvi_common_dim sizeThumbs[2];
     int multiReceiveOn;
+    int shit;
 } cvi_venc_attr_jpg;
 
 typedef struct {
@@ -118,19 +119,6 @@ typedef struct {
     unsigned int maxBitrate;
     char variFpsOn;
 } cvi_venc_rate_h26xbr;
-
-typedef struct {
-    unsigned int gop;
-    unsigned int statTime;
-    unsigned int srcFps;
-    unsigned int dstFps;
-    unsigned int maxBitrate;
-    unsigned int shortTermStatTime;
-    unsigned int longTermStatTime;
-    unsigned int longTermMaxBitrate;
-    unsigned int longTermMinBitrate;
-    char variFpsOn;
-} cvi_venc_rate_h26xcvbr;
 
 typedef struct {
     unsigned int gop;
@@ -182,9 +170,9 @@ typedef struct {
         cvi_venc_rate_h26xbr h264Vbr;
         cvi_venc_rate_h26xbr h264Avbr;
         cvi_venc_rate_h26xbr h264Qvbr;
-        cvi_venc_rate_h26xcvbr h264Cvbr;
         cvi_venc_rate_h26xqp h264Qp;
         cvi_venc_rate_h264qpmap h264QpMap;
+        cvi_venc_rate_h26xbr h264Ubr;
         cvi_venc_rate_mjpgbr mjpgCbr;
         cvi_venc_rate_mjpgbr mjpgVbr;
         cvi_venc_rate_mjpgqp mjpgQp;
@@ -192,9 +180,9 @@ typedef struct {
         cvi_venc_rate_h26xbr h265Vbr;
         cvi_venc_rate_h26xbr h265Avbr;
         cvi_venc_rate_h26xbr h265Qvbr;
-        cvi_venc_rate_h26xcvbr h265Cvbr;
         cvi_venc_rate_h26xqp h265Qp;
         cvi_venc_rate_h265qpmap h265QpMap;
+        cvi_venc_rate_h26xbr h265Ubr;
     };
 } cvi_venc_rate;
 
