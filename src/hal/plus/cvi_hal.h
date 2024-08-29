@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <unistd.h>
 
 extern char keepRunning;

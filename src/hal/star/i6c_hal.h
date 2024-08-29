@@ -10,6 +10,8 @@
 #include "i6c_venc.h"
 #include "i6c_vif.h"
 
+#include <sys/select.h>
+
 extern char keepRunning;
 
 extern int (*i6c_aud_cb)(hal_audframe*);

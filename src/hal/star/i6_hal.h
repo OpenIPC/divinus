@@ -12,6 +12,8 @@
 
 #include "../support.h"
 
+#include <sys/select.h>
+
 extern char keepRunning;
 
 extern int (*i6_aud_cb)(hal_audframe*);

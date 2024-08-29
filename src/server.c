@@ -6,8 +6,6 @@
 IMPORT_STR(.rodata, "../res/index.html", indexhtml);
 extern const char indexhtml[];
 
-char keepRunning = 1;
-
 enum StreamType {
     STREAM_H26X,
     STREAM_JPEG,
@@ -1124,11 +1122,11 @@ void *server_thread(void *vargp) {
                         short result = strtol(value, &remain, 10);
                         if (remain == value) continue;
                         t.tv_sec = result;
-                        clock_settime(CLOCK_REALTIME, &t);
+                        clock_settime(0, &t);
                     }
                 }
             }
-            clock_gettime(CLOCK_REALTIME, &t);
+            clock_gettime(0, &t);
             int respLen = sprintf(response,
                 "HTTP/1.1 200 OK\r\n" \
                 "Content-Type: application/json;charset=UTF-8\r\n" \
@@ -1153,28 +1151,10 @@ void *server_thread(void *vargp) {
     return NULL;
 }
 
-void sig_handler(int signo) {
-    HAL_INFO("server", "Graceful shutdown...\n");
-    keepRunning = 0;
-    graceful = 1;
-}
-void epipe_handler(int signo) { printf("EPIPE\n"); }
-void spipe_handler(int signo) { printf("SIGPIPE\n"); }
-
 int server_fd = -1;
 pthread_t server_thread_id;
 
 int start_server() {
-    signal(SIGINT, sig_handler);
-    signal(SIGQUIT, sig_handler);
-    signal(SIGTERM, sig_handler);
-
-    signal(SIGPIPE, spipe_handler);
-    signal(EPIPE, epipe_handler);
-
-    if (app_config.watchdog)
-        watchdog_start(app_config.watchdog);
-
     for (uint32_t i = 0; i < MAX_CLIENTS; ++i) {
         client_fds[i].socket_fd = -1;
         client_fds[i].type = -1;
@@ -1212,9 +1192,6 @@ int stop_server() {
 
     pthread_mutex_destroy(&client_fds_mutex);
     HAL_INFO("server", "Shutting down server...\n");
-
-    if (app_config.watchdog)
-        watchdog_stop();
 
     return EXIT_SUCCESS;
 }

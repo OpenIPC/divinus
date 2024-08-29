@@ -5,4 +5,4 @@ OBJ := $(shell find ./ -name '*.c' | sed -e "s/\.c/\.o/")
 	$(CC) $< -I src $(OPT) -c -o ../obj/$@
 
 divinus: $(OBJ)
-	$(CC) $(addprefix ../obj/,$^) -I src -rdynamic $(OPT) -o ../$@
+	$(CC) $(addprefix ../obj/,$^) -rdynamic $(OPT) -o ../$@

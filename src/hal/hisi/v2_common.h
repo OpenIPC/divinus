@@ -1,10 +1,8 @@
 #pragma once
 
-#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
 
 #include "../symbols.h"
 #include "../types.h"

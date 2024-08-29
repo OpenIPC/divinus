@@ -16,19 +16,47 @@
 #include <unistd.h>
 
 rtsp_handle rtspHandle;
-char graceful = 0;
+char graceful = 0, keepRunning = 1;
+
+void handle_error(int signo) {
+    write(STDERR_FILENO, "Error occurred! Quitting...\n", 28);
+    keepRunning = 0;
+    exit(EXIT_FAILURE);
+}
+
+void handle_exit(int signo) {
+    write(STDERR_FILENO, "Graceful shutdown...\n", 21);
+    keepRunning = 0;
+    graceful = 1;
+}
 
 int main(int argc, char *argv[]) {
+    {
+        char signal_error[] = {SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGSEGV};
+        char signal_exit[] = {SIGINT, SIGQUIT, SIGTERM};
+        char signal_null[] = {EPIPE, SIGPIPE};
+
+        for (char *s = signal_error; s < (&signal_error)[1]; s++)
+            signal(*s, handle_error);
+        for (char *s = signal_exit; s < (&signal_exit)[1]; s++)
+            signal(*s, handle_exit);
+        for (char *s = signal_null; s < (&signal_null)[1]; s++)
+            signal(*s, NULL);
+    }
+
     hal_identify();
 
     if (!*family)
         HAL_ERROR("hal", "Unsupported chip family! Quitting...\n");
 
-    fprintf(stderr, "Divinus for %s\n", family);
+    fprintf(stderr, "\033[7m Divinus for %s \033[0m\n", family);
     fprintf(stderr, "Chip ID: %s\n", chip);
 
     if (parse_app_config() != CONFIG_OK)
         HAL_ERROR("hal", "Can't load app config 'divinus.yaml'\n");
+
+    if (app_config.watchdog)
+        watchdog_start(app_config.watchdog);
 
     if (app_config.mdns_enable)
         start_mdns();
@@ -74,6 +102,9 @@ int main(int argc, char *argv[]) {
 
     if (app_config.mdns_enable)
         stop_mdns();
+
+    if (app_config.watchdog)
+        watchdog_stop();
 
     if (!graceful)
         restore_app_config();

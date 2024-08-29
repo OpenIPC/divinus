@@ -10,6 +10,8 @@
 
 #include "../config.h"
 
+#include <sys/select.h>
+
 extern char keepRunning;
 
 extern hal_chnstate t31_state[T31_VENC_CHN_NUM];
