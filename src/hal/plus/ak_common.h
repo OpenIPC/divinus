@@ -7,4 +7,5 @@
 #include "../symbols.h"
 #include "../types.h"
 
-#define CVI_VI_CHN_NUM 2
+#define AK_VENC_CHN_NUM 2
+#define AK_VI_CHN_NUM 2

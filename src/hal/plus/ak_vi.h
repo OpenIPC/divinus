@@ -24,21 +24,26 @@ typedef struct {
 typedef struct {
     void *handle;
 
+    int   (*fnGetSensorResolution)(void *device, ak_vi_res *resolution);
     int   (*fnLoadSensorConfig)(char *path);
 
     int   (*fnDisableDevice)(void *device);
     void* (*fnEnableDevice)(int device);
-    int   (*fnGetDeviceConfig)(void *device, ak_vi_cnf *config);
+    int   (*fnStartDevice)(void *device);
+    int   (*fnStopDevice)(void *device);
+
     int   (*fnSetDeviceConfig)(void *device, ak_vi_cnf *config);
     int   (*fnSetDeviceFlipMirror)(void *device, int flipOn, int mirrorOn);
     int   (*fnSetDeviceMode)(void *device, int nightOn);
-    int   (*fnStartDevice)(void *device);
-    int   (*fnStopDevice)(void *device);
 } ak_vi_impl;
 
 static int ak_vi_load(ak_vi_impl *vi_lib) {
     if (!(vi_lib->handle = dlopen("libplat_vi.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("ak_vi", "Failed to load library!\nError: %s\n", dlerror());
+
+    if (!(vi_lib->fnGetSensorResolution = (int(*)(void* device, ak_vi_res *resolution))
+        hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_get_channel_attr")))
+        return EXIT_FAILURE;
 
     if (!(vi_lib->fnLoadSensorConfig = (int(*)(char *path))
         hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_match_sensor")))
@@ -52,8 +57,12 @@ static int ak_vi_load(ak_vi_impl *vi_lib) {
         hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_open")))
         return EXIT_FAILURE;
 
-    if (!(vi_lib->fnGetDeviceConfig = (int(*)(void* device, ak_vi_cnf *config))
-        hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_get_channel_attr")))
+    if (!(vi_lib->fnStartDevice = (int(*)(void *device))
+        hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_capture_on")))
+        return EXIT_FAILURE;
+
+    if (!(vi_lib->fnStopDevice = (int(*)(void *device))
+        hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_capture_off")))
         return EXIT_FAILURE;
 
     if (!(vi_lib->fnSetDeviceConfig = (int(*)(void* device, ak_vi_cnf *config))
@@ -66,14 +75,6 @@ static int ak_vi_load(ak_vi_impl *vi_lib) {
 
     if (!(vi_lib->fnSetDeviceMode = (int(*)(void *device, int nightOn))
         hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_switch_mode")))
-        return EXIT_FAILURE;
-
-    if (!(vi_lib->fnStartDevice = (int(*)(void *device))
-        hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_capture_on")))
-        return EXIT_FAILURE;
-
-    if (!(vi_lib->fnStopDevice = (int(*)(void *device))
-        hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_capture_off")))
         return EXIT_FAILURE;
 
     return EXIT_SUCCESS;
