@@ -2,6 +2,7 @@
 
 #include "ak_common.h"
 #include "ak_aud.h"
+#include "ak_sys.h"
 #include "ak_venc.h"
 #include "ak_vi.h"
 
@@ -35,4 +36,4 @@ int ak_video_snapshot_grab(char index, hal_jpegdata *jpeg);
 void *ak_video_thread(void);
 
 void ak_system_deinit(void);
-int ak_system_init(void);
+int ak_system_init(char *snrConfig);

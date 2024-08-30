@@ -183,6 +183,17 @@ void hal_identify(void) {
         vid_thread = gm_video_thread;
         return;
     }
+
+    if (!access("/sys/devices/platform/ak39-uart.0", F_OK)) {
+        plat = HAL_PLATFORM_AK;
+        strcpy(chip, "AK3918");
+        strcpy(family, "anyka");
+        chnCount = AK_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)ak_state;
+        //aud_thread = ak_audio_thread;
+        vid_thread = ak_video_thread;
+        return;
+    }
 #endif
 
 #ifdef __mips__

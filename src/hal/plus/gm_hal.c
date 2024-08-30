@@ -260,7 +260,7 @@ int gm_video_create(char index, hal_vidconfig *config)
 
     switch (config->codec) {
         case HAL_VIDCODEC_JPG:
-        case HAL_VIDCODEC_MJPG:
+        case HAL_VIDCODEC_MJPG: {
             GM_DECLARE(gm_lib, mjpgchn, gm_venc_mjpg_cnf, "gm_mjpege_attr_t");
             mjpgchn.dest.width = config->width;
             mjpgchn.dest.height = config->height;
@@ -271,7 +271,7 @@ int gm_video_create(char index, hal_vidconfig *config)
             mjpgchn.maxBitrate = MAX(config->bitrate, config->maxBitrate);
             gm_lib.fnSetDeviceConfig(_gm_venc_dev[index], &mjpgchn);
             break;
-        case HAL_VIDCODEC_H264:
+        } case HAL_VIDCODEC_H264: {
             GM_DECLARE(gm_lib, h264chn, gm_venc_h264_cnf, "gm_h264e_attr_t");
             h264chn.dest.width = config->width;
             h264chn.dest.height = config->height;
@@ -298,7 +298,7 @@ int gm_video_create(char index, hal_vidconfig *config)
             h264chn.level = 41;
             gm_lib.fnSetDeviceConfig(_gm_venc_dev[index], &h264chn);
             break;
-        default: HAL_ERROR("gm_venc", "This codec is not supported by the hardware!");
+        } default: HAL_ERROR("gm_venc", "This codec is not supported by the hardware!");
     }
 
     gm_state[index].payload = config->codec;

@@ -151,6 +151,7 @@ void request_idr(void) {
     }
     if (index != -1) switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  ak_video_request_idr(index); break;
         case HAL_PLATFORM_GM:  gm_video_request_idr(index); break;
         case HAL_PLATFORM_I6:  i6_video_request_idr(index); break;
         case HAL_PLATFORM_I6C: i6c_video_request_idr(index); break;
@@ -172,6 +173,7 @@ void set_grayscale(bool active) {
     pthread_mutex_lock(&chnMtx);
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  ak_channel_grayscale(active); break;
         case HAL_PLATFORM_I6:  i6_channel_grayscale(active); break;
         case HAL_PLATFORM_I6C: i6c_channel_grayscale(active); break;
         case HAL_PLATFORM_I6F: i6f_channel_grayscale(active); break;
@@ -205,6 +207,7 @@ int take_next_free_channel(bool mainLoop) {
 int create_channel(char index, short width, short height, char framerate, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  return EXIT_SUCCESS;
         case HAL_PLATFORM_GM:  return EXIT_SUCCESS;
         case HAL_PLATFORM_I6:  return i6_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
@@ -233,6 +236,7 @@ int create_channel(char index, short width, short height, char framerate, char j
 int bind_channel(char index, char framerate, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  return ak_channel_bind(index);
         case HAL_PLATFORM_GM:  return gm_channel_bind(index);
         case HAL_PLATFORM_I6:  return i6_channel_bind(index, framerate);
         case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate);
@@ -252,6 +256,7 @@ int bind_channel(char index, char framerate, char jpeg) {
 int unbind_channel(char index, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  return ak_channel_unbind(index);
         case HAL_PLATFORM_GM:  return gm_channel_unbind(index);
         case HAL_PLATFORM_I6:  return i6_channel_unbind(index);
         case HAL_PLATFORM_I6C: return i6c_channel_unbind(index);
@@ -271,6 +276,7 @@ int unbind_channel(char index, char jpeg) {
 int disable_video(char index, char jpeg) {
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  return ak_video_destroy(index);
         case HAL_PLATFORM_GM:  return gm_video_destroy(index);
         case HAL_PLATFORM_I6:  return i6_video_destroy(index);
         case HAL_PLATFORM_I6C: return i6c_video_destroy(index);
@@ -420,6 +426,7 @@ int enable_mjpeg(void) {
 
         switch (plat) {
 #if defined(__arm__)
+            case HAL_PLATFORM_AK:  ret = ak_video_create(index, &config); break;
             case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
@@ -492,6 +499,7 @@ int enable_mp4(void) {
 
         switch (plat) {
 #if defined(__arm__)
+            case HAL_PLATFORM_AK:  ret = ak_video_create(index, &config); break;
             case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
@@ -528,6 +536,7 @@ int start_sdk(void) {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  ret = ak_hal_init(); break;
         case HAL_PLATFORM_GM:  ret = gm_hal_init(); break;
         case HAL_PLATFORM_I3:  ret = i3_hal_init(); break;
         case HAL_PLATFORM_I6:  ret = i6_hal_init(); break;
@@ -596,6 +605,7 @@ int start_sdk(void) {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  ret = ak_system_init(app_config.sensor_config); break;
         case HAL_PLATFORM_GM:  ret = gm_system_init(); break;
         case HAL_PLATFORM_I3:  ret = i3_system_init(); break;
         case HAL_PLATFORM_I6:  ret = i6_system_init(); break;
@@ -628,6 +638,8 @@ int start_sdk(void) {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  ret = ak_pipeline_create(app_config.mirror,
+            app_config.flip); break;
         case HAL_PLATFORM_GM:  ret = gm_pipeline_create(app_config.mirror,
             app_config.flip);   break;
         case HAL_PLATFORM_I6:  ret = i6_pipeline_create(0, width,
@@ -727,6 +739,7 @@ int stop_sdk(void) {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  ak_video_destroy_all(); break;
         case HAL_PLATFORM_GM:  gm_video_destroy_all(); break;
         case HAL_PLATFORM_I6:  i6_video_destroy_all(); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy_all(); break;
@@ -744,6 +757,7 @@ int stop_sdk(void) {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  ak_pipeline_destroy(); break;
         case HAL_PLATFORM_GM:  gm_pipeline_destroy(); break;
         case HAL_PLATFORM_I6:  i6_pipeline_destroy(); break;
         case HAL_PLATFORM_I6C: i6c_pipeline_destroy(); break;
@@ -767,6 +781,7 @@ int stop_sdk(void) {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  ak_system_deinit(); break;
         case HAL_PLATFORM_GM:  gm_system_deinit(); break;
         case HAL_PLATFORM_I3:  i3_system_deinit(); break;
         case HAL_PLATFORM_I6:  i6_system_deinit(); break;
@@ -794,6 +809,7 @@ int stop_sdk(void) {
 
     switch (plat) {
 #if defined(__arm__)
+        case HAL_PLATFORM_AK:  ak_hal_deinit(); break;
         case HAL_PLATFORM_GM:  gm_hal_deinit(); break;
         case HAL_PLATFORM_I3:  i3_hal_deinit(); break;
         case HAL_PLATFORM_I6:  i6_hal_deinit(); break;

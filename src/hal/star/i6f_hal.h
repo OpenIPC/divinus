@@ -12,6 +12,7 @@
 
 extern char keepRunning;
 
+extern hal_chnstate i6f_state[I6F_VENC_CHN_NUM];
 extern int (*i6f_aud_cb)(hal_audframe*);
 extern int (*i6f_vid_cb)(char, hal_vidstream*);
 

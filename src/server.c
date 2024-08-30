@@ -983,7 +983,7 @@ void *server_thread(void *vargp) {
             char *remain;
             int respLen;
             short id = strtol(uri + 9, &remain, 10);
-            if (remain != uri + 9 || id < 0 || id >= MAX_OSD) {
+            if (remain == uri + 9 || id < 0 || id >= MAX_OSD) {
                 respLen = sprintf(response,
                     "HTTP/1.1 404 Not Found\r\n" \
                     "Content-Type: text/plain\r\n" \

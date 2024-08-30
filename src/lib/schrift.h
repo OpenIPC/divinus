@@ -20,10 +20,8 @@
 #include <stddef.h> /* size_t */
 #include <stdint.h> /* uint_fast32_t, uint_least32_t */
 
-#ifdef __UCLIBC__
-#define reallocarray(ptr, nmemb, size) \
+#define xreallocarray(ptr, nmemb, size) \
     realloc(ptr, (nmemb) * size)
-#endif
 
 #ifdef __cplusplus
 extern "C" {

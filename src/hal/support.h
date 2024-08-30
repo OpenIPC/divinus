@@ -1,5 +1,6 @@
 #include "types.h"
 #if defined(__arm__)
+#include "plus/ak_hal.h"
 #include "plus/gm_hal.h"
 #include "hisi/v1_hal.h"
 #include "hisi/v2_hal.h"
@@ -51,20 +52,6 @@ extern char chip[16];
 extern char family[32];
 extern hal_platform plat;
 extern int series;
-
-#if defined(__arm__)
-extern hal_chnstate gm_state[GM_VENC_CHN_NUM];
-extern hal_chnstate v1_state[V1_VENC_CHN_NUM];
-extern hal_chnstate v2_state[V2_VENC_CHN_NUM];
-extern hal_chnstate v3_state[V3_VENC_CHN_NUM];
-extern hal_chnstate v4_state[V4_VENC_CHN_NUM];
-extern hal_chnstate i3_state[I3_VENC_CHN_NUM];
-extern hal_chnstate i6_state[I6_VENC_CHN_NUM];
-extern hal_chnstate i6c_state[I6C_VENC_CHN_NUM];
-extern hal_chnstate i6f_state[I6F_VENC_CHN_NUM];
-#elif defined(__mips__)
-extern hal_chnstate t31_state[T31_VENC_CHN_NUM];
-#endif
 
 bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op);
 void hal_identify(void);

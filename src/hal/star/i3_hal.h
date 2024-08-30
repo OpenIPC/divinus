@@ -14,6 +14,7 @@
 
 extern char keepRunning;
 
+extern hal_chnstate i3_state[I3_VENC_CHN_NUM];
 extern int (*i3_aud_cb)(hal_audframe*);
 extern int (*i3_vid_cb)(char, hal_vidstream*);
 

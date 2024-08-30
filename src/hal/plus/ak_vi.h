@@ -70,7 +70,7 @@ static int ak_vi_load(ak_vi_impl *vi_lib) {
         return EXIT_FAILURE;
 
     if (!(vi_lib->fnSetDeviceFlipMirror = (int(*)(void *device, int flipOn, int mirrorOn))
-        hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_switch_mode")))
+        hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_set_flip_mirror")))
         return EXIT_FAILURE;
 
     if (!(vi_lib->fnSetDeviceMode = (int(*)(void *device, int nightOn))
