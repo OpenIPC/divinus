@@ -4,7 +4,13 @@
         "name": "arm-musl",
         "includePath": ["${workspaceFolder}/**"],
         "defines": ["__arm__"],
-        "compilerPath": "toolchain/cortex_a7_thumb2_hf-gcc13-musl-4_9/bin/arm-openipc-linux-musleabihf-gcc",
+        "compilerPath": "toolchain/arm-2009q3-67-arm-none-linux-gnueabi-i686-pc-linux-gnu/bin/arm-none-linux-gnueabi-gcc",
+        "cStandard": "c11"
+      },{
+        "name": "arm9-glibc",
+        "includePath": ["${workspaceFolder}/**"],
+        "defines": ["__arm__"],
+        "compilerPath": "toolchain/arm926t-gcc13-musl-3_0/bin/arm-openipc-linux-musleabi-gcc",
         "cStandard": "c11"
       },{
         "name": "arm9-musl3",

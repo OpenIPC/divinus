@@ -194,7 +194,7 @@ void hal_identify(void) {
             case 0x20160100: strcat(chip, "V300"); break;
             case 0x20160101: strcat(chip, "V330"); break;
         }
-        strcpy(family, "AK3918");
+        strcpy(family, "anyka");
         chnCount = AK_VENC_CHN_NUM;
         chnState = (hal_chnstate*)ak_state;
         //aud_thread = ak_audio_thread;
