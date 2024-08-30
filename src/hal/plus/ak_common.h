@@ -7,7 +7,4 @@
 #include "../symbols.h"
 #include "../types.h"
 
-typedef struct {
-    int width;
-    int height;
-} ak_common_dim;
+#define CVI_VI_CHN_NUM 2

@@ -2,8 +2,6 @@
 
 #include "ak_common.h"
 
-#define CVI_VI_CHN_NUM 2
-
 typedef struct {
     int x;
     int y;
@@ -26,6 +24,8 @@ typedef struct {
 typedef struct {
     void *handle;
 
+    int   (*fnLoadSensorConfig)(char *path);
+
     int   (*fnDisableDevice)(void *device);
     void* (*fnEnableDevice)(int device);
     int   (*fnGetDeviceConfig)(void *device, ak_vi_cnf *config);
@@ -40,8 +40,12 @@ static int ak_vi_load(ak_vi_impl *vi_lib) {
     if (!(vi_lib->handle = dlopen("libplat_vi.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("ak_vi", "Failed to load library!\nError: %s\n", dlerror());
 
+    if (!(vi_lib->fnLoadSensorConfig = (int(*)(char *path))
+        hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_match_sensor")))
+        return EXIT_FAILURE;
+
     if (!(vi_lib->fnDisableDevice = (int(*)(void* device))
-        hal_symbol_load("ak_vi", vi_lib->handle, "ak_venc_close")))
+        hal_symbol_load("ak_vi", vi_lib->handle, "ak_vi_close")))
         return EXIT_FAILURE;
 
     if (!(vi_lib->fnEnableDevice = (void*(*)(int device))
