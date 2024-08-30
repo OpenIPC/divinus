@@ -65,6 +65,8 @@ typedef struct {
 
     int   (*fnFreeStream)(void *bind, ak_venc_strm *stream);
     int   (*fnGetStream)(void *bind, ak_venc_strm *stream);
+
+    int   (*fnRequestIdr)(void *channel);
 } ak_venc_impl;
 
 static int ak_venc_load(ak_venc_impl *venc_lib) {
@@ -93,6 +95,10 @@ static int ak_venc_load(ak_venc_impl *venc_lib) {
 
     if (!(venc_lib->fnGetStream = (int(*)(void *bind, ak_venc_strm *stream))
         hal_symbol_load("ak_venc", venc_lib->handle, "ak_venc_get_stream")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnRequestIdr = (int(*)(void *channel))
+        hal_symbol_load("ak_venc", venc_lib->handle, "ak_venc_set_iframe")))
         return EXIT_FAILURE;
 
     return EXIT_SUCCESS;

@@ -27,10 +27,6 @@ int ak_config_load(char *path);
 int ak_pipeline_create(char mirror, char flip);
 void ak_pipeline_destroy(void);
 
-int ak_region_create(int *handle, hal_rect rect, short opacity);
-void ak_region_destroy(int *handle);
-int ak_region_setbitmap(int *handle, hal_bitmap *bitmap);
-
 int ak_video_create(char index, hal_vidconfig *config);
 int ak_video_destroy(char index);
 int ak_video_destroy_all(void);

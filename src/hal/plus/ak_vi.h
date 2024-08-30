@@ -18,7 +18,7 @@ typedef struct {
 
 typedef struct {
     ak_vi_crop capt;
-    ak_vi_res dest[CVI_VI_CHN_NUM];
+    ak_vi_res dest[AK_VI_CHN_NUM];
 } ak_vi_cnf;
 
 typedef struct {
