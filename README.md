@@ -18,6 +18,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 
 | SoC Family              | Audio Stream | JPEG Snapshot | fMP4 Stream | RTSP Stream | On-Screen Display* |
 |-------------------------|:------------:|:-------------:|:-----------:|:-----------:|:------------------:|
+| AK3918                  | ↻            | ↻            | ↻           | ↻           | ↻                 |
 | CV181x[^1]              | ↻            | ↻            | ↻           | ↻           | ↻                 |
 | GM813x[^2]              | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3516AV100[^3]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
