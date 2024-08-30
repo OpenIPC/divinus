@@ -26,6 +26,7 @@ int sTaT(const char *path, struct _stat_ *buf)
 #endif
 
 void __assert(void) {}
+void akuio_clean_invalidate_dcache(void) {}
 void backtrace(void) {}
 void backtrace_symbols(void) {}
 void __ctype_b(void) {}
