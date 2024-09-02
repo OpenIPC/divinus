@@ -915,11 +915,12 @@ int v4_system_init(char *snrConfig)
 {
     int ret;
 
+    printf("App built with headers v%s\n", V4_SYS_API);
+
     {
         v4_sys_ver version;
         v4_sys.fnGetVersion(&version);
-        printf("App built with headers v%s\n", V4_SYS_API);
-        printf("%s\n", version.version);
+        puts(version.version);
     }
 
     if (v4_parse_sensor_config(snrConfig, &v4_config) != CONFIG_OK)

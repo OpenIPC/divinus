@@ -917,11 +917,12 @@ int i6_system_init(void)
 {
     int ret;
 
+    printf("App built with headers v%s\n", I6_SYS_API);
+
     {
         i6_sys_ver version;
         if (ret = i6_sys.fnGetVersion(&version))
             return ret;
-        printf("App built with headers v%s\n", I6_SYS_API);
         puts(version.version);
     }
 

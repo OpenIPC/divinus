@@ -869,11 +869,12 @@ int v3_system_init(char *snrConfig)
 {
     int ret;
 
+    printf("App built with headers v%s\n", V3_SYS_API);
+
     {
         v3_sys_ver version;
         v3_sys.fnGetVersion(&version);
-        printf("App built with headers v%s\n", V3_SYS_API);
-        printf("%s\n", version.version);
+        puts(version.version);
     }
 
     if (v3_parse_sensor_config(snrConfig, &v3_config) != CONFIG_OK)

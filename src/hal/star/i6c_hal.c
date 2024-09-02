@@ -990,12 +990,13 @@ int i6c_system_init(void)
 
     if (ret = i6c_sys.fnInit(0))
         return ret;
+
+    printf("App built with headers v%s\n", I6C_SYS_API);
+
     {
         i6c_sys_ver version;
         if (ret = i6c_sys.fnGetVersion(0, &version))
             return ret;
-
-        printf("App built with headers v%s\n", I6C_SYS_API);
         puts(version.version);
 
         if (strstr(version.version, "build_time.202")[14] != '2')

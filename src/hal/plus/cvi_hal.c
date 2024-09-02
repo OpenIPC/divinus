@@ -861,11 +861,12 @@ int cvi_system_init(char *snrConfig)
 {
     int ret;
 
+    printf("App built with headers v%s\n", CVI_SYS_API);
+
     {
         cvi_sys_ver version;
         cvi_sys.fnGetVersion(&version);
-        printf("App built with headers v%s\n", CVI_SYS_API);
-        printf("%s\n", version.version);
+        puts(version.version);
     }
 
     if (cvi_parse_sensor_config(snrConfig, &cvi_config) != CONFIG_OK)

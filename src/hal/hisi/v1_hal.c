@@ -802,11 +802,12 @@ int v1_system_init(char *snrConfig)
 {
     int ret;
 
+    printf("App built with headers v%s\n", V1_SYS_API);
+
     {
         v1_sys_ver version;
         v1_sys.fnGetVersion(&version);
-        printf("App built with headers v%s\n", V1_SYS_API);
-        printf("%s\n", version.version);
+        puts(version.version);
     }
 
     if (v1_parse_sensor_config(snrConfig, &v1_config) != CONFIG_OK)
