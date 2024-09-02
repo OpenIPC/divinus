@@ -67,6 +67,24 @@ typedef enum {
     I6C_VENC_RATEMODE_END
 } i6c_venc_ratemode;
 
+typedef enum {
+    I6C_VENC_RATEMODE_UBR_H264CBR = 1,
+    I6C_VENC_RATEMODE_UBR_H264VBR,
+    I6C_VENC_RATEMODE_UBR_H264UBR,
+    I6C_VENC_RATEMODE_UBR_H264ABR,
+    I6C_VENC_RATEMODE_UBR_H264QP,
+    I6C_VENC_RATEMODE_UBR_H264AVBR,
+    I6C_VENC_RATEMODE_UBR_MJPGCBR,
+    I6C_VENC_RATEMODE_UBR_MJPGVBR,
+    I6C_VENC_RATEMODE_UBR_MJPGQP,
+    I6C_VENC_RATEMODE_UBR_H265CBR,
+    I6C_VENC_RATEMODE_UBR_H265VBR,
+    I6C_VENC_RATEMODE_UBR_H265UBR,
+    I6C_VENC_RATEMODE_UBR_H265QP,
+    I6C_VENC_RATEMODE_UBR_H265AVBR,
+    I6C_VENC_RATEMODE_UBR_END
+} i6c_venc_ratemode_ubr;
+
 typedef struct {
     unsigned int maxWidth;
     unsigned int maxHeight;
@@ -148,7 +166,7 @@ typedef struct {
 } i6c_venc_rate_mjpgqp;
 
 typedef struct {
-    i6c_venc_ratemode mode;
+    int mode;
     union {
         i6c_venc_rate_h26xcbr h264Cbr;
         i6c_venc_rate_h26xvbr h264Vbr;
