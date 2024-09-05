@@ -10,7 +10,8 @@
 
 #include "../config.h"
 
-#include <sys/select.h>
+#include <sys/epoll.h>
+#include <unistd.h>
 
 extern char keepRunning;
 

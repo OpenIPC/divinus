@@ -575,7 +575,9 @@ void i3_video_request_idr(char index)
 
 int i3_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 {
-    int ret;
+    int ret, epollEvt;
+    struct epoll_event events[5], event = { .events = EPOLLIN|EPOLLET };
+    int epollFd = epoll_create1(0);
 
     if (ret = i3_channel_bind(index, 1)) {
         HAL_DANGER("i3_venc", "Binding the encoder channel "
@@ -606,21 +608,15 @@ int i3_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
     }
 
     int fd = i3_venc.fnGetDescriptor(index);
-
-    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
-    fd_set readFds;
-    FD_ZERO(&readFds);
-    FD_SET(fd, &readFds);
-    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
-    if (ret < 0) {
-        HAL_DANGER("i3_venc", "Select operation failed!\n");
-        goto abort;
-    } else if (ret == 0) {
-        HAL_DANGER("i3_venc", "Capture stream timed out!\n");
+    event.data.fd = fd;
+    if (ret = epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &event)) {
+        HAL_DANGER("i3_venc", "Adding the encoder descriptor to "
+            "the polling set failed with %#x!\n", ret);
         goto abort;
     }
 
-    if (FD_ISSET(fd, &readFds)) {
+    epollEvt = epoll_wait(epollFd, events, 5, 2000);
+    for (int e = 0; e < epollEvt; e++) {
         i3_venc_stat stat;
         if (ret = i3_venc.fnQuery(index, &stat)) {
             HAL_DANGER("i3_venc", "Querying the encoder channel "
@@ -671,6 +667,9 @@ abort:
         i3_venc.fnFreeStream(index, &strm);
     }
 
+    if (close(epollFd))
+        HAL_DANGER("i3_venc", "Closing the polling descriptor failed!\n");
+
     i3_venc.fnStopReceiving(index);
 
     i3_channel_unbind(index);
@@ -680,8 +679,14 @@ abort:
 
 void *i3_video_thread(void)
 {
-    int ret;
-    int maxFd = 0;
+    int ret, epollEvt;
+    struct epoll_event events[5], event = { .events = EPOLLIN|EPOLLET };
+    int epollFd = epoll_create1(0);
+
+    if (epollFd < 0) {
+        HAL_DANGER("i3_venc", "Creating the polling descriptor failed!\n");
+        return (void*)0;
+    }
 
     for (int i = 0; i < I3_VENC_CHN_NUM; i++) {
         if (!i3_state[i].enable) continue;
@@ -693,38 +698,24 @@ void *i3_video_thread(void)
             return NULL;
         }
         i3_state[i].fileDesc = ret;
-
-        if (maxFd <= i3_state[i].fileDesc)
-            maxFd = i3_state[i].fileDesc;
+        event.data.fd = ret;
+        if (ret = epoll_ctl(epollFd, EPOLL_CTL_ADD, ret, &event)) {
+            HAL_DANGER("i3_venc", "Adding the encoder descriptor to "
+                "the polling set failed with %#x!\n", ret);
+            return (void*)0;
+        }
     }
 
     i3_venc_stat stat;
     i3_venc_strm stream;
-    struct timeval timeout;
-    fd_set readFds;
 
     while (keepRunning) {
-        FD_ZERO(&readFds);
-        for(int i = 0; i < I3_VENC_CHN_NUM; i++) {
-            if (!i3_state[i].enable) continue;
-            if (!i3_state[i].mainLoop) continue;
-            FD_SET(i3_state[i].fileDesc, &readFds);
-        }
-
-        timeout.tv_sec = 2;
-        timeout.tv_usec = 0;
-        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
-        if (ret < 0) {
-            HAL_DANGER("i3_venc", "Select operation failed!\n");
-            break;
-        } else if (ret == 0) {
-            HAL_WARNING("i3_venc", "Main stream loop timed out!\n");
-            continue;
-        } else {
+        epollEvt = epoll_wait(epollFd, events, 5, 2000);
+        for (int e = 0; e < epollEvt; e++) {
             for (int i = 0; i < I3_VENC_CHN_NUM; i++) {
                 if (!i3_state[i].enable) continue;
                 if (!i3_state[i].mainLoop) continue;
-                if (FD_ISSET(i3_state[i].fileDesc, &readFds)) {
+                if (i3_state[i].fileDesc == events[e].data.fd) {
                     memset(&stream, 0, sizeof(stream));
                     
                     if (ret = i3_venc.fnQuery(i, &stat)) {
@@ -826,10 +817,15 @@ void *i3_video_thread(void)
                     }
                     free(stream.packet);
                     stream.packet = NULL;
+                    break;
                 }
             }
         }
     }
+
+    if (close(epollFd))
+        HAL_DANGER("i3_venc", "Closing the polling descriptor failed!\n");
+
     HAL_INFO("i3_venc", "Shutting down encoding thread...\n");
 }*/
 

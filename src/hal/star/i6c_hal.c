@@ -85,15 +85,15 @@ int i6c_audio_init(int samplerate)
         config.reserved = 0;
         config.sound = I6C_AUD_SND_MONO;
         config.rate = samplerate;
-        config.periodSize = 0x800;
+        config.periodSize = 0x400;
         config.interleavedOn = 0;
         if (ret = i6c_aud.fnEnableDevice(_i6c_aud_dev, &config))
             return ret;
     }
     {
         i6c_aud_input input[] = { I6C_AUD_INPUT_ADC_AB };
-        i6c_aud_i2s config;
-        /*config.intf = I6C_AUD_INTF_I2S_SLAVE;
+        /*i6c_aud_i2s config;
+        config.intf = I6C_AUD_INTF_I2S_SLAVE;
         config.bit = I6C_AUD_BIT_16;
         config.leftJustOn = 0;
         config.rate = 8000;
@@ -116,7 +116,7 @@ int i6c_audio_init(int samplerate)
     {
         i6c_sys_bind bind = { .module = I6C_SYS_MOD_AI, 
             .device = _i6c_aud_dev, .channel = _i6c_aud_chn };
-        if (ret = i6c_sys.fnSetOutputDepth(0, &bind, 2, 4))
+        if (ret = i6c_sys.fnSetOutputDepth(0, &bind, 3, 5))
             return ret;
     }
 
@@ -748,7 +748,9 @@ void i6c_video_request_idr(char index)
 
 int i6c_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 {
-    int ret;
+    int ret, epollEvt;
+    struct epoll_event events[5], event = { .events = EPOLLIN|EPOLLET };
+    int epollFd = epoll_create1(0);
 
     if (ret = i6c_channel_bind(index, 1)) {
         HAL_DANGER("i6c_venc", "Binding the encoder channel "
@@ -779,21 +781,15 @@ int i6c_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
     }
 
     int fd = i6c_venc.fnGetDescriptor(_i6c_venc_dev[index], index);
-
-    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
-    fd_set readFds;
-    FD_ZERO(&readFds);
-    FD_SET(fd, &readFds);
-    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
-    if (ret < 0) {
-        HAL_DANGER("i6c_venc", "Select operation failed!\n");
-        goto abort;
-    } else if (ret == 0) {
-        HAL_DANGER("i6c_venc", "Capture stream timed out!\n");
+    event.data.fd = fd;
+    if (ret = epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &event)) {
+        HAL_DANGER("i6c_venc", "Adding the encoder descriptor to "
+            "the polling set failed with %#x!\n", ret);
         goto abort;
     }
 
-    if (FD_ISSET(fd, &readFds)) {
+    epollEvt = epoll_wait(epollFd, events, 5, 2000);
+    for (int e = 0; e < epollEvt; e++) {
         i6c_venc_stat stat;
         if (ret = i6c_venc.fnQuery(_i6c_venc_dev[index], index, &stat)) {
             HAL_DANGER("i6c_venc", "Querying the encoder channel "
@@ -844,6 +840,9 @@ abort:
         i6c_venc.fnFreeStream(_i6c_venc_dev[index], index, &strm);
     }
 
+    if (close(epollFd))
+        HAL_DANGER("i6c_venc", "Closing the polling descriptor failed!\n");
+
     i6c_venc.fnFreeDescriptor(_i6c_venc_dev[index], index);
 
     i6c_venc.fnStopReceiving(_i6c_venc_dev[index], index);
@@ -855,8 +854,14 @@ abort:
 
 void *i6c_video_thread(void)
 {
-    int ret;
-    int maxFd = 0;
+    int ret, epollEvt;
+    struct epoll_event events[5], event = { .events = EPOLLIN|EPOLLET };
+    int epollFd = epoll_create1(0);
+
+    if (epollFd < 0) {
+        HAL_DANGER("i6c_venc", "Creating the polling descriptor failed!\n");
+        return (void*)0;
+    }
 
     for (int i = 0; i < I6C_VENC_CHN_NUM; i++) {
         if (!i6c_state[i].enable) continue;
@@ -865,41 +870,27 @@ void *i6c_video_thread(void)
         ret = i6c_venc.fnGetDescriptor(_i6c_venc_dev[i], i);
         if (ret < 0) {
             HAL_DANGER("i6c_venc", "Getting the encoder descriptor failed with %#x!\n", ret);
-            return NULL;
+            return (void*)0;
         }
         i6c_state[i].fileDesc = ret;
-
-        if (maxFd <= i6c_state[i].fileDesc)
-            maxFd = i6c_state[i].fileDesc;
+        event.data.fd = ret;
+        if (ret = epoll_ctl(epollFd, EPOLL_CTL_ADD, ret, &event)) {
+            HAL_DANGER("i6c_venc", "Adding the encoder descriptor to "
+                "the polling set failed with %#x!\n", ret);
+            return (void*)0;
+        }
     }
 
     i6c_venc_stat stat;
     i6c_venc_strm stream;
-    struct timeval timeout;
-    fd_set readFds;
 
     while (keepRunning) {
-        FD_ZERO(&readFds);
-        for(int i = 0; i < I6C_VENC_CHN_NUM; i++) {
-            if (!i6c_state[i].enable) continue;
-            if (!i6c_state[i].mainLoop) continue;
-            FD_SET(i6c_state[i].fileDesc, &readFds);
-        }
-
-        timeout.tv_sec = 2;
-        timeout.tv_usec = 0;
-        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
-        if (ret < 0) {
-            HAL_DANGER("i6c_venc", "Select operation failed!\n");
-            break;
-        } else if (ret == 0) {
-            HAL_WARNING("i6c_venc", "Main stream loop timed out!\n");
-            continue;
-        } else {
+        epollEvt = epoll_wait(epollFd, events, 5, 2000);
+        for (int e = 0; e < epollEvt; e++) {
             for (int i = 0; i < I6C_VENC_CHN_NUM; i++) {
                 if (!i6c_state[i].enable) continue;
                 if (!i6c_state[i].mainLoop) continue;
-                if (FD_ISSET(i6c_state[i].fileDesc, &readFds)) {
+                if (i6c_state[i].fileDesc == events[e].data.fd) {
                     memset(&stream, 0, sizeof(stream));
                     
                     if (ret = i6c_venc.fnQuery(_i6c_venc_dev[i], i, &stat)) {
@@ -972,10 +963,15 @@ void *i6c_video_thread(void)
                     }
                     free(stream.packet);
                     stream.packet = NULL;
+                    break;
                 }
             }
         }
     }
+
+    if (close(epollFd))
+        HAL_DANGER("i6c_venc", "Closing the polling descriptor failed!\n");
+
     HAL_INFO("i6c_venc", "Shutting down encoding thread...\n");
 }
 

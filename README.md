@@ -55,7 +55,7 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 [^9]: GK7202V300, GK7205V200/300 and GK7605V100
 [^10]: Hi3516AV200 and Hi3519V101
 [^11]: RV110\[3/7/8/9\] and RV1106\(G2/G3\)
-[^12]: MSC313E, MSC316\[DC/DE/QE\] and MSC318
+[^12]: MSC313E, MSC316\[DC/Q\] and MSC318
 [^13]: SSC323, SSC325\(D/DE\) and SSC327\(D/DE/Q\)
 [^14]: SSC33\[3/5/7\]\(DE\)
 [^15]: SSC30K\[D/Q\], SSC336\[D/Q\], SSC338\[D/G/Q\] and SSC339G
@@ -70,9 +70,11 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 
 ### Roadmap
 
+- [ ] Audio adjustments (source, input gain, output volume)
+- [ ] Motors and PTZ control
+- [ ] ONVIF services
 - [ ] Additional WebUI functionalities
 - [ ] Motion detection reimplementation
-- [ ] Hardware support improvement (older SoCs, general usage chips)
 - [ ] Alternative audio codecs
 
 
