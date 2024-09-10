@@ -70,11 +70,12 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 
 ### Roadmap
 
-- [ ] Audio adjustments (source, input gain, output volume)
+- [ ] Audio source, input gain and output volume
 - [ ] Motors and PTZ control
 - [ ] ONVIF services
 - [ ] Additional WebUI functionalities
-- [ ] Motion detection reimplementation
+- [ ] Lens correction profiles
+- [ ] Local recordings with motion detection
 - [ ] Alternative audio codecs
 
 

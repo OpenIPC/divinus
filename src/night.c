@@ -50,24 +50,18 @@ void *night_thread(void) {
             HAL_DANGER("night", "Could not open the ADC virtual device!\n");
             return NULL;
         }
-        struct timeval tv = { 
-                .tv_sec = app_config.check_interval_s % 12,
-                .tv_usec = app_config.check_interval_s / 12 * 1000000 };
         while (keepRunning) {
-            FD_ZERO(&adc_fds);
-            FD_SET(adc_fd, &adc_fds);
-            select(adc_fd + 1, &adc_fds, NULL, NULL, &tv);
             if (read(adc_fd, &val, sizeof(val)) > 0) {
                 usleep(10000);
                 tmp += val;
+                cnt++;
             }
-            cnt++;
             if (cnt == 12) {
                 tmp /= cnt;
                 set_night_mode(tmp >= app_config.adc_threshold);
                 cnt = tmp = 0;
             }
-            usleep(250000);
+            usleep(app_config.check_interval_s * 1000000 / 12);
         }
         if (adc_fd) close(adc_fd);
     } else if (app_config.ir_sensor_pin == 999) {
