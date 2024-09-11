@@ -87,6 +87,7 @@ int save_app_config(void) {
     fprintf(file, "  width: %d\n", app_config.mp4_width);
     fprintf(file, "  height: %d\n", app_config.mp4_height);
     fprintf(file, "  fps: %d\n", app_config.mp4_fps);
+    fprintf(file, "  gop: %f\n", app_config.mp4_gop);
     fprintf(file, "  profile: %d\n", app_config.mp4_profile);
     fprintf(file, "  bitrate: %d\n", app_config.mp4_bitrate);
 
@@ -293,6 +294,8 @@ enum ConfigError parse_app_config(void) {
         err = parse_int(&ini, "mp4", "fps", 1, INT_MAX, &app_config.mp4_fps);
         if (err != CONFIG_OK)
             goto RET_ERR;
+        app_config.mp4_gop = app_config.mp4_fps;
+        parse_int(&ini, "mp4", "gop", 1, INT_MAX, &app_config.mp4_gop);
         {
             const char *possible_values[] = {"BP", "MP", "HP"};
             const int count = sizeof(possible_values) / sizeof(const char *);

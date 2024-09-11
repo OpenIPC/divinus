@@ -57,6 +57,7 @@ mp4:
   width: 3840
   height: 2160
   fps: 20
+  gop: 40
   bitrate: 1024
   profile: 2
 

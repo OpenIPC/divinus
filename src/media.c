@@ -492,7 +492,7 @@ int enable_mp4(void) {
             HAL_VIDCODEC_H265 : HAL_VIDCODEC_H264;
         config.mode = app_config.mp4_mode;
         config.profile = app_config.mp4_profile;
-        config.gop = app_config.mp4_fps * 2;
+        config.gop = app_config.mp4_gop;
         config.framerate = app_config.mp4_fps;
         config.bitrate = app_config.mp4_bitrate;
         config.maxBitrate = app_config.mp4_bitrate * 5 / 4;
