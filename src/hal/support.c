@@ -273,11 +273,11 @@ void hal_identify(void) {
     if (chip[6] == '0') {
         chip[6] = 'V';
     } else {
+        chip[11] = '\0';
+        chip[10] = chip[9];
+        chip[9] = chip[8];
         chip[8] = chip[7];
         chip[7] = 'V';
-        chip[9] = chip[8];
-        chip[10] = chip[9];
-        chip[11] = '\0';
     }
 
     if (out == 0x35180100) {
