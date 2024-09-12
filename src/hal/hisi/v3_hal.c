@@ -309,8 +309,8 @@ int v3_pipeline_create(void)
 void v3_pipeline_destroy(void)
 {
     v3_isp.fnExit(_v3_vi_dev);
-    v3_isp.fnUnregisterAE(_v3_vi_dev, &v3_ae_lib);
     v3_isp.fnUnregisterAWB(_v3_vi_dev, &v3_awb_lib);
+    v3_isp.fnUnregisterAE(_v3_vi_dev, &v3_ae_lib);
 
     v3_snr_drv.fnUnRegisterCallback();
 
@@ -497,7 +497,7 @@ int v3_video_create(char index, hal_vidconfig *config)
         channel.attrib.jpg.maxPic.width = config->width;
         channel.attrib.jpg.maxPic.height = config->height;
         channel.attrib.jpg.bufSize =
-            config->height * config->width * 2;
+            ALIGN_UP(config->height, 16) * ALIGN_UP(config->width, 16);
         channel.attrib.jpg.byFrame = 1;
         channel.attrib.jpg.pic.width = config->width;
         channel.attrib.jpg.pic.height = config->height;
@@ -507,8 +507,8 @@ int v3_video_create(char index, hal_vidconfig *config)
         channel.attrib.codec = V3_VENC_CODEC_MJPG;
         channel.attrib.mjpg.maxPic.width = config->width;
         channel.attrib.mjpg.maxPic.height = config->height;
-        channel.attrib.mjpg.bufSize = 
-            config->height * config->width * 2;
+        channel.attrib.mjpg.bufSize =
+            ALIGN_UP(config->height, 16) * ALIGN_UP(config->width, 16);
         channel.attrib.mjpg.byFrame = 1;
         channel.attrib.mjpg.pic.width = config->width;
         channel.attrib.mjpg.pic.height = config->height;
@@ -589,7 +589,7 @@ int v3_video_create(char index, hal_vidconfig *config)
     } else HAL_ERROR("v3_venc", "This codec is not supported by the hardware!");
     attrib->maxPic.width = config->width;
     attrib->maxPic.height = config->height;
-    attrib->bufSize = config->height * config->width * 2;
+    attrib->bufSize = config->height * config->width;
     attrib->profile = config->profile;
     attrib->byFrame = 1;
     attrib->pic.width = config->width;

@@ -358,8 +358,8 @@ int v4_pipeline_create(void)
 void v4_pipeline_destroy(void)
 {
     v4_isp.fnExit(_v4_vi_pipe);
-    v4_isp.fnUnregisterAE(_v4_vi_pipe, &v4_ae_lib);
     v4_isp.fnUnregisterAWB(_v4_vi_pipe, &v4_awb_lib);
+    v4_isp.fnUnregisterAE(_v4_vi_pipe, &v4_ae_lib);
 
     v4_snr_drv.obj->pfnUnRegisterCallback(_v4_vi_pipe, &v4_ae_lib, &v4_awb_lib);
 

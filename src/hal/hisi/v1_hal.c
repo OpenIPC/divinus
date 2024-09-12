@@ -309,6 +309,12 @@ int v1_pipeline_create(void)
 
 void v1_pipeline_destroy(void)
 {
+    v1_isp.fnExit();
+    v1_isp.fnUnregisterAWB(&v1_awb_lib);
+    v1_isp.fnUnregisterAE(&v1_ae_lib);
+
+    v1_snr_drv.fnUnRegisterCallback();
+
     for (char grp = 0; grp < V1_VPSS_GRP_NUM; grp++)
     {
         for (char chn = 0; chn < V1_VPSS_CHN_NUM; chn++)
@@ -330,12 +336,6 @@ void v1_pipeline_destroy(void)
     v1_vi.fnDisableChannel(_v1_vi_chn);
 
     v1_vi.fnDisableDevice(_v1_vi_dev);
-
-    v1_isp.fnExit();
-    v1_isp.fnUnregisterAE(&v1_ae_lib);
-    v1_isp.fnUnregisterAWB(&v1_awb_lib);
-
-    v1_snr_drv.fnUnRegisterCallback();
 }
 
 int v1_region_create(char handle, hal_rect rect, short opacity)
@@ -448,7 +448,7 @@ int v1_video_create(char index, hal_vidconfig *config)
         channel.attrib.jpg.maxPic.width = config->width;
         channel.attrib.jpg.maxPic.height = config->height;
         channel.attrib.jpg.bufSize =
-            config->height * config->width * 2;
+            ALIGN_UP(config->height, 16) * ALIGN_UP(config->width, 16);
         channel.attrib.jpg.byFrame = 1;
         channel.attrib.jpg.fieldOrFrame = 0;
         channel.attrib.jpg.priority = 0;
@@ -460,7 +460,7 @@ int v1_video_create(char index, hal_vidconfig *config)
         channel.attrib.mjpg.maxPic.width = config->width;
         channel.attrib.mjpg.maxPic.height = config->height;
         channel.attrib.mjpg.bufSize = 
-            config->height * config->width * 2;
+            ALIGN_UP(config->height, 16) * ALIGN_UP(config->width, 16);
         channel.attrib.mjpg.byFrame = 1;
         channel.attrib.mjpg.mainStrmOn = 1;
         channel.attrib.mjpg.fieldOrFrame = 0;
@@ -471,7 +471,7 @@ int v1_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = V1_VENC_RATEMODE_MJPGCBR;
                 channel.rate.mjpgCbr = (v1_venc_rate_mjpgcbr){ .statTime = 1, .srcFps = config->framerate,
-                    .dstFps = config->framerate, .bitrate = config->bitrate, .avgLvl = 1 }; break;
+                    .dstFps = config->framerate, .bitrate = config->bitrate, .avgLvl = 0 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V1_VENC_RATEMODE_MJPGVBR;
                 channel.rate.mjpgVbr = (v1_venc_rate_mjpgvbr){ .statTime = 1, .srcFps = config->framerate,
@@ -490,12 +490,12 @@ int v1_video_create(char index, hal_vidconfig *config)
         attrib = &channel.attrib.h264;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
-                channel.rate.mode = V1_VENC_RATEMODE_H264CBR;
+                channel.rate.mode = V1_VENC_RATEMODE_H264CBRv2;
                 channel.rate.h264Cbr = (v1_venc_rate_h264cbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .bitrate = config->bitrate, .avgLvl = 1 }; break;
+                    .bitrate = config->bitrate, .avgLvl = 0 }; break;
             case HAL_VIDMODE_VBR:
-                channel.rate.mode = V1_VENC_RATEMODE_H264VBR;
+                channel.rate.mode = V1_VENC_RATEMODE_H264VBRv2;
                 channel.rate.h264Vbr = (v1_venc_rate_h264vbr){ .gop = config->gop,
                     .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
@@ -511,9 +511,9 @@ int v1_video_create(char index, hal_vidconfig *config)
     } else HAL_ERROR("v1_venc", "This codec is not supported by the hardware!");
     attrib->maxPic.width = config->width;
     attrib->maxPic.height = config->height;
-    attrib->bufSize = config->height * config->width * 2;
+    attrib->bufSize = config->height * config->width;
     attrib->profile = MIN(config->profile, 1);
-    attrib->byFrame = 0;
+    attrib->byFrame = 1;
     attrib->fieldOn = 0;
     attrib->mainStrmOn = 1;
     attrib->priority = 0;
@@ -825,7 +825,7 @@ int v1_system_init(char *snrConfig)
             v1_config.vichn.capt.height ? 
                 v1_config.vichn.capt.height : v1_config.videv.rect.height,
             V1_PIXFMT_YUV420SP, alignWidth);
-        pool.comm[0].blockCnt = 5;
+        pool.comm[0].blockCnt = 10;
 
         if (ret = v1_vb.fnConfigPool(&pool))
             return ret;
