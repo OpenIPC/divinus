@@ -23,7 +23,9 @@ else
 	OPT="-Os -s"
 fi
 
-if [ "$1" = "arm-musl" ]; then
+if [ "$1" = "arm-glibc" ]; then
+	toolchain cortex_a7-gcc13-glibc-4_9 arm -lm
+elif [ "$1" = "arm-musl" ]; then
         toolchain cortex_a7_thumb2-gcc13-musl-4_9 arm
 elif [ "$1" = "arm9-glibc" ]; then
 	DL="https://github.com/Lamobo/Lamobo-D1/raw/master/compiler"
@@ -47,5 +49,5 @@ elif [ "$1" = "riscv64-musl" ]; then
 	EXT="tar.xz"
 	toolchain riscv64-lp64d--musl--stable-2024.05-1 riscv64
 else
-	echo "Usage: $0 [arm-musl|arm9-musl3|arm9-musl4|arm9-uclibc|armhf-glibc|armhf-musl|mips-musl|riscv64-musl]"
+	echo "Usage: $0 [arm-glibc|arm-musl|arm9-musl3|arm9-musl4|arm9-uclibc|armhf-glibc|armhf-musl|mips-musl|riscv64-musl]"
 fi

@@ -2,10 +2,12 @@
 
 #include "v4_common.h"
 
-extern int (*fnISP_AlgRegisterDehaze)(int);
-extern int (*fnISP_AlgRegisterDrc)(int);
-extern int (*fnISP_AlgRegisterLdci)(int);
-extern int (*fnMPI_ISP_IrAutoRunOnce)(int, void*);
+extern void* (*fnIsp_Malloc)(unsigned long);
+extern int   (*fnISP_AlgRegisterAcs)(int);
+extern int   (*fnISP_AlgRegisterDehaze)(int);
+extern int   (*fnISP_AlgRegisterDrc)(int);
+extern int   (*fnISP_AlgRegisterLdci)(int);
+extern int   (*fnMPI_ISP_IrAutoRunOnce)(int, void*);
 
 typedef enum {
     V4_ISP_DIR_NORMAL,
@@ -30,7 +32,7 @@ typedef struct {
 } v4_isp_dev;
 
 typedef struct {
-    void *handle, *handleDehaze, *handleDrc, *handleLdci, *handleIrAuto, *handleAwb, 
+    void *handleCalcFlick, *handle, *handleAcs, *handleDehaze, *handleDrc, *handleLdci, *handleIrAuto, *handleAwb, 
         *handleGokeAwb, *handleAe, *handleGokeAe,  *handleGoke;
 
     int (*fnExit)(int pipe);
@@ -47,12 +49,15 @@ typedef struct {
 } v4_isp_impl;
 
 static int v4_isp_load(v4_isp_impl *isp_lib) {
-    if ((isp_lib->handle = dlopen("libisp.so", RTLD_LAZY | RTLD_GLOBAL)) &&
+    if ((isp_lib->handleCalcFlick = dlopen("lib_hicalcflicker.so", RTLD_LAZY | RTLD_GLOBAL)) &&
+        (isp_lib->handle = dlopen("libisp.so", RTLD_LAZY | RTLD_GLOBAL)) &&
         (isp_lib->handleAe = dlopen("lib_hiae.so", RTLD_LAZY | RTLD_GLOBAL)) &&
         (isp_lib->handleAwb = dlopen("lib_hiawb.so", RTLD_LAZY | RTLD_GLOBAL)) &&
+        (isp_lib->handleIrAuto = dlopen("lib_hiir_auto.so", RTLD_LAZY | RTLD_GLOBAL)) &&
         (isp_lib->handleLdci = dlopen("lib_hildci.so", RTLD_LAZY | RTLD_GLOBAL)) &&
         (isp_lib->handleDehaze = dlopen("lib_hidehaze.so", RTLD_LAZY | RTLD_GLOBAL)) &&
-        (isp_lib->handleDrc = dlopen("lib_hidrc.so", RTLD_LAZY | RTLD_GLOBAL)))
+        (isp_lib->handleDrc = dlopen("lib_hidrc.so", RTLD_LAZY | RTLD_GLOBAL)) &&
+        (isp_lib->handleAcs = dlopen("lib_hiacs.so", RTLD_LAZY | RTLD_GLOBAL)))
         goto loaded;
 
     if ((isp_lib->handleGoke = dlopen("libgk_isp.so", RTLD_LAZY | RTLD_GLOBAL)) &&
@@ -70,21 +75,47 @@ static int v4_isp_load(v4_isp_impl *isp_lib) {
     HAL_ERROR("v4_isp", "Failed to load library!\nError: %s\n", dlerror());
 
 loaded:
-    if (!(fnISP_AlgRegisterDehaze = (int(*)(int))
-        hal_symbol_load("v4_isp", isp_lib->handleDehaze, "ISP_AlgRegisterDehaze")))
-        return EXIT_FAILURE;
+    if (!isp_lib->handleGoke) {
+        if (!(fnIsp_Malloc = (void*(*)(unsigned long))
+            hal_symbol_load("v4_isp", isp_lib->handle, "isp_malloc")))
+            return EXIT_FAILURE;
+            
+        if (!(fnISP_AlgRegisterAcs = (int(*)(int))
+            hal_symbol_load("v4_isp", isp_lib->handleAcs, "isp_alg_register_acs")))
+            return EXIT_FAILURE;
 
-    if (!(fnISP_AlgRegisterDrc = (int(*)(int))
-        hal_symbol_load("v4_isp", isp_lib->handleDrc, "ISP_AlgRegisterDrc")))
-        return EXIT_FAILURE;
+        if (!(fnISP_AlgRegisterDehaze = (int(*)(int))
+            hal_symbol_load("v4_isp", isp_lib->handleDehaze, "isp_alg_register_dehaze")))
+            return EXIT_FAILURE;
 
-    if (!(fnISP_AlgRegisterLdci = (int(*)(int))
-        hal_symbol_load("v4_isp", isp_lib->handleLdci, "ISP_AlgRegisterLdci")))
-        return EXIT_FAILURE;
+        if (!(fnISP_AlgRegisterDrc = (int(*)(int))
+            hal_symbol_load("v4_isp", isp_lib->handleDrc, "isp_alg_register_drc")))
+            return EXIT_FAILURE;
 
-    if (!(fnMPI_ISP_IrAutoRunOnce = (int(*)(int, void*))
-        hal_symbol_load("v4_isp", isp_lib->handleIrAuto, "MPI_ISP_IrAutoRunOnce")))
-        return EXIT_FAILURE;
+        if (!(fnISP_AlgRegisterLdci = (int(*)(int))
+            hal_symbol_load("v4_isp", isp_lib->handleLdci, "isp_alg_register_ldci")))
+            return EXIT_FAILURE;
+
+        if (!(fnMPI_ISP_IrAutoRunOnce = (int(*)(int, void*))
+            hal_symbol_load("v4_isp", isp_lib->handleIrAuto, "isp_ir_auto_run_once")))
+            return EXIT_FAILURE;
+    } else {
+        if (!(fnISP_AlgRegisterDehaze = (int(*)(int))
+            hal_symbol_load("v4_isp", isp_lib->handleDehaze, "ISP_AlgRegisterDehaze")))
+            return EXIT_FAILURE;
+
+        if (!(fnISP_AlgRegisterDrc = (int(*)(int))
+            hal_symbol_load("v4_isp", isp_lib->handleDrc, "ISP_AlgRegisterDrc")))
+            return EXIT_FAILURE;
+
+        if (!(fnISP_AlgRegisterLdci = (int(*)(int))
+            hal_symbol_load("v4_isp", isp_lib->handleLdci, "ISP_AlgRegisterLdci")))
+            return EXIT_FAILURE;
+
+        if (!(fnMPI_ISP_IrAutoRunOnce = (int(*)(int, void*))
+            hal_symbol_load("v4_isp", isp_lib->handleIrAuto, "MPI_ISP_IrAutoRunOnce")))
+            return EXIT_FAILURE;
+    }
 
     if (!(isp_lib->fnExit = (int(*)(int pipe))
         hal_symbol_load("v4_isp", isp_lib->handle, "HI_MPI_ISP_Exit")))
@@ -144,7 +175,11 @@ static void v4_isp_unload(v4_isp_impl *isp_lib) {
     isp_lib->handleDrc = NULL;
     if (isp_lib->handleDehaze) dlclose(isp_lib->handleDehaze);
     isp_lib->handleDehaze = NULL;
+    if (isp_lib->handleAcs) dlclose(isp_lib->handleAcs);
+    isp_lib->handleAcs = NULL;
     if (isp_lib->handle) dlclose(isp_lib->handle);
     isp_lib->handle = NULL;
+    if (isp_lib->handleCalcFlick) dlclose(isp_lib->handleCalcFlick);
+    isp_lib->handleCalcFlick = NULL;
     memset(isp_lib, 0, sizeof(*isp_lib));
 }
