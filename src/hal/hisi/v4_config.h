@@ -193,7 +193,7 @@ static enum ConfigError v4_parse_config_videv(
     }
     {
         const char *possible_values[] = {
-            "VI_HSYNC_VALID_SIGNAL", "VI_HSYNC_PULSE"};
+            "VI_HSYNC_VALID_SINGNAL", "VI_HSYNC_PULSE"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             ini, section, "hsync", (void*)&device->sync.hsyncPulse, possible_values,
@@ -213,7 +213,7 @@ static enum ConfigError v4_parse_config_videv(
     }
     {
         const char *possible_values[] = {
-            "VI_VSYNC_NORM_PULSE", "VI_VSYNC_VALID_SIGNAL"};
+            "VI_VSYNC_NORM_PULSE", "VI_VSYNC_VALID_SINGAL"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             ini, section, "vsyncvalid", (void*)&device->sync.vsyncValid,
