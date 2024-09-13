@@ -104,6 +104,22 @@ typedef struct {
 
 typedef struct {
     v4_common_prec prec;
+    v4_snr_lwdr wdr;
+    int syncSavOn;
+    v4_snr_lvsync vsync;
+    v4_snr_fid fid;
+    int dataBeOn;
+    int syncBeOn;
+    // Value -1 signifies a lane is disabled
+    short laneId[V4_SNR_LVDS_LANE_NUM];
+    /* Each lane has two virtual channel, each has four params
+       If syncSavOn is false: SOF, EOF, SOL, EOL
+       If syncSavOn is true: invalid sav, invalid eav, valid sav, valid eav  */
+    unsigned short syncCode[V4_SNR_LVDS_LANE_NUM * V4A_SNR_WDR_VC_NUM * 4];
+} v4a_snr_lvds;
+
+typedef struct {
+    v4_common_prec prec;
     v4_snr_mwdr mode;
     // Value -1 signifies a lane is disabled
     short laneId[V4_SNR_MIPI_LANE_NUM];
@@ -111,6 +127,16 @@ typedef struct {
         short wdrVcType[V4_SNR_WDR_VC_NUM];
     };
 } v4_snr_mipi;
+
+typedef struct {
+    v4_common_prec prec;
+    v4_snr_mwdr mode;
+    // Value -1 signifies a lane is disabled
+    short laneId[V4_SNR_MIPI_LANE_NUM];
+    union {
+        short wdrVcType[V4A_SNR_WDR_VC_NUM];
+    };
+} v4a_snr_mipi;
 
 typedef struct {
     unsigned int device;
@@ -122,6 +148,17 @@ typedef struct {
         v4_snr_lvds lvds;
     };
 } v4_snr_dev;
+
+typedef struct {
+    unsigned int device;
+    v4_snr_input input;
+    int dataRate2X;
+    v4_common_rect rect;
+    union {
+        v4a_snr_mipi mipi;
+        v4a_snr_lvds lvds;
+    };
+} v4a_snr_dev;
 
 typedef union {
     signed char i2c;

@@ -463,42 +463,87 @@ int v4_region_setbitmap(int handle, hal_bitmap *bitmap)
 
 int v4_sensor_config(void) {
     int fd;
-    v4_snr_dev config;
-    memset(&config, 0, sizeof(config));
-    config.device = 0;
-    config.input = v4_config.input_mode;
-    config.rect.width = v4_config.isp.capt.width;
-    config.rect.height = v4_config.isp.capt.height;
-    if (config.input == V4_SNR_INPUT_MIPI)
-        memcpy(&config.mipi, &v4_config.mipi, sizeof(v4_snr_mipi));
-    else if (config.input == V4_SNR_INPUT_LVDS)
-        memcpy(&config.lvds, &v4_config.lvds, sizeof(v4_snr_lvds));
+    char v4a_device = 0;
+    if (EQUALS(chip, "Hi3516AV300") ||
+        EQUALS(chip, "Hi3516DV300") ||
+        EQUALS(chip, "Hi3516CV500"))
+        v4a_device = 1;
 
-    if (!access(v4_snr_endp, F_OK))
-        fd = open(v4_snr_endp, O_RDWR);
-    else fd = open("/dev/mipi", O_RDWR);
-    if (fd < 0)
-        HAL_ERROR("v4_snr", "Opening imaging device has failed!\n");
+    if (v4a_device) {
+        v4a_snr_dev config;
+        memset(&config, 0, sizeof(config));
+        config.device = 0;
+        config.input = v4_config.input_mode;
+        config.rect.width = v4_config.isp.capt.width;
+        config.rect.height = v4_config.isp.capt.height;
+        if (config.input == V4_SNR_INPUT_MIPI)
+            memcpy(&config.mipi, &v4_config.mipi, sizeof(v4_snr_mipi));
+        else if (config.input == V4_SNR_INPUT_LVDS)
+            memcpy(&config.lvds, &v4_config.lvds, sizeof(v4_snr_lvds));
 
-    int laneMode = 0;
-    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_HSMODE, int), &laneMode);
+        if (!access(v4_snr_endp, F_OK))
+            fd = open(v4_snr_endp, O_RDWR);
+        else fd = open("/dev/mipi", O_RDWR);
+        if (fd < 0)
+            HAL_ERROR("v4_snr", "Opening imaging device has failed!\n");
 
-    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_MIPI, unsigned int), &config.device);
+        int laneMode = 0;
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_HSMODE, int), &laneMode);
 
-    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_MIPI, unsigned int), &config.device);
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_MIPI, unsigned int), &config.device);
 
-    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_SENS, unsigned int), &config.device);
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_MIPI, unsigned int), &config.device);
 
-    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device);
-    
-    if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_DEV, v4_snr_dev), &config))
-        HAL_ERROR("v4_snr", "Configuring imaging device has failed!\n");
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_SENS, unsigned int), &config.device);
 
-    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_MIPI, unsigned int), &config.device);
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device);
+        
+        if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_DEV, v4a_snr_dev), &config))
+            HAL_ERROR("v4_snr", "Configuring imaging device has failed!\n");
 
-    ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_SENS, unsigned int), &config.device);
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_MIPI, unsigned int), &config.device);
 
-    close(fd);
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_SENS, unsigned int), &config.device);
+
+        close(fd);
+    } else {
+        v4_snr_dev config;
+        memset(&config, 0, sizeof(config));
+        config.device = 0;
+        config.input = v4_config.input_mode;
+        config.rect.width = v4_config.isp.capt.width;
+        config.rect.height = v4_config.isp.capt.height;
+        if (config.input == V4_SNR_INPUT_MIPI)
+            memcpy(&config.mipi, &v4_config.mipi, sizeof(v4_snr_mipi));
+        else if (config.input == V4_SNR_INPUT_LVDS)
+            memcpy(&config.lvds, &v4_config.lvds, sizeof(v4_snr_lvds));
+
+        if (!access(v4_snr_endp, F_OK))
+            fd = open(v4_snr_endp, O_RDWR);
+        else fd = open("/dev/mipi", O_RDWR);
+        if (fd < 0)
+            HAL_ERROR("v4_snr", "Opening imaging device has failed!\n");
+
+        int laneMode = 0;
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_HSMODE, int), &laneMode);
+
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_MIPI, unsigned int), &config.device);
+
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_MIPI, unsigned int), &config.device);
+
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_SENS, unsigned int), &config.device);
+
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device);
+        
+        if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_DEV, v4_snr_dev), &config))
+            HAL_ERROR("v4_snr", "Configuring imaging device has failed!\n");
+
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_MIPI, unsigned int), &config.device);
+
+        ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_UNRST_SENS, unsigned int), &config.device);
+
+        close(fd);
+    }
 
     return EXIT_SUCCESS;
 }

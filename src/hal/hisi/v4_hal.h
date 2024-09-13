@@ -12,6 +12,8 @@
 #include "v4_vi.h"
 #include "v4_vpss.h"
 
+#include "../support.h"
+
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
