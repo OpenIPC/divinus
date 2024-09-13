@@ -253,8 +253,8 @@ int v3_pipeline_create(void)
         channel.compress = V3_COMPR_NONE;
         channel.mirror = 0;
         channel.flip = 0;
-        channel.srcFps = v3_config.isp.framerate;
-        channel.dstFps = v3_config.isp.framerate;
+        channel.srcFps = -1;
+        channel.dstFps = -1;
         if (ret = v3_vi.fnSetChannelConfig(_v3_vi_chn, &channel))
             return ret;
     }

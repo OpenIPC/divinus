@@ -15,9 +15,9 @@ typedef enum {
 } v2_vi_intf;
 
 typedef enum {
-    V2_VI_SEQ_VUVU,
+    V2_VI_SEQ_VUVU = 0,
     V2_VI_SEQ_UVUV,
-    V2_VI_SEQ_UYVY,
+    V2_VI_SEQ_UYVY = 0,
     V2_VI_SEQ_VYUY,
     V2_VI_SEQ_YUYV,
     V2_VI_SEQ_YVYU,

@@ -269,8 +269,8 @@ int v1_pipeline_create(void)
         channel.compress = V1_COMPR_NONE;
         channel.mirror = 0;
         channel.flip = 0;
-        channel.srcFps = v1_config.img.framerate;
-        channel.dstFps = v1_config.img.framerate;
+        channel.srcFps = -1;
+        channel.dstFps = -1;
         if (ret = v1_vi.fnSetChannelConfig(_v1_vi_chn, &channel))
             return ret;
     }

@@ -24,9 +24,9 @@ typedef enum {
 } v3_vi_rephase;
 
 typedef enum {
-    V3_VI_SEQ_VUVU,
+    V3_VI_SEQ_VUVU = 0,
     V3_VI_SEQ_UVUV,
-    V3_VI_SEQ_UYVY,
+    V3_VI_SEQ_UYVY = 0,
     V3_VI_SEQ_VYUY,
     V3_VI_SEQ_YUYV,
     V3_VI_SEQ_YVYU,

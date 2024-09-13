@@ -287,8 +287,8 @@ int v4_pipeline_create(void)
         channel.mirror = 0;
         channel.flip = 0;
         channel.depth = 0;
-        channel.srcFps = v4_config.isp.framerate;
-        channel.dstFps = v4_config.isp.framerate;
+        channel.srcFps = -1;
+        channel.dstFps = -1;
         if (ret = v4_vi.fnSetChannelConfig(_v4_vi_pipe, _v4_vi_chn, &channel))
             return ret;
     }
@@ -331,8 +331,8 @@ int v4_pipeline_create(void)
         group.dest.height = v4_config.isp.capt.height;
         group.pixFmt = V4_PIXFMT_YVU420SP;
         group.hdr = V4_HDR_SDR8;
-        group.srcFps = v4_config.isp.framerate;
-        group.dstFps = v4_config.isp.framerate;
+        group.srcFps = -1;
+        group.dstFps = -1;
         group.nRedOn = 1;
         group.nRed.mode = V4_VPSS_NMODE_VIDEO;
         group.nRed.compress = V4_COMPR_NONE;
