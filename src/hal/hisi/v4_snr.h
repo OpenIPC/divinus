@@ -9,6 +9,7 @@
 #define V4_SNR_LVDS_LANE_NUM 4
 #define V4_SNR_MIPI_LANE_NUM 4
 #define V4_SNR_WDR_VC_NUM 2
+#define V4A_SNR_WDR_VC_NUM 4
 
 enum {
     V4_SNR_CMD_CONF_DEV = 1,

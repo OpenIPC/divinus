@@ -230,7 +230,8 @@ int v4_pipeline_create(void)
     {
         v4_sys_oper mode[4];
         v4_sys.fnGetViVpssMode((v4_sys_oper*)mode);
-        mode[_v4_vi_dev] = V4_SYS_OPER_VIOFF_VPSSON;
+        for (char i = 0; i < 4; i++)
+            mode[i] = V4_SYS_OPER_VIOFF_VPSSON;
         if (ret = v4_sys.fnSetViVpssMode((v4_sys_oper*)mode))
             return ret;
     }
