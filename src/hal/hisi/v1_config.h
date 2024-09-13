@@ -309,12 +309,26 @@ data_seq_ok:
         &device->sync.timing.vsyncIntrlBack);
     if (err != CONFIG_OK)
         return err;
-    err = parse_int(ini, section, "datapath", 0, INT_MAX, &device->dataPath);
-    if (err != CONFIG_OK)
-        return err;
-    err = parse_int(ini, section, "inputdatatype", 0, INT_MAX, &device->rgbModeOn);
-    if (err != CONFIG_OK)
-        return err;
+    {
+        const char *possible_values[] = {
+            "VI_PATH_BYPASS", "VI_PATH_ISP", "VI_PATH_RAW"};
+        const int count = sizeof(possible_values) / sizeof(const char *);
+        err = parse_enum(
+            ini, section, "datapath", (void*)&device->dataPath,
+            possible_values, count, 0);
+        if (err != CONFIG_OK)
+            return err;
+    }
+    {
+        const char *possible_values[] = {
+            "VI_DATA_TYPE_YUV", "VI_DATA_TYPE_RGB"};
+        const int count = sizeof(possible_values) / sizeof(const char *);
+        err = parse_enum(
+            ini, section, "inputdatatype", (void*)&device->rgbModeOn,
+            possible_values, count, 0);
+        if (err != CONFIG_OK)
+            return err;
+    }
     err = parse_int(ini, section, "datarev", 0, INT_MAX, &device->dataRevOn);
     if (err != CONFIG_OK)
         return err;
