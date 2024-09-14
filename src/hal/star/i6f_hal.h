@@ -8,7 +8,7 @@
 #include "i6f_venc.h"
 #include "i6f_vif.h"
 
-#include <sys/epoll.h>
+#include <sys/select.h>
 #include <unistd.h>
 
 extern char keepRunning;

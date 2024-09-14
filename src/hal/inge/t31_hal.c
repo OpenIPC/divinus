@@ -462,9 +462,7 @@ void t31_video_request_idr(char index)
 
 int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 {
-    int ret, epollEvt;
-    struct epoll_event events[5], event = { .events = EPOLLIN|EPOLLET };
-    int epollFd = epoll_create1(0);
+    int ret, fd;
     char mjpeg = 0;
 
     if (index == -1) {
@@ -473,12 +471,7 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         for (char i = 0; i < T31_VENC_CHN_NUM; i++) {
             if (!t31_state[i].enable) continue; 
             if (t31_state[i].payload != HAL_VIDCODEC_MJPG) continue;
-            event.data.fd = t31_state[i].fileDesc;
-            if (ret = epoll_ctl(epollFd, EPOLL_CTL_ADD, event.data.fd, &event)) {
-                HAL_DANGER("i6_venc", "Adding the encoder descriptor to "
-                    "the polling set failed with %#x!\n", ret);
-                return EXIT_FAILURE;
-            }
+            fd = t31_state[i].fileDesc;
             index = i;
             mjpeg = 1;
         }
@@ -498,16 +491,23 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
             goto abort;
         }
 
-        event.data.fd = t31_venc.fnGetDescriptor(index);
-        if (ret = epoll_ctl(epollFd, EPOLL_CTL_ADD, event.data.fd, &event)) {
-            HAL_DANGER("i6_venc", "Adding the encoder descriptor to "
-                "the polling set failed with %#x!\n", ret);
-            goto abort;
-        }
+        fd = t31_venc.fnGetDescriptor(index);
     }
 
-    epollEvt = epoll_wait(epollFd, events, 5, 2000);
-    for (int e = 0; e < epollEvt; e++) {
+    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+    fd_set readFds;
+    FD_ZERO(&readFds);
+    FD_SET(fd, &readFds);
+    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
+    if (ret < 0) {
+        HAL_DANGER("t31_venc", "Select operation failed!\n");
+        goto abort;
+    } else if (ret == 0) {
+        HAL_DANGER("t31_venc", "Capture stream timed out!\n");
+        goto abort;
+    }
+
+    if (FD_ISSET(fd, &readFds)) {
         t31_venc_stat stat;
         if (ret = t31_venc.fnQuery(index, &stat)) {
             HAL_DANGER("t31_venc", "Querying the encoder channel "
@@ -558,9 +558,6 @@ abort:
         t31_venc.fnFreeStream(index, &strm);
     }
 
-    if (close(epollFd))
-        HAL_DANGER("t31_venc", "Closing the polling descriptor failed!\n");
-
     if (!mjpeg) {
         t31_venc.fnStopReceiving(index);
 
@@ -572,14 +569,7 @@ abort:
 
 void *t31_video_thread(void)
 {
-    int ret, epollEvt;
-    struct epoll_event events[5], event = { .events = EPOLLIN|EPOLLET };
-    int epollFd = epoll_create1(0);
-
-    if (epollFd < 0) {
-        HAL_DANGER("t31_venc", "Creating the polling descriptor failed!\n");
-        return (void*)0;
-    }
+    int ret, maxFd = 0;
 
     for (int i = 0; i < T31_VENC_CHN_NUM; i++) {
         if (!t31_state[i].enable) continue;
@@ -591,12 +581,9 @@ void *t31_video_thread(void)
             return NULL;
         }
         t31_state[i].fileDesc = ret;
-        event.data.fd = ret;
-        if (ret = epoll_ctl(epollFd, EPOLL_CTL_ADD, ret, &event)) {
-            HAL_DANGER("t31_venc", "Adding the encoder descriptor to "
-                "the polling set failed with %#x!\n", ret);
-            return (void*)0;
-        }
+
+        if (maxFd <= t31_state[i].fileDesc)
+            maxFd = t31_state[i].fileDesc;
     }
 
     t31_venc_stat stat;
@@ -604,12 +591,27 @@ void *t31_video_thread(void)
     fd_set readFds;
 
     while (keepRunning) {
-        epollEvt = epoll_wait(epollFd, events, 5, 2000);
-        for (int e = 0; e < epollEvt; e++) {
+        FD_ZERO(&readFds);
+        for(int i = 0; i < T31_VENC_CHN_NUM; i++) {
+            if (!t31_state[i].enable) continue;
+            if (!t31_state[i].mainLoop) continue;
+            FD_SET(t31_state[i].fileDesc, &readFds);
+        }
+
+        timeout.tv_sec = 2;
+        timeout.tv_usec = 0;
+        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
+        if (ret < 0) {
+            HAL_DANGER("t31_venc", "Select operation failed!\n");
+            break;
+        } else if (ret == 0) {
+            HAL_WARNING("t31_venc", "Main stream loop timed out!\n");
+            continue;
+        } else {
             for (int i = 0; i < T31_VENC_CHN_NUM; i++) {
                 if (!t31_state[i].enable) continue;
                 if (!t31_state[i].mainLoop) continue;
-                if (t31_state[i].fileDesc == events[e].data.fd) {
+                if (FD_ISSET(t31_state[i].fileDesc, &readFds)) {
                     t31_venc_strm stream;
 
                     if (ret = t31_venc.fnGetStream(i, &stream, 0)) {
@@ -657,14 +659,10 @@ void *t31_video_thread(void)
                         HAL_DANGER("t31_venc", "Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
-                    break;
                 }
             }
         }
     }
-
-    if (close(epollFd))
-        HAL_DANGER("t31_venc", "Closing the polling descriptor failed!\n");
 
     HAL_INFO("t31_venc", "Shutting down encoding thread...\n");
 }

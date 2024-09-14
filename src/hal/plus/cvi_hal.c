@@ -645,9 +645,7 @@ void cvi_video_request_idr(char index)
 
 int cvi_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 {
-    int ret, epollEvt;
-    struct epoll_event events[5], event = { .events = EPOLLIN|EPOLLET };
-    int epollFd = epoll_create1(0);
+    int ret;
 
     if (ret = cvi_channel_bind(index)) {
         HAL_DANGER("cvi_venc", "Binding the encoder channel "
@@ -663,15 +661,21 @@ int cvi_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     }
 
     int fd = cvi_venc.fnGetDescriptor(index);
-    event.data.fd = fd;
-    if (ret = epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &event)) {
-        HAL_DANGER("cvi_venc", "Adding the encoder descriptor to "
-            "the polling set failed with %#x!\n", ret);
+
+    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+    fd_set readFds;
+    FD_ZERO(&readFds);
+    FD_SET(fd, &readFds);
+    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
+    if (ret < 0) {
+        HAL_DANGER("cvi_venc", "Select operation failed!\n");
+        goto abort;
+    } else if (ret == 0) {
+        HAL_DANGER("cvi_venc", "Capture stream timed out!\n");
         goto abort;
     }
 
-    epollEvt = epoll_wait(epollFd, events, 5, 2000);
-    for (int e = 0; e < epollEvt; e++) {
+    if (FD_ISSET(fd, &readFds)) {
         cvi_venc_stat stat;
         if (cvi_venc.fnQuery(index, &stat)) {
             HAL_DANGER("cvi_venc", "Querying the encoder channel "
@@ -722,9 +726,6 @@ abort:
         cvi_venc.fnFreeStream(index, &strm);
     }
 
-    if (close(epollFd))
-        HAL_DANGER("cvi_venc", "Closing the polling descriptor failed!\n");
-
     cvi_venc.fnFreeDescriptor(index);
 
     cvi_venc.fnStopReceiving(index);
@@ -736,14 +737,7 @@ abort:
 
 void *cvi_video_thread(void)
 {
-    int ret, epollEvt;
-    struct epoll_event events[5], event = { .events = EPOLLIN|EPOLLET };
-    int epollFd = epoll_create1(0);
-
-    if (epollFd < 0) {
-        HAL_DANGER("cvi_venc", "Creating the polling descriptor failed!\n");
-        return (void*)0;
-    }
+    int ret, maxFd = 0;
 
     for (int i = 0; i < CVI_VENC_CHN_NUM; i++) {
         if (!cvi_state[i].enable) continue;
@@ -755,12 +749,9 @@ void *cvi_video_thread(void)
             return (void*)0;
         }
         cvi_state[i].fileDesc = ret;
-        event.data.fd = ret;
-        if (ret = epoll_ctl(epollFd, EPOLL_CTL_ADD, ret, &event)) {
-            HAL_DANGER("cvi_venc", "Adding the encoder descriptor to "
-                "the polling set failed with %#x!\n", ret);
-            return (void*)0;
-        }
+
+        if (maxFd <= cvi_state[i].fileDesc)
+            maxFd = cvi_state[i].fileDesc;
     }
 
     cvi_venc_stat stat;
@@ -769,12 +760,27 @@ void *cvi_video_thread(void)
     fd_set readFds;
 
     while (keepRunning) {
-        epollEvt = epoll_wait(epollFd, events, 5, 2000);
-        for (int e = 0; e < epollEvt; e++) {
+        FD_ZERO(&readFds);
+        for(int i = 0; i < CVI_VENC_CHN_NUM; i++) {
+            if (!cvi_state[i].enable) continue;
+            if (!cvi_state[i].mainLoop) continue;
+            FD_SET(cvi_state[i].fileDesc, &readFds);
+        }
+
+        timeout.tv_sec = 2;
+        timeout.tv_usec = 0;
+        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
+        if (ret < 0) {
+            HAL_DANGER("cvi_venc", "Select operation failed!\n");
+            break;
+        } else if (ret == 0) {
+            HAL_WARNING("cvi_venc", "Main stream loop timed out!\n");
+            continue;
+        } else {
             for (int i = 0; i < CVI_VENC_CHN_NUM; i++) {
                 if (!cvi_state[i].enable) continue;
                 if (!cvi_state[i].mainLoop) continue;
-                if (cvi_state[i].fileDesc == events[e].data.fd) {
+                if (FD_ISSET(cvi_state[i].fileDesc, &readFds)) {
                     memset(&stream, 0, sizeof(stream));
                     
                     if (ret = cvi_venc.fnQuery(i, &stat)) {
@@ -835,14 +841,10 @@ void *cvi_video_thread(void)
                     }
                     free(stream.packet);
                     stream.packet = NULL;
-                    break;
                 }
             }
         }
     }
-    
-    if (close(epollFd))
-        HAL_DANGER("cvi_venc", "Closing the polling descriptor failed!\n");
 
     HAL_INFO("cvi_venc", "Shutting down encoding thread...\n");
 }

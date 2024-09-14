@@ -12,7 +12,7 @@
 #include "cvi_vi.h"
 #include "cvi_vpss.h"
 
-#include <sys/epoll.h>
+#include <sys/select.h>
 #include <unistd.h>
 
 extern char keepRunning;

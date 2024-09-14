@@ -15,8 +15,8 @@
 #include "../support.h"
 
 #include <fcntl.h>
-#include <sys/epoll.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <unistd.h>
 
 extern char keepRunning;

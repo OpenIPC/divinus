@@ -648,9 +648,7 @@ void i6_video_request_idr(char index)
 
 int i6_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 {
-    int ret, epollEvt;
-    struct epoll_event events[5], event = { .events = EPOLLIN|EPOLLET };
-    int epollFd = epoll_create1(0);
+    int ret;
 
     if (ret = i6_channel_bind(index, 1)) {
         HAL_DANGER("i6_venc", "Binding the encoder channel "
@@ -681,15 +679,21 @@ int i6_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
     }
 
     int fd = i6_venc.fnGetDescriptor(index);
-    event.data.fd = fd;
-    if (ret = epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &event)) {
-        HAL_DANGER("i6_venc", "Adding the encoder descriptor to "
-            "the polling set failed with %#x!\n", ret);
+
+    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+    fd_set readFds;
+    FD_ZERO(&readFds);
+    FD_SET(fd, &readFds);
+    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
+    if (ret < 0) {
+        HAL_DANGER("i6_venc", "Select operation failed!\n");
+        goto abort;
+    } else if (ret == 0) {
+        HAL_DANGER("i6_venc", "Capture stream timed out!\n");
         goto abort;
     }
 
-    epollEvt = epoll_wait(epollFd, events, 5, 2000);
-    for (int e = 0; e < epollEvt; e++) {
+    if (FD_ISSET(fd, &readFds)) {
         i6_venc_stat stat;
         if (ret = i6_venc.fnQuery(index, &stat)) {
             HAL_DANGER("i6_venc", "Querying the encoder channel "
@@ -740,9 +744,6 @@ abort:
         i6_venc.fnFreeStream(index, &strm);
     }
 
-    if (close(epollFd))
-        HAL_DANGER("i6_venc", "Closing the polling descriptor failed!\n");
-
     i6_venc.fnFreeDescriptor(index);
 
     i6_venc.fnStopReceiving(index);
@@ -754,14 +755,7 @@ abort:
 
 void *i6_video_thread(void)
 {
-    int ret, epollEvt;
-    struct epoll_event events[5], event = { .events = EPOLLIN|EPOLLET };
-    int epollFd = epoll_create1(0);
-
-    if (epollFd < 0) {
-        HAL_DANGER("i6_venc", "Creating the polling descriptor failed!\n");
-        return (void*)0;
-    }
+    int ret, maxFd = 0;
 
     for (int i = 0; i < I6_VENC_CHN_NUM; i++) {
         if (!i6_state[i].enable) continue;
@@ -773,24 +767,38 @@ void *i6_video_thread(void)
             return (void*)0;
         }
         i6_state[i].fileDesc = ret;
-        event.data.fd = ret;
-        if (ret = epoll_ctl(epollFd, EPOLL_CTL_ADD, ret, &event)) {
-            HAL_DANGER("i6_venc", "Adding the encoder descriptor to "
-                "the polling set failed with %#x!\n", ret);
-            return (void*)0;
-        }
+
+        if (maxFd <= i6_state[i].fileDesc)
+            maxFd = i6_state[i].fileDesc;
     }
 
     i6_venc_stat stat;
     i6_venc_strm stream;
+    struct timeval timeout;
+    fd_set readFds;
 
     while (keepRunning) {
-        epollEvt = epoll_wait(epollFd, events, 5, 2000);
-        for (int e = 0; e < epollEvt; e++) {
+        FD_ZERO(&readFds);
+        for(int i = 0; i < I6_VENC_CHN_NUM; i++) {
+            if (!i6_state[i].enable) continue;
+            if (!i6_state[i].mainLoop) continue;
+            FD_SET(i6_state[i].fileDesc, &readFds);
+        }
+
+        timeout.tv_sec = 2;
+        timeout.tv_usec = 0;
+        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
+        if (ret < 0) {
+            HAL_DANGER("i6_venc", "Select operation failed!\n");
+            break;
+        } else if (ret == 0) {
+            HAL_WARNING("i6_venc", "Main stream loop timed out!\n");
+            continue;
+        } else {
             for (int i = 0; i < I6_VENC_CHN_NUM; i++) {
                 if (!i6_state[i].enable) continue;
                 if (!i6_state[i].mainLoop) continue;
-                if (i6_state[i].fileDesc == events[e].data.fd) {
+                if (FD_ISSET(i6_state[i].fileDesc, &readFds)) {
                     memset(&stream, 0, sizeof(stream));
                     
                     if (ret = i6_venc.fnQuery(i, &stat)) {
@@ -892,14 +900,10 @@ void *i6_video_thread(void)
                     }
                     free(stream.packet);
                     stream.packet = NULL;
-                    break;
                 }
             }
         }
     }
-
-    if (close(epollFd))
-        HAL_DANGER("i6_venc", "Closing the polling descriptor failed!\n");
 
     HAL_INFO("i6_venc", "Shutting down encoding thread...\n");
 }
