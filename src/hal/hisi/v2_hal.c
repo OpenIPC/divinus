@@ -739,7 +739,6 @@ void *v2_video_thread(void)
         }
         v2_state[i].fileDesc = ret;
 
-
         if (maxFd <= v2_state[i].fileDesc)
             maxFd = v2_state[i].fileDesc;
     }

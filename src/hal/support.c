@@ -243,18 +243,16 @@ void hal_identify(void) {
         fclose(file);
     }
 
-    char v2series = 0, v3series = 0;
-
     switch (val) {
         case 0x12040000:
         case 0x120a0000: val = 0x12020000; break;
         case 0x12100000:
             val = 0x12020000;
-            v3series = 1;
+            series = 3;
             break;
         case 0x20080000:
             val = 0x20050000;
-            v2series = 1;
+            series = 2;
             break;
 
         default: return;
@@ -266,6 +264,24 @@ void hal_identify(void) {
         if (!hal_registry(val + 0xEE0 + (i * 4), (unsigned*)&SCSYSID[i], OP_READ)) break;
         if (!i && (SCSYSID[i] >> 16 & 0xFF)) { out = SCSYSID[i]; break; }
         out |= (SCSYSID[i] & 0xFF) << i * 8;
+    }
+
+    if (out == 0x35180100) {
+        series = 1;
+        if (hal_registry(0x2005008C, &val, OP_READ))
+            switch (val >> 8 & 0x7f) {
+                case 0x10: out = 0x3518C100; break;
+                case 0x57: out = 0x3518E100; break;
+                default:
+                    val = 3;
+                    if (hal_registry(0x20050088, &val, OP_WRITE) &&
+                        hal_registry(0x20050088, &val, OP_READ))
+                        switch (val) {
+                            case 1: out = 0x3516C100; break;
+                            case 2: out = 0x3518E100; break;
+                            case 3: out = 0x3518A100; break;
+                        }
+            }
     }
 
     sprintf(chip, "%s%X", 
@@ -280,7 +296,7 @@ void hal_identify(void) {
         chip[7] = 'V';
     }
 
-    if (out == 0x35180100) {
+    if (series == 1) {
         plat = HAL_PLATFORM_V1;
         strcpy(family, "hisi-gen1");
         chnCount = V1_VENC_CHN_NUM;
@@ -289,7 +305,7 @@ void hal_identify(void) {
         isp_thread = v1_image_thread;
         vid_thread = v1_video_thread;
         return;    
-    } else if (v2series) {
+    } else if (series == 2) {
         plat = HAL_PLATFORM_V2;
         strcpy(family, "hisi-gen2");
         chnCount = V2_VENC_CHN_NUM;
@@ -298,7 +314,7 @@ void hal_identify(void) {
         isp_thread = v2_image_thread;
         vid_thread = v2_video_thread;
         return;    
-    } else if (v3series) {
+    } else if (series == 3) {
         plat = HAL_PLATFORM_V3;
         strcpy(family, "hisi-gen3");
         chnCount = V3_VENC_CHN_NUM;
@@ -309,6 +325,7 @@ void hal_identify(void) {
         return;
     }
 
+    series = 4;
     plat = HAL_PLATFORM_V4;
     strcpy(family, "hisi-gen4");
     chnCount = V4_VENC_CHN_NUM;
