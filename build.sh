@@ -14,7 +14,7 @@ toolchain() {
 		fi
 		rm -f $1.$EXT
 	fi
-	make -j $(nproc) -C src -B CC=$PWD/toolchain/$1/bin/$2-$PRE-gcc OPT="$OPT $3"
+	make -j $(nproc) -C src CC=$PWD/toolchain/$1/bin/$2-$PRE-gcc OPT="$OPT $3"
 }
 
 if [ "$2" = "debug" ]; then

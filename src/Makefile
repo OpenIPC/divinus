@@ -1,8 +1,14 @@
-OBJ := $(shell find ./ -name '*.c' | sed -e "s/\.c/\.o/")
+SRC = $(shell find ./ -name '*.c')
+OBJ = ../divinus
 
-%.o: %.c
-	@mkdir -p ../obj/$(shell dirname $<)
-	$(CC) $< -I src $(OPT) -c -o ../obj/$@
-
+.PHONY: clean divinus
 divinus: $(OBJ)
-	$(CC) $(addprefix ../obj/,$^) -rdynamic $(OPT) -o ../$@
+
+$(OBJ): $(SRC:%.c=%.o)
+	$(CC) $^ -rdynamic $(OPT) -o $@
+
+%.o: %.c Makefile
+	$(CC) -c $< -o $@
+
+clean:
+	rm -rf $(SRC:%.c=%.o) $(OBJ)

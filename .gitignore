@@ -1,4 +1,5 @@
 /.vscode/settings.json
 /obj
+/src/**/*.o
 /toolchain
 divinus
