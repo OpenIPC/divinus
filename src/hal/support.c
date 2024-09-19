@@ -223,7 +223,7 @@ void hal_identify(void) {
                     case 0xeeee: sprintf(chip, "T31LC"); break;
                     default:     sprintf(chip, "T31N");  break;
                 }
-                strcpy(family, "ingenic t31"); break;
+                strcpy(family, "ingenic t31");
                 chnCount = T31_VENC_CHN_NUM;
                 chnState = (hal_chnstate*)t31_state;
                 aud_thread = t31_audio_thread;
