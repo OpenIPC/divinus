@@ -632,7 +632,7 @@ static inline int __bind_rtcp(struct connection_item_t *con )
 
     /* setup serve rsocket */
     ASSERT((server_fd = socket(AF_INET, SOCK_DGRAM, 0)) > 0, ({
-                ERR("socket:%s\n", trerror(errno));
+                ERR("socket:%s\n", strerror(errno));
                 goto error;}));
 
     addr.sin_port = htons(con->trans[con->track_id].server_port_rtcp);
