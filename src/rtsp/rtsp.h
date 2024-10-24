@@ -174,8 +174,7 @@ static inline int __read_line(struct connection_item_t *p, char *buf)
         /* unexpected end. we do not expect it */
         if(p->parser_state == __PARSER_S_INIT) {
             /* when this selected sd is EOF at first glance, it's dead */
-            DBG("disconnected\n");
-            
+            DBG("disconnected\n"); 
         } else {
             /* corrupted message. nothing to be done */
             ERR("message end before delimiter\n");
@@ -242,8 +241,6 @@ static inline int __get_timestamp_offset(struct __time_stat_t *p_stat, struct ti
 
     /* we fix time stamp offset in 5 years of running on 30fps.. */
     if(p_stat->total_cnt < 0xFFFFFFFFLLU) {
-
-
         kts = ((p_tv->tv_sec - p_stat->prev_tv.tv_sec) * 1000000 + (p_tv->tv_usec - p_stat->prev_tv.tv_usec)) * 90;
 
         p_stat->avg = ((p_stat->avg * p_stat->total_cnt) + kts * 1000) / (p_stat->total_cnt + 1);

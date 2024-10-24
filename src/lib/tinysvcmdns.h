@@ -64,7 +64,7 @@ static void warn(const char * format, ...)
     va_end(vargs);
 }
 
-#ifdef DEBUG
+#ifdef DEBUG_MDNS
 #define DEBUG_PRINTF(...) debug(3, __VA_ARGS__)
 #else
 #define DEBUG_PRINTF(...) ((void)0)

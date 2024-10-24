@@ -116,7 +116,7 @@ void send_h26x_to_client(char index, hal_vidstream *stream) {
                     pack->nalu[j].type != NalUnitType_SPS_HEVC)
                     continue;
 
-#ifdef DEBUG
+#ifdef DEBUG_VIDEO
                 printf("NAL: %s send to %d\n", nal_type_to_str(pack->nalu[j].type), i);
 #endif
 
@@ -150,7 +150,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
         unsigned char *pack_data = pack->data + pack->offset;
 
         for (char j = 0; j < pack->naluCnt; j++) {
-#ifdef DEBUG
+#ifdef DEBUG_VIDEO
             printf("NAL: %s received in packet %d\n", nal_type_to_str(pack->nalu[j].type), i);
             printf("     starts at %p, ends at %p\n", pack_data + pack->nalu[j].offset, pack_data + pack->nalu[j].offset + pack->nalu[j].length);
 #endif
@@ -465,7 +465,7 @@ void parse_request(struct Request *req) {
         while (*v && *v == ' ' && v++);
         h->name = k;
         h++->value = v;
-#ifdef DEBUG
+#ifdef DEBUG_HTTP
         fprintf(stderr, "         (H) %s: %s\n", k, v);
 #endif
         e = v + 1 + strlen(v);

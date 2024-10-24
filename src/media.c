@@ -44,7 +44,7 @@ void *aenc_thread(void) {
 int save_audio_stream(hal_audframe *frame) {
     int ret = EXIT_SUCCESS;
 
-#ifdef DEBUG
+#ifdef DEBUG_AUDIO
     printf("[audio] data:%p - %02x %02x %02x %02x %02x %02x %02x %02x\n", 
         frame->data, frame->data[0][0], frame->data[0][1], frame->data[0][2], frame->data[0][3],
         frame->data[0][4], frame->data[0][5], frame->data[0][6], frame->data[0][7]);

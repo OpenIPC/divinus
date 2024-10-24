@@ -54,12 +54,6 @@ static inline int __bind_rtp(struct connection_item_t *con );
 static inline int __bind_rtcp(struct connection_item_t *con );
 static inline int __bind_tcp(unsigned short port);
 
-static void __parse_head(struct connection_item_t *p, char *buf);
-static void __parse_cseq(struct connection_item_t *p, char *buf);
-static void __parse_transport(struct connection_item_t *p, char *buf);
-static void __parse_session(struct connection_item_t *p, char *buf);
-static void __parse_range(struct connection_item_t *p, char *buf);
-
 static void __method_options(struct connection_item_t *p, rtsp_handle h);
 static void __method_describe(struct connection_item_t *p, rtsp_handle h);
 static void __method_setup(struct connection_item_t *p, rtsp_handle h);
@@ -83,36 +77,6 @@ static int __connection_is_dead(struct list_t *l);
 /******************************************************************************
  *              PRIVATE DATA
  ******************************************************************************/
-/* parser finite state machine jump table */
-static void (*__state_table[__METHOD_COUNT][__PARSER_S_COUNT]) (struct connection_item_t *p, char *buf) = 
-{[__METHOD_OPTIONS] = {
-    [__PARSER_S_HEAD] = __parse_cseq,
-    [__PARSER_S_CSEQ] = NULL},
-[__METHOD_DESCRIBE] = {
-    [__PARSER_S_HEAD] = __parse_cseq,
-    [__PARSER_S_CSEQ] = NULL},
-[__METHOD_SETUP] = {
-    [__PARSER_S_HEAD] = __parse_transport,
-    [__PARSER_S_TRANSPORT] = __parse_cseq,
-    [__PARSER_S_CSEQ] = NULL},
-[__METHOD_PLAY] = {
-    [__PARSER_S_HEAD] = __parse_range,
-    [__PARSER_S_RANGE] = __parse_cseq,
-    [__PARSER_S_CSEQ] = __parse_session,
-    [__PARSER_S_SESSION] = NULL},
-[__METHOD_PAUSE] = {
-    [__PARSER_S_HEAD] = __parse_cseq,
-    [__PARSER_S_CSEQ] = __parse_session,
-    [__PARSER_S_SESSION] = NULL},
-[__METHOD_RECORDING] = {
-    [__PARSER_S_HEAD] = __parse_cseq,
-    [__PARSER_S_CSEQ] = __parse_session,
-    [__PARSER_S_SESSION] = NULL},
-[__METHOD_TEARDOWN] = {
-    [__PARSER_S_HEAD] = __parse_cseq,
-    [__PARSER_S_CSEQ] = __parse_session,
-    [__PARSER_S_SESSION] = NULL}};
-
 static struct connection_item_t __connection_pool[RTSP_MAXIMUM_CONNECTIONS] = {};
 
 static struct transfer_item_t __transfer_pool[RTSP_MAXIMUM_CONNECTIONS] = {};
@@ -161,93 +125,8 @@ static inline bufpool_handle __transpool_create(int num)
 }
 
 /******************************************************************************
- *              PARSER IMPLEMENTATIONS
+ *              RESPONSE IMPLEMENTATIONS
  ******************************************************************************/
-static void __parse_head(struct connection_item_t *p, char *buf)
-{
-    p->track_id = 0;
-    if (SCMP(__STR_OPTIONS,buf))            { p->method = __METHOD_OPTIONS;
-    } else if (SCMP(__STR_DESCRIBE,buf))    { p->method = __METHOD_DESCRIBE;
-    } else if (SCMP(__STR_SETUP, buf))      { p->method = __METHOD_SETUP;
-        STR_KEY_NUM(buf, "track=", p->track_id);
-    } else if (SCMP(__STR_PLAY, buf))       { p->method = __METHOD_PLAY;
-    } else if (SCMP(__STR_RECORDING, buf))  { p->method = __METHOD_RECORDING;
-    } else if (SCMP(__STR_PAUSE, buf))      { p->method = __METHOD_PAUSE;
-    } else if (SCMP(__STR_TEARDOWN, buf))   { p->method = __METHOD_TEARDOWN;
-    }
-
-    p->parser_state = __PARSER_S_HEAD;
-}
-
-static void __parse_cseq(struct connection_item_t *p, char *buf)
-{
-    char *tok;
-    char *last;
-
-    if (SCMP(__STR_CSEQ,buf)) {
-        ASSERT(tok = strtok_r(buf,": ",&last), goto error); 
-        ASSERT(tok = strtok_r(NULL,": ",&last), goto error);
-        ASSERT((p->cseq = atoi(tok)) > 0, goto error);
-
-        p->parser_state = __PARSER_S_CSEQ;
-    }
-
-    return;
-error:
-    __PARSE_ERROR(p);
-}
-
-static void __parse_session(struct connection_item_t *p, char *buf)
-{
-    unsigned long long session_id;
-    char *tok;
-    char *last;
-
-    if (SCMP(__STR_SESSION,buf)) {
-        ASSERT(tok = strtok_r(buf,": ",&last), goto error);
-        ASSERT(tok = strtok_r(NULL,": ",&last), goto error);
-        ASSERT(sscanf(tok,"%llx",&session_id) > 0, goto error);
-
-        p->given_session_id = session_id;
-        p->parser_state= __PARSER_S_SESSION;
-    }
-
-    return;
-error:
-    __PARSE_ERROR(p);
-}
-
-static void __parse_range(struct connection_item_t *p, char *buf)
-{
-    p->parser_state = __PARSER_S_RANGE;
-}
-
-
-static void __parse_transport(struct connection_item_t *p, char *buf)
-{
-    char *tok;
-    char *last;
-
-    if (SCMP(__STR_TRANSPORT,buf)) {
-        for(tok = strtok_r(buf,"; ",&last); tok != NULL; tok = strtok_r(NULL,"; ",&last)) {
-            if (SCMP(__STR_CLIENTPORT,tok)) {
-
-                ASSERT(sscanf(tok, __STR_CLIENTPORT "=%u-%u", 
-                    &p->trans[p->track_id].client_port_rtp,
-                    &p->trans[p->track_id].client_port_rtcp) > 0,
-                        goto error);
-
-                p->parser_state = __PARSER_S_TRANSPORT;
-
-                break;
-            }
-        }
-    }
-    return;
-error:
-    __PARSE_ERROR(p);
-}
-
 static void __method_options(struct connection_item_t *p, rtsp_handle h)
 {
     fprintf(p->fp_tcp_write, "RTSP/1.0 200 OK\r\n"
@@ -306,10 +185,10 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
         DASSERT(h->sprop_sps_b16->result, return);
         DASSERT(h->sprop_pps_b64->result, return);
 
-        DBG("VPS BASE64:%s\n",h->sprop_vps_b64->result);
-        DBG("SPS BASE64:%s\n",h->sprop_sps_b64->result);
-        DBG("SPS BASE16:%s\n",h->sprop_sps_b16->result);
-        DBG("PPS BASE64:%s\n",h->sprop_pps_b64->result);
+        DBG("VPS BASE64:%s\n", h->sprop_vps_b64->result);
+        DBG("SPS BASE64:%s\n", h->sprop_sps_b64->result);
+        DBG("SPS BASE16:%s\n", h->sprop_sps_b16->result);
+        DBG("PPS BASE64:%s\n", h->sprop_pps_b64->result);
 
         snprintf(sdp, __RTSP_TCP_BUF_SIZE- 1,
                 "%sm=video 0 RTP/AVP 96\r\n"
@@ -330,9 +209,9 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
         DASSERT(h->sprop_sps_b16->result, return);
         DASSERT(h->sprop_pps_b64->result, return);
 
-        DBG("SPS BASE64:%s\n",h->sprop_sps_b64->result);
-        DBG("SPS BASE16:%s\n",h->sprop_sps_b16->result);
-        DBG("PPS BASE64:%s\n",h->sprop_pps_b64->result);
+        DBG("SPS BASE64:%s\n", h->sprop_sps_b64->result);
+        DBG("SPS BASE16:%s\n", h->sprop_sps_b16->result);
+        DBG("PPS BASE64:%s\n", h->sprop_pps_b64->result);
 
         snprintf(sdp, __RTSP_TCP_BUF_SIZE - 1,
                 "%sm=video 0 RTP/AVP 96\r\n"
@@ -362,8 +241,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
             "Content-Type: application/sdp\r\n"
             "Content-Length: %d\r\n"
             "\r\n"
-            "%s"
-            , p->cseq,strlen(sdp),sdp);
+            "%s", p->cseq, strlen(sdp), sdp);
 }
 
 static void __method_setup(struct connection_item_t *p, rtsp_handle h)
@@ -379,14 +257,15 @@ static void __method_setup(struct connection_item_t *p, rtsp_handle h)
     p->trans[p->track_id].server_port_rtcp = SERVER_RTCP_PORT + p->track_id;
 
     fprintf(p->fp_tcp_write, "RTSP/1.0 200 OK\r\n"
-            "CSeq: %d\r\n"
-            "Session: %llx\r\n"
-            "Transport: RTP/AVP/UDP;unicast;client_port=%u-%u;server_port=%u-%u\r\n"
-            "\r\n" , p->cseq, p->session_id,
-            p->trans[p->track_id].client_port_rtp,
-            p->trans[p->track_id].client_port_rtcp,
-            p->trans[p->track_id].server_port_rtp,
-            p->trans[p->track_id].server_port_rtcp);
+        "CSeq: %d\r\n"
+        "Transport: RTP/AVP/UDP;unicast;client_port=%u-%u;server_port=%u-%u\r\n"
+        "Session: %llx\r\n"
+        "\r\n", p->cseq,
+        p->trans[p->track_id].client_port_rtp,
+        p->trans[p->track_id].client_port_rtcp,
+        p->trans[p->track_id].server_port_rtp,
+        p->trans[p->track_id].server_port_rtcp,
+        p->session_id);
 
     p->con_state = __CON_S_READY;
 }
@@ -414,27 +293,27 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
 {
     fprintf(p->fp_tcp_write,
         "RTSP/1.0 200 OK\r\n"
-            "CSeq: %d\r\n"
-            "Session: %llx\r\n"
-            "\r\n" , p->cseq, p->session_id);
+        "CSeq: %d\r\n"
+        "Session: %llx\r\n"
+        "\r\n" , p->cseq, p->session_id);
 
     for (int i = 0; i < sizeof(p->trans) / sizeof(*p->trans); i++) {
         if (!p->trans[i].server_port_rtp) continue;
         p->track_id = i;
 
-        ASSERT(__bind_rtcp(p) == SUCCESS, return );
-        ASSERT(__bind_rtp(p) == SUCCESS, return );
+        ASSERT(__bind_rtcp(p) == SUCCESS, return);
+        ASSERT(__bind_rtp(p) == SUCCESS, return);
         p->trans[p->track_id].rtp_timestamp = rand_r(&h->ctx);
         p->trans[p->track_id].rtp_seq = rand_r(&h->ctx);
         p->trans[p->track_id].rtcp_octet = 0; 
-        p->trans[p->track_id].rtcp_packet_cnt= 0; 
+        p->trans[p->track_id].rtcp_packet_cnt = 0; 
         p->trans[p->track_id].rtcp_tick_org = 150; // TODO: must be variant
         p->trans[p->track_id].rtcp_tick = p->trans[p->track_id].rtcp_tick_org;
     }
 
     p->con_state = __CON_S_PLAYING;
 
-    ASSERT(__rtcp_send_sr(p) == SUCCESS, return );
+    ASSERT(__rtcp_send_sr(p) == SUCCESS, return);
 
     request_idr();
 }
@@ -443,9 +322,9 @@ static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
 {
     fprintf(p->fp_tcp_write,
         "RTSP/1.0 200 OK\r\n"
-            "CSeq: %d\r\n"
-            "Session: %llx\r\n"
-            "\r\n" , p->cseq, p->session_id);
+        "CSeq: %d\r\n"
+        "Session: %llx\r\n"
+        "\r\n", p->cseq, p->session_id);
 
     p->con_state = __CON_S_INIT;
 
@@ -461,7 +340,6 @@ static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
 static int __message_proc_sock(struct list_t *e, void *p)
 {
     struct connection_item_t *con;
-    void (*next_fxn)(struct connection_item_t *p, char *buf) = __parse_head;
     struct sock_select_t *socks = p;
     char buf[__RTSP_TCP_BUF_SIZE];
     rtsp_handle h = NULL;
@@ -477,34 +355,70 @@ static int __message_proc_sock(struct list_t *e, void *p)
     }
 
     if (FD_ISSET(con->client_fd, &(socks->rfds))) {
-
         con->parser_state = __PARSER_S_INIT;
         con->method = __METHOD_NONE;
 
-        next_fxn = __parse_head;
-
+        char header = 0, *tok, *last;
+        unsigned long long session_id;
         /* parse line by line. hereafter parser is switched according to the finite state machine */
-        while(__read_line(con, buf)) {
-            if (next_fxn) {
-                next_fxn(con, buf);
-                next_fxn = __state_table[con->method][con->parser_state];
+        while (__read_line(con, buf)) {
+            if (header < 1) {
+                con->track_id = 0;
+                if (SCMP(__STR_OPTIONS, buf))            { con->method = __METHOD_OPTIONS;
+                } else if (SCMP(__STR_DESCRIBE, buf))    { con->method = __METHOD_DESCRIBE;
+                } else if (SCMP(__STR_SETUP, buf))       { con->method = __METHOD_SETUP;
+                    STR_KEY_NUM(buf, "track=", con->track_id);
+                } else if (SCMP(__STR_PLAY, buf))        { con->method = __METHOD_PLAY;
+                } else if (SCMP(__STR_RECORDING, buf))   { con->method = __METHOD_RECORDING;
+                } else if (SCMP(__STR_PAUSE, buf))       { con->method = __METHOD_PAUSE;
+                } else if (SCMP(__STR_TEARDOWN, buf))    { con->method = __METHOD_TEARDOWN;
+                }
+                con->parser_state = __PARSER_S_HEAD;
+                header++;
             }
+
+            if (SCMP(__STR_CSEQ, buf)) {
+                ASSERT(tok = strtok_r(buf, ": ", &last), goto error); 
+                ASSERT(tok = strtok_r(NULL, ": ", &last), goto error);
+                ASSERT((con->cseq = atoi(tok)) > 0, goto error);
+                con->parser_state = __PARSER_S_CSEQ;
+            } else if (SCMP(__STR_RANGE, buf)) {
+                con->parser_state = __PARSER_S_RANGE;
+            } else if (SCMP(__STR_SESSION, buf)) {
+                ASSERT(tok = strtok_r(buf, ": ", &last), goto error);
+                ASSERT(tok = strtok_r(NULL, ": ", &last), goto error);
+                ASSERT(sscanf(tok, "%llx", &session_id) > 0, goto error);
+                con->given_session_id = session_id;
+                con->parser_state = __PARSER_S_SESSION;
+            } else if (SCMP(__STR_TRANSPORT, buf)) {
+                for (tok = strtok_r(buf, "; ", &last); tok != NULL; tok = strtok_r(NULL, "; ", &last)) {
+                    if (SCMP(__STR_CLIENTPORT, tok)) {
+                        ASSERT(sscanf(tok, __STR_CLIENTPORT "=%u-%u", 
+                            &con->trans[con->track_id].client_port_rtp,
+                            &con->trans[con->track_id].client_port_rtcp) > 0,
+                                goto error);
+
+                        con->parser_state = __PARSER_S_TRANSPORT;
+                        break;
+                    }
+                }
+            }
+            continue;
+error:
+            __PARSE_ERROR(con);
         }
 
         if (con->parser_state == __PARSER_S_ERROR) {
-
             __method_error(con,h);
-
         } else {
-
-            switch(con->method){
-                case __METHOD_OPTIONS: __method_options(con, h);break;
-                case __METHOD_DESCRIBE: __method_describe(con, h);break;
-                case __METHOD_SETUP: __method_setup(con, h);break;
-                case __METHOD_PLAY: __method_play(con, h);break;
-                case __METHOD_PAUSE: __method_pause(con, h);break;
-                case __METHOD_RECORDING: __method_record(con, h);break;
-                case __METHOD_TEARDOWN: __method_teardown(con, h);break;
+            switch (con->method) {
+                case __METHOD_OPTIONS: __method_options(con, h); break;
+                case __METHOD_DESCRIBE: __method_describe(con, h); break;
+                case __METHOD_SETUP: __method_setup(con, h); break;
+                case __METHOD_PLAY: __method_play(con, h); break;
+                case __METHOD_PAUSE: __method_pause(con, h); break;
+                case __METHOD_RECORDING: __method_record(con, h); break;
+                case __METHOD_TEARDOWN: __method_teardown(con, h); break;
                 case __METHOD_NONE: 
                     /* state DISCONNECTED connections should be garbage collected immediately.
                        but sending thread might watches the connection right now.
@@ -513,13 +427,11 @@ static int __message_proc_sock(struct list_t *e, void *p)
                     break;
                 default: ERR("unexpected method state\n"); return FAILURE;
             }
-
         }
 
         fflush(con->fp_tcp_write);
     } 
     return SUCCESS;
-
 }
 
 
@@ -532,7 +444,7 @@ static int __connection_reset(void *v)
     struct connection_item_t *p = v;
     unsigned ctx;
 
-    if(p->con_state != __CON_S_DISCONNECTED) {
+    if (p->con_state != __CON_S_DISCONNECTED) {
         DBG("force connection to close\n");
     }
 
@@ -571,12 +483,12 @@ static int __connection_reset(void *v)
     static inline int
 __connection_list_add(bufpool_handle con_pool, struct list_head_t *head,int fd, struct sockaddr_in addr)
 {
-    DASSERT(head,return FAILURE);
+    DASSERT(head, return FAILURE);
     DASSERT(fd > 0, return FAILURE);
 
     struct connection_item_t *p = NULL;
 
-    ASSERT(bufpool_get_free(con_pool, &p) == SUCCESS,return FAILURE);
+    ASSERT(bufpool_get_free(con_pool, &p) == SUCCESS, return FAILURE);
 
     DASSERT(p, return FAILURE);
 
@@ -585,12 +497,12 @@ __connection_list_add(bufpool_handle con_pool, struct list_head_t *head,int fd, 
     p->addr=addr;
     p->client_fd=fd;
 
-    ASSERT((p->fp_tcp_read = fdopen(fd,"r")), goto error);
-    ASSERT((p->fp_tcp_write = fdopen(fd,"w")), goto error);
+    ASSERT((p->fp_tcp_read = fdopen(fd, "r")), goto error);
+    ASSERT((p->fp_tcp_write = fdopen(fd, "w")), goto error);
 
     p->con_state = __CON_S_INIT;
 
-    return list_add(head,&(p->list_entry));
+    return list_add(head, &(p->list_entry));
 error:
     __connection_reset(&p->list_entry);
     return FAILURE;
@@ -602,7 +514,7 @@ static inline int __find_fd_max(struct list_head_t *head)
     struct connection_item_t *c;
     int m = -1;
     p = head->list;
-    while(p) {
+    while (p) {
         list_upcast(c,p);
         if (c->con_state != __CON_S_DISCONNECTED) {
             m = max(c->client_fd,m);
@@ -617,7 +529,7 @@ static inline int __set_select_sock(struct list_t *p, void *param)
     struct connection_item_t *c;
     struct sock_select_t *socks = param;
 
-    list_upcast(c,p);
+    list_upcast(c, p);
 
     FD_SET(c->client_fd, &(socks->rfds));
 
@@ -632,14 +544,14 @@ static inline int __bind_tcp(unsigned short port)
 
     /* setup serve rsocket */
     ASSERT((server_fd = socket(AF_INET,SOCK_STREAM,0)) > 0, ({
-                ERR("socket:%s\n",strerror(errno));
+                ERR("socket:%s\n", strerror(errno));
                 goto error;}));
 
-    setsockopt(server_fd,SOL_SOCKET,SO_REUSEADDR,&tmp,sizeof(tmp));
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &tmp, sizeof(tmp));
 
-    addr.sin_port=htons(port);
-    addr.sin_addr.s_addr=htonl(INADDR_ANY);
-    addr.sin_family=AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_family = AF_INET;
 
     ASSERT(bind(server_fd,(struct sockaddr *)&addr,sizeof(addr)) == 0, ({
                 ERR("bind:%s\n",strerror(errno));
@@ -670,32 +582,32 @@ static inline int __bind_rtp(struct connection_item_t *con )
         con->trans[con->track_id].server_rtp_fd = 0;
     }
     /* setup serve rsocket */
-    ASSERT((server_fd = socket(AF_INET,SOCK_DGRAM,0)) > 0, ({
-                ERR("socket:%s\n",strerror(errno));
+    ASSERT((server_fd = socket(AF_INET, SOCK_DGRAM, 0)) > 0, ({
+                ERR("socket:%s\n", strerror(errno));
                 goto error;}));
 
-    addr.sin_port=htons(con->trans[con->track_id].server_port_rtp);
-    addr.sin_addr.s_addr=htonl(INADDR_ANY);
-    addr.sin_family=AF_INET;
+    addr.sin_port = htons(con->trans[con->track_id].server_port_rtp);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_family = AF_INET;
     
     tmp = 1;
-    setsockopt(server_fd,SOL_SOCKET,SO_REUSEADDR,&tmp,sizeof(tmp));
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &tmp, sizeof(tmp));
 
-    ASSERT(bind(server_fd,(struct sockaddr *)&addr,sizeof(addr)) == 0, ({
-                ERR("bind:%s\n",strerror(errno));
+    ASSERT(bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) == 0, ({
+                ERR("bind:%s\n", strerror(errno));
                 goto error;}));
 
     addr = con->addr;
     addr.sin_port=htons(con->trans[con->track_id].client_port_rtp);
 
-    ASSERT(connect(server_fd,(struct sockaddr *)&addr,sizeof(addr)) == 0, ({
-                ERR("connect:%s\n",strerror(errno));
+    ASSERT(connect(server_fd, (struct sockaddr *)&addr, sizeof(addr)) == 0, ({
+                ERR("connect:%s\n", strerror(errno));
                 goto error;}));
 
     /* set the socket to non-blocking */
     tmp = 1;
-    ASSERT(ioctl(server_fd,FIONBIO, &tmp) != -1, ({
-                ERR("ioctl:%s\n",strerror(errno));
+    ASSERT(ioctl(server_fd, FIONBIO, &tmp) != -1, ({
+                ERR("ioctl:%s\n", strerror(errno));
                 goto error;}));
 
     con->trans[con->track_id].server_rtp_fd = server_fd;
@@ -719,26 +631,26 @@ static inline int __bind_rtcp(struct connection_item_t *con )
     }
 
     /* setup serve rsocket */
-    ASSERT((server_fd = socket(AF_INET,SOCK_DGRAM,0)) > 0, ({
-                ERR("socket:%s\n",strerror(errno));
+    ASSERT((server_fd = socket(AF_INET, SOCK_DGRAM, 0)) > 0, ({
+                ERR("socket:%s\n", trerror(errno));
                 goto error;}));
 
-    addr.sin_port=htons(con->trans[con->track_id].server_port_rtcp);
-    addr.sin_addr.s_addr=htonl(INADDR_ANY);
-    addr.sin_family=AF_INET;
+    addr.sin_port = htons(con->trans[con->track_id].server_port_rtcp);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_family = AF_INET;
 
     tmp = 1;
-    setsockopt(server_fd,SOL_SOCKET,SO_REUSEADDR,&tmp,sizeof(tmp));
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &tmp, sizeof(tmp));
 
-    ASSERT(bind(server_fd,(struct sockaddr *)&addr,sizeof(addr)) == 0, ({
-                ERR("bind:%s\n",strerror(errno));
+    ASSERT(bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) == 0, ({
+                ERR("bind:%s\n", strerror(errno));
                 goto error;}));
 
     addr = con->addr;
-    addr.sin_port=htons(con->trans[con->track_id].client_port_rtcp);
+    addr.sin_port = htons(con->trans[con->track_id].client_port_rtcp);
 
-    ASSERT(connect(server_fd,(struct sockaddr *)&addr,sizeof(addr)) == 0, ({
-                ERR("connect:%s\n",strerror(errno));
+    ASSERT(connect(server_fd, (struct sockaddr *)&addr, sizeof(addr)) == 0, ({
+                ERR("connect:%s\n", strerror(errno));
                 goto error;}));
 
     con->trans[con->track_id].server_rtcp_fd = server_fd;
@@ -753,15 +665,13 @@ static inline int __accept_proc_sock(rtsp_handle h, int server_fd, struct sock_s
 {
     unsigned int len;
     int fd;
-    //int tmp;
     struct sockaddr_in from_addr;
 
     if (FD_ISSET(server_fd, &p_socks->rfds) != 0) {
-
         /* accept new connection */
         len = sizeof(from_addr);
 
-        fd = accept(server_fd,(struct sockaddr *) &from_addr,
+        fd = accept(server_fd, (struct sockaddr *)&from_addr,
                 &len);
 
         /* we have selected this fd, but still EAGAIN may occur */
@@ -773,13 +683,13 @@ static inline int __accept_proc_sock(rtsp_handle h, int server_fd, struct sock_s
         }
 
         /* set server fd to non-blocking */
-        fcntl(fd,F_SETFL,fcntl(fd,F_GETFL) | O_NONBLOCK);
+        fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
 
         /* update connection-list exclusively */
-        ASSERT(__connection_list_add(h->con_pool,&h->con_list,fd, from_addr) == SUCCESS,
+        ASSERT(__connection_list_add(h->con_pool, &h->con_list, fd, from_addr) == SUCCESS,
                 return FAILURE);
-
     }
+
     return SUCCESS;
 }
 
@@ -787,7 +697,7 @@ static int __connection_is_dead(struct list_t *l)
 {
     struct connection_item_t *c;
 
-    list_upcast(c,l);
+    list_upcast(c, l);
 
     return c->con_state == __CON_S_DISCONNECTED;
 }
@@ -824,8 +734,8 @@ static void *rtspThrFxn(void *v)
 
         ASSERT(list_map_inline(&rh->con_list, (__set_select_sock), &socks) == SUCCESS, goto error);
 
-        ASSERT((ret_select = select(socks.nfds,&(socks.rfds),NULL,NULL,&(socks.timeout))) >= 0, ({
-                    ERR("select:%s\n",  strerror(errno));
+        ASSERT((ret_select = select(socks.nfds, &(socks.rfds), NULL, NULL, &(socks.timeout))) >= 0, ({
+                    ERR("select:%s\n", strerror(errno));
                     goto error;}));
 
         if (ret_select > 0){
@@ -835,10 +745,10 @@ static void *rtspThrFxn(void *v)
             ASSERT(__accept_proc_sock(rh, server_fd, &socks) == SUCCESS, 
                     ({ rtsp_unlock(rh); goto error;}));
 
-            ASSERT(list_map_inline(&rh->con_list,__message_proc_sock, &socks) == SUCCESS, 
+            ASSERT(list_map_inline(&rh->con_list, __message_proc_sock, &socks) == SUCCESS, 
                     ({ rtsp_unlock(rh); goto error;}));
 
-            MUST(list_sweep(&rh->con_list,__connection_is_dead) == SUCCESS, 
+            MUST(list_sweep(&rh->con_list, __connection_is_dead) == SUCCESS, 
                     ({ rtsp_unlock(rh); goto error;}));
 
             socks.nfds = max(server_fd, __find_fd_max(&rh->con_list)) + 1;
@@ -866,11 +776,9 @@ void rtsp_finish(rtsp_handle h)
 {
     /* close every connections in the handle */
     if (h) {
-        
         list_destroy(&h->con_list);
 
         if (h->pool) {
-
             gbl_set_quit(h->pool->sharedp->gbl);
 
             ASSERT(threadpool_join(h->pool) == SUCCESS, ERR("thread join with error\n"));
@@ -890,6 +798,7 @@ void rtsp_finish(rtsp_handle h)
 
         FREE(h);
     }
+
     return;
 }
 
@@ -901,7 +810,7 @@ rtsp_handle rtsp_create(unsigned char max_con, int priority)
             ({ERR("maximum number of connections should be within %d\n", RTSP_MAXIMUM_CONNECTIONS);
              return NULL;}));
 
-    TALLOC(nh,return NULL);
+    TALLOC(nh, return NULL);
 
     nh->audioPt = 255;
     nh->max_con = max_con;
@@ -934,7 +843,7 @@ int rtsp_tick(rtsp_handle h)
     ASSERT(h, return FAILURE);
     struct timeval tv;
 
-    ASSERT(gettimeofday(&tv,NULL) == 0, ({
+    ASSERT(gettimeofday(&tv, NULL) == 0, ({
         ERR("gettimeofday failed\n");
         return FAILURE;}));
 
