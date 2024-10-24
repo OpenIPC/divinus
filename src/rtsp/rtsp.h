@@ -169,10 +169,10 @@ static inline void rtsp_unlock(rtsp_handle h)
 static inline int __read_line(struct connection_item_t *p, char *buf)
 {
     /* we set the socket to non-blocking */
-    if(fgets(buf,__RTSP_TCP_BUF_SIZE,p->fp_tcp_read) == NULL) 
+    if (fgets(buf, __RTSP_TCP_BUF_SIZE, p->fp_tcp_read) == NULL) 
 	{
         /* unexpected end. we do not expect it */
-        if(p->parser_state == __PARSER_S_INIT) {
+        if (p->parser_state == __PARSER_S_INIT) {
             /* when this selected sd is EOF at first glance, it's dead */
             DBG("disconnected\n"); 
         } else {
@@ -181,14 +181,14 @@ static inline int __read_line(struct connection_item_t *p, char *buf)
         }
 
         p->con_state = __CON_S_DISCONNECTED;
-        ASSERT(bufpool_detach(p->pool,p) == SUCCESS, ERR("connection detach failed\n"));
+        ASSERT(bufpool_detach(p->pool, p) == SUCCESS, ERR("connection detach failed\n"));
         return FALSE;
     }
 
-    DBG(">%s",buf);
+    DBG(">%s", buf);
 
     /* check end of request */
-    return !(SCMP(__TERM,buf));
+    return !(SCMP(__TERM, buf));
 }
 
 static inline unsigned long long __get_random_byte(unsigned *ctx)
@@ -214,13 +214,13 @@ static inline int __transfer_item_cleaner(struct list_t *e)
     struct transfer_item_t *p;
     list_upcast(p,e);
 
-    if(p->con) {
+    if (p->con) {
         ASSERT(bufpool_detach(p->con->pool,p->con) == SUCCESS,
             return FAILURE);
         p->con = NULL;
     }
 
-    ASSERT(bufpool_detach(p->pool,p) == SUCCESS,
+    ASSERT(bufpool_detach(p->pool, p) == SUCCESS,
         return FAILURE);
 
     return SUCCESS;
@@ -228,9 +228,9 @@ static inline int __transfer_item_cleaner(struct list_t *e)
 
 static inline int __get_timestamp_offset(struct __time_stat_t *p_stat, struct timeval *p_tv)
 {
-    unsigned long long  kts;
+    unsigned long long kts;
 
-    if(p_stat->prev_tv.tv_sec == 0) {
+    if (p_stat->prev_tv.tv_sec == 0) {
         p_stat->prev_tv = *p_tv;
         p_stat->total_cnt = 0;
         p_stat->cnt = 0;
@@ -240,7 +240,7 @@ static inline int __get_timestamp_offset(struct __time_stat_t *p_stat, struct ti
     }
 
     /* we fix time stamp offset in 5 years of running on 30fps.. */
-    if(p_stat->total_cnt < 0xFFFFFFFFLLU) {
+    if (p_stat->total_cnt < 0xFFFFFFFFLLU) {
         kts = ((p_tv->tv_sec - p_stat->prev_tv.tv_sec) * 1000000 + (p_tv->tv_usec - p_stat->prev_tv.tv_usec)) * 90;
 
         p_stat->avg = ((p_stat->avg * p_stat->total_cnt) + kts * 1000) / (p_stat->total_cnt + 1);
@@ -251,7 +251,7 @@ static inline int __get_timestamp_offset(struct __time_stat_t *p_stat, struct ti
     p_stat->jitter_mask += p_stat->avg % 1000000;
     p_stat->ts_offset = (p_stat->avg / 1000000);
 
-    if(p_stat->jitter_mask > 1000000) {
+    if (p_stat->jitter_mask > 1000000) {
         p_stat->ts_offset += 1;
         p_stat->jitter_mask -= 1000000;
     }

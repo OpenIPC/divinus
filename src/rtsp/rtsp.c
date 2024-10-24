@@ -347,7 +347,7 @@ static int __message_proc_sock(struct list_t *e, void *p)
     DASSERT(socks, return FAILURE);
     MUST(h = socks->h_rtsp, return FAILURE);
 
-    list_upcast(con,e);
+    list_upcast(con, e);
 
     if (con->con_state == __CON_S_DISCONNECTED) {
         ERR("zombie connection detected: report to author\n");
