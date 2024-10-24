@@ -145,7 +145,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
         "s=librtsp\r\n"
         "c=IN IP4 0.0.0.0\r\n"
         "t=0 0\r\n"
-        "a=tool:libavformat 52.73.0\r\n";
+        "a=range:npt=0-\r\n";
     char audioRtp[256] = "\r\n";
     char audioRtpfmt[16];
 
@@ -173,8 +173,8 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
         sprintf(audioRtp, 
             "\r\n"
             "m=audio 0 RTP/AVP %d\r\n"
-            "a=rtpmap:%d %s/90000\r\n"
-            "a=control:track=1\r\n",
+            "a=control:track=1\r\n"
+            "a=rtpmap:%d %s/90000\r\n",
             h->audioPt, h->audioPt, audioRtpfmt, h->audioPt);
     }
 
@@ -192,10 +192,10 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
 
         snprintf(sdp, __RTSP_TCP_BUF_SIZE- 1,
                 "%sm=video 0 RTP/AVP 96\r\n"
-                "a=rtpmap:96 H265/90000\r\n"
                 "a=control:track=0\r\n"
-                "a=fmtp:96 packetization-mode=1;"
-                " profile-level-id=%s;"
+                "a=rtpmap:96 H265/90000\r\n"
+                "a=fmtp:96 profile-level-id=%s;"
+                " packetization-mode=1;"
                 " sprop-parameter-sets=%s,%s,%s;%s",
                 baseRtp,
                 h->sprop_sps_b16->result,
@@ -215,10 +215,10 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
 
         snprintf(sdp, __RTSP_TCP_BUF_SIZE - 1,
                 "%sm=video 0 RTP/AVP 96\r\n"
-                "a=rtpmap:96 H264/90000\r\n"
                 "a=control:track=0\r\n"
-                "a=fmtp:96 packetization-mode=1;"
-                " profile-level-id=%s;"
+                "a=rtpmap:96 H265/90000\r\n"
+                "a=fmtp:96 profile-level-id=%s;"
+                " packetization-mode=1;"
                 " sprop-parameter-sets=%s,%s;%s",
                 baseRtp,
                 h->sprop_sps_b16->result,
@@ -228,9 +228,9 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
     } else {
         snprintf(sdp, __RTSP_TCP_BUF_SIZE - 1,
                 "%sm=video 0 RTP/AVP 96\r\n"
+                "a=control:track=0\r\n"
                 "a=rtpmap:96 %s/90000\r\n"
-                "a=fmtp:96 packetization-mode=1\r\n"
-                "a=control:track=0%s",
+                "a=fmtp:96 packetization-mode=1%s",
                 baseRtp,
                 h->isH265 ? "H265" : "H264",
                 audioRtp);

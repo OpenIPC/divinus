@@ -15,7 +15,7 @@
 #define likely(x)   __builtin_expect((x), 1)
 #define unlikely(x) __builtin_expect((x), 0)
 
-#ifdef DEBUG
+#ifdef DEBUG_RTSP
 /* -------------------------------------------------------------------------- */
 #define DBG( fmt, args...) do {\
     fprintf(stderr, "--- DEBUG:%s:%s:%d ---: ", __FILE__, __FUNCTION__, __LINE__);\
