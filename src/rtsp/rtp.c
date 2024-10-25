@@ -201,7 +201,7 @@ static inline int __rtp_setup_transfer(struct list_t *e, void *v)
     struct connection_item_t *con;
     struct __transfer_set_t *trans_set = v;
     struct transfer_item_t *trans;
-    unsigned int  timestamp_offset;
+    unsigned int timestamp_offset;
     int ret = FAILURE;
 
     list_upcast(con,e);
@@ -390,7 +390,6 @@ int rtp_send_h26x(rtsp_handle h, unsigned char *buf, size_t len, char isH265)
     if (trans.list_head.list) {
         while (__split_nal(buf, &nalptr, &single_len, len) == SUCCESS) {
             ASSERT(__transfer_nal_h26x(&(trans.list_head), nalptr, single_len, h->isH265) == SUCCESS, goto error);
-            ASSERT(list_map_inline(&(trans.list_head), (__rtcp_poll), &track_id) == SUCCESS, goto error);
         }
         ASSERT(list_map_inline(&(trans.list_head), (__rtcp_poll), &track_id) == SUCCESS, goto error);
     } 

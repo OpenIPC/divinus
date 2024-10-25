@@ -151,24 +151,12 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
 
     if (h->audioPt != 255) {
         switch (h->audioPt) {
-            case 0:
-                strncpy(audioRtpfmt, "PCMU", 16 - 1);
-                break;
-            case 8:
-                strncpy(audioRtpfmt, "PCMA", 16 - 1);
-                break;
-            case 14:
-                strncpy(audioRtpfmt, "MPA", 16 - 1);
-                break;
-            case 18:
-                strncpy(audioRtpfmt, "G729", 16 - 1);
-                break;
-            case 96:
-                strncpy(audioRtpfmt, "MPEG4-GENERIC", 16 - 1);
-                break;
-            default:
-                strncpy(audioRtpfmt, "UNKNOWN", 16 - 1);
-                break;
+            case 0: strncpy(audioRtpfmt, "PCMU", 16 - 1); break;
+            case 8: strncpy(audioRtpfmt, "PCMA", 16 - 1); break;
+            case 14: strncpy(audioRtpfmt, "MPA", 16 - 1); break;
+            case 18: strncpy(audioRtpfmt, "G729", 16 - 1); break;
+            case 96: strncpy(audioRtpfmt, "MPEG4-GENERIC", 16 - 1); break;
+            default: strncpy(audioRtpfmt, "UNKNOWN", 16 - 1); break;
         }
         sprintf(audioRtp, 
             "\r\n"
@@ -230,7 +218,8 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
                 "%sm=video 0 RTP/AVP 96\r\n"
                 "a=control:track=0\r\n"
                 "a=rtpmap:96 %s/90000\r\n"
-                "a=fmtp:96 packetization-mode=1%s",
+                "a=fmtp:96 profile-level-id=000000;"
+                " packetization-mode=1;%s",
                 baseRtp,
                 h->isH265 ? "H265" : "H264",
                 audioRtp);
@@ -294,8 +283,8 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
     fprintf(p->fp_tcp_write,
         "RTSP/1.0 200 OK\r\n"
         "CSeq: %d\r\n"
-        "Session: %llx\r\n"
-        "\r\n" , p->cseq, p->session_id);
+        "Range: npt=now-\r\n"
+        "\r\n" , p->cseq);
 
     for (int i = 0; i < sizeof(p->trans) / sizeof(*p->trans); i++) {
         if (!p->trans[i].server_port_rtp) continue;
@@ -323,8 +312,7 @@ static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
     fprintf(p->fp_tcp_write,
         "RTSP/1.0 200 OK\r\n"
         "CSeq: %d\r\n"
-        "Session: %llx\r\n"
-        "\r\n", p->cseq, p->session_id);
+        "\r\n", p->cseq);
 
     p->con_state = __CON_S_INIT;
 
@@ -517,7 +505,7 @@ static inline int __find_fd_max(struct list_head_t *head)
     while (p) {
         list_upcast(c,p);
         if (c->con_state != __CON_S_DISCONNECTED) {
-            m = max(c->client_fd,m);
+            m = max(c->client_fd, m);
         }
         p = p->next;
     }
@@ -543,7 +531,7 @@ static inline int __bind_tcp(unsigned short port)
     int tmp = 1;
 
     /* setup serve rsocket */
-    ASSERT((server_fd = socket(AF_INET,SOCK_STREAM,0)) > 0, ({
+    ASSERT((server_fd = socket(AF_INET, SOCK_STREAM, 0)) > 0, ({
                 ERR("socket:%s\n", strerror(errno));
                 goto error;}));
 
@@ -553,16 +541,16 @@ static inline int __bind_tcp(unsigned short port)
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_family = AF_INET;
 
-    ASSERT(bind(server_fd,(struct sockaddr *)&addr,sizeof(addr)) == 0, ({
-                ERR("bind:%s\n",strerror(errno));
+    ASSERT(bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) == 0, ({
+                ERR("bind:%s\n", strerror(errno));
                 goto error;}));
 
-    ASSERT(listen(server_fd,5) >= 0, ({
-                ERR("listen:%s\n",strerror(errno));
+    ASSERT(listen(server_fd, 5) >= 0, ({
+                ERR("listen:%s\n", strerror(errno));
                 goto error;}));
 
     /* set the socket to non-blocking */
-    fcntl(server_fd,F_SETFL,fcntl(server_fd,F_GETFL) | O_NONBLOCK);
+    fcntl(server_fd, F_SETFL, fcntl(server_fd, F_GETFL) | O_NONBLOCK);
 
     return server_fd;
 error:
@@ -726,7 +714,6 @@ static void *rtspThrFxn(void *v)
     thread_sync_init(h);
 
     while (!gbl_get_quit(h->sharedp->gbl)) {
-
         FD_ZERO(&(socks.rfds));
         FD_SET(server_fd, &(socks.rfds));
         socks.timeout.tv_sec = 1;
@@ -847,5 +834,5 @@ int rtsp_tick(rtsp_handle h)
         ERR("gettimeofday failed\n");
         return FAILURE;}));
 
-    return __get_timestamp_offset(&h->stat,&tv);
+    return __get_timestamp_offset(&h->stat, &tv);
 }
