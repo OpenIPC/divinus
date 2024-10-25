@@ -166,6 +166,8 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
     if (!con->trans[track_id].server_port_rtp) return SUCCESS;
 
     rtp->packet.header.seq = htons(con->trans[track_id].rtp_seq);
+    if (rtp->packet.header.m)
+        con->trans[track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
     rtp->packet.header.ts = htonl(con->trans[track_id].rtp_timestamp);
     rtp->packet.header.ssrc = htonl(con->ssrc);
     con->trans[track_id].rtp_seq += 1;

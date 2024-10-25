@@ -218,8 +218,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
                 "%sm=video 0 RTP/AVP 96\r\n"
                 "a=control:track=0\r\n"
                 "a=rtpmap:96 %s/90000\r\n"
-                "a=fmtp:96 profile-level-id=000000;"
-                " packetization-mode=1;%s",
+                "a=fmtp:96 packetization-mode=1;%s",
                 baseRtp,
                 h->isH265 ? "H265" : "H264",
                 audioRtp);
@@ -292,7 +291,7 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
 
         ASSERT(__bind_rtcp(p) == SUCCESS, return);
         ASSERT(__bind_rtp(p) == SUCCESS, return);
-        p->trans[p->track_id].rtp_timestamp = rand_r(&h->ctx);
+        p->trans[p->track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
         p->trans[p->track_id].rtp_seq = rand_r(&h->ctx);
         p->trans[p->track_id].rtcp_octet = 0; 
         p->trans[p->track_id].rtcp_packet_cnt = 0; 
@@ -453,15 +452,13 @@ static int __connection_reset(void *v)
             CLOSE(p->trans[i].server_rtp_fd);
             p->trans[i].server_rtp_fd = 0;
         }
-
-        p->trans[i].rtp_timestamp = 0;
     }
-
 
     p->given_session_id = 0;
     p->cseq = 0;
 
     ctx = p->trans[0].rtp_timestamp;
+
     /* randomize session id to avoid conflict */
     p->session_id = __get_random_llu(&ctx);
 
@@ -469,7 +466,7 @@ static int __connection_reset(void *v)
 }
 
     static inline int
-__connection_list_add(bufpool_handle con_pool, struct list_head_t *head,int fd, struct sockaddr_in addr)
+__connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd, struct sockaddr_in addr)
 {
     DASSERT(head, return FAILURE);
     DASSERT(fd > 0, return FAILURE);
