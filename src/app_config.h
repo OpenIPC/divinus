@@ -38,8 +38,13 @@ struct AppConfig {
     int antiflicker;
 
     bool osd_enable;
-    bool rtsp_enable;
     bool mdns_enable;
+
+    // [rtsp]
+    bool rtsp_enable;
+    bool rtsp_enable_auth;
+    char rtsp_auth_user[32];
+    char rtsp_auth_pass[32];
 
     // [audio]
     bool audio_enable;

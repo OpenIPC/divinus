@@ -249,9 +249,18 @@ enum ConfigError parse_app_config(void) {
         goto RET_ERR;
     parse_int(&ini, "isp", "antiflicker", -1, 60, &app_config.antiflicker);
 
-    parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
-
     parse_bool(&ini, "mdns", "enable", &app_config.mdns_enable);
+
+    parse_bool(&ini, "osd", "enable", &app_config.osd_enable);
+
+    parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
+    if (app_config.rtsp_enable) {
+            parse_bool(&ini, "rtsp", "enable_auth", &app_config.rtsp_enable_auth);
+            parse_param_value(
+                &ini, "rtsp", "auth_user", app_config.rtsp_auth_user);
+            parse_param_value(
+                &ini, "rtsp", "auth_pass", app_config.rtsp_auth_pass);
+    }
 
     parse_bool(&ini, "audio", "enable", &app_config.audio_enable);
     if (app_config.audio_enable) {
@@ -315,8 +324,6 @@ enum ConfigError parse_app_config(void) {
         if (err != CONFIG_OK)
             goto RET_ERR;
     }
-
-    parse_bool(&ini, "osd", "enable", &app_config.osd_enable);
 
     err = parse_bool(&ini, "jpeg", "enable", &app_config.jpeg_enable);
     if (err != CONFIG_OK)
