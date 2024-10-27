@@ -66,6 +66,14 @@ int main(int argc, char *argv[]) {
     if (app_config.rtsp_enable) {
         rtspHandle = rtsp_create(RTSP_MAXIMUM_CONNECTIONS, 1);
         HAL_INFO("rtsp", "Started listening for clients...\n");
+        if (app_config.rtsp_enable_auth) {
+            if (!app_config.rtsp_auth_user || !app_config.rtsp_auth_pass)
+                HAL_ERROR("rtsp", "One or both credential fields have been left empty!\n");
+            else {
+                rtsp_configure_auth(rtspHandle, app_config.rtsp_auth_user, app_config.rtsp_auth_pass);
+                HAL_INFO("rtsp", "Authentication enabled!\n");
+            }
+        }
     }
 
     if (start_sdk())

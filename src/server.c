@@ -501,7 +501,7 @@ void respond_request(struct Request *req) {
 
     if (app_config.web_enable_auth) {
         char *auth = request_header("Authorization");
-        char cred[65], valid[256];
+        char cred[66], valid[256];
 
         strcpy(cred, app_config.web_auth_user);
         strcpy(cred + strlen(app_config.web_auth_user), ":");

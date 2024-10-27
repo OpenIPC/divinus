@@ -24,6 +24,7 @@ extern void request_idr();
  *              PRIVATE DEFINITIONS
  ******************************************************************************/
 #define __STR_OPTIONS  "OPTIONS"
+#define __STR_AUTH "AUTHORIZATION"
 #define __STR_CSEQ  "CSEQ"
 #define __STR_DESCRIBE  "DESCRIBE"
 #define __STR_SETUP  "SETUP"
@@ -54,6 +55,7 @@ static inline int __bind_rtp(struct connection_item_t *con );
 static inline int __bind_rtcp(struct connection_item_t *con );
 static inline int __bind_tcp(unsigned short port);
 
+static void __method_auth(struct connection_item_t *p, rtsp_handle h);
 static void __method_options(struct connection_item_t *p, rtsp_handle h);
 static void __method_describe(struct connection_item_t *p, rtsp_handle h);
 static void __method_setup(struct connection_item_t *p, rtsp_handle h);
@@ -127,6 +129,14 @@ static inline bufpool_handle __transpool_create(int num)
 /******************************************************************************
  *              RESPONSE IMPLEMENTATIONS
  ******************************************************************************/
+static void __method_auth(struct connection_item_t *p, rtsp_handle h)
+{
+    fprintf(p->fp_tcp_write, "RTSP/1.0 401 Unauthorized\r\n"
+            "CSeq: %d\r\n"
+            "WWW-Authenticate: Basic realm=\"Access the camera streams\"\r\n"
+            "\r\n", p->cseq);
+}
+
 static void __method_options(struct connection_item_t *p, rtsp_handle h)
 {
     fprintf(p->fp_tcp_write, "RTSP/1.0 200 OK\r\n"
@@ -262,19 +272,18 @@ static void __method_pause(struct connection_item_t *p, rtsp_handle h)
 {
     fprintf(p->fp_tcp_write, 
         "RTSP/1.0 "__RESPONCE_STR_METHODNOTALLOWED "\r\n");
-
 }
+
 static void __method_record(struct connection_item_t *p, rtsp_handle h)
 {
     fprintf(p->fp_tcp_write,
         "RTSP/1.0 " __RESPONCE_STR_METHODNOTALLOWED "\r\n");
-
 }
+
 static void __method_error(struct connection_item_t *p, rtsp_handle h)
 {
     fprintf(p->fp_tcp_write,
         "RTSP/1.0 " __RESPONCE_STR_SERVERERROR "\r\n");
-
 }
 
 static void __method_play(struct connection_item_t *p, rtsp_handle h)
@@ -315,7 +324,6 @@ static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
 
     p->con_state = __CON_S_INIT;
 
-
     return SUCCESS;
 }
 
@@ -345,7 +353,7 @@ static int __message_proc_sock(struct list_t *e, void *p)
         con->parser_state = __PARSER_S_INIT;
         con->method = __METHOD_NONE;
 
-        char header = 0, *tok, *last;
+        char header = 0, isAuthValid = 0, *tok, *last;
         unsigned long long session_id;
         /* parse line by line. hereafter parser is switched according to the finite state machine */
         while (__read_line(con, buf)) {
@@ -359,12 +367,16 @@ static int __message_proc_sock(struct list_t *e, void *p)
                 } else if (SCMP(__STR_RECORDING, buf))   { con->method = __METHOD_RECORDING;
                 } else if (SCMP(__STR_PAUSE, buf))       { con->method = __METHOD_PAUSE;
                 } else if (SCMP(__STR_TEARDOWN, buf))    { con->method = __METHOD_TEARDOWN;
-                }
-                con->parser_state = __PARSER_S_HEAD;
-                header++;
+                } header++;
             }
 
-            if (SCMP(__STR_CSEQ, buf)) {
+            if (SCMP(__STR_AUTH, buf) && h->isAuthOn) {
+                    char cred[66], valid[256];
+                    sprintf(cred, "%s:%s", h->user, h->pass);
+                    strcpy(valid, "Basic ");
+                    base64_encode(valid + 6, cred, strlen(cred));
+                    isAuthValid = !strncmp(buf + strlen(__STR_AUTH) + 2, valid, strlen(valid));
+             } else if (SCMP(__STR_CSEQ, buf)) {
                 ASSERT(tok = strtok_r(buf, ": ", &last), goto error); 
                 ASSERT(tok = strtok_r(NULL, ": ", &last), goto error);
                 ASSERT((con->cseq = atoi(tok)) > 0, goto error);
@@ -396,9 +408,12 @@ error:
         }
 
         if (con->parser_state == __PARSER_S_ERROR) {
-            __method_error(con,h);
+            __method_error(con, h);
         } else {
+            if (con->method != __METHOD_NONE && h->isAuthOn && !isAuthValid)
+                con->method = __METHOD_AUTH;
             switch (con->method) {
+                case __METHOD_AUTH: __method_auth(con, h); break;
                 case __METHOD_OPTIONS: __method_options(con, h); break;
                 case __METHOD_DESCRIBE: __method_describe(con, h); break;
                 case __METHOD_SETUP: __method_setup(con, h); break;
@@ -820,6 +835,17 @@ rtsp_handle rtsp_create(unsigned char max_con, int priority)
 error: 
     rtsp_finish(nh);
     return NULL;
+}
+
+void rtsp_configure_auth(rtsp_handle h, const char *user, const char *pass)
+{
+    if (user && pass) {
+        h->isAuthOn = 1;
+        strncpy(h->user, user, sizeof(h->user) - 1);
+        strncpy(h->pass, pass, sizeof(h->pass) - 1);
+    } else {
+        h->isAuthOn = 0;
+    }
 }
 
 int rtsp_tick(rtsp_handle h)

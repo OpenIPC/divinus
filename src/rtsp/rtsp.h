@@ -42,7 +42,6 @@ enum __connection_state_e {
 
 enum __parser_state_e {
     __PARSER_S_INIT = 0,
-    __PARSER_S_HEAD,
     __PARSER_S_CSEQ,
     __PARSER_S_TRANSPORT,
     __PARSER_S_SESSION,
@@ -59,6 +58,7 @@ enum __method_e {
     __METHOD_TEARDOWN,
     __METHOD_PAUSE,
     __METHOD_RECORDING,
+    __METHOD_AUTH,
     __METHOD_NONE,
     __METHOD_COUNT
 };
@@ -122,7 +122,7 @@ struct __rtsp_obj_t {
     threadpool_handle pool;
     bufpool_handle con_pool;
     bufpool_handle transfer_pool;
-    unsigned short  port;
+    unsigned short port;
     struct __time_stat_t stat;
     char isH265;
     unsigned char audioPt;
@@ -130,10 +130,13 @@ struct __rtsp_obj_t {
     mime_encoded_handle sprop_sps_b64;
     mime_encoded_handle sprop_pps_b64;
     mime_encoded_handle sprop_sps_b16;
-    unsigned        ctx; /* for rand_r */
-    int             con_num;
-    unsigned char   max_con;
-    int             priority; 
+    unsigned ctx; /* for rand_r */
+    int con_num;
+    unsigned char max_con;
+    int priority;
+    char isAuthOn;
+    char user[32];
+    char pass[32];
 };
 
 struct sock_select_t {

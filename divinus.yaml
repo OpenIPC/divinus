@@ -21,6 +21,12 @@ osd:
 mdns:
   enable: false
 
+rtsp:
+  enable: true
+  enable_auth: false
+  auth_user: admin
+  auth_pass: 12345
+
 night_mode:
   enable: false
   ir_sensor_pin: 62
@@ -46,9 +52,6 @@ audio:
   enable: false
   srate: 48000
   bitrate: 128
-
-rtsp:
-  enable: true
 
 mp4:
   enable: true
