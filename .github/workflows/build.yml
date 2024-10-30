@@ -19,6 +19,7 @@ jobs:
         run: |
           list="arm-musl arm9-musl3 arm9-musl4 arm9-uclibc armhf-musl armhf-glibc mips-musl"
           for lib in $list; do
+            make -C src clean
             sh build.sh $lib
             zip $lib divinus*
           done
