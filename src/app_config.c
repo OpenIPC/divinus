@@ -134,9 +134,10 @@ enum ConfigError parse_app_config(void) {
     app_config.web_server_thread_stack_size = 32 * 1024;
     app_config.watchdog = 0;
 
+    app_config.mdns_enable = false;
     app_config.osd_enable = false;
     app_config.rtsp_enable = false;
-    app_config.mdns_enable = false;
+    app_config.rtsp_enable_auth = false;
 
     app_config.sensor_config[0] = 0;
     app_config.audio_enable = false;
