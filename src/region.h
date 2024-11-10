@@ -45,6 +45,18 @@ typedef struct {
 } bitmapinfo;
 
 typedef struct {
+    unsigned int redMask;
+    unsigned int greenMask;
+    unsigned int blueMask;
+    unsigned int alphaMask;
+    unsigned char clrSpace[4];
+    unsigned char csEndpoints[24];
+    unsigned int redGamma;
+    unsigned int greenGamma;
+    unsigned int blueGamma;
+} bitmapfields;
+
+typedef struct {
     double size;
     int hand, color;
     short opal, posx, posy;

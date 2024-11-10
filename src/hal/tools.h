@@ -29,6 +29,8 @@ char *memstr(char *haystack, char *needle, int size, char needlesize);
 
 unsigned int millis();
 
+void reverse(void *arr, size_t width);
+
 char *split(char **input, char *sep);
 
 void unescape_uri(char *uri);

@@ -118,7 +118,7 @@ int region_parse_bitmap(FILE **file, bitmapfile *bmpFile, bitmapinfo *bmpInfo)
         HAL_ERROR("region", "Extracting the bitmap info failed!\n");
     if (bmpInfo->bitCount < 24)
         HAL_ERROR("region", "Indexed or <3bpp bitmaps are not supported!\n");
-    if (bmpInfo->bitCount != 32 && bmpInfo->compression)
+    if (bmpInfo->bitCount != 32 || bmpInfo->compression)
         HAL_ERROR("region", "Bitfields and compressed modes are not supported!\n");
 
     return EXIT_SUCCESS;

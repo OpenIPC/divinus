@@ -123,6 +123,18 @@ unsigned int millis() {
     return t.tv_sec * 1000 + (t.tv_usec + 500) / 1000;
 }
 
+void reverse(void *arr, size_t width) {
+	char *val = (char*)arr;
+	char tmp;
+	size_t i;
+
+	for (i = 0; i < width / 2; i++) {
+		tmp = val[i];
+		val[i] = val[width - i - 1];
+		val[width - i - 1] = tmp;
+	}
+}
+
 char *split(char **input, char *sep) {
     char *curr = (char *)"";
     while (curr && !curr[0] && *input) curr = strsep(input, sep);

@@ -40,7 +40,7 @@
         "name": "armhf-musl",
         "includePath": ["${workspaceFolder}/**"],
         "defines": ["__arm__"],
-        "compilerPath": "toolchain/cortex_a7_thumb2-gcc13-musl-4_9/bin/arm-openipc-linux-musleabi-gcc",
+        "compilerPath": "toolchain/cortex_a7_thumb2_hf-gcc13-musl-4_9/bin/arm-openipc-linux-musleabihf-gcc",
         "cStandard": "c11"
       },{
         "name": "mips-musl",
