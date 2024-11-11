@@ -69,11 +69,13 @@ void *onvif_thread(void) {
 
     while (keepRunning) {
         clntsz = sizeof(clntaddr);
-        if (msglen = recvfrom(servfd, msgbuf, sizeof(msgbuf), 0, (struct sockaddr *)&clntaddr, &clntsz) < 0)
+        if ((msglen = recvfrom(servfd, msgbuf, sizeof(msgbuf), 0, (struct sockaddr *)&clntaddr, &clntsz)) < 0)
             continue;
 
         msgbuf[msglen] = '\0';
+#ifdef DEBUG_ONVIF
         HAL_INFO("onvif", "Received message: %s\n", msgbuf);
+#endif
 
         if (!strstr(msgbuf, "http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe"))
             continue;
