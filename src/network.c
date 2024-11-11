@@ -1,5 +1,7 @@
 #include "network.h"
 
+pthread_t onvifPid = 0;
+
 struct mdnsd *mdns = {0};
 
 int start_mdns() {
@@ -46,4 +48,60 @@ void stop_mdns() {
     if (mdns)
         mdnsd_stop(mdns);
     mdns = NULL;
+}
+
+void *onvif_thread(void) {
+    char msgbuf[1024];
+    int servfd, msglen;
+    struct sockaddr_in servaddr, clntaddr;
+    socklen_t clntsz;
+
+    if ((servfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+        HAL_ERROR("onvif", "Failed to create socket!\n");
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr("239.255.255.250");
+    servaddr.sin_port = htons(3702);
+
+    if (bind(servfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1)
+        HAL_ERROR("onvif", "Failed to bind socket!\n");
+
+    while (keepRunning) {
+        clntsz = sizeof(clntaddr);
+        if (msglen = recvfrom(servfd, msgbuf, sizeof(msgbuf), 0, (struct sockaddr *)&clntaddr, &clntsz) < 0)
+            continue;
+
+        msgbuf[msglen] = '\0';
+        HAL_INFO("onvif", "Received message: %s\n", msgbuf);
+
+        if (!strstr(msgbuf, "http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe"))
+            continue;
+
+        char *response = "";
+        sendto(servfd, response, strlen(response), 0, (struct sockaddr *)&clntaddr, clntsz);
+    }
+
+    close(servfd);
+    return EXIT_SUCCESS;
+}
+
+int start_onvif_server() {
+    pthread_attr_t thread_attr;
+    pthread_attr_init(&thread_attr);
+    size_t stacksize;
+    pthread_attr_getstacksize(&thread_attr, &stacksize);
+    size_t new_stacksize = 16 * 1024;
+    if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
+        HAL_DANGER("onvif", "Error:  Can't set stack size %zu\n", new_stacksize);
+    }
+    pthread_create(&onvifPid, &thread_attr, (void *(*)(void *))onvif_thread, NULL);
+    if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
+        HAL_DANGER("onvif", "Error:  Can't set stack size %zu\n", stacksize);
+    }
+    pthread_attr_destroy(&thread_attr);
+}
+
+void stop_onvif_server() {
+    pthread_join(onvifPid, NULL);
 }
