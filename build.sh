@@ -25,7 +25,7 @@ else
 fi
 
 if [ "$1" = "arm-glibc" ] || [ "$1" = "hisi-v4a" ]; then
-	toolchain toolchain.hisilicon-hi3516cv500 -lm
+	toolchain toolchain.hisilicon-hi3516cv500 arm -lm
 elif [ "$1" = "arm-musl3" ] || [ "$1" = "hisi-v2a" ] || [ "$1" = "hisi-v3a" ]; then
     toolchain toolchain.hisilicon-hi3516av100 arm
 elif [ "$1" = "arm-musl4" ] || [ "$1" = "hisi-v4" ]; then
