@@ -110,9 +110,9 @@ void hal_identify(void) {
                     else
                         strcpy(chip, "SSC33[6/8]");
                     if (memory > 128)
-                        strcat(chip, "D");
-                    else if (memory > 64)
                         strcat(chip, "Q");
+                    else if (memory > 64)
+                        strcat(chip, "D");
                 }
                 strcpy(family, "infinity6e");
                 break;
