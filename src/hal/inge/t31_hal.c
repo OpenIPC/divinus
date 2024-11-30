@@ -233,7 +233,7 @@ sensor_from_env:
         sensorlocal = getenv("SENSOR");
 
 sensor_found:
-        strncpy(sensor, sensorlocal, sizeof(sensor));
+        if (*sensorlocal) strncpy(sensor, sensorlocal, sizeof(sensor));
 
         for (char i = 0; i < sizeof(t31_sensors) / sizeof(*t31_sensors); i++) {
             if (strcmp(t31_sensors[i].name, sensorlocal)) continue;
@@ -500,7 +500,7 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         fd = t31_venc.fnGetDescriptor(index);
     }
 
-    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+    struct timeval timeout = { .tv_sec = 3, .tv_usec = 0 };
     fd_set readFds;
     FD_ZERO(&readFds);
     FD_SET(fd, &readFds);

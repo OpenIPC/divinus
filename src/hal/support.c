@@ -64,6 +64,9 @@ void hal_identify(void) {
     char *endMark;
     char line[200] = {0};
 
+    char *sensorlocal = getenv("SENSOR");
+    if (*sensorlocal) strncpy(sensor, sensorlocal, sizeof(sensor));
+
 #ifdef __arm__
     if (!access("/proc/mi_modules", F_OK) && 
         hal_registry(0x1F003C00, &series, OP_READ)) {

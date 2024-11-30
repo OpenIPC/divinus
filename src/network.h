@@ -1,7 +1,9 @@
 #pragma once
 
 #include <ifaddrs.h>
+#include <netdb.h>
 #include <net/if.h>
+#include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <sys/utsname.h>
