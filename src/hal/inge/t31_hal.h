@@ -13,7 +13,7 @@
 #include <sys/select.h>
 #include <unistd.h>
 
-extern char keepRunning;
+extern char keepRunning, sensor[16];
 
 extern hal_chnstate t31_state[T31_VENC_CHN_NUM];
 extern int (*t31_aud_cb)(hal_audframe*);

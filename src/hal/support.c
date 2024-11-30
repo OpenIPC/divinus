@@ -10,6 +10,7 @@ hal_chnstate *chnState = NULL;
 char chip[16] = "unknown";
 char family[32] = {0};
 hal_platform plat = HAL_PLATFORM_UNK;
+char sensor[16] = "unidentified";
 int series = 0;
 
 bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
