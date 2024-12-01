@@ -104,8 +104,6 @@ void *onvif_thread(void) {
         HAL_INFO("onvif", "Received message: %s\n", msgbuf);
 #endif
 
-        printf("Received message: %s\n", msgbuf);
-
         if (!strstr(msgbuf, "http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe"))
             continue;
 

@@ -307,6 +307,16 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         channel.mode = I6_VPE_MODE_REALTIME;
         if (ret = i6_vpe.fnCreateChannel(_i6_vpe_chn, (i6_vpe_chn*)&channel))
             return ret;
+
+        i6e_vpe_para param;
+        memset(&param, 0, sizeof(param));
+        param.hdr = I6_HDR_OFF;
+        param.level3DNR = 1;
+        param.mirror = 0;
+        param.flip = 0;
+        param.lensAdjOn = 0;
+        if (ret = i6_vpe.fnSetChannelParam(_i6_vpe_chn, (i6_vpe_para*)&param))
+            return ret;
     } else {
         i6_vpe_chn channel;
         memset(&channel, 0, sizeof(channel));
@@ -319,10 +329,9 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         channel.mode = I6_VPE_MODE_REALTIME;
         if (ret = i6_vpe.fnCreateChannel(_i6_vpe_chn, &channel))
             return ret;
-    }
 
-    {
         i6_vpe_para param;
+        memset(&param, 0, sizeof(param));
         param.hdr = I6_HDR_OFF;
         param.level3DNR = 1;
         param.mirror = 0;
@@ -331,6 +340,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         if (ret = i6_vpe.fnSetChannelParam(_i6_vpe_chn, &param))
             return ret;
     }
+
     if (ret = i6_vpe.fnStartChannel(_i6_vpe_chn))
         return ret;
 

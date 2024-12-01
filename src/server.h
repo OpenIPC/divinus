@@ -45,7 +45,7 @@
     ".balign 4\n"                           /* Word alignment */\
     ".section \".text\"\n")                 /* Restore section */
 
-extern char graceful, keepRunning, sensor[16];
+extern char graceful, keepRunning;
 
 int start_server();
 int stop_server();

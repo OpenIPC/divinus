@@ -51,6 +51,26 @@ typedef struct {
         } calibInfo;
     };
     char lensAdjOn;
+} i6e_vpe_ildc;
+
+typedef struct {
+    char bypassOn;
+    char proj3x3On;
+    int proj3x3[9];
+    unsigned int focalLengthX;
+    unsigned int focalLengthY;
+    void *configAddr;
+    unsigned int configSize;
+    union {
+        struct {
+            void *xMapAddr, *yMapAddr;
+            unsigned int xMapSize, yMapSize;
+        } dispInfo;
+        struct {
+            void *calibPolyBinAddr;
+            unsigned int calibPolyBinSize;
+        } calibInfo;
+    };
 } i6e_vpe_ldc;
 
 typedef struct {
@@ -66,7 +86,7 @@ typedef struct {
     char rotateOn;
     i6_vpe_mode mode;
     i6_vpe_iqver iqparam;
-    i6e_vpe_ldc lensAdj;
+    i6e_vpe_ildc lensInit;
     char lensAdjOn;
     unsigned int chnPort;
 } i6e_vpe_chn;
@@ -87,6 +107,18 @@ typedef struct {
     char lensAdjOn;
     unsigned int chnPort;
 } i6_vpe_chn;
+
+typedef struct {
+    char reserved[16];
+    i6e_vpe_ldc lensAdj;
+    i6_common_hdr hdr;
+    // Accepts values from 0-7
+    int level3DNR;
+    char mirror;
+    char flip;
+    char reserved2;
+    char lensAdjOn;
+} i6e_vpe_para;
 
 typedef struct {
     char reserved[16];
