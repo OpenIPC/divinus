@@ -79,6 +79,11 @@ _* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matrici
 - [ ] Alternative audio codecs
 
 
+### Disclaimer
+
+This software is provided AS IS and for research purposes only. OpenIPC shall not be liable for any loss or damage caused by the use of these files or the use of, or reliance upon, any information contained within this project.
+
+
 ### Technical support and donations
 
 Please **_[support our project](https://openipc.org/support-open-source)_** with donations or orders for development or maintenance. Thank you!

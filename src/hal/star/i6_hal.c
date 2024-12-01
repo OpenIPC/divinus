@@ -340,7 +340,6 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         if (ret = i6_vpe.fnSetChannelParam(_i6_vpe_chn, &param))
             return ret;
     }
-
     if (ret = i6_vpe.fnStartChannel(_i6_vpe_chn))
         return ret;
 
