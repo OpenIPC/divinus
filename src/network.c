@@ -122,13 +122,11 @@ int start_onvif_server() {
     size_t stacksize;
     pthread_attr_getstacksize(&thread_attr, &stacksize);
     size_t new_stacksize = 16 * 1024;
-    if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
-        HAL_DANGER("onvif", "Error:  Can't set stack size %zu\n", new_stacksize);
-    }
+    if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+        HAL_DANGER("onvif", "Can't set stack size %zu\n", new_stacksize);
     pthread_create(&onvifPid, &thread_attr, (void *(*)(void *))onvif_thread, NULL);
-    if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-        HAL_DANGER("onvif", "Error:  Can't set stack size %zu\n", stacksize);
-    }
+    if (pthread_attr_setstacksize(&thread_attr, stacksize))
+        HAL_DANGER("onvif", "Can't set stack size %zu\n", stacksize);
     pthread_attr_destroy(&thread_attr);
 }
 
