@@ -15,7 +15,7 @@
 		var isIe = ua.indexOf('MSIE ') > -1 || ua.indexOf('Trident/') > -1;
 
 		function apiApply(endp) {
-			var dest = "/api/"+endp+"?", req = new XMLHttpRequest();
+			var dest = "/api/" + endp + "?", req = new XMLHttpRequest();
 			var elems = document.getElementsByTagName('*');
 			for (var i = 0; i < elems.length; i++) {
 				if (!elems[i].id || elems[i].id.lastIndexOf(endp + '_', 0)) continue;
@@ -41,8 +41,23 @@
 						elem.innerHTML = dec[key];
 				}
 			}
-			req.open('GET', '/api/'+endp);
+			req.open('GET', '/api/' + endp);
 			req.send();
+		}
+
+		function duplicateRows(row, num) {
+			var tpl = document.getElementById(row + '_tpl');
+			for (var i = 0; i < num; i++) {
+				var clone = tpl.cloneNode(true);
+				clone.id = row + '/' + i;
+				clone.style.display = '';
+				var elems = clone.getElementsByTagName('*');
+				for (var j = 0; j < elems.length; j++) {
+					if (!elems[j].id) continue;
+					elems[j].id = elems[j].id.replace(row, row + '/' + i);
+				}
+				tpl.parentNode.appendChild(clone);
+			}
 		}
 
 		function saveConfig() {
@@ -65,11 +80,11 @@
 			if (frame.firstChild) frame.firstChild.src = "#";
 			if (src.indexOf(ext, src.length - ext.length) > -1)
 				frame.innerHTML = '<video id="player" width="100%" autoplay controls> \
-					<source src="'+src+'" type="video/mp4"> \
+					<source src="' + src + '" type="video/mp4"> \
 					<p>Please update your browser to view this content.</p> \
 					</video>';
 			else if (src)
-				frame.innerHTML = '<img src="'+src+'" width="100%">';
+				frame.innerHTML = '<img src="' + src + '" width="100%">';
 			else
 				while (frame.firstChild) frame.removeChild(frame.firstChild);
 		}
@@ -84,6 +99,10 @@
 			apiRead('night');
 			apiRead('mp4');
 			apiRead('mjpeg');
+
+			duplicateRows('osd', 8);
+			for (var i = 0; i < 8; i++)
+				apiRead('osd/' + i);
 
 			every5Sec();
 			setInterval(every5Sec, 5000);
@@ -260,11 +279,46 @@
 			</div>
 		</div>
 	</div>
+	<input type="checkbox" id="osd-modal">
+	<div class="c modal vh-100 w-100">
+		<div class="c bg-black menu pv2 row">
+			<div class="col">
+				<b><label for="osd-modal" class="lbl-modal ph2 white">Divinus</label></b>
+				<label for="osd-modal" class="btn primary close">Close</label>
+			</div>
+		</div>
+		<div class="c cont">
+			<h2 class="unl">OSD</h2>
+			<div class="row">
+				<table class="w-100">
+					<tr>
+						<th>ID</th>
+						<th>Color</th>
+						<th>Opacity</th>
+						<th>Position</th>
+						<th>Font family</th>
+						<th>Size</th>
+						<th>Text</th>
+					</tr>
+					<tr id="osd_tpl" style="display:none">
+						<td><span id="osd_id"></td>
+						<td><input type="color" id="osd_color"></td>
+						<td><input type="range" id="osd_opal" min="0" max="255"></td>
+						<td><input type="text" id="osd_pos" size="5"></td>
+						<td><input type="text" id="osd_font"></td>
+						<td><input type="number" id="osd_size" step="0.1" size="3"></td>
+						<td><input type="text" id="osd_text"></td>
+					</tr>
+				</table>
+			</div>
+		</div>
+	</div>
 	<div class="c bg-black menu pv2 row">
 		<div class="col">
 			<b><a href="./" class="ph2 white">Divinus</a></b>
 			<label for="live-modal" class="lbl-modal ph2 white">Live</label>
 			<label for="media-modal" class="lbl-modal ph2 white">Media</label>
+			<label for="osd-modal" class="lbl-modal ph2 white">OSD</label>
 			<a href="image.jpg" class="ph2 white" target="_blank">Snapshot</a>
 		</div>
 	</div>
