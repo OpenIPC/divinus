@@ -24,7 +24,7 @@ else
 	OPT="-Os -s"
 fi
 
-previous=$(cat .previous)
+previous=$(cat .previous 2>/dev/null)
 if [ "$1" != "$previous" ]; then
 	echo "$1" > .previous
 	make -C src clean

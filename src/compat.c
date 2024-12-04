@@ -29,9 +29,11 @@ void __assert(void) {}
 void akuio_clean_invalidate_dcache(void) {}
 void backtrace(void) {}
 void backtrace_symbols(void) {}
+#ifndef __GLIBC__
 void __ctype_b(void) {}
 void __ctype_b_loc(void) {}
 void __ctype_tolower(void) {}
+#endif
 void _MI_PRINT_GetDebugLevel(void) {}
 void __pthread_register_cancel(void) {}
 void __pthread_unregister_cancel(void) {}
