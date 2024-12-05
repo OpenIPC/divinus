@@ -421,8 +421,7 @@ int i6f_region_create(char handle, hal_rect rect, short opacity)
 {
     int ret;
 
-    i6f_sys_bind channel = { .module = I6F_SYS_MOD_SCL,
-        .device = _i6f_scl_dev, .channel = _i6f_scl_chn };
+    i6f_sys_bind dest = { .module = I6F_SYS_MOD_VENC, .port = _i6f_venc_port };
     i6f_rgn_cnf region, regionCurr;
     i6f_rgn_chn attrib, attribCurr;
 
@@ -435,21 +434,23 @@ int i6f_region_create(char handle, hal_rect rect, short opacity)
         HAL_INFO("i6f_rgn", "Creating region %d...\n", handle);
         if (ret = i6f_rgn.fnCreateRegion(0, handle, &region))
             return ret;
-    } else if (regionCurr.size.height != region.size.height || 
+    } else if (regionCurr.type != region.type ||
+        regionCurr.size.height != region.size.height || 
         regionCurr.size.width != region.size.width) {
         HAL_INFO("i6f_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
         for (char i = 0; i < I6F_VENC_CHN_NUM; i++) {
             if (!i6f_state[i].enable) continue;
-            channel.port = i;
-            i6f_rgn.fnDetachChannel(0, handle, &channel);
+            dest.device = _i6f_venc_dev[i];
+            dest.channel = i;
+            i6f_rgn.fnDetachChannel(0, handle, &dest);
         }
         i6f_rgn.fnDestroyRegion(0, handle);
         if (ret = i6f_rgn.fnCreateRegion(0, handle, &region))
             return ret;
     }
 
-    if (i6f_rgn.fnGetChannelConfig(0, handle, &channel, &attribCurr))
+    if (i6f_rgn.fnGetChannelConfig(0, handle, &dest, &attribCurr))
         HAL_INFO("i6f_rgn", "Attaching region %d...\n", handle);
     else if (attribCurr.point.x != rect.x || attribCurr.point.x != rect.y ||
         attribCurr.osd.bgFgAlpha[1] != opacity) {
@@ -457,8 +458,9 @@ int i6f_region_create(char handle, hal_rect rect, short opacity)
             "region %d...\n", handle);
         for (char i = 0; i < I6F_VENC_CHN_NUM; i++) {
             if (!i6f_state[i].enable) continue;
-            channel.port = i;
-            i6f_rgn.fnDetachChannel(0, handle, &channel);
+            dest.device = _i6f_venc_dev[i];
+            dest.channel = i;
+            i6f_rgn.fnDetachChannel(0, handle, &dest);
         }
     }
 
@@ -473,8 +475,9 @@ int i6f_region_create(char handle, hal_rect rect, short opacity)
 
     for (char i = 0; i < I6F_VENC_CHN_NUM; i++) {
         if (!i6f_state[i].enable) continue;
-        channel.port = i;
-        i6f_rgn.fnAttachChannel(0, handle, &channel, &attrib);
+        dest.device = _i6f_venc_dev[i];
+        dest.channel = i;
+        i6f_rgn.fnAttachChannel(0, handle, &dest, &attrib);
     }
 
     return EXIT_SUCCESS;
@@ -487,13 +490,14 @@ void i6f_region_deinit(void)
 
 void i6f_region_destroy(char handle)
 {
-    i6f_sys_bind channel = { .module = I6F_SYS_MOD_SCL,
-        .device = _i6f_scl_dev, .channel = _i6f_scl_chn };
+    i6f_sys_bind dest = { .module = I6F_SYS_MOD_VENC, .port = _i6f_venc_port };
     
-    channel.port = 1;
-    i6f_rgn.fnDetachChannel(0, handle, &channel);
-    channel.port = 0;
-    i6f_rgn.fnDetachChannel(0, handle, &channel);
+    for (char i = 0; i < I6F_VENC_CHN_NUM; i++) {
+        if (!i6f_state[i].enable) continue;
+        dest.device = _i6f_venc_dev[i];
+        dest.channel = i;
+        i6f_rgn.fnDetachChannel(0, handle, &dest);
+    }
     i6f_rgn.fnDestroyRegion(0, handle);
 }
 
