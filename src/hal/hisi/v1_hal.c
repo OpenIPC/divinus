@@ -343,7 +343,7 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
 {
     int ret;
 
-    v1_sys_bind dest = { .module = V1_SYS_MOD_VENC, .device = _v1_venc_dev };
+    v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP, .device = _v1_vpss_grp };
     v1_rgn_cnf region, regionCurr;
     v1_rgn_chn attrib, attribCurr;
 
@@ -396,7 +396,7 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
 
 void v1_region_destroy(char handle)
 {
-    v1_sys_bind dest = { .module = V1_SYS_MOD_VENC, .device = _v1_venc_dev };
+    v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP, .device = _v1_vpss_grp };
     
     v1_rgn.fnDetachChannel(handle, &dest);
     v1_rgn.fnDestroyRegion(handle);
