@@ -33,7 +33,7 @@ typedef struct {
 
 typedef struct {
     i6_rgn_type type;
-    i6_common_pixfmt pixFmt;
+    i6_rgn_pixfmt pixFmt;
     i6_rgn_size size;
 } i6_rgn_cnf;
 
