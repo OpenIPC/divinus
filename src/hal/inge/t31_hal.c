@@ -174,7 +174,7 @@ int t31_channel_create(char index, short width, short height, char framerate)
 
 void t31_channel_destroy(char index)
 {
-    t31_fs.fnDestroyChannel(index);
+    t31_fs.fnDestroyChannel(index ^ 1);
 }
 
 int t31_channel_grayscale(char enable)
@@ -205,7 +205,11 @@ int t31_channel_unbind(char index)
 
 int t31_config_load(char *path)
 {
-    return t31_isp.fnLoadConfig(path);
+    t31_isp.fnDisableSensor();
+    int ret = t31_isp.fnLoadConfig(path);
+    t31_isp.fnEnableSensor();
+
+    return ret;
 }
 
 int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate)
@@ -213,24 +217,26 @@ int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate
     int ret;
 
     {
-        char *sensor, sensorName[50];
-        FILE *sensorInfo = fopen("/proc/jz/sinfo/info", "r");
-        if (!fgets(sensorName, 50, sensorInfo))
+        char *sensorlocal, sensorname[50];
+        FILE *sensorinfo = fopen("/proc/jz/sinfo/info", "r");
+        if (!fgets(sensorname, 50, sensorinfo))
             HAL_INFO("t31_hal", "Couldn't determine the sensor name from sinfo module!\n");
         else {
-            sensor = strstr(sensorName, ":");
-            if (!sensor++) goto sensor_from_env;
-            sensor[strlen(sensor) - 1] = '\0';
+            sensorlocal = strstr(sensorname, ":");
+            if (!sensorlocal++) goto sensor_from_env;
+            sensorlocal[strlen(sensorlocal) - 1] = '\0';
             goto sensor_found;
         }
-        fclose(sensorInfo);
+        fclose(sensorinfo);
 
 sensor_from_env:
-        sensor = getenv("SENSOR");
+        sensorlocal = getenv("SENSOR");
 
 sensor_found:
+        if (*sensorlocal) strncpy(sensor, sensorlocal, sizeof(sensor));
+
         for (char i = 0; i < sizeof(t31_sensors) / sizeof(*t31_sensors); i++) {
-            if (strcmp(t31_sensors[i].name, sensor)) continue;
+            if (strcmp(t31_sensors[i].name, sensorlocal)) continue;
             memcpy(&_t31_isp_snr, &t31_sensors[i], sizeof(t31_isp_snr));
             if (t31_sensors[i].mode == T31_ISP_COMM_I2C)
                 memcpy(&_t31_isp_snr.i2c.type, &t31_sensors[i].name, strlen(t31_sensors[i].name));
@@ -475,7 +481,7 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
             index = i;
             mjpeg = 1;
         }
-        return EXIT_FAILURE;
+        if (index == -1) return EXIT_FAILURE;
     }
 
     if (!mjpeg) {
@@ -494,7 +500,7 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         fd = t31_venc.fnGetDescriptor(index);
     }
 
-    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+    struct timeval timeout = { .tv_sec = 3, .tv_usec = 0 };
     fd_set readFds;
     FD_ZERO(&readFds);
     FD_SET(fd, &readFds);

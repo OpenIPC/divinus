@@ -9,6 +9,7 @@
 #include "t31_venc.h"
 
 #include "../config.h"
+#include "../support.h"
 
 #include <sys/select.h>
 #include <unistd.h>

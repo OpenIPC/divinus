@@ -310,7 +310,7 @@ int i3_region_create(char handle, hal_rect rect, short opacity)
 {
     int ret;
 
-    i3_sys_bind channel = { .module = 0,
+    i3_sys_bind dest = { .module = 0,
         .device = _i3_vpe_dev, .channel = _i3_vpe_chn };
     i3_rgn_cnf region, regionCurr;
     i3_rgn_chn attrib, attribCurr;
@@ -324,21 +324,22 @@ int i3_region_create(char handle, hal_rect rect, short opacity)
         HAL_INFO("i3_rgn", "Creating region %d...\n", handle);
         if (ret = i3_rgn.fnCreateRegion(handle, &region))
             return ret;
-    } else if (regionCurr.size.height != region.size.height || 
+    } else if (regionCurr.type != region.type ||
+        regionCurr.size.height != region.size.height || 
         regionCurr.size.width != region.size.width) {
         HAL_INFO("i3_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
         for (char i = 0; i < I3_VENC_CHN_NUM; i++) {
             if (!i3_state[i].enable) continue;
-            channel.port = i;
-            i3_rgn.fnDetachChannel(handle, &channel);
+            dest.port = i;
+            i3_rgn.fnDetachChannel(handle, &dest);
         }
         i3_rgn.fnDestroyRegion(handle);
         if (ret = i3_rgn.fnCreateRegion(handle, &region))
             return ret;
     }
 
-    if (i3_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
+    if (i3_rgn.fnGetChannelConfig(handle, &dest, &attribCurr))
         HAL_INFO("i3_rgn", "Attaching region %d...\n", handle);
     else if (attribCurr.point.x != rect.x || attribCurr.point.x != rect.y ||
         attribCurr.osd.bgFgAlpha[1] != opacity) {
@@ -346,8 +347,8 @@ int i3_region_create(char handle, hal_rect rect, short opacity)
             "region %d...\n", handle);
         for (char i = 0; i < I3_VENC_CHN_NUM; i++) {
             if (!i3_state[i].enable) continue;
-            channel.port = i;
-            i3_rgn.fnDetachChannel(handle, &channel);
+            dest.port = i;
+            i3_rgn.fnDetachChannel(handle, &dest);
         }
     }
 
@@ -362,8 +363,8 @@ int i3_region_create(char handle, hal_rect rect, short opacity)
 
     for (char i = 0; i < I3_VENC_CHN_NUM; i++) {
         if (!i3_state[i].enable) continue;
-        channel.port = i;
-        i3_rgn.fnAttachChannel(handle, &channel, &attrib);
+        dest.port = i;
+        i3_rgn.fnAttachChannel(handle, &dest, &attrib);
     }
 
     return EXIT_SUCCESS;
@@ -371,13 +372,13 @@ int i3_region_create(char handle, hal_rect rect, short opacity)
 
 void i3_region_destroy(char handle)
 {
-    i3_sys_bind channel = { .module = 0,
+    i3_sys_bind dest = { .module = 0,
         .device = _i3_vpe_dev, .channel = _i3_vpe_chn };
     
-    channel.port = 1;
-    i3_rgn.fnDetachChannel(handle, &channel);
-    channel.port = 0;
-    i3_rgn.fnDetachChannel(handle, &channel);
+    dest.port = 1;
+    i3_rgn.fnDetachChannel(handle, &dest);
+    dest.port = 0;
+    i3_rgn.fnDetachChannel(handle, &dest);
     i3_rgn.fnDestroyRegion(handle);
 }
 

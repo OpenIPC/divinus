@@ -23,6 +23,7 @@ char _v1_aud_chn = 0;
 char _v1_aud_dev = 0;
 char _v1_isp_chn = 0;
 char _v1_isp_dev = 0;
+char _v1_venc_dev = 0;
 char _v1_vi_chn = 0;
 char _v1_vi_dev = 0;
 char _v1_vpss_chn = 0;
@@ -342,10 +343,12 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
 {
     int ret;
 
-    v1_sys_bind channel = { .module = V1_SYS_MOD_VPSS,
-        .device = _v1_vpss_grp, .channel = 0 };
+    v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP, .device = _v1_vpss_grp };
     v1_rgn_cnf region, regionCurr;
     v1_rgn_chn attrib, attribCurr;
+
+    rect.height += rect.height & 1;
+    rect.width += rect.width & 1;
 
     memset(&region, 0, sizeof(region));
     region.type = V1_RGN_TYPE_OVERLAY;
@@ -358,22 +361,23 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
         HAL_INFO("v1_rgn", "Creating region %d...\n", handle);
         if (ret = v1_rgn.fnCreateRegion(handle, &region))
             return ret;
-    } else if (regionCurr.overlay.size.height != region.overlay.size.height || 
+    } else if (regionCurr.type != region.type ||
+        regionCurr.overlay.size.height != region.overlay.size.height || 
         regionCurr.overlay.size.width != region.overlay.size.width) {
         HAL_INFO("v1_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
-        v1_rgn.fnDetachChannel(handle, &channel);
+        v1_rgn.fnDetachChannel(handle, &dest);
         v1_rgn.fnDestroyRegion(handle);
         if (ret = v1_rgn.fnCreateRegion(handle, &region))
             return ret;
     }
 
-    if (v1_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
+    if (v1_rgn.fnGetChannelConfig(handle, &dest, &attribCurr))
         HAL_INFO("v1_rgn", "Attaching region %d...\n", handle);
     else if (attribCurr.overlay.point.x != rect.x || attribCurr.overlay.point.x != rect.y) {
         HAL_INFO("v1_rgn", "Position has changed, reattaching "
             "region %d...\n", handle);
-        v1_rgn.fnDetachChannel(handle, &channel);
+        v1_rgn.fnDetachChannel(handle, &dest);
     }
 
     memset(&attrib, 0, sizeof(attrib));
@@ -385,17 +389,16 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
     attrib.overlay.point.y = rect.y;
     attrib.overlay.layer = 7;
 
-    v1_rgn.fnAttachChannel(handle, &channel, &attrib);
+    v1_rgn.fnAttachChannel(handle, &dest, &attrib);
 
     return EXIT_SUCCESS;
 }
 
 void v1_region_destroy(char handle)
 {
-    v1_sys_bind channel = { .module = V1_SYS_MOD_VPSS,
-        .device = _v1_vpss_grp, .channel = 0 };
+    v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP, .device = _v1_vpss_grp };
     
-    v1_rgn.fnDetachChannel(handle, &channel);
+    v1_rgn.fnDetachChannel(handle, &dest);
     v1_rgn.fnDestroyRegion(handle);
 }
 

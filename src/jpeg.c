@@ -91,7 +91,6 @@ void jpeg_deinit() {
             pthread_mutex_unlock(&jpeg_mutex);
             return;    
     }
-    disable_video(jpeg_index, 1);
 
 active:
     jpeg_module_init = false;

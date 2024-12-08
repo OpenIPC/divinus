@@ -395,10 +395,12 @@ int v4_region_create(char handle, hal_rect rect, short opacity)
 {
     int ret;
 
-    v4_sys_bind channel = { .module = V4_SYS_MOD_VENC,
-        .device = _v4_venc_dev, .channel = 0 };
+    v4_sys_bind dest = { .module = V4_SYS_MOD_VENC, .device = _v4_venc_dev };
     v4_rgn_cnf region, regionCurr;
     v4_rgn_chn attrib, attribCurr;
+
+    rect.height += rect.height & 1;
+    rect.width += rect.width & 1;
 
     memset(&region, 0, sizeof(region));
     region.type = V4_RGN_TYPE_OVERLAY;
@@ -411,22 +413,23 @@ int v4_region_create(char handle, hal_rect rect, short opacity)
         HAL_INFO("v4_rgn", "Creating region %d...\n", handle);
         if (ret = v4_rgn.fnCreateRegion(handle, &region))
             return ret;
-    } else if (regionCurr.overlay.size.height != region.overlay.size.height || 
+    } else if (regionCurr.type != region.type ||
+        regionCurr.overlay.size.height != region.overlay.size.height || 
         regionCurr.overlay.size.width != region.overlay.size.width) {
         HAL_INFO("v4_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
-        v4_rgn.fnDetachChannel(handle, &channel);
+        v4_rgn.fnDetachChannel(handle, &dest);
         v4_rgn.fnDestroyRegion(handle);
         if (ret = v4_rgn.fnCreateRegion(handle, &region))
             return ret;
     }
 
-    if (v4_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
+    if (v4_rgn.fnGetChannelConfig(handle, &dest, &attribCurr))
         HAL_INFO("v4_rgn", "Attaching region %d...\n", handle);
     else if (attribCurr.overlay.point.x != rect.x || attribCurr.overlay.point.x != rect.y) {
         HAL_INFO("v4_rgn", "Position has changed, reattaching "
             "region %d...\n", handle);
-        v4_rgn.fnDetachChannel(handle, &channel);
+        v4_rgn.fnDetachChannel(handle, &dest);
     }
 
     memset(&attrib, 0, sizeof(attrib));
@@ -439,17 +442,16 @@ int v4_region_create(char handle, hal_rect rect, short opacity)
     attrib.overlay.layer = 7;
     attrib.overlay.attachDest = V4_RGN_DEST_MAIN;
 
-    v4_rgn.fnAttachChannel(handle, &channel, &attrib);
+    v4_rgn.fnAttachChannel(handle, &dest, &attrib);
 
     return EXIT_SUCCESS;
 }
 
 void v4_region_destroy(char handle)
 {
-    v4_sys_bind channel = { .module = V4_SYS_MOD_VENC,
-        .device = _v4_venc_dev, .channel = 0 };
+    v4_sys_bind dest = { .module = V4_SYS_MOD_VENC, .device = _v4_venc_dev };
     
-    v4_rgn.fnDetachChannel(handle, &channel);
+    v4_rgn.fnDetachChannel(handle, &dest);
     v4_rgn.fnDestroyRegion(handle);
 }
 

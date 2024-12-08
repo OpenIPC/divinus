@@ -24,6 +24,12 @@ else
 	OPT="-Os -s"
 fi
 
+previous=$(cat .previous 2>/dev/null)
+if [ "$1" != "$previous" ]; then
+	echo "$1" > .previous
+	make -C src clean
+fi
+
 if [ "$1" = "arm-glibc" ] || [ "$1" = "hisi-v4a" ]; then
 	toolchain toolchain.hisilicon-hi3516cv500 arm -lm
 elif [ "$1" = "arm-musl3" ] || [ "$1" = "hisi-v2a" ] || [ "$1" = "hisi-v3a" ]; then
@@ -47,12 +53,14 @@ elif [ "$1" = "armhf-musl" ] || [ "$1" = "star6" ]; then
 	toolchain toolchain.sigmastar-infinity6 arm
 elif [ "$1" = "mips-musl" ] || [ "$1" = "inge-t31" ]; then
 	toolchain toolchain.ingenic-t31 mipsel
-elif [ "$1" = "riscv64-musl" ]; then
+elif [ "$1" = "riscv64-musl" ] || [ "$1" = "cvitek" ]; then
 	DL="https://toolchains.bootlin.com/downloads/releases/toolchains/riscv64-lp64d/tarballs"
 	EXT="tar.xz"
 	toolchain riscv64-lp64d--musl--stable-2024.05-1 riscv64
 else
-	echo "Usage: $0 [arm-glibc|arm-musl3|arm-musl4|arm9-musl3|arm9-musl4|arm9-uclibc|armhf-glibc|armhf-musl|mips-musl|riscv64-musl|"
-	echo "           ak39xx|gm813x|hisi-v1|hisi-v2|hisi-v2a|hisi-v3|hisi-v3a|hisi-v4|hisi-v4a|inge-t31|star6|star6e]"
-	echo "          (debug)"
+	echo "Usage: $0 [arm-glibc|arm-musl3|arm-musl4|arm9-musl3|arm9-musl4|arm9-uclibc|"
+        echo "           armhf-glibc|armhf-musl|mips-musl|riscv64-musl|ak39xx|cvitek|gm813x|"
+        echo "           hisi-v1|hisi-v2|hisi-v2a|hisi-v3|hisi-v3a|hisi-v4|hisi-v4a|inge-t31|"
+        echo "           star6|star6e] (debug)"
+	rm -f .previous
 fi

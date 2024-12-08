@@ -52,6 +52,7 @@ static t31_common_dim t31_dims[] = {
     { .width = 2560, .height = 1920 }, // jxk05
     { .width = 2304, .height = 1296 }, // jxq03
     { .width = 1920, .height = 1080 }, // os02k10
+    { .width = 2304, .height = 1296 }, // os03b10
     { .width = 2560, .height = 1440 }, // os04b10
     { .width = 2592, .height = 1944 }, // os05a10
     { .width = 2592, .height = 1944 }, // ov5648
@@ -84,6 +85,7 @@ static t31_isp_snr t31_sensors[] = {
     { .name = "jxk05",   .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x40 },
     { .name = "jxq03",   .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x30 },
     { .name = "os02k10", .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x36 },
+    { .name = "os03b10", .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x3c },
     { .name = "os04b10", .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x3c },
     { .name = "os05a10", .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x36 },
     { .name = "ov5648",  .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x36 },
