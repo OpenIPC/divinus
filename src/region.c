@@ -118,8 +118,8 @@ int region_parse_bitmap(FILE **file, bitmapfile *bmpFile, bitmapinfo *bmpInfo)
         HAL_ERROR("region", "Extracting the bitmap info failed!\n");
     if (bmpInfo->bitCount < 24)
         HAL_ERROR("region", "Indexed or <3bpp bitmaps are not supported!\n");
-    if (bmpInfo->bitCount != 32 || bmpInfo->compression)
-        HAL_ERROR("region", "Bitfields and compressed modes are not supported!\n");
+    if (bmpInfo->compression != 0 && !(bmpInfo->compression == 3 && (bmpInfo->bitCount == 16 || bmpInfo->bitCount == 32)))
+        HAL_ERROR("region", "Compressed modes are not supported!\n");
 
     return EXIT_SUCCESS;
 }
@@ -128,6 +128,7 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
 {
     bitmapfile bmpFile;
     bitmapinfo bmpInfo;
+    bitmapfields bmpFields;
     static FILE *file;
     void *buffer, *start;
     unsigned int size;
@@ -140,6 +141,9 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
 
     if (region_parse_bitmap(&file, &bmpFile, &bmpInfo))
         HAL_ERROR("region", "Bitmap file \"%s\" cannot be processed!\n", path);
+
+    if (bmpInfo.compression == 3 && fread(&bmpFields, 1, sizeof(bitmapfields), file) != sizeof(bitmapfields))
+        HAL_ERROR("region", "Extracting the bitmap fields failed!\n");
     
     bpp = bmpInfo.bitCount / 8;
     size = bmpInfo.width * abs(bmpInfo.height);
@@ -171,17 +175,30 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
 
     start = buffer;
     dest = bitmap->data;
-    for (int i = 0; i < size; i++) {
-        if ((pos = bmpInfo.bitCount) == 24)
-            alpha = 0xFF;
-        else
-            alpha = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
-        red = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
-        green = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
-        blue = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
-        *dest = ((alpha & 0x80) << 8) | ((red & 0xF8) << 7) | ((green & 0xF8) << 2) | ((blue & 0xF8) >> 3);
-        start += bpp;
-        dest++;
+
+    if (bmpInfo.compression != 3) {
+        for (int i = 0; i < size; i++) {
+            if ((pos = bmpInfo.bitCount) == 24)
+                alpha = 0xFF;
+            else
+                alpha = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
+            red = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
+            green = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
+            blue = (*((unsigned int*)start) >> (pos -= 8)) & 0xFF;
+            *dest = ((alpha & 0x80) << 8) | ((red & 0xF8) << 7) | ((green & 0xF8) << 2) | ((blue & 0xF8) >> 3);
+            start += bpp;
+            dest++;
+        }
+    } else {
+        for (int i = 0; i < size; i++) {
+            alpha = (*((unsigned int*)start) & bmpFields.alphaMask) >> __builtin_ctz(bmpFields.alphaMask);
+            red = (*((unsigned int*)start) & bmpFields.redMask) >> __builtin_ctz(bmpFields.redMask);
+            green = (*((unsigned int*)start) & bmpFields.greenMask) >> __builtin_ctz(bmpFields.greenMask);
+            blue = (*((unsigned int*)start) & bmpFields.blueMask) >> __builtin_ctz(bmpFields.blueMask);
+            *dest = ((alpha & 0x80) << 8) | ((red & 0xF8) << 7) | ((green & 0xF8) << 2) | ((blue & 0xF8) >> 3);
+            start += bpp;
+            dest++;
+        }
     }
     free(buffer);
 
@@ -376,7 +393,7 @@ int start_region_handler() {
     }
     pthread_create(&regionPid, &thread_attr, (void *(*)(void *))region_thread, NULL);
     if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
-        HAL_DANGER("region", "Error:  Can't set stack size %zu\n", stacksize);
+        HAL_DANGER("region", "Can't set stack size %zu\n", stacksize);
     }
     pthread_attr_destroy(&thread_attr);
 }
