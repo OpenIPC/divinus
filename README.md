@@ -42,7 +42,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
-_* At the moment, only text, 24-bit and 32-bit RGB overlays are handled, matricial formats and covers are to follow_
+_* At the moment, text, RGB or bitfield bitmaps and PNG overlays are handled, more matricial formats and covers are to follow_
 
 [^1]: CV181x\[C/H\], SG200\[0/2\]
 [^2]: GM813\[5/6/8\]\(S\)
