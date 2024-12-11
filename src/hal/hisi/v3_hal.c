@@ -920,4 +920,26 @@ int v3_system_init(char *snrConfig)
     return EXIT_SUCCESS;
 }
 
+float v3_system_readtemp(void)
+{
+    char v3a_device = 0;
+    int val, prep = 0x60fa0000;
+    float result = 0.0 / 0.0;
+
+    if (EQUALS(chip, "Hi3516AV200") ||
+        EQUALS(chip, "Hi3519V101") ||
+        EQUALS(chip, "Hi3556V100") ||
+        EQUALS(chip, "Hi3559V100"))
+        v3a_device = 1;
+
+    if (hal_registry(v3a_device ? 0x120a0110 : 0x1203009c, &val, OP_READ) && prep != val)
+        hal_registry(v3a_device ? 0x120a0110 : 0x1203009c, &prep, OP_WRITE);
+
+    if (!hal_registry(v3a_device ? 0x120a0118 : 0x120300a4, &val, OP_READ))
+        return result;
+
+    result = val & ((1 << 10) - 1);
+    return ((result - 125) / 806) * 165 - 40;
+}
+
 #endif

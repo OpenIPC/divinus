@@ -60,3 +60,4 @@ int v2_system_calculate_block(short width, short height, v2_common_pixfmt pixFmt
     unsigned int alignWidth);
 void v2_system_deinit(void);
 int v2_system_init(char *snrConfig);
+float v2_system_readtemp(void);

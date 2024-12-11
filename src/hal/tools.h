@@ -1,13 +1,21 @@
 #pragma once
 
+#include "types.h"
+
 #include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <regex.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/mman.h>
 #include <sys/time.h>
+#include <unistd.h>
+
+void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off);
 
 int base64_encode_length(int len);
 
@@ -24,6 +32,8 @@ bool get_uint32(char *str, char *pattern, uint32_t *value);
 bool get_uint16(char *str, char *pattern, uint16_t *value);
 
 bool get_uint8(char *str, char *pattern, uint8_t *value);
+
+bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op);
 
 char *memstr(char *haystack, char *needle, int size, char needlesize);
 

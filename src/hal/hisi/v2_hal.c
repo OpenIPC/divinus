@@ -901,4 +901,19 @@ int v2_system_init(char *snrConfig)
     return EXIT_SUCCESS;
 }
 
+float v2_system_readtemp(void)
+{
+    int val, prep = 0x60fa0000;
+    float result = 0.0 / 0.0;
+
+    if (hal_registry(0x20270110, &val, OP_READ) && prep != val)
+        hal_registry(0x20270110, &prep, OP_WRITE);
+    
+    if (!hal_registry(0x20270114, &val, OP_READ))
+        return result;
+
+    result = val & ((1 << 8) - 1);
+    return ((result * 180) / 256) - 40;
+}
+
 #endif

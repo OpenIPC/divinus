@@ -74,6 +74,22 @@ void region_fill_formatted(char* str)
             strcat(out, m);
             opos += strlen(m);
         }
+        else if (str[ipos + 1] == 'T')
+        {
+            ipos++;
+            char s[8];
+            float t = 0.0 / 0.0;
+            switch (plat) {
+#if defined(__arm__)
+            case HAL_PLATFORM_V2: t = v2_system_readtemp(); break;
+            case HAL_PLATFORM_V3: t = v3_system_readtemp(); break;
+            case HAL_PLATFORM_V4: t = v4_system_readtemp(); break;
+#endif
+            }
+            sprintf(s, "%.1f", t);
+            strcat(out, s);
+            opos += strlen(s);
+        }
         else if (str[ipos + 1] == 't')
         {
             ipos++;

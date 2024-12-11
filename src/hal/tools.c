@@ -111,6 +111,51 @@ bool get_uint8(char *str, char *pattern, uint8_t *value) {
     return true;
 }
 
+bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
+    static int mem_fd;
+    static char *loaded_area;
+    static unsigned int loaded_offset;
+    static unsigned int loaded_size;
+
+    unsigned int offset = addr & 0xffff0000;
+    unsigned int size = 0xffff;
+    if (!addr || (loaded_area && offset != loaded_offset))
+        if (munmap(loaded_area, loaded_size))
+            fprintf(stderr, "hal_registry munmap error: %s (%d)\n",
+                strerror(errno), errno);
+
+    if (!addr) {
+        close(mem_fd);
+        return true;
+    }
+
+    if (!mem_fd && (mem_fd = open("/dev/mem", O_RDWR | O_SYNC)) < 0) {
+        fprintf(stderr, "can't open /dev/mem\n");
+        return false;
+    }
+
+    volatile char *mapped_area;
+    if (offset != loaded_offset) {
+        mapped_area = mmap64(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, offset);
+        if (mapped_area == MAP_FAILED) {
+            fprintf(stderr, "hal_registry mmap error: %s (%d)\n",
+                    strerror(errno), errno);
+            return false;
+        }
+        loaded_area = (char *)mapped_area;
+        loaded_size = size;
+        loaded_offset = offset;
+    } else
+        mapped_area = loaded_area;
+
+    if (op & OP_READ)
+        *data = *(volatile unsigned int *)(mapped_area + (addr - offset));
+    if (op & OP_WRITE)
+        *(volatile unsigned int *)(mapped_area + (addr - offset)) = *data;
+
+    return true;
+}
+
 char *memstr(char *haystack, char *needle, int size, char needlesize) {
 	for (char *p = haystack; p <= (haystack - needlesize + size); p++)
 		if (!memcmp(p, needle, needlesize)) return p;

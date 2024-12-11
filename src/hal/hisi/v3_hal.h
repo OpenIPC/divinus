@@ -12,6 +12,8 @@
 #include "v3_vi.h"
 #include "v3_vpss.h"
 
+#include "../support.h"
+
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
@@ -60,3 +62,4 @@ int v3_system_calculate_block(short width, short height, v3_common_pixfmt pixFmt
     unsigned int alignWidth);
 void v3_system_deinit(void);
 int v3_system_init(char *snrConfig);
+float v3_system_readtemp(void);
