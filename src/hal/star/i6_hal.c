@@ -451,10 +451,11 @@ void i6_region_destroy(char handle)
     i6_sys_bind dest = { .module = 0,
         .device = _i6_vpe_dev, .channel = _i6_vpe_chn };
     
-    dest.port = 1;
-    i6_rgn.fnDetachChannel(handle, &dest);
-    dest.port = 0;
-    i6_rgn.fnDetachChannel(handle, &dest);
+    for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
+        if (!i6_state[i].enable) continue;
+        dest.port = i;
+        i6_rgn.fnDetachChannel(handle, &dest);
+    }
     i6_rgn.fnDestroyRegion(handle);
 }
 
