@@ -1126,6 +1126,13 @@ png_error:
                     if (remain != value)
                         osds[id].posy = result;
                 }
+                else if (EQUALS(key, "pos")) {
+                    int x, y;
+                    if (sscanf(value, "%d,%d", &x, &y) == 2) {
+                        osds[id].posx = x;
+                        osds[id].posy = y;
+                    }
+                }
             }
             osds[id].updt = 1;
         }
