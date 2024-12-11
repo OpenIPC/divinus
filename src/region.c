@@ -81,9 +81,21 @@ void region_fill_formatted(char* str)
             float t = 0.0 / 0.0;
             switch (plat) {
 #if defined(__arm__)
-            case HAL_PLATFORM_V2: t = v2_system_readtemp(); break;
-            case HAL_PLATFORM_V3: t = v3_system_readtemp(); break;
-            case HAL_PLATFORM_V4: t = v4_system_readtemp(); break;
+            case HAL_PLATFORM_I6:
+            case HAL_PLATFORM_I6C:
+            case HAL_PLATFORM_I6F:
+                FILE* file;
+                char line[20] = {0};
+                if (file = fopen("/sys/class/mstar/msys/TEMP_R", "r")) {
+                    fgets(line, 20, file);
+                    char *remain, *parsed = strstr(line, "Temperature ");
+                    t = strtof(parsed + 12, &remain);
+                    fclose(file);
+                }
+                break;
+            case HAL_PLATFORM_V2:  t = v2_system_readtemp(); break;
+            case HAL_PLATFORM_V3:  t = v3_system_readtemp(); break;
+            case HAL_PLATFORM_V4:  t = v4_system_readtemp(); break;
 #endif
             }
             sprintf(s, "%.1f", t);
