@@ -83,7 +83,7 @@ void region_fill_formatted(char* str)
 #if defined(__arm__)
             case HAL_PLATFORM_I6:
             case HAL_PLATFORM_I6C:
-            case HAL_PLATFORM_I6F:
+            case HAL_PLATFORM_M6:
                 FILE* file;
                 char line[20] = {0};
                 if (file = fopen("/sys/class/mstar/msys/TEMP_R", "r")) {
@@ -244,7 +244,7 @@ void *region_thread(void)
 #if defined(__arm__)
         case HAL_PLATFORM_I6:  i6_region_init(); break;
         case HAL_PLATFORM_I6C: i6c_region_init(); break;
-        case HAL_PLATFORM_I6F: i6f_region_init(); break;
+        case HAL_PLATFORM_M6:  m6_region_init(); break;
 #endif
     }
 
@@ -294,9 +294,9 @@ void *region_thread(void)
                                 i6c_region_create(id, rect, osds[id].opal);
                                 i6c_region_setbitmap(id, &bitmap);
                                 break;
-                            case HAL_PLATFORM_I6F:
-                                i6f_region_create(id, rect, osds[id].opal);
-                                i6f_region_setbitmap(id, &bitmap);
+                            case HAL_PLATFORM_M6:
+                                m6_region_create(id, rect, osds[id].opal);
+                                m6_region_setbitmap(id, &bitmap);
                                 break;
                             case HAL_PLATFORM_V1:
                                 v1_region_create(id, rect, osds[id].opal);
@@ -350,9 +350,9 @@ void *region_thread(void)
                                 i6c_region_create(id, rect, osds[id].opal);
                                 i6c_region_setbitmap(id, &bitmap);
                                 break;
-                            case HAL_PLATFORM_I6F:
-                                i6f_region_create(id, rect, osds[id].opal);
-                                i6f_region_setbitmap(id, &bitmap);
+                            case HAL_PLATFORM_M6:
+                                m6_region_create(id, rect, osds[id].opal);
+                                m6_region_setbitmap(id, &bitmap);
                                 break;
                             case HAL_PLATFORM_V1:
                                 v1_region_create(id, rect, osds[id].opal);
@@ -386,7 +386,7 @@ void *region_thread(void)
                         case HAL_PLATFORM_GM:  gm_region_destroy(id); break;
                         case HAL_PLATFORM_I6:  i6_region_destroy(id); break;
                         case HAL_PLATFORM_I6C: i6c_region_destroy(id); break;
-                        case HAL_PLATFORM_I6F: i6f_region_destroy(id); break;
+                        case HAL_PLATFORM_M6:  m6_region_destroy(id); break;
                         case HAL_PLATFORM_V1:  v1_region_destroy(id); break;
                         case HAL_PLATFORM_V2:  v2_region_destroy(id); break;
                         case HAL_PLATFORM_V3:  v3_region_destroy(id); break;
@@ -405,7 +405,7 @@ void *region_thread(void)
 #if defined(__arm__)
         case HAL_PLATFORM_I6:  i6_region_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_region_deinit(); break;
-        case HAL_PLATFORM_I6F: i6f_region_deinit(); break;
+        case HAL_PLATFORM_M6:  m6_region_deinit(); break;
 #endif
     }
 }

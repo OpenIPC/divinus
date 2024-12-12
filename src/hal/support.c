@@ -99,13 +99,13 @@ void hal_identify(void) {
                 vid_thread = i6c_video_thread;
                 break;
             case 0xFB:
-                plat = HAL_PLATFORM_I6F;
+                plat = HAL_PLATFORM_M6;
                 strcpy(chip, "SSC379G");
-                strcpy(family, "infinity6f");
-                chnCount = I6F_VENC_CHN_NUM;
-                chnState = (hal_chnstate*)i6f_state;
-                aud_thread = i6f_audio_thread;
-                vid_thread = i6f_video_thread;
+                strcpy(family, "mercury6");
+                chnCount = M6_VENC_CHN_NUM;
+                chnState = (hal_chnstate*)m6_state;
+                aud_thread = m6_audio_thread;
+                vid_thread = m6_video_thread;
                 break;
             default:
                 plat = HAL_PLATFORM_UNK;

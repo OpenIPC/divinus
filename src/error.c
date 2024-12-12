@@ -52,23 +52,23 @@ char *errstr(int error) {
                     error |= (module << 16); break;
             }
             break;
-        case HAL_PLATFORM_I6F:
+        case HAL_PLATFORM_M6:
             level = (error >> 12) & 0xF;
             error = error & 0xFF000FFF | (level > 0 ? (4 << 13) : 0);
             switch (module) {
-                case I6F_SYS_MOD_SYS:
+                case M6_SYS_MOD_SYS:
                     error |= (V4_SYS_MOD_SYS << 16); break;
-                case I6F_SYS_MOD_ISP:
+                case M6_SYS_MOD_ISP:
                     error |= (V4_SYS_MOD_ISP << 16); break;
-                case I6F_SYS_MOD_VIF:
+                case M6_SYS_MOD_VIF:
                     error |= (V4_SYS_MOD_VIU << 16); break;
-                case I6F_SYS_MOD_SCL:
+                case M6_SYS_MOD_SCL:
                     error |= (V4_SYS_MOD_VPSS << 16); break;
-                case I6F_SYS_MOD_VENC:
+                case M6_SYS_MOD_VENC:
                     error |= (V4_SYS_MOD_VENC << 16); break;
-                case I6F_SYS_MOD_RGN:
+                case M6_SYS_MOD_RGN:
                     error |= (V4_SYS_MOD_RGN << 16); break;
-                case I6F_SYS_MOD_AI:
+                case M6_SYS_MOD_AI:
                     error |= (V4_SYS_MOD_AI << 16); break;
                 default:
                     error |= (module << 16); break;

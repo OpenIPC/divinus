@@ -11,7 +11,7 @@
 #include "star/i3_hal.h"
 #include "star/i6_hal.h"
 #include "star/i6c_hal.h"
-#include "star/i6f_hal.h"
+#include "star/m6_hal.h"
 #elif defined(__mips__)
 #include "inge/t31_hal.h"
 #elif defined(__riscv) || defined(__riscv__)

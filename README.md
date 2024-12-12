@@ -38,7 +38,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | infinity6b0[^14]        | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | infinity6e[^15]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | infinity6c[^16]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| infinity6f[^17]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
+| mercury6[^17]           | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
@@ -60,7 +60,7 @@ _* At the moment, text, RGB or bitfield bitmaps and PNG overlays are handled, mo
 [^14]: SSC33\[3/5/7\]\(DE\)
 [^15]: SSC30K\[D/Q\], SSC336\[D/Q\], SSC338\[D/G/Q\] and SSC339G
 [^16]: SSC377\(D/DE/QE\) or SSC378\[DE/QE\]
-[^17]: SSC379G
+[^17]: SSC359G
 
 
 ### Documentation
