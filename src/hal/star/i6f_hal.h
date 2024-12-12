@@ -1,5 +1,6 @@
 #include "i6f_common.h"
 #include "i6f_aud.h"
+#include "i6f_ipu.h"
 #include "i6f_isp.h"
 #include "i6f_rgn.h"
 #include "i6f_scl.h"

@@ -2,6 +2,7 @@
 
 #include "i6_common.h"
 #include "i6_aud.h"
+#include "i6_ipu.h"
 #include "i6_isp.h"
 #include "i6_rgn.h"
 #include "i6_snr.h"

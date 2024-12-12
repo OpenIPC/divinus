@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdio.h>
+#include <string.h>
+
 #define HAL_DANGER(mod, x, ...) \
     do { \
         fprintf(stderr, "[%s] \033[31m", (mod)); \

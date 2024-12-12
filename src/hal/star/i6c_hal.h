@@ -2,6 +2,7 @@
 
 #include "i6c_common.h"
 #include "i6c_aud.h"
+#include "i6c_ipu.h"
 #include "i6c_isp.h"
 #include "i6c_rgn.h"
 #include "i6c_scl.h"
