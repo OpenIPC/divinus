@@ -63,28 +63,24 @@ void close_socket_fd(int socket_fd) {
 }
 
 void free_client(int i) {
-    if (client_fds[i].socket_fd < 0)
-        return;
+    if (client_fds[i].socket_fd < 0) return;
     close_socket_fd(client_fds[i].socket_fd);
     client_fds[i].socket_fd = -1;
 }
 
 int send_to_fd(int client_fd, char *buf, ssize_t size) {
     ssize_t sent = 0, len = 0;
-    if (client_fd < 0)
-        return -1;
+    if (client_fd < 0) return -1;
     while (sent < size) {
         len = send(client_fd, buf + sent, size - sent, MSG_NOSIGNAL);
-        if (len < 0)
-            return -1;
+        if (len < 0) return -1;
         sent += len;
     }
     return 0;
 }
 
 int send_to_fd_nonblock(int client_fd, char *buf, ssize_t size) {
-    if (client_fd < 0)
-        return -1;
+    if (client_fd < 0) return -1;
     send(client_fd, buf, size, MSG_DONTWAIT | MSG_NOSIGNAL);
     return 0;
 }
@@ -110,10 +106,8 @@ void send_h26x_to_client(char index, hal_vidstream *stream) {
 
         pthread_mutex_lock(&client_fds_mutex);
         for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-            if (client_fds[i].socket_fd < 0)
-                continue;
-            if (client_fds[i].type != STREAM_H26X)
-                continue;
+            if (client_fds[i].socket_fd < 0) continue;
+            if (client_fds[i].type != STREAM_H26X) continue;
 
             for (char j = 0; j < pack->naluCnt; j++) {
                 if (client_fds[i].nalCnt == 0 &&
@@ -177,10 +171,8 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
         static char len_buf[50];
         pthread_mutex_lock(&client_fds_mutex);
         for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-            if (client_fds[i].socket_fd < 0)
-                continue;
-            if (client_fds[i].type != STREAM_MP4)
-                continue;
+            if (client_fds[i].socket_fd < 0) continue;
+            if (client_fds[i].type != STREAM_MP4) continue;
 
             if (!client_fds[i].mp4.header_sent) {
                 struct BitBuf header_buf;
@@ -236,10 +228,8 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
 void send_mp3_to_client(char *buf, ssize_t size) {
     pthread_mutex_lock(&client_fds_mutex);
     for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-        if (client_fds[i].socket_fd < 0)
-            continue;
-        if (client_fds[i].type != STREAM_MP3)
-            continue;
+        if (client_fds[i].socket_fd < 0) continue;
+        if (client_fds[i].type != STREAM_MP3) continue;
 
         static char len_buf[50];
         ssize_t len_size = sprintf(len_buf, "%zX\r\n", size);
@@ -256,10 +246,8 @@ void send_mp3_to_client(char *buf, ssize_t size) {
 void send_pcm_to_client(hal_audframe *frame) {
     pthread_mutex_lock(&client_fds_mutex);
     for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-        if (client_fds[i].socket_fd < 0)
-            continue;
-        if (client_fds[i].type != STREAM_PCM)
-            continue;
+        if (client_fds[i].socket_fd < 0) continue;
+        if (client_fds[i].type != STREAM_PCM) continue;
 
         static char len_buf[50];
         ssize_t len_size = sprintf(len_buf, "%zX\r\n", frame->length[0]);
@@ -273,7 +261,7 @@ void send_pcm_to_client(hal_audframe *frame) {
     pthread_mutex_unlock(&client_fds_mutex);
 }
 
-void send_mjpeg(char index, char *buf, ssize_t size) {
+void send_mjpeg_to_client(char index, char *buf, ssize_t size) {
     static char prefix_buf[128];
     ssize_t prefix_size = sprintf(
         prefix_buf,
@@ -285,10 +273,9 @@ void send_mjpeg(char index, char *buf, ssize_t size) {
 
     pthread_mutex_lock(&client_fds_mutex);
     for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-        if (client_fds[i].socket_fd < 0)
-            continue;
-        if (client_fds[i].type != STREAM_MJPEG)
-            continue;
+        if (client_fds[i].socket_fd < 0) continue;
+        if (client_fds[i].type != STREAM_MJPEG) continue;
+
         if (send_to_client(i, prefix_buf, prefix_size) < 0)
             continue; // send <SIZE>\r\n
         if (send_to_client(i, buf, size) < 0)
@@ -297,7 +284,7 @@ void send_mjpeg(char index, char *buf, ssize_t size) {
     pthread_mutex_unlock(&client_fds_mutex);
 }
 
-void send_jpeg(char index, char *buf, ssize_t size) {
+void send_jpeg_to_client(char index, char *buf, ssize_t size) {
     static char prefix_buf[128];
     ssize_t prefix_size = sprintf(
         prefix_buf,
@@ -309,10 +296,9 @@ void send_jpeg(char index, char *buf, ssize_t size) {
 
     pthread_mutex_lock(&client_fds_mutex);
     for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-        if (client_fds[i].socket_fd < 0)
-            continue;
-        if (client_fds[i].type != STREAM_JPEG)
-            continue;
+        if (client_fds[i].socket_fd < 0) continue;
+        if (client_fds[i].type != STREAM_JPEG) continue;
+
         if (send_to_client(i, prefix_buf, prefix_size) < 0)
             continue; // send <SIZE>\r\n
         if (send_to_client(i, buf, size) < 0)
@@ -367,15 +353,14 @@ int send_file(const int client_fd, const char *path) {
         FILE *file = fopen(path, "r");
         if (file == NULL) {
             close_socket_fd(client_fd);
-            return 0;
+            return EXIT_SUCCESS;
         }
         char header[1024];
-        int header_len = sprintf(
-            header, "HTTP/1.1 200 OK\r\n"
+        int header_len = sprintf(header,
+            "HTTP/1.1 200 OK\r\n"
             "Content-Type: %s\r\n"
             "Transfer-Encoding: chunked\r\n"
-            "Connection: keep-alive\r\n\r\n",
-            mime);
+            "Connection: keep-alive\r\n\r\n", mime);
         send_to_fd(client_fd, header, header_len); // zero ending string!
         const int buf_size = 1024;
         char buf[buf_size + 2];
@@ -383,8 +368,7 @@ int send_file(const int client_fd, const char *path) {
         ssize_t len_size;
         while (1) {
             ssize_t size = fread(buf, sizeof(char), buf_size, file);
-            if (size <= 0)
-                break;
+            if (size <= 0) break;
             len_size = sprintf(len_buf, "%zX\r\n", size);
             buf[size++] = '\r';
             buf[size++] = '\n';
@@ -395,22 +379,34 @@ int send_file(const int client_fd, const char *path) {
         send_to_fd(client_fd, end, sizeof(end));
         fclose(file);
         close_socket_fd(client_fd);
-        return 1;
+        return EXIT_FAILURE;
     }
     send_and_close(client_fd, (char*)error404, strlen(error404));
-    return 0;
+    return EXIT_FAILURE;
+}
+
+void send_binary(const int client_fd, const char *data, const long size) {
+    char *buf;
+    int buf_len = asprintf(&buf,
+        "HTTP/1.1 200 OK\r\n" \
+        "Content-Type: application/octet-stream\r\n" \
+        "Content-Length: %zu\r\n" \
+        "Connection: close\r\n\r\n", size);
+    send_to_fd(client_fd, buf, buf_len);
+    send_to_fd(client_fd, (char*)data, size);
+    send_to_fd(client_fd, "\r\n", 2);
+    close_socket_fd(client_fd);
+    free(buf);
 }
 
 void send_html(const int client_fd, const char *data) {
     char *buf;
-    int buf_len = asprintf(
-        &buf,
+    int buf_len = asprintf(&buf,
         "HTTP/1.1 200 OK\r\n" \
         "Content-Type: text/html\r\n" \
         "Content-Length: %zu\r\n" \
         "Connection: close\r\n" \
-        "\r\n%s",
-        strlen(data), data);
+        "\r\n%s", strlen(data), data);
     buf[buf_len++] = 0;
     send_and_close(client_fd, buf, buf_len);
     free(buf);
@@ -519,18 +515,17 @@ void respond_request(struct Request *req) {
                 "HTTP/1.1 401 Unauthorized\r\n"
                 "Content-Type: text/plain\r\n"
                 "WWW-Authenticate: Basic realm=\"Access the camera services\"\r\n"
-                "Connection: close\r\n\r\n"
-            );
+                "Connection: close\r\n\r\n");
             send_and_close(req->clntFd, response, respLen);
             return;
         }
     }
 
     if (EQUALS(req->uri, "/exit")) {
-        int respLen = sprintf(
-            response, "HTTP/1.1 200 OK\r\n"
-                    "Connection: close\r\n\r\n"
-                    "Closing...");
+        int respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Connection: close\r\n\r\n"
+            "Closing...");
         send_and_close(req->clntFd, response, respLen);
         keepRunning = 0;
         graceful = 1;
@@ -1250,7 +1245,7 @@ void *server_thread(void *vargp) {
 }
 
 int start_server() {
-    for (uint32_t i = 0; i < MAX_CLIENTS; ++i) {
+    for (unsigned int i = 0; i < MAX_CLIENTS; i++) {
         client_fds[i].socket_fd = -1;
         client_fds[i].type = -1;
     }

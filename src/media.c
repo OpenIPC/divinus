@@ -77,11 +77,12 @@ int save_audio_stream(hal_audframe *frame) {
 
 int save_video_stream(char index, hal_vidstream *stream) {
     int ret;
-    char isH265 = chnState[index].payload == HAL_VIDCODEC_H265 ? 1 : 0;
 
     switch (chnState[index].payload) {
         case HAL_VIDCODEC_H264:
         case HAL_VIDCODEC_H265:
+            char isH265 = chnState[index].payload == HAL_VIDCODEC_H265 ? 1 : 0;
+
             if (app_config.mp4_enable) {
                 pthread_mutex_lock(&mp4Mtx);
                 send_mp4_to_client(index, stream, isH265);
@@ -102,15 +103,13 @@ int save_video_stream(char index, hal_vidstream *stream) {
                 for (unsigned int i = 0; i < stream->count; i++) {
                     hal_vidpack *data = &stream->pack[i];
                     ssize_t need_size = buf_size + data->length - data->offset + 2;
-                    if (need_size > mjpeg_buf_size) {
-                        mjpeg_buf = realloc(mjpeg_buf, need_size);
-                        mjpeg_buf_size = need_size;
-                    }
+                    if (need_size > mjpeg_buf_size)
+                        mjpeg_buf = realloc(mjpeg_buf, mjpeg_buf_size = need_size);
                     memcpy(mjpeg_buf + buf_size, data->data + data->offset,
                         data->length - data->offset);
                     buf_size += data->length - data->offset;
                 }
-                send_mjpeg(index, mjpeg_buf, buf_size);
+                send_mjpeg_to_client(index, mjpeg_buf, buf_size);
             }
             break;
         case HAL_VIDCODEC_JPG:
@@ -121,16 +120,14 @@ int save_video_stream(char index, hal_vidstream *stream) {
             for (unsigned int i = 0; i < stream->count; i++) {
                 hal_vidpack *data = &stream->pack[i];
                 ssize_t need_size = buf_size + data->length - data->offset + 2;
-                if (need_size > jpeg_buf_size) {
-                    jpeg_buf = realloc(jpeg_buf, need_size);
-                    jpeg_buf_size = need_size;
-                }
+                if (need_size > jpeg_buf_size)
+                    jpeg_buf = realloc(jpeg_buf, jpeg_buf_size = need_size);
                 memcpy(jpeg_buf + buf_size, data->data + data->offset,
                     data->length - data->offset);
                 buf_size += data->length - data->offset;
             }
             if (app_config.jpeg_enable)
-                send_jpeg(index, jpeg_buf, buf_size);
+                send_jpeg_to_client(index, jpeg_buf, buf_size);
             break;
         }
         default:
@@ -193,12 +190,11 @@ void set_grayscale(bool active) {
 int take_next_free_channel(bool mainLoop) {
     pthread_mutex_lock(&chnMtx);
     for (int i = 0; i < chnCount; i++) {
-        if (!chnState[i].enable) {
-            chnState[i].enable = true;
-            chnState[i].mainLoop = mainLoop;
-            pthread_mutex_unlock(&chnMtx);
-            return i;
-        }
+        if (chnState[i].enable) continue;
+        chnState[i].enable = true;
+        chnState[i].mainLoop = mainLoop;
+        pthread_mutex_unlock(&chnMtx);
+        return i;
     }
     pthread_mutex_unlock(&chnMtx);
     return -1;
@@ -365,9 +361,8 @@ int enable_audio(void) {
         if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
             HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
         if (pthread_create(
-                        &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL)) {
+                        &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL))
             HAL_ERROR("media", "Starting the audio capture thread failed!\n");
-        }
         if (pthread_attr_setstacksize(&thread_attr, stacksize))
             HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
         pthread_attr_destroy(&thread_attr);
@@ -681,29 +676,19 @@ int start_sdk(void) {
         if (pthread_create(
                      &ispPid, &thread_attr, (void *(*)(void *))isp_thread, NULL))
             HAL_ERROR("media", "Starting the imaging thread failed!\n");
-        if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
+        if (pthread_attr_setstacksize(&thread_attr, stacksize))
             HAL_DANGER("media", "Can't set stack size %zu!\n", stacksize);
-        }
         pthread_attr_destroy(&thread_attr);
     }
 
-    if (app_config.mp4_enable) {
-        ret = enable_mp4();
-        if (ret)
-            HAL_ERROR("media", "MP4 initialization failed with %#x!\n", ret);
-    }
+    if (app_config.mp4_enable && (ret = enable_mp4()))
+        HAL_ERROR("media", "MP4 initialization failed with %#x!\n", ret);
 
-    if (app_config.mjpeg_enable) {
-        ret = enable_mjpeg();
-        if (ret)
-            HAL_ERROR("media", "MJPEG initialization failed with %#x!\n", ret);
-    }
+    if (app_config.mjpeg_enable && (ret = enable_mjpeg()))
+        HAL_ERROR("media", "MJPEG initialization failed with %#x!\n", ret);
 
-    if (app_config.jpeg_enable) {
-        ret = jpeg_init();
-        if (ret)
-            HAL_ERROR("media", "JPEG initialization failed with %#x!\n", ret);
-    }
+    if (app_config.jpeg_enable && (ret = jpeg_init()))
+        HAL_ERROR("media", "JPEG initialization failed with %#x!\n", ret);
 
     {
         pthread_attr_t thread_attr;
