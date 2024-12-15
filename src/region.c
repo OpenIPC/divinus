@@ -416,13 +416,11 @@ int start_region_handler() {
     size_t stacksize;
     pthread_attr_getstacksize(&thread_attr, &stacksize);
     size_t new_stacksize = 320 * 1024;
-    if (pthread_attr_setstacksize(&thread_attr, new_stacksize)) {
+    if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
         HAL_DANGER("region", "Can't set stack size %zu\n", new_stacksize);
-    }
     pthread_create(&regionPid, &thread_attr, (void *(*)(void *))region_thread, NULL);
-    if (pthread_attr_setstacksize(&thread_attr, stacksize)) {
+    if (pthread_attr_setstacksize(&thread_attr, stacksize))
         HAL_DANGER("region", "Can't set stack size %zu\n", stacksize);
-    }
     pthread_attr_destroy(&thread_attr);
 }
 

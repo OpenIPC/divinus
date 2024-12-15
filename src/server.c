@@ -64,6 +64,7 @@ void close_socket_fd(int socket_fd) {
 
 void free_client(int i) {
     if (client_fds[i].socket_fd < 0) return;
+
     close_socket_fd(client_fds[i].socket_fd);
     client_fds[i].socket_fd = -1;
 }
@@ -71,17 +72,21 @@ void free_client(int i) {
 int send_to_fd(int client_fd, char *buf, ssize_t size) {
     ssize_t sent = 0, len = 0;
     if (client_fd < 0) return -1;
+
     while (sent < size) {
         len = send(client_fd, buf + sent, size - sent, MSG_NOSIGNAL);
         if (len < 0) return -1;
         sent += len;
     }
+
     return 0;
 }
 
 int send_to_fd_nonblock(int client_fd, char *buf, ssize_t size) {
     if (client_fd < 0) return -1;
+
     send(client_fd, buf, size, MSG_DONTWAIT | MSG_NOSIGNAL);
+
     return 0;
 }
 
@@ -90,6 +95,7 @@ int send_to_client(int i, char *buf, ssize_t size) {
         free_client(i);
         return -1;
     }
+    
     return 0;
 }
 
@@ -263,11 +269,10 @@ void send_pcm_to_client(hal_audframe *frame) {
 
 void send_mjpeg_to_client(char index, char *buf, ssize_t size) {
     static char prefix_buf[128];
-    ssize_t prefix_size = sprintf(
-        prefix_buf,
-        "--boundarydonotcross\r\nContent-Type:image/jpeg\r\nContent-Length: "
-        "%lu\r\n\r\n",
-        size);
+    ssize_t prefix_size = sprintf(prefix_buf,
+        "--boundarydonotcross\r\n"
+        "Content-Type:image/jpeg\r\n"
+        "Content-Length: %lu\r\n\r\n", size);
     buf[size++] = '\r';
     buf[size++] = '\n';
 
