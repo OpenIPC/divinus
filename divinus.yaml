@@ -77,3 +77,8 @@ mjpeg:
   height: 2160
   fps: 20
   bitrate: 1024
+
+md:
+  enable: false
+  visualize: false
+  debugging: false

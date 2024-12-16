@@ -86,6 +86,11 @@ struct AppConfig {
     unsigned int http_post_height;
     unsigned int http_post_qfactor;
     unsigned int http_post_interval;
+    
+    //[md]
+    bool md_enable;
+    bool md_visualize;
+    bool md_debugging;
 };
 
 extern struct AppConfig app_config;

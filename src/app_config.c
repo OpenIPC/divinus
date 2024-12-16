@@ -119,6 +119,11 @@ int save_app_config(void) {
     fprintf(file, "  interval: %d\n", app_config.http_post_interval);
     fprintf(file, "  qfactor: %d\n", app_config.http_post_qfactor);
 
+    fprintf(file, "md:\n");
+    fprintf(file, "  enable: %s\n", app_config.md_enable ? "true" : "false");
+    fprintf(file, "  visualize: %s\n", app_config.md_visualize ? "true" : "false");
+    fprintf(file, "  debugging: %s\n", app_config.md_debugging ? "true" : "false");
+
     fclose(file);
     return EXIT_SUCCESS;
 }
@@ -163,6 +168,11 @@ enum ConfigError parse_app_config(void) {
     app_config.check_interval_s = 10;
     app_config.adc_device[0] = 0;
     app_config.adc_threshold = 128;
+
+    app_config.md_enable = false;
+    app_config.md_visualize = false;
+    app_config.md_debugging = false;
+
 
     struct IniConfig ini;
     memset(&ini, 0, sizeof(struct IniConfig));
@@ -413,6 +423,12 @@ enum ConfigError parse_app_config(void) {
             &ini, "http_post", "qfactor", 1, 99, &app_config.http_post_qfactor);
         if (err != CONFIG_OK)
             goto RET_ERR;
+    }
+
+    parse_bool(&ini, "md", "enable", &app_config.md_enable);
+    if (app_config.md_enable) {
+        parse_bool(&ini, "md", "visualize", &app_config.md_visualize);
+        parse_bool(&ini, "md", "debugging", &app_config.md_debugging);
     }
 
     free(ini.str);
