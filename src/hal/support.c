@@ -64,7 +64,7 @@ void hal_identify(void) {
                 if (package[2] == 'A')
                     strcpy(chip, "SSC33[8/9]G");
                 else {
-                    if (sysconf(_SC_NPROCESSORS_CONF) == 1)
+                    if (sysconf(_SC_NPROCESSORS_ONLN) == 1)
                         strcpy(chip, "SSC30K");
                     else
                         strcpy(chip, "SSC33[6/8]");
