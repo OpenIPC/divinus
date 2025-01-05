@@ -5,7 +5,7 @@ PRE="linux"
 
 toolchain() {
 	if [ ! -e toolchain/$1 ]; then
-		wget -c -q $DL/$1.$EXT -P $PWD
+		wget -c -q $DL/$1.$EXT -P $PWD 2>/dev/null || curl -L -s -o $PWD/$1.$EXT $DL/$1.$EXT
 		mkdir -p toolchain/$1
 		if [ "$EXT" = "zip" ]; then
 			unzip $1.$EXT || exit 1

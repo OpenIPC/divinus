@@ -23,10 +23,10 @@ extern int (*cvi_vid_cb)(char, hal_vidstream*);
 
 void cvi_hal_deinit(void);
 int cvi_hal_init(void);
-void *cvi_audio_thread(void);
 
 void cvi_audio_deinit(void);
 int cvi_audio_init(int samplerate);
+void *cvi_audio_thread(void);
 
 int cvi_channel_bind(char index);
 int cvi_channel_create(char index, char mirror, char flip, char framerate);
