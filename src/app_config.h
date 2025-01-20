@@ -49,6 +49,7 @@ struct AppConfig {
     // [audio]
     bool audio_enable;
     unsigned int audio_bitrate;
+    int audio_gain;
     unsigned int audio_srate;
 
     // [mp4]

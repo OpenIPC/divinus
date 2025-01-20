@@ -703,6 +703,10 @@ void respond_request(struct Request *req) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
                         app_config.audio_bitrate = result;
+                } else if (EQUALS(key, "gain")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.audio_gain = result;
                 } else if (EQUALS(key, "srate")) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
@@ -719,8 +723,8 @@ void respond_request(struct Request *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"bitrate\":%d,\"srate\":%d}",
-            app_config.audio_bitrate, app_config.audio_srate);
+            "{\"bitrate\":%d,\"gain\":%d,\"srate\":%d}",
+            app_config.audio_bitrate, app_config.audio_gain, app_config.audio_srate);
         send_and_close(req->clntFd, response, respLen);
         return;
     }

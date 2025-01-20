@@ -73,7 +73,7 @@ void i6_audio_deinit(void)
     i6_aud.fnDisableDevice(_i6_aud_dev);
 }
 
-int i6_audio_init(int samplerate)
+int i6_audio_init(int samplerate, int gain)
 {
     int ret;
 
@@ -100,7 +100,7 @@ int i6_audio_init(int samplerate)
     
     if (ret = i6_aud.fnEnableChannel(_i6_aud_dev, _i6_aud_chn))
         return ret;
-    if (ret = i6_aud.fnSetVolume(_i6_aud_dev, _i6_aud_chn, 13))
+    if (ret = i6_aud.fnSetVolume(_i6_aud_dev, _i6_aud_chn, gain))
         return ret;
 
     {

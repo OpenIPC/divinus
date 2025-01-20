@@ -26,7 +26,7 @@ void i6_hal_deinit(void);
 int i6_hal_init(void);
 
 void i6_audio_deinit(void);
-int i6_audio_init(int samplerate);
+int i6_audio_init(int samplerate, int gain);
 void *i6_audio_thread(void);
 
 int i6_channel_bind(char index, char framerate);

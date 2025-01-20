@@ -76,7 +76,7 @@ void m6_audio_deinit(void)
 }
 
 
-int m6_audio_init(int samplerate)
+int m6_audio_init(int samplerate, int gain)
 {
     int ret;
 
@@ -103,7 +103,7 @@ int m6_audio_init(int samplerate)
     
     if (ret = m6_aud.fnEnableChannel(_m6_aud_dev, _m6_aud_chn))
         return ret;
-    if (ret = m6_aud.fnSetVolume(_m6_aud_dev, _m6_aud_chn, 13))
+    if (ret = m6_aud.fnSetVolume(_m6_aud_dev, _m6_aud_chn, gain))
         return ret;
 
     {

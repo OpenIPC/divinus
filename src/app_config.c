@@ -78,6 +78,7 @@ int save_app_config(void) {
     fprintf(file, "audio:\n");
     fprintf(file, "  enable: %s\n", app_config.audio_enable ? "true" : "false");
     fprintf(file, "  bitrate: %d\n", app_config.audio_bitrate);
+    fprintf(file, "  gain: %d\n", app_config.audio_gain);
     fprintf(file, "  srate: %d\n", app_config.audio_srate);
 
     fprintf(file, "mp4:\n");
@@ -142,6 +143,7 @@ enum ConfigError parse_app_config(void) {
     app_config.sensor_config[0] = 0;
     app_config.audio_enable = false;
     app_config.audio_bitrate = 128;
+    app_config.audio_gain = 0;
     app_config.jpeg_enable = false;
     app_config.mp4_enable = false;
 
@@ -266,6 +268,7 @@ enum ConfigError parse_app_config(void) {
     parse_bool(&ini, "audio", "enable", &app_config.audio_enable);
     if (app_config.audio_enable) {
         parse_int(&ini, "audio", "bitrate", 32, 320, &app_config.audio_bitrate);
+        parse_int(&ini, "audio", "gain", -60, 30, &app_config.audio_gain);
         err = parse_int(&ini, "audio", "srate", 8000, 96000, 
             &app_config.audio_srate);
         if (err != CONFIG_OK)

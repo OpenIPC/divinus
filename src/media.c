@@ -319,9 +319,9 @@ int enable_audio(void) {
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_GM:  ret = gm_audio_init(app_config.audio_srate); break;
-        case HAL_PLATFORM_I6:  ret = i6_audio_init(app_config.audio_srate); break;
-        case HAL_PLATFORM_I6C: ret = i6c_audio_init(app_config.audio_srate); break;
-        case HAL_PLATFORM_M6:  ret = m6_audio_init(app_config.audio_srate); break;
+        case HAL_PLATFORM_I6:  ret = i6_audio_init(app_config.audio_srate, app_config.audio_gain); break;
+        case HAL_PLATFORM_I6C: ret = i6c_audio_init(app_config.audio_srate, app_config.audio_gain); break;
+        case HAL_PLATFORM_M6:  ret = m6_audio_init(app_config.audio_srate, app_config.audio_gain); break;
         case HAL_PLATFORM_V1:  ret = v1_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V2:  ret = v2_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V3:  ret = v3_audio_init(app_config.audio_srate); break;

@@ -22,7 +22,7 @@ void m6_hal_deinit(void);
 int m6_hal_init(void);
 
 void m6_audio_deinit(void);
-int m6_audio_init(int samplerate);
+int m6_audio_init(int samplerate, int gain);
 void *m6_audio_thread(void);
 
 int m6_channel_bind(char index, char framerate);

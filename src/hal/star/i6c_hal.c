@@ -76,7 +76,7 @@ void i6c_audio_deinit(void)
     i6c_aud.fnDisableDevice(_i6c_aud_dev);
 }
 
-int i6c_audio_init(int samplerate)
+int i6c_audio_init(int samplerate, int gain)
 {
     int ret;
 
@@ -106,7 +106,7 @@ int i6c_audio_init(int samplerate)
                 return ret;*/
         if (ret = i6c_aud.fnAttachToDevice(_i6c_aud_dev, input, inputSize))
             return ret;
-        if (ret = i6c_aud.fnSetGain(input[0], 13, 13))
+        if (ret = i6c_aud.fnSetGain(input[0], gain, gain))
             return ret;
     }
 
