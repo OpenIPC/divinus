@@ -72,6 +72,9 @@ int save_app_config(void) {
     fprintf(file, "rtsp:\n");
     fprintf(file, "  enable: %s\n", app_config.rtsp_enable ? "true" : "false");
 
+    fprintf(file, "rtp:\n");
+    fprintf(file, "  enable: %s\n", app_config.rtp_enable ? "true" : "false");
+
     fprintf(file, "mdns:\n");
     fprintf(file, "  enable: %s\n", app_config.mdns_enable ? "true" : "false");
 
@@ -139,6 +142,10 @@ enum ConfigError parse_app_config(void) {
     app_config.osd_enable = false;
     app_config.rtsp_enable = false;
     app_config.rtsp_enable_auth = false;
+
+    app_config.rtp_enable = false;
+    app_config.rtp_port = 0;
+    app_config.rtp_ip[0] = 0;
 
     app_config.sensor_config[0] = 0;
     app_config.audio_enable = false;
@@ -263,6 +270,14 @@ enum ConfigError parse_app_config(void) {
                 &ini, "rtsp", "auth_user", app_config.rtsp_auth_user);
             parse_param_value(
                 &ini, "rtsp", "auth_pass", app_config.rtsp_auth_pass);
+    }
+
+    parse_bool(&ini, "rtp", "enable", &app_config.rtp_enable);
+    if (app_config.rtp_enable) {
+        parse_int(
+            &ini, "rtp", "port", 1, 65536, &app_config.rtp_port);
+        parse_param_value(
+            &ini, "rtp", "ip", app_config.rtp_ip);
     }
 
     parse_bool(&ini, "audio", "enable", &app_config.audio_enable);

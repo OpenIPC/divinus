@@ -16,6 +16,7 @@
 #include "jpeg.h"
 #include "rtsp/rtsp_server.h"
 #include "server.h"
+#include "rtsp/rtp_stream.h"
 
 extern rtsp_handle rtspHandle;
 

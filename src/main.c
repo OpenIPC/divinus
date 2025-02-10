@@ -7,7 +7,7 @@
 #include "rtsp/rtsp_server.h"
 #include "server.h"
 #include "watchdog.h"
-
+#include "rtsp/rtp_stream.h"
 #include <getopt.h>
 #include <signal.h>
 #include <stdio.h>
@@ -76,6 +76,15 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if (app_config.rtp_enable) {
+        if (!app_config.rtp_ip)
+        {
+            HAL_ERROR("rtp", "RTP IP address is not set!\n");
+        } 
+        HAL_INFO("rtp", "Started sending RTP stream to %s:%i...\n", app_config.rtp_ip, app_config.rtp_port);
+        rtp_create(app_config.rtp_ip, app_config.rtp_port);
+    }
+
     if (start_sdk())
         HAL_ERROR("hal", "Failed to start SDK!\n");
 
@@ -96,6 +105,11 @@ int main(int argc, char *argv[]) {
     if (app_config.rtsp_enable) {
         rtsp_finish(rtspHandle);
         HAL_INFO("rtsp", "Server has closed!\n");
+    }
+
+    if (app_config.rtp_enable) {
+        rtp_finish();
+        HAL_INFO("rtp", "RTP has closed!\n");
     }
 
     if (app_config.osd_enable)

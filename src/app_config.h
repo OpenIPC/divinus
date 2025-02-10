@@ -46,6 +46,11 @@ struct AppConfig {
     char rtsp_auth_user[32];
     char rtsp_auth_pass[32];
 
+    // [rtp]
+    bool rtp_enable;
+    unsigned int rtp_port;
+    char rtp_ip[128];
+    
     // [audio]
     bool audio_enable;
     unsigned int audio_bitrate;

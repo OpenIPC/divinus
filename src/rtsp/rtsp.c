@@ -803,7 +803,7 @@ static void *rtspThrFxn(void *v)
         socks.timeout.tv_usec = 0;
 
         
-        create_rtp_connection(rh);
+        //create_rtp_connection(rh);
         
         
         ASSERT(list_map_inline(&rh->con_list, (__set_select_sock), &socks) == SUCCESS, goto error);

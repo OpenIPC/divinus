@@ -94,6 +94,11 @@ int save_video_stream(char index, hal_vidstream *stream) {
                 for (int i = 0; i < stream->count; i++)
                     rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
                         stream->pack[i].length - stream->pack[i].offset, isH265);
+
+            if (app_config.rtp_enable)
+                for (int i = 0; i < stream->count; i++)
+                    rtp_stream_send_h26x(stream->pack[i].data + stream->pack[i].offset, 
+                        stream->pack[i].length - stream->pack[i].offset, isH265);
             break;
         case HAL_VIDCODEC_MJPG:
             if (app_config.mjpeg_enable) {
