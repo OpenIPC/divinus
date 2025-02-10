@@ -315,6 +315,33 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
     request_idr();
 }
 
+static void __method_play_rtp(struct connection_item_t *p, rtsp_handle h)
+{
+    fprintf(stdout, "__method_play_rtp\n");
+    for (int i = 0; i < sizeof(p->trans) / sizeof(*p->trans); i++) {
+        fprintf(stdout, " => i %i\n", i);
+        p->trans[i].client_port_rtp = 5600;
+        if (!p->trans[i].client_port_rtp) continue;
+        p->track_id = i;
+
+        fprintf(stdout, "p->trans[%i].client_port_rtp %i \n", p->track_id, p->trans[p->track_id].client_port_rtp);
+        //ASSERT(__bind_rtcp(p) == SUCCESS, return);
+        ASSERT(__bind_rtp(p) == SUCCESS, return);
+        p->trans[p->track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
+        p->trans[p->track_id].rtp_seq = rand_r(&h->ctx);
+        p->trans[p->track_id].rtcp_octet = 0; 
+        p->trans[p->track_id].rtcp_packet_cnt = 0; 
+        p->trans[p->track_id].rtcp_tick_org = 150; // TODO: must be variant
+        p->trans[p->track_id].rtcp_tick = p->trans[p->track_id].rtcp_tick_org;
+    }
+
+    p->con_state = __CON_S_PLAYING;
+
+    //ASSERT(__rtcp_send_sr(p) == SUCCESS, return);
+
+    request_idr();
+}
+
 static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
 {
     fprintf(p->fp_tcp_write,
@@ -481,6 +508,29 @@ static int __connection_reset(void *v)
 }
 
     static inline int
+__connection_list_add_rtp(bufpool_handle con_pool, struct list_head_t *head, struct sockaddr_in addr)
+{
+    DASSERT(head, return FAILURE);
+
+    struct connection_item_t *p = NULL;
+
+    ASSERT(bufpool_get_free(con_pool, &p) == SUCCESS, return FAILURE);
+
+    DASSERT(p, return FAILURE);
+
+    DBG("previous fd=%d\n", p->client_fd);
+
+    p->addr=addr;
+    p->client_fd=-1;
+    p->con_state = __CON_S_INIT;
+
+    return list_add(head, &(p->list_entry));
+error:
+    __connection_reset(&p->list_entry);
+    return FAILURE;
+}
+
+static inline int
 __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd, struct sockaddr_in addr)
 {
     DASSERT(head, return FAILURE);
@@ -702,6 +752,27 @@ static int __connection_is_dead(struct list_t *l)
     return c->con_state == __CON_S_DISCONNECTED;
 }
 
+static void create_rtp_connection(rtsp_handle rh)
+{
+    static bool con_started = false;
+    if (!con_started) {
+        fprintf(stdout, "!!!!!!!!!!!!! Create RTP connection\n");
+        struct sockaddr_in from_addr;
+        from_addr.sin_family = AF_INET;
+        from_addr.sin_addr.s_addr = inet_addr("192.168.1.14");
+        from_addr.sin_port = htons(5600);
+        ASSERT(__connection_list_add_rtp(rh->con_pool, &rh->con_list, from_addr) == SUCCESS,
+                return);
+
+        struct connection_item_t *con;
+        list_upcast(con, rh->con_list.list);
+        __method_play_rtp(con, rh);
+
+        con_started = true; 
+    }
+
+}
+
 /******************************************************************************
  *                  THREAD CALLBACKS
  ******************************************************************************/
@@ -731,6 +802,10 @@ static void *rtspThrFxn(void *v)
         socks.timeout.tv_sec = 1;
         socks.timeout.tv_usec = 0;
 
+        
+        create_rtp_connection(rh);
+        
+        
         ASSERT(list_map_inline(&rh->con_list, (__set_select_sock), &socks) == SUCCESS, goto error);
 
         ASSERT((ret_select = select(socks.nfds, &(socks.rfds), NULL, NULL, &(socks.timeout))) >= 0, ({
