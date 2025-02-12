@@ -44,6 +44,7 @@ int save_app_config(void) {
 
     fprintf(file, "system:\n");
     fprintf(file, "  sensor_config: %s\n", app_config.sensor_config);
+    fprintf(file, "  server_enable: %s\n", app_config.server_enable ? "true" : "false");
     fprintf(file, "  web_port: %d\n", app_config.web_port);
     fprintf(file, "  web_enable_auth: %s\n", app_config.web_enable_auth ? "true" : "false");
     fprintf(file, "  web_auth_user: %s\n", app_config.web_auth_user);
@@ -130,6 +131,7 @@ int save_app_config(void) {
 enum ConfigError parse_app_config(void) {
     memset(&app_config, 0, sizeof(struct AppConfig));
 
+    app_config.server_enable = false;
     app_config.web_port = 8080;
     app_config.web_enable_auth = false;
     app_config.web_enable_static = false;
@@ -194,6 +196,7 @@ enum ConfigError parse_app_config(void) {
              plat == HAL_PLATFORM_V3 || plat == HAL_PLATFORM_V4))
             goto RET_ERR;
     }
+    parse_bool(&ini, "system", "server_enable", &app_config.server_enable);
     int port;
     err = parse_int(&ini, "system", "web_port", 1, INT_MAX, &port);
     if (err != CONFIG_OK)

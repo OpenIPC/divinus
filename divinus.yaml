@@ -1,5 +1,6 @@
 system:
   sensor_config: /etc/sensors/imx415.bin
+  server_enable: true
   web_port: 80
   web_enable_auth: false
   web_auth_user: admin
