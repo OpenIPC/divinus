@@ -291,7 +291,7 @@ enum ConfigError parse_app_config(void) {
     }
 
     parse_bool(&ini, "mp4", "enable", &app_config.mp4_enable);
-    if (app_config.mp4_enable) {
+    if (app_config.mp4_enable || app_config.rtp_enable) {
         {
             const char *possible_values[] = {"H.264", "H.265", "H264", "H265", "AVC", "HEVC"};
             const int count = sizeof(possible_values) / sizeof(const char *);

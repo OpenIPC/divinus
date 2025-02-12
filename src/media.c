@@ -686,7 +686,7 @@ int start_sdk(void) {
         pthread_attr_destroy(&thread_attr);
     }
 
-    if (app_config.mp4_enable && (ret = enable_mp4()))
+    if ((app_config.mp4_enable || app_config.rtp_enable) && (ret = enable_mp4()))
         HAL_ERROR("media", "MP4 initialization failed with %#x!\n", ret);
 
     if (app_config.mjpeg_enable && (ret = enable_mjpeg()))
