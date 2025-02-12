@@ -27,6 +27,11 @@ rtsp:
   auth_user: admin
   auth_pass: 12345
 
+rtp:
+  enable: true
+  port: 5600
+  ip: 127.0.0.1
+
 night_mode:
   enable: false
   ir_sensor_pin: 62
