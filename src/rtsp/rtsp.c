@@ -15,6 +15,7 @@
 #include "rfc.h"
 #include "rtcp.h"
 #include "bufpool.h"
+#include "../app_config.h"
 #include <netinet/in.h>
 #include <sys/ioctl.h>
 
@@ -778,68 +779,75 @@ static void create_rtp_connection(rtsp_handle rh)
  ******************************************************************************/
 static void *rtspThrFxn(void *v)
 {
-    thread_handle           h = v;
-    rtsp_handle             rh = h->sharedp->param_shared;
-    void                    *status = THREAD_FAILURE;
-    struct sock_select_t    socks = {};
-
-    int     ret_select;
-    int     server_fd = -1;
-
-    DASSERT(thread_check_isoleted_job(h) == SUCCESS, goto error);
-
-    /* open tcp connection */
-    ASSERT((server_fd = __bind_tcp(SERVER_RTSP_PORT)) > 0, goto error);
-
-    socks.nfds = server_fd + 1;
-    socks.h_rtsp = rh;
-
-    thread_sync_init(h);
-
-    while (!gbl_get_quit(h->sharedp->gbl)) {
-        FD_ZERO(&(socks.rfds));
-        FD_SET(server_fd, &(socks.rfds));
-        socks.timeout.tv_sec = 1;
-        socks.timeout.tv_usec = 0;
-
-        
-        //create_rtp_connection(rh);
-        
-        
-        ASSERT(list_map_inline(&rh->con_list, (__set_select_sock), &socks) == SUCCESS, goto error);
-
-        ASSERT((ret_select = select(socks.nfds, &(socks.rfds), NULL, NULL, &(socks.timeout))) >= 0, ({
-                    ERR("select:%s\n", strerror(errno));
-                    goto error;}));
-
-        if (ret_select > 0){
-            /* lock while tcp layer is done */
-            rtsp_lock(rh);
-
-            ASSERT(__accept_proc_sock(rh, server_fd, &socks) == SUCCESS, 
-                    ({ rtsp_unlock(rh); goto error;}));
-
-            ASSERT(list_map_inline(&rh->con_list, __message_proc_sock, &socks) == SUCCESS, 
-                    ({ rtsp_unlock(rh); goto error;}));
-
-            MUST(list_sweep(&rh->con_list, __connection_is_dead) == SUCCESS, 
-                    ({ rtsp_unlock(rh); goto error;}));
-
-            socks.nfds = max(server_fd, __find_fd_max(&rh->con_list)) + 1;
-
-            rtsp_unlock(rh);
-        } 
-        //bufpool_statistics(rh->con_pool);
+    if (!app_config.rtsp_enable)
+    {
+        return THREAD_SUCCESS;
     }
+    else
+    {
+        thread_handle           h = v;
+        rtsp_handle             rh = h->sharedp->param_shared;
+        void                    *status = THREAD_FAILURE;
+        struct sock_select_t    socks = {};
 
-    status = THREAD_SUCCESS;
-error:
-    /* Make sure the other threads aren't waiting for us */
-    thread_sync_cleanup(h);
+        int     ret_select;
+        int     server_fd = -1;
 
-    if (server_fd > 0) close(server_fd);
+        DASSERT(thread_check_isoleted_job(h) == SUCCESS, goto error);
 
-    return status;
+        /* open tcp connection */
+        ASSERT((server_fd = __bind_tcp(SERVER_RTSP_PORT)) > 0, goto error);
+
+        socks.nfds = server_fd + 1;
+        socks.h_rtsp = rh;
+
+        thread_sync_init(h);
+
+        while (!gbl_get_quit(h->sharedp->gbl)) {
+            FD_ZERO(&(socks.rfds));
+            FD_SET(server_fd, &(socks.rfds));
+            socks.timeout.tv_sec = 1;
+            socks.timeout.tv_usec = 0;
+
+            
+            //create_rtp_connection(rh);
+            
+            
+            ASSERT(list_map_inline(&rh->con_list, (__set_select_sock), &socks) == SUCCESS, goto error);
+
+            ASSERT((ret_select = select(socks.nfds, &(socks.rfds), NULL, NULL, &(socks.timeout))) >= 0, ({
+                        ERR("select:%s\n", strerror(errno));
+                        goto error;}));
+
+            if (ret_select > 0){
+                /* lock while tcp layer is done */
+                rtsp_lock(rh);
+
+                ASSERT(__accept_proc_sock(rh, server_fd, &socks) == SUCCESS, 
+                        ({ rtsp_unlock(rh); goto error;}));
+
+                ASSERT(list_map_inline(&rh->con_list, __message_proc_sock, &socks) == SUCCESS, 
+                        ({ rtsp_unlock(rh); goto error;}));
+
+                MUST(list_sweep(&rh->con_list, __connection_is_dead) == SUCCESS, 
+                        ({ rtsp_unlock(rh); goto error;}));
+
+                socks.nfds = max(server_fd, __find_fd_max(&rh->con_list)) + 1;
+
+                rtsp_unlock(rh);
+            } 
+            //bufpool_statistics(rh->con_pool);
+        }
+
+        status = THREAD_SUCCESS;
+    error:
+        /* Make sure the other threads aren't waiting for us */
+        thread_sync_cleanup(h);
+
+        if (server_fd > 0) close(server_fd);
+
+        return status;
+    }
 }
 
 
