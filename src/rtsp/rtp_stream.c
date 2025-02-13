@@ -8,9 +8,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "list.h"
 #include "rtp.h"
 #include "rfc.h"
+
+
+#include <time.h>
+
+unsigned long long current_time_microseconds(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return (unsigned long long)(ts.tv_sec) * 1000000 + (unsigned long long)(ts.tv_nsec) / 1000;
+}
 
 #define RTP_PACKET_SIZE 1500
 
@@ -68,6 +78,9 @@ buffer_t* doublebuffer_write(doublebuffer_t *db)
 int rtp_stream_send_h26x(unsigned char *buf, size_t len, char isH265)
 {
     int ret = FAILURE;
+
+    fprintf(stdout, "rtp_stream_send_h26x %llu\n", current_time_microseconds());
+
     fprintf(stdout, "write buffer size %i\n", len);
     buffer_t* buffer = doublebuffer_write(&g_db);
     ASSERT(len < MAX_BUFFER_SIZE, return FAILURE);

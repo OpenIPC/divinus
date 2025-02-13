@@ -41,6 +41,51 @@ typedef struct {
     unsigned int frameLineCnt;
 } i6_vif_port;
 
+#define MI_S32 int
+#define MI_U64 unsigned long long
+
+typedef enum
+
+{
+
+    E_MI_VIF_CALLBACK_ISR,
+
+    E_MI_VIF_CALLBACK_MAX,
+
+} MI_VIF_CallBackMode_e;
+
+typedef enum
+
+{
+
+    E_MI_VIF_IRQ_FRAMESTART, //frame start irq
+
+    E_MI_VIF_IRQ_FRAMEEND, //frame end irq
+
+    E_MI_VIF_IRQ_LINEHIT, //frame line hit irq
+
+    E_MI_VIF_IRQ_MAX,
+
+} MI_VIF_IrqType_e;
+
+typedef MI_S32 (*MI_VIF_CALLBK_FUNC)(MI_U64 u64Data);
+
+typedef struct MI_VIF_CallBackParam_s
+
+{
+
+    MI_VIF_CallBackMode_e eCallBackMode;
+
+    MI_VIF_IrqType_e eIrqType;
+
+    MI_VIF_CALLBK_FUNC pfnCallBackFunc;
+
+    MI_U64 u64Data;
+
+} MI_VIF_CallBackParam_t;
+
+
+
 typedef struct {
     void *handle;
 
@@ -51,6 +96,8 @@ typedef struct {
     int (*fnDisablePort)(int channel, int port);
     int (*fnEnablePort)(int channel, int port);
     int (*fnSetPortConfig)(int channel, int port, i6_vif_port *config);
+    int (*fnSetCB)(int u32VifChn, MI_VIF_CallBackParam_t *config);
+    int (*fnUnsetCB)(int u32VifChn, MI_VIF_CallBackParam_t *config);
 } i6_vif_impl;
 
 static int i6_vif_load(i6_vif_impl *vif_lib) {
@@ -79,6 +126,14 @@ static int i6_vif_load(i6_vif_impl *vif_lib) {
 
     if (!(vif_lib->fnSetPortConfig = (int(*)(int channel, int port, i6_vif_port *config))
         hal_symbol_load("i6_vif", vif_lib->handle, "MI_VIF_SetChnPortAttr")))
+        return EXIT_FAILURE;
+
+    if (!(vif_lib->fnSetCB = (int(*)(int channel, MI_VIF_CallBackParam_t *config))
+        hal_symbol_load("i6_vif", vif_lib->handle, "MI_VIF_CallBackTask_Register")))
+        return EXIT_FAILURE;
+
+    if (!(vif_lib->fnUnsetCB = (int(*)(int channel, MI_VIF_CallBackParam_t *config))
+        hal_symbol_load("i6_vif", vif_lib->handle, "MI_VIF_CallBackTask_UnRegister")))
         return EXIT_FAILURE;
 
     return EXIT_SUCCESS;

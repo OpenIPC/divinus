@@ -274,6 +274,20 @@ typedef struct {
     };
 } i6_venc_strm;
 
+
+typedef struct MI_VENC_IntraRefresh_s
+
+{
+
+    char bEnable;
+
+    unsigned int u32RefreshLineNum;
+
+    unsigned int  u32ReqIQp;
+
+}MI_VENC_IntraRefresh_t;
+
+
 typedef struct {
     void *handle;
 
@@ -301,6 +315,10 @@ typedef struct {
     int (*fnStartReceiving)(int channel);
     int (*fnStartReceivingEx)(int channel, int *count);
     int (*fnStopReceiving)(int channel);
+
+
+    int (*fnSetIntraRefresh)(unsigned int channel, MI_VENC_IntraRefresh_t *pstIntraAttr);
+    int (*fnGetIntraRefresh)(unsigned int channel, MI_VENC_IntraRefresh_t *pstIntraAttr);
 } i6_venc_impl;
 
 static int i6_venc_load(i6_venc_impl *venc_lib) {
@@ -376,6 +394,14 @@ static int i6_venc_load(i6_venc_impl *venc_lib) {
 
     if (!(venc_lib->fnStopReceiving = (int(*)(int channel))
         hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_StopRecvPic")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnSetIntraRefresh = (int(*)(unsigned int channel, MI_VENC_IntraRefresh_t *pstIntraAttr))
+        hal_symbol_load("i6c_venc", venc_lib->handle, "MI_VENC_SetIntraRefresh")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnGetIntraRefresh = (int(*)(unsigned int channel, MI_VENC_IntraRefresh_t *pstIntraAttr))
+        hal_symbol_load("i6c_venc", venc_lib->handle, "MI_VENC_GetIntraRefresh")))
         return EXIT_FAILURE;
 
     return EXIT_SUCCESS;

@@ -293,6 +293,7 @@ typedef struct {
     };
 } i6c_venc_strm;
 
+
 typedef struct {
     void *handle;
     
@@ -322,6 +323,8 @@ typedef struct {
     int (*fnStartReceiving)(unsigned int device, unsigned int channel);
     int (*fnStartReceivingEx)(unsigned int device, unsigned int channel, int *count);
     int (*fnStopReceiving)(unsigned int device, unsigned int channel);
+
+
 } i6c_venc_impl;
 
 static int i6c_venc_load(i6c_venc_impl *venc_lib) {

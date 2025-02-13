@@ -234,11 +234,17 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
             if (ret = i6_snr.fnGetResolution(_i6_snr_index, i, &resolution))
                 return ret;
 
+
+            fprintf(stdout, "Profile %d: %dx%d @ %d fps\n", i, resolution.crop.width,
+                resolution.crop.height, resolution.maxFps);
+
             if (width > resolution.crop.width ||
                 height > resolution.crop.height ||
                 framerate > resolution.maxFps)
                 continue;
-        
+            
+            fprintf(stdout, "Set profile %i\n", i);
+
             _i6_snr_profile = i;
             if (ret = i6_snr.fnSetResolution(_i6_snr_index, _i6_snr_profile))
                 return ret;
@@ -311,7 +317,8 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         i6e_vpe_para param;
         memset(&param, 0, sizeof(param));
         param.hdr = I6_HDR_OFF;
-        param.level3DNR = 1;
+        //param.level3DNR = 1;
+        param.level3DNR = 0;
         param.mirror = 0;
         param.flip = 0;
         param.lensAdjOn = 0;
@@ -333,7 +340,8 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         i6_vpe_para param;
         memset(&param, 0, sizeof(param));
         param.hdr = I6_HDR_OFF;
-        param.level3DNR = 1;
+        //param.level3DNR = 1;
+        param.level3DNR = 0;
         param.mirror = 0;
         param.flip = 0;
         param.lensAdjOn = 0;
@@ -764,6 +772,66 @@ abort:
     return ret;
 }
 
+extern unsigned long long current_time_microseconds(void);
+
+
+
+MI_S32 _mi_vif_framestart1(MI_U64 u64Data)
+{
+    fprintf(stdout, "DATA %llu \n", u64Data);
+
+    return 0;
+}
+MI_S32 _mi_vif_framestart2(MI_U64 u64Data)
+{
+    fprintf(stdout, "DATA %llu \n", u64Data);
+
+    return 0;
+}
+
+static void _mi_vif_testRegVifCallback(void)
+{
+    MI_VIF_CallBackParam_t stCallBackParam1;
+    MI_VIF_CallBackParam_t stCallBackParam2;
+    int u32VifChn = 0;
+    memset(&stCallBackParam1, 0x0, sizeof(MI_VIF_CallBackParam_t));
+    memset(&stCallBackParam2, 0x0, sizeof(MI_VIF_CallBackParam_t));
+    stCallBackParam1.eCallBackMode = E_MI_VIF_CALLBACK_ISR;
+    stCallBackParam1.eIrqType = E_MI_VIF_IRQ_FRAMESTART;
+    stCallBackParam1.pfnCallBackFunc = _mi_vif_framestart1;
+    stCallBackParam1.u64Data = 11;
+    i6_vif.fnSetCB(u32VifChn,&stCallBackParam1);
+
+    stCallBackParam2.eCallBackMode = E_MI_VIF_CALLBACK_ISR;
+    stCallBackParam2.eIrqType = E_MI_VIF_IRQ_FRAMESTART;
+    stCallBackParam2.pfnCallBackFunc = _mi_vif_framestart2;
+    stCallBackParam2.u64Data = 22;
+    i6_vif.fnSetCB(u32VifChn,&stCallBackParam2);
+}
+
+static void _mi_vif_testUnRegVifCallback(void)
+{
+    MI_VIF_CallBackParam_t stCallBackParam1;
+    MI_VIF_CallBackParam_t stCallBackParam2;
+
+    int u32VifChn = 0;
+    memset(&stCallBackParam1, 0x0, sizeof(MI_VIF_CallBackParam_t));
+    memset(&stCallBackParam1, 0x0, sizeof(MI_VIF_CallBackParam_t));
+    stCallBackParam1.eCallBackMode = E_MI_VIF_CALLBACK_ISR;
+    stCallBackParam1.eIrqType = E_MI_VIF_IRQ_FRAMESTART;
+    stCallBackParam1.pfnCallBackFunc = _mi_vif_framestart1;
+    stCallBackParam1.u64Data = 33;
+    i6_vif.fnUnsetCB(u32VifChn,&stCallBackParam1);
+
+    stCallBackParam2.eCallBackMode = E_MI_VIF_CALLBACK_ISR;
+    stCallBackParam2.eIrqType = E_MI_VIF_IRQ_FRAMESTART;
+    stCallBackParam2.pfnCallBackFunc = _mi_vif_framestart2;
+    stCallBackParam2.u64Data = 44;
+
+    i6_vif.fnUnsetCB(u32VifChn,&stCallBackParam2);
+}
+
+
 void *i6_video_thread(void)
 {
     int ret, maxFd = 0;
@@ -788,6 +856,19 @@ void *i6_video_thread(void)
     struct timeval timeout;
     fd_set readFds;
 
+    fprintf(stdout, "call _mi_vif_testRegVifCallback\n");
+    _mi_vif_testRegVifCallback();
+    fprintf(stdout, "after _mi_vif_testRegVifCallback\n");
+
+
+    fprintf(stdout, "call setIntraRefresh\n");
+    MI_VENC_IntraRefresh_t stIntraRefresh;
+    stIntraRefresh.bEnable = 1;
+    stIntraRefresh.u32RefreshLineNum = 16;
+    stIntraRefresh.u32ReqIQp = 0;
+    i6_venc.fnSetIntraRefresh(0, &stIntraRefresh);
+    fprintf(stdout, "after call setIntraRefresh\n");
+
     while (keepRunning) {
         FD_ZERO(&readFds);
         for(int i = 0; i < I6_VENC_CHN_NUM; i++) {
@@ -806,6 +887,8 @@ void *i6_video_thread(void)
             HAL_WARNING("i6_venc", "Main stream loop timed out!\n");
             continue;
         } else {
+            fprintf(stdout, "venc out             %llu\n", current_time_microseconds());
+
             for (int i = 0; i < I6_VENC_CHN_NUM; i++) {
                 if (!i6_state[i].enable) continue;
                 if (!i6_state[i].mainLoop) continue;
