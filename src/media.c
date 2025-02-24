@@ -81,6 +81,7 @@ int save_video_stream(char index, hal_vidstream *stream) {
     switch (chnState[index].payload) {
         case HAL_VIDCODEC_H264:
         case HAL_VIDCODEC_H265:
+        {
             char isH265 = chnState[index].payload == HAL_VIDCODEC_H265 ? 1 : 0;
 
             if (app_config.mp4_enable) {
@@ -95,6 +96,7 @@ int save_video_stream(char index, hal_vidstream *stream) {
                     rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
                         stream->pack[i].length - stream->pack[i].offset, isH265);
             break;
+        }
         case HAL_VIDCODEC_MJPG:
             if (app_config.mjpeg_enable) {
                 static char *mjpeg_buf;

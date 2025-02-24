@@ -84,6 +84,7 @@ void region_fill_formatted(char* str)
             case HAL_PLATFORM_I6:
             case HAL_PLATFORM_I6C:
             case HAL_PLATFORM_M6:
+            {
                 FILE* file;
                 char line[20] = {0};
                 if (file = fopen("/sys/class/mstar/msys/TEMP_R", "r")) {
@@ -93,6 +94,7 @@ void region_fill_formatted(char* str)
                     fclose(file);
                 }
                 break;
+            }
             case HAL_PLATFORM_V2:  t = v2_system_readtemp(); break;
             case HAL_PLATFORM_V3:  t = v3_system_readtemp(); break;
             case HAL_PLATFORM_V4:  t = v4_system_readtemp(); break;
