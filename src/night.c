@@ -26,10 +26,12 @@ void set_night_mode(bool night) {
     if (night) {
         HAL_INFO("night", "Changing mode to NIGHT\n");
         ircut_off();
+        gpio_write(app_config.ir_led_pin, true);
         set_grayscale(true);
     } else {
         HAL_INFO("night", "Changing mode to DAY\n");
         ircut_on();
+        gpio_write(app_config.ir_led_pin, false);
         set_grayscale(false);
     }
     night_mode = night;
