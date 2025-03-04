@@ -1,0 +1,15 @@
+[submodule "src/3rd/datatype99"]
+	path = src/3rd/datatype99
+	url = https://github.com/hirrolot/datatype99
+[submodule "src/3rd/interface99"]
+	path = src/3rd/interface99
+	url = https://github.com/hirrolot/interface99
+[submodule "src/3rd/metalang99"]
+	path = src/3rd/metalang99
+	url = https://github.com/hirrolot/metalang99
+[submodule "src/3rd/slice99"]
+	path = src/3rd/slice99
+	url = https://github.com/hirrolot/slice99
+[submodule "src/3rd/smolrtsp"]
+	path = src/3rd/smolrtsp
+	url = https://github.com/OpenIPC/smolrtsp

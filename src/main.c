@@ -4,7 +4,7 @@
 #include "media.h"
 #include "network.h"
 #include "night.h"
-#include "rtsp/rtsp_server.h"
+#include "rtsp.h"
 #include "server.h"
 #include "watchdog.h"
 
@@ -15,7 +15,6 @@
 #include <string.h>
 #include <unistd.h>
 
-rtsp_handle rtspHandle;
 char graceful = 0, keepRunning = 1;
 
 void handle_error(int signo) {
@@ -64,20 +63,19 @@ int main(int argc, char *argv[]) {
     start_server();
 
     if (app_config.rtsp_enable) {
-        rtspHandle = rtsp_create(RTSP_MAXIMUM_CONNECTIONS, 1);
-        HAL_INFO("rtsp", "Started listening for clients...\n");
+        rtsp_init(1);
+
         if (app_config.rtsp_enable_auth) {
             if (!app_config.rtsp_auth_user || !app_config.rtsp_auth_pass)
                 HAL_ERROR("rtsp", "One or both credential fields have been left empty!\n");
             else {
-                rtsp_configure_auth(rtspHandle, app_config.rtsp_auth_user, app_config.rtsp_auth_pass);
                 HAL_INFO("rtsp", "Authentication enabled!\n");
             }
         }
     }
 
     if (start_sdk())
-        HAL_ERROR("hal", "Failed to start SDK!\n");
+        HAL_ERROR("hal", "SDK has failed to start!\n");
 
     if (app_config.night_mode_enable)
         start_monitor_light_sensor();
@@ -94,7 +92,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (app_config.rtsp_enable) {
-        rtsp_finish(rtspHandle);
+        rtsp_finish();
         HAL_INFO("rtsp", "Server has closed!\n");
     }
 

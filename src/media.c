@@ -30,8 +30,8 @@ void *aenc_thread(void) {
         mp4_ingest_audio(mp3Buf.buf, mp3FrmSize);
         pthread_mutex_unlock(&mp4Mtx);
 
-        if (app_config.rtsp_enable)
-            rtp_send_mp3(rtspHandle, mp3Buf.buf, mp3FrmSize);
+        /*if (app_config.rtsp_enable)
+            rtp_send_mp3(rtspHandle, mp3Buf.buf, mp3FrmSize);*/
 
         mp3Buf.offset -= mp3FrmSize;
         if (mp3Buf.offset);
@@ -91,10 +91,10 @@ int save_video_stream(char index, hal_vidstream *stream) {
                 
                 send_h26x_to_client(index, stream);
             }
-            if (app_config.rtsp_enable)
+            /*if (app_config.rtsp_enable)
                 for (int i = 0; i < stream->count; i++)
                     rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
-                        stream->pack[i].length - stream->pack[i].offset, isH265);
+                        stream->pack[i].length - stream->pack[i].offset, isH265);*/
             break;
         }
         case HAL_VIDCODEC_MJPG:

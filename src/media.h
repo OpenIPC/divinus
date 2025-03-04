@@ -14,10 +14,8 @@
 #include "http_post.h"
 #include "lib/shine/layer3.h"
 #include "jpeg.h"
-#include "rtsp/rtsp_server.h"
+#include "rtsp.h"
 #include "server.h"
-
-extern rtsp_handle rtspHandle;
 
 int start_sdk(void);
 int stop_sdk(void);
