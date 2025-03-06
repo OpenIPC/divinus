@@ -214,20 +214,30 @@ int t31_config_load(char *path)
 
 int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate)
 {
-    int ret;
+    int ret = 1;
 
     {
+        char* paths[] = {"/proc/jz/sinfo/info", "proc/jz/sensor/name"};
+        char **path = paths;
         char *sensorlocal, sensorname[50];
-        FILE *sensorinfo = fopen("/proc/jz/sinfo/info", "r");
-        if (!fgets(sensorname, 50, sensorinfo))
-            HAL_INFO("t31_hal", "Couldn't determine the sensor name from sinfo module!\n");
-        else {
-            sensorlocal = strstr(sensorname, ":");
-            if (!sensorlocal++) goto sensor_from_env;
-            sensorlocal[strlen(sensorlocal) - 1] = '\0';
-            goto sensor_found;
+        FILE *sensorinfo;
+
+        while (*path) {
+            if (sensorinfo = fopen(*path, "r")) {
+                sensorlocal = fgets(sensorname, 50, sensorinfo);
+                fclose(sensorinfo);
+                if (sensorlocal) {
+                    sensorlocal = strstr(sensorname, ":");
+                    if (!sensorlocal++) goto sensor_from_env;
+                    sensorlocal[strlen(sensorlocal) - 1] = '\0';
+                    goto sensor_found;
+                }
+            }
+            else *path++;
         }
-        fclose(sensorinfo);
+        
+        if (!sensorlocal)
+            HAL_INFO("t31_hal", "Couldn't determine the sensor name from kernel modules!\n");
 
 sensor_from_env:
         sensorlocal = getenv("SENSOR");
@@ -246,8 +256,7 @@ sensor_found:
             ret = 0;
             break;
         }
-        if (ret)
-            return EXIT_FAILURE;
+        if (ret) return ret;
     }
     if (ret = t31_isp.fnInit())
         return ret;
