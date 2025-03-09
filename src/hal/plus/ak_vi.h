@@ -38,7 +38,7 @@ typedef struct {
 } ak_vi_impl;
 
 static int ak_vi_load(ak_vi_impl *vi_lib) {
-    if (!(vi_lib->handleIspSdk = dlopen("libplat_isp_sdk.so", RTLD_LAZY | RTLD_GLOBAL)))
+    if (!(vi_lib->handleIspSdk = dlopen("libakispsdk.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("ak_vi", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(vi_lib->handle = dlopen("libplat_vi.so", RTLD_LAZY | RTLD_GLOBAL)))
@@ -86,5 +86,7 @@ static int ak_vi_load(ak_vi_impl *vi_lib) {
 static void ak_vi_unload(ak_vi_impl *vi_lib) {
     if (vi_lib->handle) dlclose(vi_lib->handle);
     vi_lib->handle = NULL;
+    if (vi_lib->handleIspSdk) dlclose(vi_lib->handleIspSdk);
+    vi_lib->handleIspSdk = NULL;
     memset(vi_lib, 0, sizeof(*vi_lib));
 }

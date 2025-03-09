@@ -22,6 +22,14 @@ int sTaT(const char *path, struct _stat_ *buf)
     buf->st_mode = st.st_mode;
     return ret;
 }
+#else
+#include <fcntl.h>
+#include <sys/stat.h>
+
+int stat(const char *restrict path, struct stat *restrict buf)
+{
+    return fstatat(AT_FDCWD, path, buf, 0);
+}
 #endif
 #endif
 
