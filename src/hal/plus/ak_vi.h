@@ -22,7 +22,7 @@ typedef struct {
 } ak_vi_cnf;
 
 typedef struct {
-    void *handle;
+    void *handle, *handleIspSdk;
 
     int   (*fnGetSensorResolution)(void *device, ak_vi_res *resolution);
     int   (*fnLoadSensorConfig)(char *path);
@@ -38,6 +38,9 @@ typedef struct {
 } ak_vi_impl;
 
 static int ak_vi_load(ak_vi_impl *vi_lib) {
+    if (!(vi_lib->handleIspSdk = dlopen("libplat_isp_sdk.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("ak_vi", "Failed to load library!\nError: %s\n", dlerror());
+
     if (!(vi_lib->handle = dlopen("libplat_vi.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("ak_vi", "Failed to load library!\nError: %s\n", dlerror());
 

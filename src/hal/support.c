@@ -16,11 +16,7 @@ int series = 0;
 void hal_identify(void) {
     unsigned int val = 0;
     FILE *file;
-    char *endMark;
-    char line[200] = {0};
-
-    char *sensorlocal = getenv("SENSOR");
-    if (*sensorlocal) strncpy(sensor, sensorlocal, sizeof(sensor));
+    char *endMark, line[200] = {0};
 
 #ifdef __arm__
     if (!access("/proc/mi_modules", F_OK) && 

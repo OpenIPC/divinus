@@ -140,6 +140,7 @@ enum ConfigError parse_app_config(void) {
     app_config.osd_enable = false;
     app_config.rtsp_enable = false;
     app_config.rtsp_enable_auth = false;
+    app_config.rtsp_port = 554;
 
     app_config.sensor_config[0] = 0;
     app_config.audio_enable = false;
@@ -184,8 +185,8 @@ enum ConfigError parse_app_config(void) {
 
     if (plat != HAL_PLATFORM_GM) {
         err = parse_param_value(&ini, "system", "sensor_config", app_config.sensor_config);
-        if (err != CONFIG_OK && 
-            (plat == HAL_PLATFORM_V1 || plat == HAL_PLATFORM_V2 ||
+        if (err != CONFIG_OK && (plat == HAL_PLATFORM_AK ||
+             plat == HAL_PLATFORM_V1 || plat == HAL_PLATFORM_V2 ||
              plat == HAL_PLATFORM_V3 || plat == HAL_PLATFORM_V4))
             goto RET_ERR;
     }
@@ -262,6 +263,7 @@ enum ConfigError parse_app_config(void) {
     parse_bool(&ini, "osd", "enable", &app_config.osd_enable);
 
     parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
+    parse_int(&ini, "rtsp", "port", 0, 65535, &app_config.rtsp_port);
     if (app_config.rtsp_enable) {
             parse_bool(&ini, "rtsp", "enable_auth", &app_config.rtsp_enable_auth);
             parse_param_value(

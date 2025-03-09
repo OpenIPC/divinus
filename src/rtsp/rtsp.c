@@ -718,7 +718,7 @@ static void *rtspThrFxn(void *v)
     DASSERT(thread_check_isoleted_job(h) == SUCCESS, goto error);
 
     /* open tcp connection */
-    ASSERT((server_fd = __bind_tcp(SERVER_RTSP_PORT)) > 0, goto error);
+    ASSERT((server_fd = __bind_tcp(rh->port)) > 0, goto error);
 
     socks.nfds = server_fd + 1;
     socks.h_rtsp = rh;
@@ -801,7 +801,7 @@ void rtsp_finish(rtsp_handle h)
     return;
 }
 
-rtsp_handle rtsp_create(unsigned char max_con, int priority)
+rtsp_handle rtsp_create(unsigned char max_con, unsigned int port, int priority)
 {
     rtsp_handle       nh = NULL;
 
@@ -813,6 +813,7 @@ rtsp_handle rtsp_create(unsigned char max_con, int priority)
 
     nh->audioPt = 255;
     nh->max_con = max_con;
+    nh->port = port;
     nh->priority = priority;
 
     pthread_mutex_init(&nh->mutex,NULL);

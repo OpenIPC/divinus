@@ -17,6 +17,12 @@ void *_ak_vi_dev;
 void *_ak_venc_dev[AK_VENC_CHN_NUM];
 void *_ak_venc_strm[AK_VENC_CHN_NUM];
 
+void ak_get_module_name(void) {}
+void ak_get_os_timestamp(void) {}
+void ak_open(void) {}
+void ak_print(void) {}
+void stat(void) {}
+
 void ak_hal_deinit(void)
 {
     ak_vi_unload(&ak_vi);
@@ -224,8 +230,10 @@ int ak_system_init(char *snrConfig)
 {
     int ret;
 
-    if (ret = ak_vi.fnLoadSensorConfig(snrConfig))
-        return ret;
+    if (!ak_vi.fnLoadSensorConfig(snrConfig))
+        HAL_DANGER("ak_vi", "Loading the sensor"
+            " config failed with %#x!\n%s\n", ret,
+            ak_sys.fnGetErrorStr(ret));
 
     return EXIT_SUCCESS;
 }

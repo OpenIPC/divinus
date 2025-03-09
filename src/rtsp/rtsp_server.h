@@ -10,7 +10,6 @@ extern "C" {
 /******************************************************************************
  *              DEFINITIONS
  ******************************************************************************/
-#define SERVER_RTSP_PORT 554
 #define SERVER_RTP_PORT 5004
 #define SERVER_RTCP_PORT 5025
 #define RTSP_MAXIMUM_FRAMERATE 60
@@ -32,7 +31,7 @@ int rtp_send_mp3(rtsp_handle h, unsigned char *buf, size_t len);
 
 extern void rtsp_finish(rtsp_handle h);
 
-extern rtsp_handle rtsp_create(unsigned char max_con, int priority);
+extern rtsp_handle rtsp_create(unsigned char max_con, unsigned int port, int priority);
 
 extern void rtsp_configure_auth(rtsp_handle h, const char *user, const char *pass);
 

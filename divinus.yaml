@@ -26,6 +26,7 @@ rtsp:
   enable_auth: false
   auth_user: admin
   auth_pass: 12345
+  port: 554
 
 night_mode:
   enable: false

@@ -46,6 +46,7 @@ struct AppConfig {
     bool rtsp_enable_auth;
     char rtsp_auth_user[32];
     char rtsp_auth_pass[32];
+    int rtsp_port;
 
     // [audio]
     bool audio_enable;
