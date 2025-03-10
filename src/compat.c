@@ -35,9 +35,9 @@ int stat(const char *restrict path, struct stat *restrict buf)
 
 void __assert(void) {}
 void akuio_clean_invalidate_dcache(void) {}
+#ifndef __GLIBC__
 void backtrace(void) {}
 void backtrace_symbols(void) {}
-#ifndef __GLIBC__
 void __ctype_b(void) {}
 void __ctype_b_loc(void) {}
 void __ctype_tolower(void) {}

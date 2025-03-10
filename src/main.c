@@ -19,7 +19,9 @@ rtsp_handle rtspHandle;
 char graceful = 0, keepRunning = 1;
 
 void handle_error(int signo) {
-    write(STDERR_FILENO, "Error occurred! Quitting...\n", 28);
+    char msg[64];
+    sprintf(msg, "Error occured (%d)! Quitting...\n", signo);
+    write(STDERR_FILENO, msg, strlen(msg));
     keepRunning = 0;
     exit(EXIT_FAILURE);
 }
