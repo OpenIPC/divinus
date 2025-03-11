@@ -214,7 +214,7 @@ int t31_config_load(char *path)
 
 int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate)
 {
-    int ret = 1;
+    int ret = EXIT_FAILURE;
 
     {
         char* paths[] = {"/proc/jz/sinfo/info", "proc/jz/sensor/name"};
@@ -256,7 +256,8 @@ sensor_found:
             ret = 0;
             break;
         }
-        if (ret) return ret;
+        if (ret)
+            HAL_ERROR("t31_hal", "Unknown sensor, please update the app!\n");
     }
     if (ret = t31_isp.fnInit())
         return ret;
