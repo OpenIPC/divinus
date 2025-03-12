@@ -179,6 +179,195 @@ typedef struct {
     i6_venc_rate rate;
 } i6_venc_chn;
 
+#define MI_U32 unsigned int
+#define MI_S32 int
+#define MI_U64 unsigned long long
+#define MI_VOID void
+#define RC_TEXTURE_THR_SIZE 1
+
+typedef struct MI_VENC_ParamH264Cbr_s
+
+{
+
+    MI_U32 u32MaxQp;
+
+    MI_U32 u32MinQp;
+
+    MI_S32 s32IPQPDelta;
+
+    MI_U32 u32MaxIQp;
+
+    MI_U32 u32MinIQp;
+
+    MI_U32 u32MaxIPProp;
+
+    MI_U32 u32MaxISize;
+
+    MI_U32 u32MaxPSize;
+
+}MI_VENC_ParamH264Cbr_t;
+
+typedef struct MI_VENC_ParamH264Vbr_s
+
+{
+
+    MI_S32 s32IPQPDelta;
+
+    MI_S32 s32ChangePos;
+
+    MI_U32 u32MaxIQp;
+
+    MI_U32 u32MinIQP;
+
+    MI_U32 u32MaxIPProp;
+
+    MI_U32 u32MaxISize;
+
+    MI_U32 u32MaxPSize;
+
+}MI_VENC_ParamH264Vbr_t;
+
+typedef struct MI_VENC_ParamH264Avbr_s
+
+{
+
+    MI_S32 s32IPQPDelta;
+
+    MI_S32 s32ChangePos;
+
+    MI_U32 u32MinIQp;
+
+    MI_U32 u32MaxIPProp;
+
+    MI_U32 u32MaxIQp;
+
+    MI_U32 u32MaxISize;
+
+    MI_U32 u32MaxPSize;
+
+    MI_U32 u32MinStillPercent;
+
+    MI_U32 u32MaxStillQp;
+
+    MI_U32 u32MotionSensitivity;
+
+} MI_VENC_ParamH264Avbr_t;
+
+typedef struct MI_VENC_ParamMjpegCbr_s
+
+{
+
+    MI_U32 u32MaxQfactor;
+
+    MI_U32 u32MinQfactor;
+
+} MI_VENC_ParamMjpegCbr_t;
+
+typedef struct MI_VENC_ParamH265Cbr_s
+
+{
+
+    MI_U32 u32MaxQp;
+
+    MI_U32 u32MinQp;
+
+    MI_S32 s32IPQPDelta;
+
+    MI_U32 u32MaxIQp;
+
+    MI_U32 u32MinIQp;
+
+    MI_U32 u32MaxIPProp;
+
+    MI_U32 u32MaxISize;
+
+    MI_U32 u32MaxPSize;
+
+}MI_VENC_ParamH265Cbr_t;
+
+typedef struct MI_VENC_ParamH265Avbr_s
+
+{
+
+    MI_S32 s32IPQPDelta;
+
+    MI_S32 s32ChangePos;
+
+    MI_U32 u32MinIQp;
+
+    MI_U32 u32MaxIPProp;
+
+    MI_U32 u32MaxIQp;
+
+    MI_U32 u32MaxISize;
+
+    MI_U32 u32MaxPSize;
+
+    MI_U32 u32MinStillPercent;
+
+    MI_U32 u32MaxStillQp;
+
+    MI_U32 u32MotionSensitivity;
+
+} MI_VENC_ParamH265Avbr_t;
+
+typedef struct MI_VENC_ParamH265Vbr_s
+
+{
+
+    MI_S32 s32IPQPDelta;
+
+    MI_S32 s32ChangePos;
+
+    MI_U32 u32MaxIQp;
+
+    MI_U32 u32MinIQP;
+
+    MI_U32 u32MaxIPProp;
+
+    MI_U32 u32MaxISize;
+
+    MI_U32 u32MaxPSize;
+
+}MI_VENC_ParamH265Vbr_t;
+
+
+
+typedef struct MI_VENC_RcParam_s
+{
+
+    MI_U32 u32ThrdI[RC_TEXTURE_THR_SIZE];
+
+    MI_U32 u32ThrdP[RC_TEXTURE_THR_SIZE];
+
+    MI_U32 u32RowQpDelta;
+
+    union
+
+    {
+
+        MI_VENC_ParamH264Cbr_t stParamH264Cbr;
+
+        MI_VENC_ParamH264Vbr_t stParamH264VBR;
+
+        MI_VENC_ParamH264Avbr_t stParamH264Avbr;
+
+        MI_VENC_ParamMjpegCbr_t stParamMjpegCbr;
+
+        MI_VENC_ParamH265Cbr_t stParamH265Cbr;
+
+        MI_VENC_ParamH265Vbr_t stParamH265Vbr;
+
+        MI_VENC_ParamH265Avbr_t stParamH265Avbr;
+
+    };
+
+    MI_VOID*pRcParam;
+
+}MI_VENC_RcParam_t;
+
+
+
 typedef struct {
     unsigned int quality;
     unsigned char qtLuma[64];
@@ -298,6 +487,9 @@ typedef struct {
     int (*fnResetChannel)(int channel);
     int (*fnSetChannelConfig)(int channel, i6_venc_chn *config);
 
+    int (*fnGetRCParam)(int channel, MI_VENC_RcParam_t *pstRcParam);
+    int (*fnSetRCParam)(int channel, MI_VENC_RcParam_t *pstRcParam);
+
     int (*fnFreeDescriptor)(int channel);
     int (*fnGetDescriptor)(int channel);
 
@@ -321,6 +513,7 @@ typedef struct {
     int (*fnGetIntraRefresh)(unsigned int channel, MI_VENC_IntraRefresh_t *pstIntraAttr);
 } i6_venc_impl;
 
+
 static int i6_venc_load(i6_venc_impl *venc_lib) {
     if (!(venc_lib->handle = dlopen("libmi_venc.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("i6_venc", "Failed to load library!\nError: %s\n", dlerror());
@@ -335,6 +528,14 @@ static int i6_venc_load(i6_venc_impl *venc_lib) {
 
     if (!(venc_lib->fnGetChannelConfig = (int(*)(int channel, i6_venc_chn *config))
         hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_GetChnAttr")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnGetRCParam = (int(*)(int channel, MI_VENC_RcParam_t *config))
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_GetRcParam")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnSetRCParam = (int(*)(int channel, MI_VENC_RcParam_t *config))
+        hal_symbol_load("i6_venc", venc_lib->handle, "MI_VENC_SetRcParam")))
         return EXIT_FAILURE;
 
     if (!(venc_lib->fnGetChannelDeviceId = (int(*)(int channel, unsigned int *device))

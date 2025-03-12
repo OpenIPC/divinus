@@ -523,12 +523,14 @@ int i6_video_create(char index, hal_vidconfig *config)
         attrib = &channel.attrib.h265;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
+                fprintf(stdout, "H265: Mode CBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H265CBR :
                     I6_VENC_RATEMODE_H265CBR;
                 channel.rate.h265Cbr = (i6_venc_rate_h26xcbr){ .gop = config->gop,
                     .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
                     (unsigned int)(config->bitrate) << 10, .avgLvl = 1 }; break;
             case HAL_VIDMODE_VBR:
+                fprintf(stdout, "H265: Mode VBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H265VBR :
                     I6_VENC_RATEMODE_H265VBR;
                 channel.rate.h265Vbr = (i6_venc_rate_h26xvbr){ .gop = config->gop,
@@ -536,6 +538,7 @@ int i6_video_create(char index, hal_vidconfig *config)
                     (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
+                fprintf(stdout, "H265: Mode QP\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H265QP :
                     I6_VENC_RATEMODE_H265QP;
                 channel.rate.h265Qp = (i6_venc_rate_h26xqp){ .gop = config->gop,
@@ -544,6 +547,7 @@ int i6_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_ABR:
                 HAL_ERROR("i6_venc", "H.265 encoder does not support ABR mode!");
             case HAL_VIDMODE_AVBR:
+                fprintf(stdout, "H265: Mode AVBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H265AVBR :
                     I6_VENC_RATEMODE_H265AVBR;
                 channel.rate.h265Avbr = (i6_venc_rate_h26xvbr){ .gop = config->gop,
@@ -560,12 +564,14 @@ int i6_video_create(char index, hal_vidconfig *config)
             config->mode = -1;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
+                fprintf(stdout, "H264: Mode CBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H264CBR :
                     I6_VENC_RATEMODE_H264CBR;
                 channel.rate.h264Cbr = (i6_venc_rate_h26xcbr){ .gop = config->gop,
                     .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
                     (unsigned int)(config->bitrate) << 10, .avgLvl = 1 }; break;
             case HAL_VIDMODE_VBR:
+                fprintf(stdout, "H264: Mode VBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H264VBR :
                     I6_VENC_RATEMODE_H264VBR;
                 channel.rate.h264Vbr = (i6_venc_rate_h26xvbr){ .gop = config->gop,
@@ -573,18 +579,21 @@ int i6_video_create(char index, hal_vidconfig *config)
                     (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
+                fprintf(stdout, "H264: Mode QP\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H264QP :
                     I6_VENC_RATEMODE_H264QP;
                 channel.rate.h264Qp = (i6_venc_rate_h26xqp){ .gop = config->gop,
                     .fpsNum = config->framerate, .fpsDen = 1, .interQual = config->maxQual,
                     .predQual = config->minQual }; break;
             case HAL_VIDMODE_ABR:
+                fprintf(stdout, "H264: Mode ABR\n");
                 channel.rate.mode = I6_VENC_RATEMODE_H264ABR;
                 channel.rate.h264Abr = (i6_venc_rate_h26xabr){ .gop = config->gop,
                     .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1,
                     .avgBitrate = (unsigned int)(config->bitrate) << 10,
                     .maxBitrate = (unsigned int)(config->maxBitrate) << 10 }; break;
             case HAL_VIDMODE_AVBR:
+                fprintf(stdout, "H264: Mode AVBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H264AVBR :
                     I6_VENC_RATEMODE_H264AVBR;
                 channel.rate.h264Avbr = (i6_venc_rate_h26xvbr){ .gop = config->gop, .statTime = 1,
@@ -601,19 +610,71 @@ int i6_video_create(char index, hal_vidconfig *config)
     attrib->profile = MIN((series == 0xEF || config->codec == HAL_VIDCODEC_H265) ? 1 : 2,
         config->profile);
     attrib->byFrame = 1;
+    //attrib->byFrame = 0;
     attrib->height = config->height;
     attrib->width = config->width;
     attrib->bFrameNum = 0;
     attrib->refNum = 1;
+    //attrib->refNum = 0;
+
+    fprintf(stdout, "Creating channel %d with %dx%d resolution and %d fps, profile %i, bitrate: %i, gop: %i, minQP: %i, maxQP: %i\n",
+        index, config->width, config->height, config->framerate, attrib->profile,
+        channel.rate.h265Cbr.bitrate, channel.rate.h265Cbr.gop
+        );
+
 attach:
     if (ret = i6_venc.fnCreateChannel(index, &channel))
         return ret;
+
+    MI_VENC_RcParam_t pstRcParam;
+    //if (ret = i6_venc.fnGetRCParam(index, &pstRcParam))
+    //    return ret;
+    
+    //TODO pstRcParam.u32ThrdI[0] = 0;
+    //TODO pstRcParam.u32ThrdP[0] = 0;
+    //TODO pstRcParam.u32RowQpDelta = 5;
+    pstRcParam.stParamH265Cbr.u32MaxQp = 48;
+    pstRcParam.stParamH265Cbr.u32MinQp = 12;
+    //pstRcParam.stParamH265Cbr.s32IPQPDelta = -4;
+    pstRcParam.stParamH265Cbr.s32IPQPDelta = 0;
+    //pstRcParam.stParamH265Cbr.u32MaxIQp = 48;
+    pstRcParam.stParamH265Cbr.u32MaxIQp = 40;
+    pstRcParam.stParamH265Cbr.u32MinIQp = 12;
+    pstRcParam.stParamH265Cbr.u32MaxIPProp = 1;
+    //pstRcParam.stParamH265Cbr.u32MaxISize = 20*1024;
+    //pstRcParam.stParamH265Cbr.u32MaxPSize = 20*1024;
+
+    fprintf(stdout, "Set RC Param channel %d with ThrI %i, ThrP %i, RowQpDelta %i, MaxQp %i, MinQp %i, IPQPDelta: %i, MaxIQp: %i, MinIQp: %i, MaxIPProp: %i, MaxISize: %i, MaxPSize: %i\n",
+        index, pstRcParam.u32ThrdI[0], pstRcParam.u32ThrdP[0], pstRcParam.u32RowQpDelta, pstRcParam.stParamH265Cbr.u32MaxQp, pstRcParam.stParamH265Cbr.u32MinQp,
+         pstRcParam.stParamH265Cbr.s32IPQPDelta, pstRcParam.stParamH265Cbr.u32MaxIQp, pstRcParam.stParamH265Cbr.u32MinIQp, pstRcParam.stParamH265Cbr.u32MaxIPProp,
+          pstRcParam.stParamH265Cbr.u32MaxISize, pstRcParam.stParamH265Cbr.u32MaxPSize);
+
+    if (ret = i6_venc.fnSetRCParam(index, &pstRcParam))
+       return ret;
+
+    fprintf(stdout, "RC Set\n");
+
+
+    MI_VENC_IntraRefresh_t stIntraRefresh;
+    stIntraRefresh.bEnable = 1;
+    stIntraRefresh.u32RefreshLineNum = 16;
+    stIntraRefresh.u32ReqIQp = 1;
+    #if 1
+    fprintf(stdout, "call setIntraRefresh, enable %i, RefreshLine : %i, u32ReqIQp: %i\n",
+        stIntraRefresh.bEnable, stIntraRefresh.u32RefreshLineNum, stIntraRefresh.u32ReqIQp);
+    i6_venc.fnSetIntraRefresh(0, &stIntraRefresh);
+    fprintf(stdout, "after call setIntraRefresh\n");
+    #endif
+
+
 
     if (config->codec != HAL_VIDCODEC_JPG && 
         (ret = i6_venc.fnStartReceiving(index)))
         return ret;
 
     i6_state[index].payload = config->codec;
+
+    fprintf(stdout, "VENC channel started\n");
 
     return EXIT_SUCCESS;
 }
@@ -856,18 +917,10 @@ void *i6_video_thread(void)
     struct timeval timeout;
     fd_set readFds;
 
-    fprintf(stdout, "call _mi_vif_testRegVifCallback\n");
-    _mi_vif_testRegVifCallback();
-    fprintf(stdout, "after _mi_vif_testRegVifCallback\n");
+    //fprintf(stdout, "call _mi_vif_testRegVifCallback\n");
+    //_mi_vif_testRegVifCallback();
+    //fprintf(stdout, "after _mi_vif_testRegVifCallback\n");
 
-
-    fprintf(stdout, "call setIntraRefresh\n");
-    MI_VENC_IntraRefresh_t stIntraRefresh;
-    stIntraRefresh.bEnable = 1;
-    stIntraRefresh.u32RefreshLineNum = 16;
-    stIntraRefresh.u32ReqIQp = 0;
-    i6_venc.fnSetIntraRefresh(0, &stIntraRefresh);
-    fprintf(stdout, "after call setIntraRefresh\n");
 
     while (keepRunning) {
         FD_ZERO(&readFds);
@@ -887,7 +940,7 @@ void *i6_video_thread(void)
             HAL_WARNING("i6_venc", "Main stream loop timed out!\n");
             continue;
         } else {
-            fprintf(stdout, "venc out             %llu\n", current_time_microseconds());
+            //fprintf(stdout, "venc out             %llu\n", current_time_microseconds());
 
             for (int i = 0; i < I6_VENC_CHN_NUM; i++) {
                 if (!i6_state[i].enable) continue;

@@ -31,7 +31,7 @@ typedef struct {
 
 unsigned int quit = 0;
 
-#define MAX_BUFFER_SIZE 1024*1024
+#define MAX_BUFFER_SIZE 10*1024*1024
 
 typedef struct
 {
@@ -79,9 +79,9 @@ int rtp_stream_send_h26x(unsigned char *buf, size_t len, char isH265)
 {
     int ret = FAILURE;
 
-    fprintf(stdout, "rtp_stream_send_h26x %llu\n", current_time_microseconds());
+    //fprintf(stdout, "rtp_stream_send_h26x %llu\n", current_time_microseconds());
 
-    fprintf(stdout, "write buffer size %i\n", len);
+    //fprintf(stdout, "write buffer size %i\n", len);
     buffer_t* buffer = doublebuffer_write(&g_db);
     ASSERT(len < MAX_BUFFER_SIZE, return FAILURE);
     // TODO: see if we can avoid memcpy at this stage
@@ -243,7 +243,7 @@ void *rtp_thread_func(void *arg) {
             continue;
         }
         buffer_t* buf = doublebuffer_read(&g_db);
-        fprintf(stdout, "read buffer size %i\n", buf->size);
+        //fprintf(stdout, "read buffer size %i\n", buf->size);
         size_t single_len = 0;
 
         //ASSERT(__retrieve_sprop(h, buf, len) == SUCCESS, goto error);
