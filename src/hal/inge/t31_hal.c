@@ -18,6 +18,7 @@ t31_common_dim _t31_snr_dim;
 
 char _t31_aud_chn = 0;
 char _t31_aud_dev = 0;
+char _t31_fs_chn[T31_VENC_CHN_NUM] = {-1, -1, -1, -1};
 char _t31_osd_grp = 0;
 
 void t31_hal_deinit(void)
@@ -133,7 +134,7 @@ int t31_channel_bind(char index)
     int ret;
 
     {
-        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = index ^ 1, .port = 0 };
+        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = _t31_fs_chn[index], .port = 0 };
         t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         if (ret = t31_sys.fnBind(&source, &dest))
             return ret;
@@ -146,13 +147,13 @@ int t31_channel_bind(char index)
             return ret;
     }
 
-    if (ret = t31_fs.fnEnableChannel(index ^ 1))
+    if (ret = t31_fs.fnEnableChannel(_t31_fs_chn[index]))
         return ret;
 
     return EXIT_SUCCESS;
 }
 
-int t31_channel_create(char index, short width, short height, char framerate)
+int t31_channel_create(char index, short width, short height, char framerate, char jpeg)
 {
     int ret;
 
@@ -161,11 +162,12 @@ int t31_channel_create(char index, short width, short height, char framerate)
             .dest = { .width = width, .height = height }, .pixFmt = T31_PIXFMT_NV12,
             .scale = { .enable = (_t31_snr_dim.width != width || _t31_snr_dim.height != height) 
                 ? 1 : 0, .width = width, .height = height },
-            .fpsNum = framerate, .fpsDen = 1, 
-            .bufCount = 2, .phyOrExtChn = 0,  
+            .fpsNum = framerate, .fpsDen = 1, .bufCount = 1, .phyOrExtChn = 0,
         };
     
-        if (ret = t31_fs.fnCreateChannel(index ^ 1, &channel))
+        _t31_fs_chn[index] = index;
+
+        if (ret = t31_fs.fnCreateChannel(_t31_fs_chn[index], &channel))
             return ret;
     }
 
@@ -174,7 +176,9 @@ int t31_channel_create(char index, short width, short height, char framerate)
 
 void t31_channel_destroy(char index)
 {
-    t31_fs.fnDestroyChannel(index ^ 1);
+    t31_fs.fnDestroyChannel(_t31_fs_chn[index]);
+
+    _t31_fs_chn[index] = -1;
 }
 
 int t31_channel_grayscale(char enable)
@@ -186,7 +190,7 @@ int t31_channel_unbind(char index)
 {
     int ret;
 
-    t31_fs.fnDisableChannel(index ^ 1);
+    t31_fs.fnDisableChannel(_t31_fs_chn[index]);
 
     {
         t31_sys_bind source = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
@@ -195,7 +199,7 @@ int t31_channel_unbind(char index)
     }
 
     {
-        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = index ^ 1, .port = 0 };
+        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = _t31_fs_chn[index], .port = 0 };
         t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         t31_sys.fnUnbind(&source, &dest);
     }
@@ -317,14 +321,14 @@ int t31_region_create(int *handle, hal_rect rect, short opacity)
     region.data.picture = NULL;
 
     if (t31_osd.fnGetRegionConfig(*handle, &regionCurr)) {
-        HAL_INFO("t31_osd", "Creating region...\n", _t31_osd_grp);
+        HAL_INFO("t31_osd", "Creating region...\n");
         if ((ret = t31_osd.fnCreateRegion(&region)) < 0)
             return ret;
         else *handle = ret;
     } else if (regionCurr.rect.p1.y - regionCurr.rect.p0.y != rect.height || 
         regionCurr.rect.p1.x - regionCurr.rect.p0.x != rect.width) {
         HAL_INFO("t31_osd", "Parameters are different, recreating "
-            "region...\n", _t31_osd_grp);
+            "region...\n");
         if (ret = t31_osd.fnSetRegionConfig(*handle, &region))
             return ret;
         if (ret = t31_osd.fnUnregisterRegion(*handle, _t31_osd_grp))
@@ -332,7 +336,7 @@ int t31_region_create(int *handle, hal_rect rect, short opacity)
     }
 
     if (t31_osd.fnGetGroupConfig(*handle, _t31_osd_grp, &attribCurr))
-        HAL_INFO("t31_osd", "Attaching region...\n", _t31_osd_grp);
+        HAL_INFO("t31_osd", "Attaching region...\n");
 
     memset(&attrib, 0, sizeof(attrib));
     attrib.show = 1;
@@ -378,7 +382,14 @@ int t31_video_create(char index, hal_vidconfig *config)
     }
     switch (config->codec) {
         case HAL_VIDCODEC_JPG:
-        case HAL_VIDCODEC_MJPG: profile = T31_VENC_PROF_MJPG; break;
+            config->framerate = config->gop = 1;
+        case HAL_VIDCODEC_MJPG:
+            profile = T31_VENC_PROF_MJPG;
+            if (ratemode == T31_VENC_RATEMODE_QP) {
+                config->minQual = config->minQual * (48 - 3) / 99 + 3;
+                config->maxQual = config->maxQual * (48 - 3) / 99 + 3;
+            } else config->minQual = config->maxQual = 42;
+            break;
         case HAL_VIDCODEC_H265: profile = T31_VENC_PROF_H265_MAIN; break;
         case HAL_VIDCODEC_H264:
             switch (config->profile) {
@@ -387,14 +398,6 @@ int t31_video_create(char index, hal_vidconfig *config)
                 default: profile = T31_VENC_PROF_H264_HIGH; break;
             } break;
         default: HAL_ERROR("t31_venc", "This codec is not supported by the hardware!");
-    }
-
-    if (profile == T31_VENC_PROF_MJPG) {
-        config->framerate = config->gop = 1;
-        if (ratemode == T31_VENC_RATEMODE_QP) {
-            config->minQual = config->minQual * (48 - 3) / 99 + 3;
-            config->maxQual = config->maxQual * (48 - 3) / 99 + 3;
-        } else config->minQual = config->maxQual = 42;
     }
 
     memset(&channel, 0, sizeof(channel));
@@ -444,6 +447,8 @@ int t31_video_destroy(char index)
 
     t31_state[index].enable = 0;
     t31_state[index].payload = HAL_VIDCODEC_UNSPEC;
+
+    t31_channel_destroy(index);
 
     t31_venc.fnStopReceiving(index);
 
@@ -502,15 +507,15 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         }
 
         if (ret = t31_venc.fnStartReceiving(index)) {
-            HAL_DANGER("t31_venc", "Requesting one frame "
-                "%d failed with %#x!\n", index, ret);
+            HAL_DANGER("t31_venc", "Requesting one frame on"
+                "channel %d failed with %#x!\n", index, ret);
             goto abort;
         }
 
         fd = t31_venc.fnGetDescriptor(index);
     }
 
-    struct timeval timeout = { .tv_sec = 3, .tv_usec = 0 };
+    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
     fd_set readFds;
     FD_ZERO(&readFds);
     FD_SET(fd, &readFds);
