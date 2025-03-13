@@ -2,8 +2,7 @@
 
 #include "t31_common.h"
 
-// To be validated
-#define T31_VENC_CHN_NUM 4
+#define T31_VENC_CHN_NUM 6
 
 typedef enum {
     T31_VENC_CODEC_H264,
@@ -290,6 +289,7 @@ typedef struct {
 
     int (*fnFreeStream)(int channel, t31_venc_strm *stream);
     int (*fnGetStream)(int channel, t31_venc_strm *stream, char blockingOn);
+    int (*fnPollStream)(int channel, int timeoutMs);
 
     int (*fnQuery)(int channel, t31_venc_stat* stats);
 
@@ -343,6 +343,10 @@ static int t31_venc_load(t31_venc_impl *venc_lib) {
 
     if (!(venc_lib->fnGetStream = (int(*)(int channel, t31_venc_strm *stream, char blockingOn))
         hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_GetStream")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnPollStream = (int(*)(int channel, int timeoutMs))
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_PollingStream")))
         return EXIT_FAILURE;
 
     if (!(venc_lib->fnQuery = (int(*)(int channel, t31_venc_stat *stats))

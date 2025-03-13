@@ -162,7 +162,7 @@ int t31_channel_create(char index, short width, short height, char framerate, ch
             .dest = { .width = width, .height = height }, .pixFmt = T31_PIXFMT_NV12,
             .scale = { .enable = (_t31_snr_dim.width != width || _t31_snr_dim.height != height) 
                 ? 1 : 0, .width = width, .height = height },
-            .fpsNum = framerate, .fpsDen = 1, .bufCount = 1, .phyOrExtChn = 0,
+            .fpsNum = framerate, .fpsDen = 1, .bufCount = jpeg ? 1 : 2, .phyOrExtChn = 0,
         };
     
         _t31_fs_chn[index] = index;
@@ -483,7 +483,7 @@ void t31_video_request_idr(char index)
 
 int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 {
-    int ret, fd;
+    int ret;
     char mjpeg = 0;
 
     if (index == -1) {
@@ -492,7 +492,6 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         for (char i = 0; i < T31_VENC_CHN_NUM; i++) {
             if (!t31_state[i].enable) continue; 
             if (t31_state[i].payload != HAL_VIDCODEC_MJPG) continue;
-            fd = t31_state[i].fileDesc;
             index = i;
             mjpeg = 1;
         }
@@ -511,73 +510,63 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
                 "channel %d failed with %#x!\n", index, ret);
             goto abort;
         }
-
-        fd = t31_venc.fnGetDescriptor(index);
     }
 
-    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
-    fd_set readFds;
-    FD_ZERO(&readFds);
-    FD_SET(fd, &readFds);
-    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
+    ret = t31_venc.fnPollStream(index, 2000);
     if (ret < 0) {
-        HAL_DANGER("t31_venc", "Select operation failed!\n");
+        HAL_DANGER("t31_venc", "Polling the encoder channel "
+            "%d failed!\n", index);
         goto abort;
-    } else if (ret == 0) {
-        HAL_DANGER("t31_venc", "Capture stream timed out!\n");
+    }
+    
+    t31_venc_stat stat;
+    if (ret = t31_venc.fnQuery(index, &stat)) {
+        HAL_DANGER("t31_venc", "Querying the encoder channel "
+            "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
-    if (FD_ISSET(fd, &readFds)) {
-        t31_venc_stat stat;
-        if (ret = t31_venc.fnQuery(index, &stat)) {
-            HAL_DANGER("t31_venc", "Querying the encoder channel "
-                "%d failed with %#x!\n", index, ret);
-            goto abort;
-        }
+    if (!stat.curPacks) {
+        HAL_DANGER("t31_venc", "Current frame is empty, skipping it!\n");
+        goto abort;
+    }
 
-        if (!stat.curPacks) {
-            HAL_DANGER("t31_venc", "Current frame is empty, skipping it!\n");
-            goto abort;
-        }
+    t31_venc_strm strm;
+    memset(&strm, 0, sizeof(strm));
+    strm.packet = (t31_venc_pack*)malloc(sizeof(t31_venc_pack) * stat.curPacks);
+    if (!strm.packet) {
+        HAL_DANGER("t31_venc", "Memory allocation on channel %d failed!\n", index);
+        goto abort;
+    }
+    strm.count = stat.curPacks;
 
-        t31_venc_strm strm;
-        memset(&strm, 0, sizeof(strm));
-        strm.packet = (t31_venc_pack*)malloc(sizeof(t31_venc_pack) * stat.curPacks);
-        if (!strm.packet) {
-            HAL_DANGER("t31_venc", "Memory allocation on channel %d failed!\n", index);
-            goto abort;
-        }
-        strm.count = stat.curPacks;
+    if (ret = t31_venc.fnGetStream(index, &strm, 0)) {
+        HAL_DANGER("t31_venc", "Getting the stream on "
+            "channel %d failed with %#x!\n", index, ret);
+        free(strm.packet);
+        strm.packet = NULL;
+        goto abort;
+    }
 
-        if (ret = t31_venc.fnGetStream(index, &strm, 0)) {
-            HAL_DANGER("t31_venc", "Getting the stream on "
-                "channel %d failed with %#x!\n", index, ret);
-            free(strm.packet);
-            strm.packet = NULL;
-            goto abort;
-        }
+    {
+        jpeg->jpegSize = 0;
+        for (unsigned int i = 0; i < strm.count; i++) {
+            t31_venc_pack *pack = &strm.packet[i];
+            unsigned int packLen = pack->length - pack->offset;
+            unsigned char *packData = (unsigned char*)(strm.addr + pack->offset);
 
-        {
-            jpeg->jpegSize = 0;
-            for (unsigned int i = 0; i < strm.count; i++) {
-                t31_venc_pack *pack = &strm.packet[i];
-                unsigned int packLen = pack->length - pack->offset;
-                unsigned char *packData = (unsigned char*)(strm.addr + pack->offset);
-
-                unsigned int newLen = jpeg->jpegSize + packLen;
-                if (newLen > jpeg->length) {
-                    jpeg->data = realloc(jpeg->data, newLen);
-                    jpeg->length = newLen;
-                }
-                memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
-                jpeg->jpegSize += packLen;
+            unsigned int newLen = jpeg->jpegSize + packLen;
+            if (newLen > jpeg->length) {
+                jpeg->data = realloc(jpeg->data, newLen);
+                jpeg->length = newLen;
             }
+            memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
+            jpeg->jpegSize += packLen;
         }
+    }
 
 abort:
-        t31_venc.fnFreeStream(index, &strm);
-    }
+    t31_venc.fnFreeStream(index, &strm);
 
     if (!mjpeg) {
         t31_venc.fnStopReceiving(index);
