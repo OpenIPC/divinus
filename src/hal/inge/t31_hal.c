@@ -221,7 +221,7 @@ int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate
     int ret = EXIT_FAILURE;
 
     {
-        char* paths[] = {"/proc/jz/sinfo/info", "proc/jz/sensor/name"};
+        char* paths[] = {"/proc/jz/sinfo/info", "/proc/jz/sensor/name"};
         char **path = paths;
         char *sensorlocal, sensorname[50];
         FILE *sensorinfo;

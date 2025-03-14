@@ -4,8 +4,7 @@ osd osds[MAX_OSD];
 pthread_t regionPid = 0;
 char timefmt[32] = DEF_TIMEFMT;
 
-void region_fill_formatted(char* str)
-{
+void region_fill_formatted(char* str) {
     unsigned int rxb_l, txb_l, cpu_l[6];
     char out[80] = "";
     char param = 0;
@@ -124,8 +123,7 @@ void region_fill_formatted(char* str)
     strncpy(str, out, 80);
 }
 
-static inline int region_open_bitmap(char *path, FILE **file)
-{
+static inline int region_open_bitmap(char *path, FILE **file) {
     unsigned short type;
 
     if (!path)
@@ -140,8 +138,7 @@ static inline int region_open_bitmap(char *path, FILE **file)
     return EXIT_SUCCESS;
 }
 
-int region_parse_bitmap(FILE **file, bitmapfile *bmpFile, bitmapinfo *bmpInfo)
-{
+int region_parse_bitmap(FILE **file, bitmapfile *bmpFile, bitmapinfo *bmpInfo) {
     if (fread(bmpFile, 1, sizeof(bitmapfile), *file) != sizeof(bitmapfile))
         HAL_ERROR("region", "Extracting the bitmap file header failed!\n");
     if (fread(bmpInfo, 1, sizeof(bitmapinfo), *file) != sizeof(bitmapinfo))
@@ -154,8 +151,7 @@ int region_parse_bitmap(FILE **file, bitmapfile *bmpFile, bitmapinfo *bmpInfo)
     return EXIT_SUCCESS;
 }
 
-int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
-{
+int region_prepare_bitmap(char *path, hal_bitmap *bitmap) {
     bitmapfile bmpFile;
     bitmapinfo bmpInfo;
     bitmapfields bmpFields;
@@ -240,8 +236,7 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap)
     return EXIT_SUCCESS;
 }
 
-void *region_thread(void)
-{
+void *region_thread(void) {
     switch (plat) {
 #if defined(__arm__)
         case HAL_PLATFORM_I6:  i6_region_init(); break;
@@ -276,55 +271,67 @@ void *region_thread(void)
                 }
 
                 if (osds[id].updt) {
-                    char *font;
-                    asprintf(&font, "/usr/share/fonts/truetype/%s.ttf", osds[id].font);
-                    if (!access(font, F_OK)) {
-                        hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color);
-                        hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
-                            .x = osds[id].posx, .y = osds[id].posy };
-                        switch (plat) {
-#if defined(__arm__)
-                            case HAL_PLATFORM_GM:
-                                gm_region_setbitmap(id, &bitmap);
-                                gm_region_create(id, rect, osds[id].opal);
-                                break;
-                            case HAL_PLATFORM_I6:
-                                i6_region_create(id, rect, osds[id].opal);
-                                i6_region_setbitmap(id, &bitmap);
-                                break;
-                            case HAL_PLATFORM_I6C:
-                                i6c_region_create(id, rect, osds[id].opal);
-                                i6c_region_setbitmap(id, &bitmap);
-                                break;
-                            case HAL_PLATFORM_M6:
-                                m6_region_create(id, rect, osds[id].opal);
-                                m6_region_setbitmap(id, &bitmap);
-                                break;
-                            case HAL_PLATFORM_V1:
-                                v1_region_create(id, rect, osds[id].opal);
-                                v1_region_setbitmap(id, &bitmap);
-                                break;
-                            case HAL_PLATFORM_V2:
-                                v2_region_create(id, rect, osds[id].opal);
-                                v2_region_setbitmap(id, &bitmap);
-                                break;
-                            case HAL_PLATFORM_V3:
-                                v3_region_create(id, rect, osds[id].opal);
-                                v3_region_setbitmap(id, &bitmap);
-                                break;
-                            case HAL_PLATFORM_V4:
-                                v4_region_create(id, rect, osds[id].opal);
-                                v4_region_setbitmap(id, &bitmap);
-                                break;
-#elif defined(__mips__)
-                            case HAL_PLATFORM_T31:
-                                t31_region_create(&osds[id].hand, rect, osds[id].opal);
-                                t31_region_setbitmap(&osds[id].hand, &bitmap);
-                                break;
-#endif
-                        }
-                        free(bitmap.data);
+                    char font[256];
+                    char* dirs[] = {
+                        "/usr/share/fonts/truetype",
+                        "/usr/share/fonts",
+                        "/usr/local/share/fonts"};
+                    char **dir = dirs;
+                    while (*dir) {
+                        sprintf(font, "%s/%s.ttf", *dir, osds[id].font);
+                        if (!access(font, F_OK)) goto found_font;
+                        sprintf(font, "%s/%s2.ttf", *dir, osds[id].font);
+                        if (!access(font, F_OK)) goto found_font;
+                        *dir++;
                     }
+                    HAL_DANGER("region", "Font \"%s\" not found!\n", osds[id].font);
+                    continue;
+found_font:
+                    hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color);
+                    hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
+                        .x = osds[id].posx, .y = osds[id].posy };
+                    switch (plat) {
+#if defined(__arm__)
+                        case HAL_PLATFORM_GM:
+                            gm_region_setbitmap(id, &bitmap);
+                            gm_region_create(id, rect, osds[id].opal);
+                            break;
+                        case HAL_PLATFORM_I6:
+                            i6_region_create(id, rect, osds[id].opal);
+                            i6_region_setbitmap(id, &bitmap);
+                            break;
+                        case HAL_PLATFORM_I6C:
+                            i6c_region_create(id, rect, osds[id].opal);
+                            i6c_region_setbitmap(id, &bitmap);
+                            break;
+                        case HAL_PLATFORM_M6:
+                            m6_region_create(id, rect, osds[id].opal);
+                            m6_region_setbitmap(id, &bitmap);
+                            break;
+                        case HAL_PLATFORM_V1:
+                            v1_region_create(id, rect, osds[id].opal);
+                            v1_region_setbitmap(id, &bitmap);
+                            break;
+                        case HAL_PLATFORM_V2:
+                            v2_region_create(id, rect, osds[id].opal);
+                            v2_region_setbitmap(id, &bitmap);
+                            break;
+                        case HAL_PLATFORM_V3:
+                            v3_region_create(id, rect, osds[id].opal);
+                            v3_region_setbitmap(id, &bitmap);
+                            break;
+                        case HAL_PLATFORM_V4:
+                            v4_region_create(id, rect, osds[id].opal);
+                            v4_region_setbitmap(id, &bitmap);
+                            break;
+#elif defined(__mips__)
+                        case HAL_PLATFORM_T31:
+                            t31_region_create(&osds[id].hand, rect, osds[id].opal);
+                            t31_region_setbitmap(&osds[id].hand, &bitmap);
+                            break;
+#endif
+                    }
+                    free(bitmap.data);
                 }
             }
             else if (EMPTY(osds[id].text) && osds[id].updt)
@@ -420,7 +427,9 @@ int start_region_handler() {
     size_t new_stacksize = 320 * 1024;
     if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
         HAL_DANGER("region", "Can't set stack size %zu\n", new_stacksize);
-    pthread_create(&regionPid, &thread_attr, (void *(*)(void *))region_thread, NULL);
+    if (pthread_create(
+            &regionPid, &thread_attr, (void *(*)(void *))region_thread, NULL))
+        HAL_DANGER("region", "Starting the handler thread failed!\n");
     if (pthread_attr_setstacksize(&thread_attr, stacksize))
         HAL_DANGER("region", "Can't set stack size %zu\n", stacksize);
     pthread_attr_destroy(&thread_attr);

@@ -19,7 +19,7 @@
 #define DEF_POSY 16
 #define DEF_SIZE 32.0f
 #define DEF_TIMEFMT "%Y/%m/%d %H:%M:%S"
-#define MAX_OSD 8
+#define MAX_OSD 10
 
 extern char keepRunning;
 
