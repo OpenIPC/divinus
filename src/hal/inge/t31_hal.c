@@ -134,7 +134,7 @@ int t31_channel_bind(char index)
     int ret;
 
     {
-        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = _t31_fs_chn[index], .port = 0 };
+        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = 0, .port = _t31_fs_chn[index] };
         t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         if (ret = t31_sys.fnBind(&source, &dest))
             return ret;
@@ -159,10 +159,9 @@ int t31_channel_create(char index, short width, short height, char framerate, ch
 
     {
         t31_fs_chn channel = {
-            .dest = { .width = width, .height = height }, .pixFmt = T31_PIXFMT_NV12,
-            .scale = { .enable = (_t31_snr_dim.width != width || _t31_snr_dim.height != height) 
-                ? 1 : 0, .width = width, .height = height },
-            .fpsNum = framerate, .fpsDen = 1, .bufCount = jpeg ? 1 : 2, .phyOrExtChn = 0,
+            .dest = { .width = _t31_snr_dim.width, .height = _t31_snr_dim.height }, .pixFmt = T31_PIXFMT_NV12,
+            .scale = { .enable = 0, .width = width, .height = height },
+            .fpsNum = framerate, .fpsDen = 1, .bufCount = 1, .phyOrExtChn = 0,
         };
     
         _t31_fs_chn[index] = index;
@@ -199,7 +198,7 @@ int t31_channel_unbind(char index)
     }
 
     {
-        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = _t31_fs_chn[index], .port = 0 };
+        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = 0, .port = _t31_fs_chn[index] };
         t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         t31_sys.fnUnbind(&source, &dest);
     }

@@ -283,6 +283,7 @@ typedef struct {
     int (*fnCreateChannel)(int channel, t31_venc_chn *config);
     int (*fnDestroyChannel)(int channel);
     int (*fnRegisterChannel)(int group, int channel);
+    int (*fnSetChannelShared)(int channel, int shrChn);
     int (*fnUnregisterChannel)(int channel);
 
     int (*fnGetDescriptor)(int channel);
@@ -327,6 +328,10 @@ static int t31_venc_load(t31_venc_impl *venc_lib) {
 
     if (!(venc_lib->fnRegisterChannel = (int(*)(int group, int channel))
         hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_RegisterChn")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnSetChannelShared = (int(*)(int channel, int shrChn))
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_SetbufshareChn")))
         return EXIT_FAILURE;
 
     if (!(venc_lib->fnUnregisterChannel = (int(*)(int channel))
