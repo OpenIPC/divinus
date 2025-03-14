@@ -7,7 +7,7 @@
 		.white{color:#fff}.bg-white{background-color:#fff}.b-white{border-color:#fff}.gray{color:#ccc}.bg-gray{background-color:#ccc}.b-gray{border-color:#ccc}.black{color:#000}.bg-black{background-color:#000}.b-black{border-color:#000}.accent{color:#fa0}.bg-accent{background-color:#fa0}.b-accent{border-color:#fa0}.warning{color:#ffd600}.bg-warning{background-color:#ffd600}.b-warning{border-color:#ffd600}.error{color:#d50000}.bg-error{background-color:#d50000}.b-error{border-color:#d50000}.success{color:#00c853}.bg-success{background-color:#00c853}.b-success{border-color:#00c853}.info{color:#2962ff}.bg-info{background-color:#2962ff}.b-info{border-color:#2962ff}.m0{margin:0}.m1{margin:.5em}.m2{margin:1em}.m3{margin:2em}.m4{margin:4em}.mt0{margin-top:0}.mt1{margin-top:.5em}.mt2{margin-top:1em}.mt3{margin-top:2em}.mt4{margin-top:4em}.mr0{margin-right:0}.mr1{margin-right:.5em}.mr2{margin-right:1em}.mr3{margin-right:2em}.mr4{margin-right:4em}.mb0{margin-bottom:0}.mb1{margin-bottom:.5em}.mb2{margin-bottom:1em}.mb3{margin-bottom:2em}.mb4{margin-bottom:4em}.ml0{margin-left:0}.ml1{margin-left:.5em}.ml2{margin-left:1em}.ml3{margin-left:2em}.ml4{margin-left:4em}.p0{padding:0}.p1{padding:.5em}.p2{padding:1em}.p3{padding:2em}.p4{padding:4em}.pv0{padding-top:0;padding-bottom:0}.pv1{padding-top:.5em;padding-bottom:.5em}.pv2{padding-top:1em;padding-bottom:1em}.pv3{padding-top:2em;padding-bottom:2em}.pv4{padding-top:4em;padding-bottom:4em}.ph0{padding-right:0;padding-left:0}.ph1{padding-right:.5em;padding-left:.5em}.ph2{padding-right:1em;padding-left:1em}.ph3{padding-right:2em;padding-left:2em}.ph4{padding-right:4em;padding-left:4em}.gapless{border-spacing:0}.vc{position:relative;top:40%;transform:perspective(1px) translateY(-45%)}.pill{border-radius:9999px}.rounded{border-radius:4px}.tc{text-align:center}.mega{font-size:3.5em}.large{font-size:1.5em}.small{font-size:.7em}.caps{text-transform:uppercase}.tracked{letter-spacing:.1em}.vh-100{height:100vh}.inline{display:inline-block}.bold{font-weight:700}.normal{font-weight:400}.light{font-weight:300}.dim{opacity:1;transition:opacity .15s ease-in}.dim:focus,.dim:hover{opacity:.5;transition:opacity .15s ease-in}
 		.box{vertical-align:top}.box input,select{width:100%}.box td{padding:0.5em}.close{position:absolute;right:2em;top:2em}@media(min-width:50em){.box > fieldset{height:100%}.close{right:4em}}
 		.cont{max-width:64em}.menu .btn{margin:-1em 0;padding:0.75em}.lbl-modal:focus,.lbl-modal:hover{cursor:pointer;opacity:.6}.right{float:right}.scroll{overflow-y:auto}.unl{border-bottom:2px solid}
-		.modal{display:none;background:#fff;position:fixed;bottom:0;left:0;right:0;top:0;margin:0;padding:0;z-index:1}
+		.modal{display:none;background:#fff;position:fixed;bottom:0;left:0;right:0;top:0;margin:0;padding:0;z-index:1}.hide{position:absolute;top:-3px;left:-3px;width:1px;height:1px}.nope{display:none}
 		input[type=checkbox]{position:absolute;opacity:0}input[type=checkbox]:checked+.modal{display:block}
 	</style>
 	<script>
@@ -33,8 +33,18 @@
 				var dec = JSON.parse(req.responseText);
 				for (var key in dec) {
 					if (!dec.hasOwnProperty(key)) continue;
+
 					var elem = document.getElementById(endp + '_' + key);
-					if (!elem) continue;
+					if (elem && elem.type && elem.type == "file") {
+						var lbls = document.getElementsByTagName('LABEL');
+						for (var i = 0; i < lbls.length; i++) {
+							if (lbls[i].htmlFor != endp + '_' + key) continue;
+							lbls[i].innerHTML = dec[key];
+							break;
+						}
+						continue;
+					} else if (!elem) continue;
+
 					if (elem.tagName == 'INPUT' || elem.tagName == 'SELECT')
 						elem.value = dec[key];
 					else
@@ -54,8 +64,16 @@
 				clone.style.display = '';
 				var elems = clone.getElementsByTagName('*');
 				for (var j = 0; j < elems.length; j++) {
-					if (!elems[j].id) continue;
-					elems[j].id = elems[j].id.replace(row, row + '/' + i);
+					if (elems[j].action)
+						elems[j].action = elems[j].action.replace(row, row + '/' + i);
+					if (elems[j].htmlFor)
+						elems[j].htmlFor = elems[j].htmlFor.replace(row, row + '/' + i);
+					if (elems[j].id)
+						elems[j].id = elems[j].id.replace(row, row + '/' + i);
+					if (elems[j].name)
+						elems[j].name = elems[j].name.replace(row, row + '/' + i);
+					if (elems[j].target)
+						elems[j].target = elems[j].target.replace(row, row + '/' + i);
 				}
 				tpl.parentNode.appendChild(clone);
 			}
@@ -319,7 +337,15 @@
 						<th>Text</th>
 					</tr>
 					<tr id="osd_tpl" style="display:none">
-						<td><span id="osd_id"></td>
+						<td>
+							<iframe name="osd_file" class="hide"></iframe>
+							<form target="osd_file" method="post" 
+							 enctype="multipart/form-data" action="/api/osd">
+								<input type="file" id="osd_id" class="nope" name="osd_upld"
+								 accept=".bmp,.png" onchange="this.form.submit()">
+								<label for="osd_id" class="btn"></label>
+							</form>
+						</td>
 						<td><input type="color" id="osd_color"></td>
 						<td><input type="range" id="osd_opal" min="0" max="255"></td>
 						<td><input type="text" id="osd_pos" size="5"></td>
