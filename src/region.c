@@ -286,7 +286,7 @@ void *region_thread(void) {
                     }
                     HAL_DANGER("region", "Font \"%s\" not found!\n", osds[id].font);
                     continue;
-found_font:
+found_font:;
                     hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color);
                     hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
                         .x = osds[id].posx, .y = osds[id].posy };
