@@ -158,7 +158,7 @@ hal_bitmap text_create_rendered(const char *font, double size, const char *text,
 
     double margin, height, width;
     text_dim_rendered(&margin, &height, &width, text);
-    text_new_rendered(&canvas, CEILING(width), CEILING(height), 0);
+    text_new_rendered(&canvas, (CEILING(width) + 3) & ~3, CEILING(height), 0);
 
     unsigned cps[strlen(text) + 1];
     int n = utf8_to_utf32(text, cps, strlen(text) + 1);
