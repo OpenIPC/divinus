@@ -110,7 +110,7 @@ void *cvi_audio_thread(void)
     memset(&frame, 0, sizeof(frame));
     memset(&echoFrame, 0, sizeof(echoFrame));
 
-    while (keepRunning) {
+    while (keepRunning && audioOn) {
         if (ret = cvi_aud.fnGetFrame(_cvi_aud_dev, _cvi_aud_chn, 
             &frame, &echoFrame, 128)) {
             HAL_WARNING("cvi_aud", "Getting the frame failed "

@@ -6,7 +6,7 @@
 		*{box-sizing:border-box}*+*{margin:.5em 0}pre{overflow:auto}@media(min-width:50em){.col{display:table-cell}.\31{width:5%}.\33{width:22%}.\34{width:30%}.\35{width:40%}.\32{width:15%}.\36{width:50%}.row{display:table;border-spacing:1em 0;height:fit-content}}.row,.w-100{width:100%}.card:focus,hr{outline:0;border:solid #fa0}.card,pre{padding:1em;border:solid #eee}.btn:hover,a:hover{opacity:.6}.c{padding:1em;margin:auto;font:1em/1.6 sans-serif}h6{font:400 1em sans-serif}h5{font:400 1.2em sans-serif}h3{font:400 2em sans-serif}h4{font:400 1.5em sans-serif}h2{font:400 2.2em sans-serif}h1{font:400 2.5em sans-serif}a{color:#fa0;text-decoration:none}.btn.primary{color:#fff;background:#fa0;border:solid #fa0}td,th{padding:1em;text-align:left;border-bottom:solid #eee}.btn{padding:1em;text-transform:uppercase;background:#fff;border:solid;font:.7em sans-serif}a.btn{display:inline-block}input,select{font-family:sans-serif}
 		.white{color:#fff}.bg-white{background-color:#fff}.b-white{border-color:#fff}.gray{color:#ccc}.bg-gray{background-color:#ccc}.b-gray{border-color:#ccc}.black{color:#000}.bg-black{background-color:#000}.b-black{border-color:#000}.accent{color:#fa0}.bg-accent{background-color:#fa0}.b-accent{border-color:#fa0}.warning{color:#ffd600}.bg-warning{background-color:#ffd600}.b-warning{border-color:#ffd600}.error{color:#d50000}.bg-error{background-color:#d50000}.b-error{border-color:#d50000}.success{color:#00c853}.bg-success{background-color:#00c853}.b-success{border-color:#00c853}.info{color:#2962ff}.bg-info{background-color:#2962ff}.b-info{border-color:#2962ff}.m0{margin:0}.m1{margin:.5em}.m2{margin:1em}.m3{margin:2em}.m4{margin:4em}.mt0{margin-top:0}.mt1{margin-top:.5em}.mt2{margin-top:1em}.mt3{margin-top:2em}.mt4{margin-top:4em}.mr0{margin-right:0}.mr1{margin-right:.5em}.mr2{margin-right:1em}.mr3{margin-right:2em}.mr4{margin-right:4em}.mb0{margin-bottom:0}.mb1{margin-bottom:.5em}.mb2{margin-bottom:1em}.mb3{margin-bottom:2em}.mb4{margin-bottom:4em}.ml0{margin-left:0}.ml1{margin-left:.5em}.ml2{margin-left:1em}.ml3{margin-left:2em}.ml4{margin-left:4em}.p0{padding:0}.p1{padding:.5em}.p2{padding:1em}.p3{padding:2em}.p4{padding:4em}.pv0{padding-top:0;padding-bottom:0}.pv1{padding-top:.5em;padding-bottom:.5em}.pv2{padding-top:1em;padding-bottom:1em}.pv3{padding-top:2em;padding-bottom:2em}.pv4{padding-top:4em;padding-bottom:4em}.ph0{padding-right:0;padding-left:0}.ph1{padding-right:.5em;padding-left:.5em}.ph2{padding-right:1em;padding-left:1em}.ph3{padding-right:2em;padding-left:2em}.ph4{padding-right:4em;padding-left:4em}.gapless{border-spacing:0}.vc{position:relative;top:40%;transform:perspective(1px) translateY(-45%)}.pill{border-radius:9999px}.rounded{border-radius:4px}.tc{text-align:center}.mega{font-size:3.5em}.large{font-size:1.5em}.small{font-size:.7em}.caps{text-transform:uppercase}.tracked{letter-spacing:.1em}.vh-100{height:100vh}.inline{display:inline-block}.bold{font-weight:700}.normal{font-weight:400}.light{font-weight:300}.dim{opacity:1;transition:opacity .15s ease-in}.dim:focus,.dim:hover{opacity:.5;transition:opacity .15s ease-in}
 		.box{vertical-align:top}.box input,select{width:100%}.box td{padding:0.5em}.close{position:absolute;right:2em;top:2em}@media(min-width:50em){.box > fieldset{height:100%}.close{right:4em}}
-		.cont{max-width:64em}.menu .btn{margin:-1em 0;padding:0.75em}.lbl-modal:focus,.lbl-modal:hover{cursor:pointer;opacity:.6}.right{float:right}.unl{border-bottom:2px solid}
+		.cont{max-width:64em}.menu .btn{margin:-1em 0;padding:0.75em}.lbl-modal:focus,.lbl-modal:hover{cursor:pointer;opacity:.6}.right{float:right}.scroll{overflow-y:auto}.unl{border-bottom:2px solid}
 		.modal{display:none;background:#fff;position:fixed;bottom:0;left:0;right:0;top:0;margin:0;padding:0;z-index:1}
 		input[type=checkbox]{position:absolute;opacity:0}input[type=checkbox]:checked+.modal{display:block}
 	</style>
@@ -29,7 +29,7 @@
 		function apiRead(endp) {
 			var req = new XMLHttpRequest();
 			req.onreadystatechange = function() {
-				if (this.readyState != 4 || this.status != 200) return;
+				if (this.readyState != 4 || this.status != 200) return false;
 				var dec = JSON.parse(req.responseText);
 				for (var key in dec) {
 					if (!dec.hasOwnProperty(key)) continue;
@@ -43,6 +43,7 @@
 			}
 			req.open('GET', '/api/' + endp);
 			req.send();
+			return true;
 		}
 
 		function duplicateRows(row, num) {
@@ -96,12 +97,12 @@
 		function onLoad() {
 			apiRead('audio');
 			apiRead('jpeg');
-			apiRead('night');
 			apiRead('mp4');
 			apiRead('mjpeg');
+			apiRead('night');
 
-			duplicateRows('osd', 8);
-			for (var i = 0; i < 8; i++)
+			duplicateRows('osd', 10);
+			for (var i = 0; i < 10; i++)
 				apiRead('osd/' + i);
 
 			every5Sec();
@@ -119,7 +120,7 @@
 		</div>
 	</noscript>
 	<input type="checkbox" id="live-modal">
-	<div class="c modal vh-100 w-100">
+	<div class="c modal vh-100 w-100 scroll">
 		<div class="c bg-black menu pv2 row">
 			<div class="col">
 				<b><label for="live-modal" class="lbl-modal ph2 white">Divinus</label></b>
@@ -135,7 +136,7 @@
 		</div>
 	</div>
 	<input type="checkbox" id="media-modal">
-	<div class="c modal vh-100 w-100">
+	<div class="c modal vh-100 w-100 scroll">
 		<div class="c bg-black menu pv2 row">
 			<div class="col">
 				<b><label for="media-modal" class="lbl-modal ph2 white">Divinus</label></b>
@@ -146,10 +147,17 @@
 		<div class="c cont">
 			<h2 class="unl">Media</h2>
 			<div class="row">
-				<div class="4 col box">
+				<div class="6 col box">
 					<fieldset>
 						<legend>Audio</legend>
 						<table class="w-100">
+							<tr>
+								<td><label for="audio_enable">Enabled</label></td>
+								<td><select id="audio_enable">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
 							<tr>
 								<td><label for="audio_bitrate">Bitrate&nbsp;(kbps)</label></td>
 								<td><input type="number" id="audio_bitrate"></td>
@@ -166,10 +174,17 @@
 						<a href="javascript:apiApply('audio')" class="btn right">Apply</a>
 					</fieldset>
 				</div>
-				<div class="4 col box">
+				<div class="6 col box">
 					<fieldset>
-						<legend>JPEG</legend>
+						<legend>JPEG snapshots</legend>
 						<table class="w-100">
+							<tr>
+								<td><label for="jpeg_enable">Enabled</label></td>
+								<td><select id="jpeg_enable">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
 							<tr>
 								<td><label for="jpeg_width">Width</label></td>
 								<td><input type="number" id="jpeg_width"></td>
@@ -186,27 +201,19 @@
 						<a href="javascript:apiApply('jpeg')" class="btn right">Apply</a>
 					</fieldset>
 				</div>
-				<div class="4 col box">
-					<fieldset>
-						<legend>Night</legend>
-						<table class="w-100">
-							<tr>
-								<td><label for="night_active">Manual</label></td>
-								<td><select id="night_active">
-									<option value="false">OFF</option>
-									<option value="true">ON</option>
-								</select></td>
-							</tr>
-						</table>
-						<a href="javascript:apiApply('night')" class="btn right">Apply</a>
-					</fieldset>
-				</div>
 			</div>
 			<div class="row">
 				<div class="6 col box">
 					<fieldset>
 						<legend>MP4</legend>
 						<table class="w-100">
+							<tr>
+								<td><label for="mp4_enable">Enabled</label></td>
+								<td><select id="mp4_enable">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
 							<tr>
 								<td><label for="mp4_width">Width</label></td>
 								<td><input type="number" id="mp4_width"></td>
@@ -257,6 +264,13 @@
 						<legend>MJPEG</legend>
 						<table class="w-100">
 							<tr>
+								<td><label for="mjpeg_enable">Enabled</label></td>
+								<td><select id="mjpeg_enable">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
 								<td><label for="mjpeg_width">Width</label></td>
 								<td><input type="number" id="mjpeg_width"></td>
 							</tr>
@@ -284,7 +298,7 @@
 		</div>
 	</div>
 	<input type="checkbox" id="osd-modal">
-	<div class="c modal vh-100 w-100">
+	<div class="c modal vh-100 w-100 scroll">
 		<div class="c bg-black menu pv2 row">
 			<div class="col">
 				<b><label for="osd-modal" class="lbl-modal ph2 white">Divinus</label></b>
@@ -310,10 +324,85 @@
 						<td><input type="range" id="osd_opal" min="0" max="255"></td>
 						<td><input type="text" id="osd_pos" size="5"></td>
 						<td><input type="text" id="osd_font"></td>
-						<td><input type="number" id="osd_size" step="0.1" size="3"></td>
+						<td><input type="number" id="osd_size" step="0.1" size="3"
+							style="width:5em"></td>
 						<td><input type="text" id="osd_text"></td>
 					</tr>
 				</table>
+			</div>
+		</div>
+	</div>
+	<input type="checkbox" id="system-modal">
+	<div class="c modal vh-100 w-100 scroll">
+		<div class="c bg-black menu pv2 row">
+			<div class="col">
+				<b><label for="system-modal" class="lbl-modal ph2 white">Divinus</label></b>
+				<label for="system-modal" class="btn primary close">Close</label>
+			</div>
+		</div>
+		<div class="c cont">
+			<h2 class="unl">System</h2>
+			<div class="row">
+				<div class="12 col box">
+					<fieldset>
+						<legend>Night</legend>
+						<table class="w-100">
+							<tr>
+								<td><label for="night_active">Active</label></td>
+								<td><select id="night_active">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="night_manual">Manual</label></td>
+								<td><select id="night_manual">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="night_ircut">IR cut</label></td>
+								<td><select id="night_ircut">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="night_ircut_pin1">IR filter - pin 1</label></td>
+								<td><input type="number" id="night_ircut_pin1"></td>
+							</tr>
+							<tr>
+								<td><label for="night_ircut_pin2">IR filter - pin 2</label></td>
+								<td><input type="number" id="night_ircut_pin2"></td>
+							</tr>
+							<tr>
+								<td><label for="night_irled">IR LED</label></td>
+								<td><select id="night_irled">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="night_irled_pin">IR LED - pin</label></td>
+								<td><input type="number" id="night_irled_pin"></td>
+							</tr>
+							<tr>
+								<td><label for="night_irsense_pin">IR sense - pin</label></td>
+								<td><input type="number" id="night_irsense_pin"></td>
+							</tr>
+							<tr>
+								<td><label for="night_adc_device">ADC device endpoint</label></td>
+								<td><input type="text" id="night_adc_device"></td>
+							</tr>
+							<tr>
+								<td><label for="night_adc_threshold">ADC threshold</label></td>
+								<td><input type="number" id="night_adc_threshold"></td>
+							</tr>
+						</table>
+						<a href="javascript:apiApply('night')" class="btn right">Apply</a>
+					</fieldset>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -323,6 +412,7 @@
 			<label for="live-modal" class="lbl-modal ph2 white">Live</label>
 			<label for="media-modal" class="lbl-modal ph2 white">Media</label>
 			<label for="osd-modal" class="lbl-modal ph2 white">OSD</label>
+			<label for="system-modal" class="lbl-modal ph2 white">System</label>
 			<a href="image.jpg" class="ph2 white" target="_blank">Snapshot</a>
 		</div>
 	</div>

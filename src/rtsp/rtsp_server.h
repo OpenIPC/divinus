@@ -26,6 +26,7 @@ typedef struct __rtsp_obj_t *rtsp_handle;
 /* put virtual pointer to 'buf', which consists of 1 or more NALUs (start code required). 
    SPS and PPS parameters are automatically collected during execution. */
 
+void rtp_disable_audio(rtsp_handle h);
 int rtp_send_h26x(rtsp_handle h, unsigned char *buf, size_t len, char isH265);
 int rtp_send_mp3(rtsp_handle h, unsigned char *buf, size_t len);
 

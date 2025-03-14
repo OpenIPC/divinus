@@ -108,7 +108,7 @@ void *v3_audio_thread(void)
     memset(&frame, 0, sizeof(frame));
     memset(&echoFrame, 0, sizeof(echoFrame));
 
-    while (keepRunning) {
+    while (keepRunning && audioOn) {
         if (ret = v3_aud.fnGetFrame(_v3_aud_dev, _v3_aud_chn, 
             &frame, &echoFrame, 128)) {
             HAL_WARNING("v3_aud", "Getting the frame failed "

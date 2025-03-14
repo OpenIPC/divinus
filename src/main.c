@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
         HAL_ERROR("hal", "Failed to start SDK!\n");
 
     if (app_config.night_mode_enable)
-        start_monitor_light_sensor();
+        enable_night();
 
     if (app_config.http_post_enable)
         start_http_post_send();
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
         stop_region_handler();
 
     if (app_config.night_mode_enable)
-        stop_monitor_light_sensor();
+        disable_night();
 
     stop_sdk();
 

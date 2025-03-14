@@ -1,47 +1,52 @@
 #include "night.h"
 
-static bool night_mode = false;
+char nightOn = 0;
+static bool grayscale = false, ircut = true, irled = false, manual = false;
 pthread_t nightPid = 0;
 
-bool night_mode_is_enabled() { return night_mode; }
+bool night_grayscale_on(void) { return grayscale; }
 
-void ircut_on() {
-    gpio_write(app_config.ir_cut_pin1, false);
-    gpio_write(app_config.ir_cut_pin2, true);
+bool night_ircut_on(void) { return ircut; }
+
+bool night_irled_on(void) { return irled; }
+
+bool night_manual_on(void) { return manual; }
+
+bool night_mode_on(void) { return grayscale && !ircut && irled; }
+
+void night_grayscale(bool enable) {
+    set_grayscale(enable);
+    grayscale = enable;
+}
+
+void night_ircut(bool enable) {
+    gpio_write(app_config.ir_cut_pin1, !enable);
+    gpio_write(app_config.ir_cut_pin2, enable);
     usleep(app_config.pin_switch_delay_us * 100);
     gpio_write(app_config.ir_cut_pin1, false);
     gpio_write(app_config.ir_cut_pin2, false);
+    ircut = enable;
 }
 
-void ircut_off() {
-    gpio_write(app_config.ir_cut_pin1, true);
-    gpio_write(app_config.ir_cut_pin2, false);
-    usleep(app_config.pin_switch_delay_us * 100);
-    gpio_write(app_config.ir_cut_pin1, false);
-    gpio_write(app_config.ir_cut_pin2, false);
+void night_irled(bool enable) {
+    gpio_write(app_config.ir_led_pin, enable);
+    irled = enable;
 }
 
-void set_night_mode(bool night) {
-    if (night == night_mode) return;
-    if (night) {
-        HAL_INFO("night", "Changing mode to NIGHT\n");
-        ircut_off();
-        gpio_write(app_config.ir_led_pin, true);
-        set_grayscale(true);
-    } else {
-        HAL_INFO("night", "Changing mode to DAY\n");
-        ircut_on();
-        gpio_write(app_config.ir_led_pin, false);
-        set_grayscale(false);
-    }
-    night_mode = night;
+void night_manual(bool enable) { manual = enable; }
+
+void night_mode(bool enable) {
+    HAL_INFO("night", "Changing mode to %s\n", enable ? "NIGHT" : "DAY");
+    night_grayscale(enable);
+    night_ircut(!enable);
+    night_irled(enable);
 }
 
 void *night_thread(void) {
     gpio_init();
     usleep(10000);
 
-    set_night_mode(night_mode);
+    night_mode(night_mode_on());
 
     if (app_config.adc_device[0]) {
         int adc_fd = -1;
@@ -52,7 +57,7 @@ void *night_thread(void) {
             HAL_DANGER("night", "Could not open the ADC virtual device!\n");
             return NULL;
         }
-        while (keepRunning) {
+        while (keepRunning && nightOn) {
             if (read(adc_fd, &val, sizeof(val)) > 0) {
                 usleep(10000);
                 tmp += val;
@@ -60,7 +65,7 @@ void *night_thread(void) {
             }
             if (cnt == 12) {
                 tmp /= cnt;
-                set_night_mode(tmp >= app_config.adc_threshold);
+                if (!manual) night_mode(tmp >= app_config.adc_threshold);
                 cnt = tmp = 0;
             }
             usleep(app_config.check_interval_s * 1000000 / 12);
@@ -75,16 +80,22 @@ void *night_thread(void) {
                 sleep(app_config.check_interval_s);
                 continue;
             }
-            set_night_mode(night_mode);
+            if (!manual) night_mode(night_mode);
             sleep(app_config.check_interval_s);
         }
     }
+
     usleep(10000);
     gpio_deinit();
     HAL_INFO("night", "Night mode thread is closing...\n");
+    nightOn = 0;
 }
 
-int start_monitor_light_sensor() {
+int enable_night(void) {
+    int ret = EXIT_SUCCESS;
+
+    if (nightOn) return ret;
+
     pthread_attr_t thread_attr;
     pthread_attr_init(&thread_attr);
     size_t stacksize;
@@ -96,8 +107,15 @@ int start_monitor_light_sensor() {
     if (pthread_attr_setstacksize(&thread_attr, stacksize))
         HAL_DANGER("night", "Error:  Can't set stack size %zu\n", stacksize);
     pthread_attr_destroy(&thread_attr);
+
+    nightOn = 1;
+
+    return ret;
 }
 
-void stop_monitor_light_sensor() {
+void disable_night(void) {
+    if (!nightOn) return;
+
+    nightOn = 0;
     pthread_join(nightPid, NULL);
 }

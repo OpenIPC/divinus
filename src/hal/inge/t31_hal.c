@@ -101,7 +101,7 @@ void *t31_audio_thread(void)
     t31_aud_frm frame;
     memset(&frame, 0, sizeof(frame));
 
-    while (keepRunning) {
+    while (keepRunning && audioOn) {
         if (ret = t31_aud.fnPollFrame(_t31_aud_dev, _t31_aud_chn, 1000))
             continue;
 

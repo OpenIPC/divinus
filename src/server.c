@@ -690,7 +690,7 @@ void respond_request(struct Request *req) {
         return;
     }
 
-    if (app_config.audio_enable && EQUALS(req->uri, "/api/audio")) {
+    if (EQUALS(req->uri, "/api/audio")) {
         if (!EMPTY(req->query)) {
             char *remain;
             while (req->query) {
@@ -703,6 +703,11 @@ void respond_request(struct Request *req) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
                         app_config.audio_bitrate = result;
+                } else if (EQUALS(key, "enable")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.audio_enable = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.audio_enable = 0;
                 } else if (EQUALS(key, "gain")) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
@@ -715,7 +720,7 @@ void respond_request(struct Request *req) {
             }
 
             disable_audio();
-            enable_audio();
+            if (app_config.audio_enable) enable_audio();
         }
 
         int respLen = sprintf(response,
@@ -723,7 +728,8 @@ void respond_request(struct Request *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"bitrate\":%d,\"gain\":%d,\"srate\":%d}",
+            "{\"enable\":%s,\"bitrate\":%d,\"gain\":%d,\"srate\":%d}",
+            app_config.audio_enable ? "true" : "false",
             app_config.audio_bitrate, app_config.audio_gain, app_config.audio_srate);
         send_and_close(req->clntFd, response, respLen);
         return;
@@ -793,7 +799,8 @@ void respond_request(struct Request *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"width\":%d,\"height\":%d,\"qfactor\":%d}",
+            "{\"enable\":%s,\"width\":%d,\"height\":%d,\"qfactor\":%d}",
+            app_config.jpeg_enable ? "true" : "false",
             app_config.jpeg_width, app_config.jpeg_height, app_config.jpeg_qfactor);
         send_and_close(req->clntFd, response, respLen);
         return;
@@ -808,7 +815,12 @@ void respond_request(struct Request *req) {
                 unescape_uri(value);
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
-                if (EQUALS(key, "width")) {
+                if (EQUALS(key, "enable")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.mjpeg_enable = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.mjpeg_enable = 0;
+                } else if (EQUALS(key, "width")) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
                         app_config.mjpeg_width = result;
@@ -845,7 +857,8 @@ void respond_request(struct Request *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"width\":%d,\"height\":%d,\"fps\":%d,\"mode\":\"%s\",\"bitrate\":%d}",
+            "{\"enable\":%s,\"width\":%d,\"height\":%d,\"fps\":%d,\"mode\":\"%s\",\"bitrate\":%d}",
+            app_config.mjpeg_enable ? "true" : "false",
             app_config.mjpeg_width, app_config.mjpeg_height, app_config.mjpeg_fps, mode,
             app_config.mjpeg_bitrate);
         send_and_close(req->clntFd, response, respLen);
@@ -861,7 +874,12 @@ void respond_request(struct Request *req) {
                 unescape_uri(value);
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
-                if (EQUALS(key, "width")) {
+                if (EQUALS(key, "enable")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.mp4_enable = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.mp4_enable = 0;
+                } else if (EQUALS(key, "width")) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
                         app_config.mp4_width = result;
@@ -929,15 +947,17 @@ void respond_request(struct Request *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"width\":%d,\"height\":%d,\"fps\":%d,\"h265\":%s,\"mode\":\"%s\",\"profile\":\"%s\",\"bitrate\":%d}",
+            "{\"enable\":%s,\"width\":%d,\"height\":%d,\"fps\":%d,"
+            "\"h265\":%s,\"mode\":\"%s\",\"profile\":\"%s\",\"bitrate\":%d}",
+            app_config.mp4_enable ? "true" : "false",
             app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps, h265, mode,
             profile, app_config.mp4_bitrate);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
 
-    if (app_config.night_mode_enable && EQUALS(req->uri, "/api/night")) {
-        if (app_config.ir_sensor_pin == 999 && !EMPTY(req->query)) {
+    if (EQUALS(req->uri, "/api/night")) {
+        if (!EMPTY(req->query)) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
@@ -945,21 +965,71 @@ void respond_request(struct Request *req) {
                 unescape_uri(value);
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
-                if (EQUALS(key, "active")) {
+                if (EQUALS(key, "enable")) {
                     if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
-                        set_night_mode(1);
+                        app_config.night_mode_enable = 1;
                     else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
-                        set_night_mode(0);
+                        app_config.night_mode_enable = 0;
+                } else if (EQUALS(key, "adc_device")) {
+                    strncpy(app_config.adc_device, value, sizeof(app_config.adc_device));
+                } else if (EQUALS(key, "adc_threshold")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.adc_threshold = result;
+                } else if (EQUALS(key, "grayscale")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        night_grayscale(1);
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        night_grayscale(0);
+                } else if (EQUALS(key, "ircut")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        night_ircut(1);
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        night_ircut(0);
+                } else if (EQUALS(key, "ircut_pin1")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.ir_cut_pin1 = result;
+                } else if (EQUALS(key, "ircut_pin2")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.ir_cut_pin2 = result;
+                } else if (EQUALS(key, "irled")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        night_irled(1);
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        night_irled(0);
+                } else if (EQUALS(key, "irled_pin")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.ir_led_pin = result;
+                } else if (EQUALS(key, "irsense_pin")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.ir_sensor_pin = result;
+                } else if (EQUALS(key, "manual")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        night_manual(1);
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        night_manual(0);
                 }
             }
+
+            disable_night();
+            if (app_config.night_mode_enable) enable_night();
         }
         int respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"active\":%s}",
-            night_mode_is_enabled() ? "true" : "false");
+            "{\"active\":%s,\"manual\":%s,\"grayscale\":%s,\"ircut\":%s,\"ircut_pin1\":%d,\"ircut_pin2\":%d,"
+            "\"irled\":%s,\"irled_pin\":%d,\"irsense_pin\":%d,\"adc_device\":\"%s\",\"adc_threshold\":%d}",
+            app_config.night_mode_enable ? "true" : "false", night_manual_on() ? "true" : "false", 
+            night_grayscale_on() ? "true" : "false",
+            night_ircut_on() ? "true" : "false", app_config.ir_cut_pin1, app_config.ir_cut_pin2,
+            night_irled_on() ? "true" : "false", app_config.ir_led_pin, app_config.ir_sensor_pin,
+            app_config.adc_device, app_config.adc_threshold);
         send_and_close(req->clntFd, response, respLen);
         return;
     }

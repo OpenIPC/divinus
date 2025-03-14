@@ -1,5 +1,6 @@
 #include "media.h"
 
+char audioOn = 0;
 pthread_mutex_t aencMtx, chnMtx, mp4Mtx;
 pthread_t aencPid = 0, audPid = 0, ispPid = 0, vidPid = 0;
 
@@ -16,7 +17,7 @@ void *aenc_thread(void) {
         (app_config.audio_bitrate * 1000) / 
         app_config.audio_srate;
     
-    while (keepRunning) {
+    while (keepRunning && audioOn) {
         pthread_mutex_lock(&aencMtx);
         if (mp3Buf.offset < mp3FrmSize) {
             pthread_mutex_unlock(&aencMtx);
@@ -293,6 +294,10 @@ int disable_video(char index, char jpeg) {
 }
 
 void disable_audio(void) {
+    if (!audioOn) return;
+
+    audioOn = 0;
+
     pthread_join(aencPid, NULL);
     pthread_join(audPid, NULL);
     shine_close(mp3Enc);
@@ -316,7 +321,9 @@ void disable_audio(void) {
 }
 
 int enable_audio(void) {
-    int ret;
+    int ret = EXIT_SUCCESS;
+
+    if (audioOn) return ret;
 
     switch (plat) {
 #if defined(__arm__)
@@ -385,6 +392,8 @@ int enable_audio(void) {
             HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
         pthread_attr_destroy(&thread_attr);
     }
+
+    audioOn = 1;
 
     return ret;
 }

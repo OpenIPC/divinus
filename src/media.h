@@ -17,6 +17,7 @@
 #include "rtsp/rtsp_server.h"
 #include "server.h"
 
+extern char audioOn;
 extern rtsp_handle rtspHandle;
 
 int start_sdk(void);

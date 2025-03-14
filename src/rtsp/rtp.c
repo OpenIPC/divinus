@@ -364,6 +364,11 @@ static inline int __rtcp_poll(struct list_t *e, void *v)
 /******************************************************************************
  *              PUBLIC FUNCTIONS
  ******************************************************************************/
+void rtp_disable_audio(rtsp_handle h)
+{
+    h->audioPt = 255;
+}
+
 int rtp_send_h26x(rtsp_handle h, unsigned char *buf, size_t len, char isH265)
 {
     unsigned char *nalptr = buf;

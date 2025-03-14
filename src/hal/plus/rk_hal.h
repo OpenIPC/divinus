@@ -15,7 +15,7 @@
 #include <sys/select.h>
 #include <unistd.h>
 
-extern char keepRunning;
+extern char audioOn, keepRunning;
 
 extern hal_chnstate rk_state[RK_VENC_CHN_NUM];
 extern int (*rk_aud_cb)(hal_audframe*);
