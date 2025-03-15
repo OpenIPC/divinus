@@ -50,6 +50,7 @@ static t31_common_dim t31_dims[] = {
     { .width = 1920, .height = 1080 }, // jxf22
     { .width = 1920, .height = 1080 }, // jxf23
     { .width = 1920, .height = 1080 }, // jxf37
+    { .width = 1920, .height = 1080 }, // jxf37p
     { .width = 1280, .height = 720 },  // jxh42
     { .width = 1280, .height = 720 },  // jxh62
     { .width = 1280, .height = 720 },  // jxh63
@@ -100,6 +101,7 @@ static t31_isp_snr t31_sensors[] = {
     { .name = "jxf22",   .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x40 },
     { .name = "jxf23",   .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x40 },
     { .name = "jxf37",   .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x40 },
+    { .name = "jxf37p",  .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x40 },
     { .name = "jxh42",   .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x30 },
     { .name = "jxh62",   .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x30 },
     { .name = "jxh63",   .mode = T31_ISP_COMM_I2C, .i2c.addr = 0x40 },
