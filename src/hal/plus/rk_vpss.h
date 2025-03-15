@@ -6,17 +6,16 @@
 #define RK_VPSS_GRP_NUM 8
 
 typedef enum {
-    RK_VPSS_NMODE_VIDEO,
-    RK_VPSS_NMODE_SNAP,
-    RK_VPSS_NMODE_SPATIAL,
-    RK_VPSS_NMODE_ENHANCE,
-    RK_VPSS_NMODE_END
-} rk_vpss_nmode;
+    RK_VPSS_CMODE_USER,
+    RK_VPSS_CMODE_AUTO,
+    RK_VPSS_CMODE_PASSTHRU,
+    RK_VPSS_CMODE_END
+} rk_vpss_cmode;
 
 typedef struct {
-    int chnAutoOn;
+    rk_vpss_cmode chnMode;
     rk_common_dim dest;
-    int videoFmt;
+    rk_common_vidfmt videoFmt;
     rk_common_pixfmt pixFmt;
     rk_common_hdr hdr;
     rk_common_compr compress;
@@ -30,13 +29,8 @@ typedef struct {
     int aspectRatio;
     unsigned int aspectBgCol;
     rk_common_rect aspectRect;
+    unsigned int privFrmBufCnt;
 } rk_vpss_chn;
-
-typedef struct {
-    rk_vpss_nmode mode;
-    rk_common_compr compress;
-    int motionCompOn;
-} rk_vpss_nred;
 
 typedef struct {
     rk_common_dim dest;
@@ -44,8 +38,7 @@ typedef struct {
     rk_common_hdr hdr;
     int srcFps;
     int dstFps;
-    int nRedOn;
-    rk_vpss_nred nRed;
+    rk_common_compr compress;
 } rk_vpss_grp;
 
 typedef struct {

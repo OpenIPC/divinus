@@ -676,7 +676,7 @@ int start_sdk(void) {
             height, framerate); break;
         case HAL_PLATFORM_M6:  ret = m6_pipeline_create(0, width,
             height, framerate); break;
-        case HAL_PLATFORM_RK:  ret = rk_pipeline_create(); break;
+        case HAL_PLATFORM_RK:  ret = rk_pipeline_create(width, height); break;
         case HAL_PLATFORM_V1:  ret = v1_pipeline_create(); break;
         case HAL_PLATFORM_V2:  ret = v2_pipeline_create(); break;
         case HAL_PLATFORM_V3:  ret = v3_pipeline_create(); break;

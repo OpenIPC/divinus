@@ -36,7 +36,7 @@ int rk_channel_unbind(char index);
 
 void *rk_image_thread(void);
 
-int rk_pipeline_create(void);
+int rk_pipeline_create(short width, short height);
 void rk_pipeline_destroy(void);
 
 int rk_region_create(char handle, hal_rect rect, short opacity);

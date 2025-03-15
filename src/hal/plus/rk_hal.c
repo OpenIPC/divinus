@@ -203,17 +203,24 @@ int rk_channel_unbind(char index)
     return EXIT_SUCCESS;
 }
 
-int rk_pipeline_create(void)
+int rk_pipeline_create(short width, short height)
 {
     int ret;
 
-    //if (ret = rk_vi.fnSetDeviceConfig(_rk_vi_dev, &rk_config.videv))
-    //    return ret;
+    {
+        rk_vi_dev device;
+        memset(&device, 0, sizeof(device));
+
+        if (rk_vi.fnGetDeviceConfig(_rk_vi_dev, &device) == 0xa0088007)
+           if (ret = rk_vi.fnSetDeviceConfig(_rk_vi_dev, &device))
+            return ret;
+    }
     if (ret = rk_vi.fnEnableDevice(_rk_vi_dev))
         return ret;
 
     {
         rk_vi_bind bind;
+        memset(&bind, 0, sizeof(bind));
         bind.num = 1;
         bind.pipeId[0] = _rk_vi_pipe;
         if (ret = rk_vi.fnBindPipe(_rk_vi_dev, &bind))
@@ -221,43 +228,19 @@ int rk_pipeline_create(void)
     }
 
     {
-        rk_vi_pipe pipe;
-        pipe.bypass = 0;
-        pipe.yuvSkipOn = 0;
-        pipe.ispBypassOn = 0;
-        //pipe.maxSize.width = rk_config.isp.capt.width;
-        //pipe.maxSize.height = rk_config.isp.capt.height;
-        //pipe.pixFmt = RK_PIXFMT_BAYER + rk_config.mipi.prec;
-        pipe.compress = RK_COMPR_NONE;
-        //pipe.prec = rk_config.mipi.prec;
-        pipe.nRedOn = 0;
-        pipe.nRed.pixFmt = 0;
-        pipe.nRed.prec = 0;
-        pipe.nRed.srcRfrOrChn0 = 0;
-        pipe.nRed.compress = RK_COMPR_NONE;
-        pipe.sharpenOn = 1;
-        pipe.srcFps = -1;
-        pipe.dstFps = -1;
-        pipe.discProPic = 0;
-        if (ret = rk_vi.fnCreatePipe(_rk_vi_pipe, &pipe))
-            return ret;
-    }
-    if (ret = rk_vi.fnStartPipe(_rk_vi_pipe))
-        return ret;
-
-    {
         rk_vi_chn channel;
-        //channel.size.width = rk_config.isp.capt.width;
-        //channel.size.height = rk_config.isp.capt.height;
+        memset(&channel, 0, sizeof(channel));
+        channel.size.width = width;
+        channel.size.height = height;
         channel.pixFmt = RK_PIXFMT_YUV420SP;
-        channel.dynRange = RK_HDR_SDR8;
-        channel.videoFmt = 0;
         channel.compress = RK_COMPR_NONE;
-        channel.mirror = 0;
-        channel.flip = 0;
-        channel.depth = 0;
+        channel.depth = 1;
         channel.srcFps = -1;
         channel.dstFps = -1;
+        channel.ispOpts.bufCount = 2;
+        channel.ispOpts.vidMem = RK_VI_VMEM_DMABUF;
+        channel.ispOpts.maxSize.width = width;
+        channel.ispOpts.maxSize.height = height;
         if (ret = rk_vi.fnSetChannelConfig(_rk_vi_pipe, _rk_vi_chn, &channel))
             return ret;
     }
@@ -266,17 +249,13 @@ int rk_pipeline_create(void)
     
     {
         rk_vpss_grp group;
-        memset(&group, 0, sizeof(group));
-        //group.dest.width = rk_config.isp.capt.width;
-        //group.dest.height = rk_config.isp.capt.height;
+        group.dest.width = width;
+        group.dest.height = height;
         group.pixFmt = RK_PIXFMT_YUV420SP;
         group.hdr = RK_HDR_SDR8;
         group.srcFps = -1;
         group.dstFps = -1;
-        group.nRedOn = 1;
-        group.nRed.mode = RK_VPSS_NMODE_VIDEO;
-        group.nRed.compress = RK_COMPR_NONE;
-        group.nRed.motionCompOn = 0;
+        group.compress = RK_COMPR_NONE;
         if (ret = rk_vpss.fnCreateGroup(_rk_vpss_grp, &group))
             return ret;
     }
