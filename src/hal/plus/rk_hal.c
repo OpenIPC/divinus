@@ -77,7 +77,7 @@ int rk_audio_init(int samplerate)
         config.frmNum = 30;
         config.packNumPerFrm = 320;
         config.chnNum = 1;
-        config.cardName­[0] = '\0';
+        config.cardName[0] = '\0';
         if (ret = rk_aud.fnSetDeviceConfig(_rk_aud_dev, &config))
             return ret;
     }

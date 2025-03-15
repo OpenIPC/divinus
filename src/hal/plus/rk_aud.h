@@ -37,7 +37,7 @@ typedef struct {
     unsigned int chnNum;
     // If not setted, will use the device index
     // to open the audio card
-    char cardName­[8];
+    char cardName[8];
 } rk_aud_cnf;
 
 typedef struct {
