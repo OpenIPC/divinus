@@ -156,6 +156,17 @@ void hal_identify(void) {
         vid_thread = ak_video_thread;
         return;
     }
+
+    if (!access("/proc/rk_cma", F_OK)) {
+        plat = HAL_PLATFORM_RK;
+        strcpy(chip, "rv11xx");
+        strcpy(family, "rockchip");
+        chnCount = RK_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)rk_state;
+        //aud_thread = rk_audio_thread;
+        //vid_thread = rk_video_thread;
+        return;
+    }
 #endif
 
 #ifdef __mips__

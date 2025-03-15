@@ -38,7 +38,9 @@ void akuio_clean_invalidate_dcache(void) {}
 #ifndef __GLIBC__
 void backtrace(void) {}
 void backtrace_symbols(void) {}
+#endif
 void __ctype_b(void) {}
+#ifndef __GLIBC__
 void __ctype_b_loc(void) {}
 void __ctype_tolower(void) {}
 #endif

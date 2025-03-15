@@ -153,76 +153,53 @@ typedef struct {
 } rk_vi_impl;
 
 static int rk_vi_load(rk_vi_impl *vi_lib) {
-    if (!(vi_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[rk_vi] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(vi_lib->handle = dlopen("librockit.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("rk_vi", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(vi_lib->fnDisableDevice = (int(*)(int device))
-        dlsym(vi_lib->handle, "RK_MPI_VI_DisableDev"))) {
-        fprintf(stderr, "[rk_vi] Failed to acquire symbol RK_MPI_VI_DisableDev!\n");
+        hal_symbol_load("rk_vi", vi_lib->handle, "RK_MPI_VI_DisableDev")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnEnableDevice = (int(*)(int device))
-        dlsym(vi_lib->handle, "RK_MPI_VI_EnableDev"))) {
-        fprintf(stderr, "[rk_vi] Failed to acquire symbol RK_MPI_VI_EnableDev!\n");
+        hal_symbol_load("rk_vi", vi_lib->handle, "RK_MPI_VI_EnableDev")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnSetDeviceConfig = (int(*)(int device, rk_vi_dev *config))
-        dlsym(vi_lib->handle, "RK_MPI_VI_SetDevAttr"))) {
-        fprintf(stderr, "[rk_vi] Failed to acquire symbol RK_MPI_VI_SetDevAttr!\n");
+        hal_symbol_load("rk_vi", vi_lib->handle, "RK_MPI_VI_SetDevAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnDisableChannel = (int(*)(int pipe, int channel))
-        dlsym(vi_lib->handle, "RK_MPI_VI_DisableChn"))) {
-        fprintf(stderr, "[rk_vi] Failed to acquire symbol RK_MPI_VI_DisableChn!\n");
+        hal_symbol_load("rk_vi", vi_lib->handle, "RK_MPI_VI_DisableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnEnableChannel = (int(*)(int pipe, int channel))
-        dlsym(vi_lib->handle, "RK_MPI_VI_EnableChn"))) {
-        fprintf(stderr, "[rk_vi] Failed to acquire symbol RK_MPI_VI_EnableChn!\n");
+        hal_symbol_load("rk_vi", vi_lib->handle, "RK_MPI_VI_EnableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnSetChannelConfig = (int(*)(int pipe, int channel, rk_vi_chn *config))
-        dlsym(vi_lib->handle, "RK_MPI_VI_SetChnAttr"))) {
-        fprintf(stderr, "[rk_vi] Failed to acquire symbol RK_MPI_VI_SetChnAttr!\n");
+        hal_symbol_load("rk_vi", vi_lib->handle, "RK_MPI_VI_SetChnAttr")))
         return EXIT_FAILURE;
-    }
+
 
     if (!(vi_lib->fnBindPipe = (int(*)(int device, rk_vi_bind *config))
-        dlsym(vi_lib->handle, "RK_MPI_VI_SetDevBindPipe"))) {
-        fprintf(stderr, "[rk_vi] Failed to acquire symbol RK_MPI_VI_SetDevBindPipe!\n");
+        hal_symbol_load("rk_vi", vi_lib->handle, "RK_MPI_VI_SetDevBindPipe")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnCreatePipe = (int(*)(int pipe, rk_vi_pipe *config))
-        dlsym(vi_lib->handle, "RK_MPI_VI_CreatePipe"))) {
-        fprintf(stderr, "[rk_vi] Failed to acquire symbol RK_MPI_VI_CreatePipe!\n");
+        hal_symbol_load("rk_vi", vi_lib->handle, "RK_MPI_VI_CreatePipe")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnDestroyPipe = (int(*)(int pipe))
-        dlsym(vi_lib->handle, "RK_MPI_VI_DestroyPipe"))) {
-        fprintf(stderr, "[rk_vi] Failed to acquire symbol RK_MPI_VI_DestroyPipe!\n");
+        hal_symbol_load("rk_vi", vi_lib->handle, "RK_MPI_VI_DestroyPipe")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnStartPipe = (int(*)(int pipe))
-        dlsym(vi_lib->handle, "RK_MPI_VI_StartPipe"))) {
-        fprintf(stderr, "[rk_vi] Failed to acquire symbol RK_MPI_VI_StartPipe!\n");
+        hal_symbol_load("rk_vi", vi_lib->handle, "RK_MPI_VI_StartPipe")))
         return EXIT_FAILURE;
-    }
 
     if (!(vi_lib->fnStopPipe = (int(*)(int pipe))
-        dlsym(vi_lib->handle, "RK_MPI_VI_StopPipe"))) {
-        fprintf(stderr, "[rk_vi] Failed to acquire symbol RK_MPI_VI_StopPipe!\n");
+        hal_symbol_load("rk_vi", vi_lib->handle, "RK_MPI_VI_StopPipe")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

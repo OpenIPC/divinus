@@ -64,65 +64,46 @@ typedef struct {
 } rk_vpss_impl;
 
 static int rk_vpss_load(rk_vpss_impl *vpss_lib) {
-    if (!(vpss_lib->handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[rk_vpss] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(vpss_lib->handle = dlopen("librockit.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("rk_vpss", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(vpss_lib->fnCreateGroup = (int(*)(int group, rk_vpss_grp *config))
-        dlsym(vpss_lib->handle, "RK_MPI_VPSS_CreateGrp"))) {
-        fprintf(stderr, "[rk_vpss] Failed to acquire symbol RK_MPI_VPSS_CreateGrp!\n");
+        hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_CreateGrp")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnDestroyGroup = (int(*)(int group))
-        dlsym(vpss_lib->handle, "RK_MPI_VPSS_DestroyGrp"))) {
-        fprintf(stderr, "[rk_vpss] Failed to acquire symbol RK_MPI_VPSS_DestroyGrp!\n");
+        hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_DestroyGrp")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnResetGroup = (int(*)(int group))
-        dlsym(vpss_lib->handle, "RK_MPI_VPSS_ResetGrp"))) {
-        fprintf(stderr, "[rk_vpss] Failed to acquire symbol RK_MPI_VPSS_ResetGrp!\n");
+        hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_ResetGrp")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnSetGroupConfig = (int(*)(int group, rk_vpss_grp *config))
-        dlsym(vpss_lib->handle, "RK_MPI_VPSS_SetGrpAttr"))) {
-        fprintf(stderr, "[rk_vpss] Failed to acquire symbol RK_MPI_VPSS_SetGrpAttr!\n");
+        hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_SetGrpAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnStartGroup = (int(*)(int group))
-        dlsym(vpss_lib->handle, "RK_MPI_VPSS_StartGrp"))) {
-        fprintf(stderr, "[rk_vpss] Failed to acquire symbol RK_MPI_VPSS_StartGrp!\n");
+        hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_StartGrp")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnStopGroup = (int(*)(int group))
-        dlsym(vpss_lib->handle, "RK_MPI_VPSS_StopGrp"))) {
-        fprintf(stderr, "[rk_vpss] Failed to acquire symbol RK_MPI_VPSS_StopGrp!\n");
+        hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_StopGrp")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnDisableChannel = (int(*)(int group, int channel))
-        dlsym(vpss_lib->handle, "RK_MPI_VPSS_DisableChn"))) {
-        fprintf(stderr, "[rk_vpss] Failed to acquire symbol RK_MPI_VPSS_DisableChn!\n");
+        hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_DisableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnEnableChannel = (int(*)(int group, int channel))
-        dlsym(vpss_lib->handle, "RK_MPI_VPSS_EnableChn"))) {
-        fprintf(stderr, "[rk_vpss] Failed to acquire symbol RK_MPI_VPSS_EnableChn!\n");
+        hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_EnableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(vpss_lib->fnSetChannelConfig = (int(*)(int group, int channel, rk_vpss_chn *config))
-        dlsym(vpss_lib->handle, "RK_MPI_VPSS_SetChnAttr"))) {
-        fprintf(stderr, "[rk_vpss] Failed to acquire symbol RK_MPI_VPSS_SetChnAttr!\n");
+        hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_SetChnAttr")))
         return EXIT_FAILURE;
-    }
-    
+
+
     return EXIT_SUCCESS;
 }
 
