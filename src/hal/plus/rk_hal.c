@@ -102,7 +102,7 @@ void *rk_audio_thread(void)
     while (keepRunning) {
         if (ret = rk_aud.fnGetFrame(_rk_aud_dev, _rk_aud_chn, 
             &frame, &echoFrame, 128)) {
-            fprintf(stderr, "[rk_aud] Getting the frame failed "
+            HAL_WARNING("rk_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
             continue;
         }
@@ -119,11 +119,11 @@ void *rk_audio_thread(void)
 
         if (ret = rk_aud.fnFreeFrame(_rk_aud_dev, _rk_aud_chn,
             &frame, &echoFrame)) {
-            fprintf(stderr, "[rk_aud] Releasing the frame failed"
+            HAL_DANGER("rk_aud", "Releasing the frame failed"
                 " with %#x!\n", ret);
         }
     }
-    fprintf(stderr, "[rk_aud] Shutting down encoding thread...\n");
+    HAL_INFO("rk_aud", "Shutting down encoding thread...\n");
 }
 
 int rk_channel_bind(char index)
@@ -241,6 +241,7 @@ int rk_pipeline_create(short width, short height)
         channel.ispOpts.vidMem = RK_VI_VMEM_DMABUF;
         channel.ispOpts.maxSize.width = width;
         channel.ispOpts.maxSize.height = height;
+        memcpy(channel.ispOpts.entityName, "rkisp_mainpath", strlen("rkisp_mainpath"));
         if (ret = rk_vi.fnSetChannelConfig(_rk_vi_pipe, _rk_vi_chn, &channel))
             return ret;
     }
@@ -523,14 +524,14 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     int ret;
 
     if (ret = rk_channel_bind(index)) {
-        fprintf(stderr, "[rk_venc] Binding the encoder channel "
+        HAL_DANGER("rk_venc", "Binding the encoder channel "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
     unsigned int count = 1;
     if (rk_venc.fnStartReceivingEx(index, &count)) {
-        fprintf(stderr, "[rk_venc] Requesting one frame "
+        HAL_DANGER("rk_venc", "Requesting one frame "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
@@ -543,23 +544,23 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     FD_SET(fd, &readFds);
     ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
     if (ret < 0) {
-        fprintf(stderr, "[rk_venc] Select operation failed!\n");
+        HAL_DANGER("rk_venc", "Select operation failed!\n");
         goto abort;
     } else if (ret == 0) {
-        fprintf(stderr, "[rk_venc] Capture stream timed out!\n");
+        HAL_DANGER("rk_venc", "Capture stream timed out!\n");
         goto abort;
     }
 
     if (FD_ISSET(fd, &readFds)) {
         rk_venc_stat stat;
         if (rk_venc.fnQuery(index, &stat)) {
-            fprintf(stderr, "[rk_venc] Querying the encoder channel "
+            HAL_DANGER("rk_venc", "Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
         }
 
         if (!stat.curPacks) {
-            fprintf(stderr, "[rk_venc] Current frame is empty, skipping it!\n");
+            HAL_DANGER("rk_venc", "Current frame is empty, skipping it!\n");
             goto abort;
         }
 
@@ -567,13 +568,13 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         memset(&strm, 0, sizeof(strm));
         strm.packet = (rk_venc_pack*)malloc(sizeof(rk_venc_pack) * stat.curPacks);
         if (!strm.packet) {
-            fprintf(stderr, "[rk_venc] Memory allocation on channel %d failed!\n", index);
+            HAL_DANGER("rk_venc", "Memory allocation on channel %d failed!\n", index);
             goto abort;
         }
         strm.count = stat.curPacks;
 
         if (ret = rk_venc.fnGetStream(index, &strm, stat.curPacks)) {
-            fprintf(stderr, "[rk_venc] Getting the stream on "
+            HAL_DANGER("rk_venc", "Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
             free(strm.packet);
             strm.packet = NULL;
@@ -621,7 +622,7 @@ void *rk_video_thread(void)
 
         ret = rk_venc.fnGetDescriptor(i);
         if (ret < 0) {
-            fprintf(stderr, "[rk_venc] Getting the encoder descriptor failed with %#x!\n", ret);
+            HAL_DANGER("rk_venc", "Getting the encoder descriptor failed with %#x!\n", ret);
             return NULL;
         }
         rk_state[i].fileDesc = ret;
@@ -647,10 +648,10 @@ void *rk_video_thread(void)
         timeout.tv_usec = 0;
         ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
         if (ret < 0) {
-            fprintf(stderr, "[rk_venc] Select operation failed!\n");
+            HAL_DANGER("rk_venc", "Select operation failed!\n");
             break;
         } else if (ret == 0) {
-            fprintf(stderr, "[rk_venc] Main stream loop timed out!\n");
+            HAL_WARNING("rk_venc", "Main stream loop timed out!\n");
             continue;
         } else {
             for (int i = 0; i < RK_VENC_CHN_NUM; i++) {
@@ -660,26 +661,26 @@ void *rk_video_thread(void)
                     memset(&stream, 0, sizeof(stream));
                     
                     if (ret = rk_venc.fnQuery(i, &stat)) {
-                        fprintf(stderr, "[rk_venc] Querying the encoder channel "
+                        HAL_DANGER("rk_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
                         break;
                     }
 
                     if (!stat.curPacks) {
-                        fprintf(stderr, "[rk_venc] Current frame is empty, skipping it!\n");
+                        HAL_INFO("rk_venc", "Current frame is empty, skipping it!\n");
                         continue;
                     }
 
                     stream.packet = (rk_venc_pack*)malloc(
                         sizeof(rk_venc_pack) * stat.curPacks);
                     if (!stream.packet) {
-                        fprintf(stderr, "[rk_venc] Memory allocation on channel %d failed!\n", i);
+                        HAL_DANGER("rk_venc", "Memory allocation on channel %d failed!\n", i);
                         break;
                     }
                     stream.count = stat.curPacks;
 
                     if (ret = rk_venc.fnGetStream(i, &stream, 40)) {
-                        fprintf(stderr, "[rk_venc] Getting the stream on "
+                        HAL_DANGER("rk_venc", "Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;
                     }
@@ -712,7 +713,7 @@ void *rk_video_thread(void)
                     }
 
                     if (ret = rk_venc.fnFreeStream(i, &stream)) {
-                        fprintf(stderr, "[rk_venc] Releasing the stream on "
+                        HAL_DANGER("rk_venc", "Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
                     free(stream.packet);
@@ -721,7 +722,7 @@ void *rk_video_thread(void)
             }
         }
     }
-    fprintf(stderr, "[rk_venc] Shutting down encoding thread...\n");
+    HAL_INFO("rk_venc", "Shutting down encoding thread...\n");
 }
 
 void rk_system_deinit(void)
