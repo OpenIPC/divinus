@@ -138,7 +138,7 @@ typedef struct {
 } cvi_vi_impl;
 
 static int cvi_vi_load(cvi_vi_impl *vi_lib) {
-    if ( !(vi_lib->handle = dlopen("libvpu.so", RTLD_LAZY | RTLD_GLOBAL)))
+    if (!(vi_lib->handle = dlopen("libvpu.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("cvi_vi", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(vi_lib->fnDisableDevice = (int(*)(int device))

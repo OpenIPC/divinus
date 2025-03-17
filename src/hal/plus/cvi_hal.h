@@ -29,7 +29,7 @@ int cvi_audio_init(int samplerate);
 void *cvi_audio_thread(void);
 
 int cvi_channel_bind(char index);
-int cvi_channel_create(char index, char mirror, char flip, char framerate);
+int cvi_channel_create(char index, short width, short height, char mirror, char flip);
 int cvi_channel_grayscale(char enable);
 int cvi_channel_unbind(char index);
 
@@ -42,6 +42,8 @@ int cvi_region_create(char handle, hal_rect rect, short opacity);
 void cvi_region_destroy(char handle);
 int cvi_region_setbitmap(int handle, hal_bitmap *bitmap);
 
+int cvi_sensor_config(void);
+void cvi_sensor_deconfig(void);
 void cvi_sensor_deinit(void);
 int cvi_sensor_init(char *name, char *obj);
 

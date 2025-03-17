@@ -228,8 +228,8 @@ int create_channel(char index, short width, short height, char framerate, char j
         case HAL_PLATFORM_T31: return t31_channel_create(index, width, height,
             framerate, jpeg);
 #elif defined(__riscv) || defined(__riscv__)
-        case HAL_PLATFORM_CVI: return cvi_channel_create(index, app_config.mirror,
-            app_config.flip, framerate);
+        case HAL_PLATFORM_CVI: return cvi_channel_create(index, width, height,
+            app_config.mirror, app_config.flip);
 #endif
     }
 }

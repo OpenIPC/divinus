@@ -308,6 +308,7 @@ void hal_identify(void) {
         chnCount = CVI_VENC_CHN_NUM;
         chnState = (hal_chnstate*)cvi_state;
         aud_thread = cvi_audio_thread;
+        isp_thread = cvi_image_thread;
         vid_thread = cvi_video_thread;
     }
 #endif

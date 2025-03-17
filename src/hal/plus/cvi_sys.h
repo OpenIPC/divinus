@@ -42,22 +42,35 @@ typedef enum {
 } cvi_sys_mod;
 
 typedef enum {
-	CVI_SYS_OPER_VIOFF_VPSSOFF,
-	CVI_SYS_OPER_VIOFF_VPSSON,
-	CVI_SYS_OPER_VION_VPSSOFF,
-	CVI_SYS_OPER_VION_VPSSON,
-	CVI_SYS_OPER_VIOFF_POSTON,
-	CVI_SYS_OPER_VIOFF_POSTOFF,
-	CVI_SYS_OPER_VION_POSTOFF,
-	CVI_SYS_OPER_VION_POSTON,
-	CVI_SYS_OPER_END
-} cvi_sys_oper;
+	CVI_SYS_VIMD_VIOFF_VPSSOFF,
+	CVI_SYS_VIMD_VIOFF_VPSSON,
+	CVI_SYS_VIMD_VION_VPSSOFF,
+	CVI_SYS_VIMD_VION_VPSSON,
+	CVI_SYS_VIMD_VIOFF_POSTON,
+	CVI_SYS_VIMD_VIOFF_POSTOFF,
+	CVI_SYS_VIMD_VION_POSTOFF,
+	CVI_SYS_VIMD_VION_POSTON,
+	CVI_SYS_VIMD_END
+} cvi_sys_vimd;
+
+typedef enum {
+    CVI_SYS_VPSS_SINGLE,
+    CVI_SYS_VPSS_DUAL,
+    CVI_SYS_VPSS_END
+} cvi_sys_vpss;
 
 typedef struct {
     cvi_sys_mod module;
     int device;
     int channel;
 } cvi_sys_bind;
+
+typedef struct {
+    cvi_sys_vpss mode;
+    int inputIsIsp[2];
+    // Only relevant with an ISP input
+    int pipeId[2];
+} cvi_sys_vpcf;
 
 typedef struct {
     char version[128];
@@ -74,8 +87,10 @@ typedef struct {
     int (*fnBind)(cvi_sys_bind *source, cvi_sys_bind *dest);
     int (*fnUnbind)(cvi_sys_bind *source, cvi_sys_bind *dest);
 
-    int (*fnGetViVpssMode)(cvi_sys_oper *mode[CVI_VI_PIPE_NUM]);
-    int (*fnSetViVpssMode)(cvi_sys_oper *mode[CVI_VI_PIPE_NUM]);
+    int (*fnGetViVpssMode)(cvi_sys_vimd *mode[CVI_VI_PIPE_NUM]);
+    int (*fnSetViVpssMode)(cvi_sys_vimd *mode[CVI_VI_PIPE_NUM]);
+    int (*fnGetVpssMode)(cvi_sys_vpcf *config);
+    int (*fnSetVpssMode)(cvi_sys_vpcf *config);
 } cvi_sys_impl;
 
 static int cvi_sys_load(cvi_sys_impl *sys_lib) {
@@ -107,12 +122,20 @@ static int cvi_sys_load(cvi_sys_impl *sys_lib) {
         hal_symbol_load("cvi_sys", sys_lib->handle, "CVI_SYS_UnBind")))
         return EXIT_FAILURE;
 
-    if (!(sys_lib->fnGetViVpssMode = (int(*)(cvi_sys_oper *mode[CVI_VI_PIPE_NUM]))
+    if (!(sys_lib->fnGetViVpssMode = (int(*)(cvi_sys_vimd *mode[CVI_VI_PIPE_NUM]))
         hal_symbol_load("cvi_sys", sys_lib->handle, "CVI_SYS_GetVIVPSSMode")))
         return EXIT_FAILURE;
 
-    if (!(sys_lib->fnSetViVpssMode = (int(*)(cvi_sys_oper *mode[CVI_VI_PIPE_NUM]))
+    if (!(sys_lib->fnSetViVpssMode = (int(*)(cvi_sys_vimd *mode[CVI_VI_PIPE_NUM]))
         hal_symbol_load("cvi_sys", sys_lib->handle, "CVI_SYS_SetVIVPSSMode")))
+        return EXIT_FAILURE;
+
+    if (!(sys_lib->fnGetVpssMode = (int(*)(cvi_sys_vpcf *config))
+        hal_symbol_load("cvi_sys", sys_lib->handle, "CVI_SYS_SetVPSSModeEx")))
+        return EXIT_FAILURE;
+
+    if (!(sys_lib->fnSetVpssMode = (int(*)(cvi_sys_vpcf *config))
+        hal_symbol_load("cvi_sys", sys_lib->handle, "CVI_SYS_SetVPSSModeEx")))
         return EXIT_FAILURE;
 
     return EXIT_SUCCESS;
