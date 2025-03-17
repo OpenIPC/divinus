@@ -19,7 +19,8 @@
 			var elems = document.getElementsByTagName('*');
 			for (var i = 0; i < elems.length; i++) {
 				if (!elems[i].id || elems[i].id.lastIndexOf(endp + '_', 0)) continue;
-				dest += elems[i].id.substring(endp.length + 1) + '=' + elems[i].value + '&';
+				if (elems[i].type && elems[i].type == "file") continue;
+					dest += elems[i].id.substring(endp.length + 1) + '=' + elems[i].value + '&';
 			}
 			dest = dest.slice(0, -1);
 			req.open('GET', dest);
