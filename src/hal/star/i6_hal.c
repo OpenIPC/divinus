@@ -654,6 +654,31 @@ attach:
 
     fprintf(stdout, "RC Set\n");
 
+    // some reverse engineering with ltrace and LD_PRELOAD to see what's majestic is doing
+    fprintf(stdout, "disable 3A and reactivate it\n");
+    if (ret = i6_isp.fnDisableUserspace3A(0))
+        return ret;
+    fprintf(stdout, "after 3A deactivation\n");
+    cus3AEnable_t data;
+    data.args[0] = 0x4000000;
+    data.args[1] = 0;
+    data.args[2] = 0xb;
+    data.args[3] = 0;
+    data.args[4] = 0;
+    data.args[5] = 0;
+    data.args[6] = 0;
+    data.args[7] = 0;
+    data.args[8] = 0;
+    data.args[9] = 0;
+    data.args[10] = 0;
+    data.args[11] = 0;
+    data.args[12] = 0;
+
+    if (ret = i6_isp.fnCUS3AEnable(0, &data))
+        return ret;
+    fprintf(stdout, "after 3A reactivation\n");
+
+
 
     MI_VENC_IntraRefresh_t stIntraRefresh;
     stIntraRefresh.bEnable = 1;
