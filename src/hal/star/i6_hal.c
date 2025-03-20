@@ -151,6 +151,7 @@ int i6_channel_bind(char index, char framerate)
 {
     int ret;
 
+    fprintf(stdout, "fnEnablePort %d, %d\n", _i6_vpe_chn, index);
     if (ret = i6_vpe.fnEnablePort(_i6_vpe_chn, index))
         return ret;
 
@@ -175,10 +176,17 @@ int i6_channel_create(char index, short width, short height, char mirror, char f
     i6_vpe_port port;
     port.output.width = width;
     port.output.height = height;
-    port.mirror = mirror;
-    port.flip = flip;
+    port.mirror = 0;
+    port.flip = 0;
     port.compress = I6_COMPR_NONE;
     port.pixFmt = jpeg ? I6_PIXFMT_YUV422_YUYV : I6_PIXFMT_YUV420SP;
+
+    fprintf(stdout, "output.width: %u\n", port.output.width);
+    fprintf(stdout, "output.height: %u\n", port.output.height);
+    fprintf(stdout, "mirror: %d\n", port.mirror);
+    fprintf(stdout, "flip: %d\n", port.flip);
+    fprintf(stdout, "pixFmt: %d\n", port.pixFmt);
+    fprintf(stdout, "compress: %d\n", port.compress);
 
     return i6_vpe.fnSetPortConfig(_i6_vpe_chn, index, &port);
 }
@@ -342,6 +350,13 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         param.mirror = 0;
         param.flip = 0;
         param.lensAdjOn = 0;
+
+        fprintf(stdout, "hdr: %d\n", param.hdr);
+        fprintf(stdout, "level3DNR: %d\n", param.level3DNR);
+        fprintf(stdout, "mirror: %d\n", param.mirror);
+        fprintf(stdout, "flip: %d\n", param.flip);
+        fprintf(stdout, "lensAdjOn: %d\n", param.lensAdjOn);
+
         if (ret = i6_vpe.fnSetChannelParam(_i6_vpe_chn, (i6_vpe_para*)&param))
             return ret;
     } else {
@@ -976,6 +991,11 @@ static void _mi_vif_testUnRegVifCallback(void)
 void *i6_video_thread(void)
 {
     int ret, maxFd = 0;
+    #if 0
+    unsigned long long lastms = 0;
+    unsigned long long curms = 0;
+    unsigned long long timediff;
+    #endif
 
     for (int i = 0; i < I6_VENC_CHN_NUM; i++) {
         if (!i6_state[i].enable) continue;
@@ -1020,7 +1040,17 @@ void *i6_video_thread(void)
             HAL_WARNING("i6_venc", "Main stream loop timed out!\n");
             continue;
         } else {
-            //fprintf(stdout, "venc out             %llu\n", current_time_microseconds());
+            #if 0
+            curms = current_time_microseconds() / 1000;
+            if (lastms)
+            {
+                timediff = curms - lastms;
+                //if (timediff < 10 || timediff > 20)
+                //    fprintf(stdout, "Time diff %llu ms\n", curms - lastms);
+                //fprintf(stdout, "Time diff %llu ms\n", curms - lastms);
+            }
+            lastms = curms;
+            #endif
 
             for (int i = 0; i < I6_VENC_CHN_NUM; i++) {
                 if (!i6_state[i].enable) continue;

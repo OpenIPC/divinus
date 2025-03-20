@@ -77,6 +77,8 @@ int save_audio_stream(hal_audframe *frame) {
 
 int save_video_stream(char index, hal_vidstream *stream) {
     int ret;
+    //static unsigned long long curms, lastms = 0;
+    //unsigned long long timediff;
 
     switch (chnState[index].payload) {
         case HAL_VIDCODEC_H264:
@@ -95,6 +97,17 @@ int save_video_stream(char index, hal_vidstream *stream) {
                     rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
                         stream->pack[i].length - stream->pack[i].offset, isH265);
 
+                        /*
+            curms = current_time_microseconds() / 1000;
+            if (lastms)
+            {
+                timediff = curms - lastms;
+                //if (timediff < 10 || timediff > 20)
+                //    fprintf(stdout, "Time diff %llu ms\n", curms - lastms);
+                fprintf(stdout, "Time diff %llu ms\n", curms - lastms);
+            }
+            lastms = curms;
+                        */
             if (app_config.rtp_enable)
                 for (int i = 0; i < stream->count; i++)
                     rtp_stream_send_h26x(stream->pack[i].data + stream->pack[i].offset, 
