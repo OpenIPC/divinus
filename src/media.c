@@ -715,7 +715,7 @@ int start_sdk(void) {
         switch (plat) {
 #if defined(__arm__)
             case HAL_PLATFORM_I3:  i3_config_load(app_config.sensor_config); break;
-            case HAL_PLATFORM_I6:  i6_config_load(app_config.sensor_config); break;
+            case HAL_PLATFORM_I6:  i6_config_load(app_config.sensor_config); i6_sensor_config(framerate); break;
             case HAL_PLATFORM_I6C: i6c_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_M6:  m6_config_load(app_config.sensor_config); break;
 #elif defined(__mips__)

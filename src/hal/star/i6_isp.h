@@ -249,6 +249,32 @@ typedef struct
 } cus3AEnable_t;
 
 
+#define MI_U32 unsigned int
+#define MS_U32 unsigned int
+
+typedef struct MI_ISP_AE_EXPO_LIMIT_TYPE_s
+
+{
+
+    MI_U32 u32MinShutterUS;
+
+    MI_U32 u32MaxShutterUS;
+
+    MI_U32 u32MinFNx10;
+
+    MI_U32 u32MaxFNx10;
+
+    MI_U32 u32MinSensorGain;
+
+    MI_U32 u32MinISPGain;
+
+    MI_U32 u32MaxSensorGain;
+
+    MI_U32 u32MaxISPGain;
+
+} MI_ISP_AE_EXPO_LIMIT_TYPE_t;
+
+
 
 typedef struct {
     void *handle, *handleCus3a, *handleIspAlgo;
@@ -257,7 +283,10 @@ typedef struct {
     int (*fnSetColorToGray)(int channel, char *enable);
     int (*fnDisableUserspace3A)(int channel);
     int (*fnCUS3AEnable)(int channel, cus3AEnable_t *data);
+    int (*getExposureLimit)(int channel, MI_ISP_AE_EXPO_LIMIT_TYPE_t *data);
+    int (*setExposureLimit)(int channel, MI_ISP_AE_EXPO_LIMIT_TYPE_t *data);
 } i6_isp_impl;
+
 
 static int i6_isp_load(i6_isp_impl *isp_lib) {
     isp_lib->handleIspAlgo = dlopen("libispalgo.so", RTLD_LAZY | RTLD_GLOBAL);
@@ -281,6 +310,14 @@ static int i6_isp_load(i6_isp_impl *isp_lib) {
 
     if (!(isp_lib->fnCUS3AEnable = (int(*)(int channel, cus3AEnable_t *data))
         hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_CUS3A_Enable")))
+        return EXIT_FAILURE;
+
+    if (!(isp_lib->getExposureLimit = (int(*)(int channel, MI_ISP_AE_EXPO_LIMIT_TYPE_t *data))
+        hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_AE_GetExposureLimit")))
+        return EXIT_FAILURE;
+
+    if (!(isp_lib->setExposureLimit = (int(*)(int channel, MI_ISP_AE_EXPO_LIMIT_TYPE_t *data))
+        hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_AE_SetExposureLimit")))
         return EXIT_FAILURE;
 
 

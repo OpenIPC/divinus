@@ -33,8 +33,10 @@ int i6_channel_bind(char index, char framerate);
 int i6_channel_create(char index, short width, short height, char mirror, char flip, char jpeg);
 int i6_channel_grayscale(char enable);
 int i6_channel_unbind(char index);
+int i6_channel_sensorexposure(unsigned int timeus);
 
 int i6_config_load(char *path);
+void i6_sensor_config(char framerate);
 
 int i6_pipeline_create(char sensor, short width, short height, char framerate);
 void i6_pipeline_destroy(void);

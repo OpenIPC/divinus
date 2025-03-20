@@ -188,6 +188,18 @@ int i6_channel_grayscale(char enable)
     return i6_isp.fnSetColorToGray(0, &enable);
 }
 
+int i6_channel_sensorexposure(unsigned int timeus)
+{
+    int ret;
+    MI_ISP_AE_EXPO_LIMIT_TYPE_t data;
+    if (ret = i6_isp.getExposureLimit(0, &data))
+        return ret;
+    fprintf(stdout, "Set Exposure limit to: %u us\n", timeus);
+    data.u32MaxShutterUS = timeus;
+    ret = i6_isp.setExposureLimit(0, &data);
+    return ret;
+}
+
 int i6_channel_unbind(char index)
 {
     int ret;
@@ -213,6 +225,14 @@ int i6_channel_unbind(char index)
 int i6_config_load(char *path)
 {
     return i6_isp.fnLoadChannelConfig(_i6_isp_chn, path, 1234);
+}
+
+void i6_sensor_config(char framerate)
+{
+    i6_channel_grayscale(0);
+    unsigned int timeus = 1000000 / framerate;
+    fprintf(stdout, "Set sensor exposure to: %u us, framerate %i\n", timeus, framerate); 
+    i6_channel_sensorexposure(timeus);
 }
 
 int i6_pipeline_create(char sensor, short width, short height, char framerate)
@@ -606,23 +626,42 @@ int i6_video_create(char index, hal_vidconfig *config)
     } else HAL_ERROR("i6_venc", "This codec is not supported by the hardware!");
     attrib->maxHeight = config->height;
     attrib->maxWidth = config->width;
-    attrib->bufSize = config->height * config->width;
-    attrib->profile = MIN((series == 0xEF || config->codec == HAL_VIDCODEC_H265) ? 1 : 2,
-        config->profile);
+    //attrib->bufSize = config->height * config->width;
+    attrib->bufSize = 0;
+    //attrib->profile = MIN((series == 0xEF || config->codec == HAL_VIDCODEC_H265) ? 1 : 2,
+    //    config->profile);
+    attrib->profile = 1;
     attrib->byFrame = 1;
     //attrib->byFrame = 0;
     attrib->height = config->height;
     attrib->width = config->width;
     attrib->bFrameNum = 0;
-    attrib->refNum = 1;
-    //attrib->refNum = 0;
+    //attrib->refNum = 1;
+    attrib->refNum = 0;
 
-    fprintf(stdout, "Creating channel %d with %dx%d resolution and %d fps, profile %i, bitrate: %i, gop: %i, minQP: %i, maxQP: %i\n",
-        index, config->width, config->height, config->framerate, attrib->profile,
-        channel.rate.h265Cbr.bitrate, channel.rate.h265Cbr.gop
-        );
-
+    channel.rate.h265Cbr.statTime = 0;
+    channel.rate.h265Cbr.avgLvl = 0;
 attach:
+
+    fprintf(stdout, "codec: %u\n", channel.attrib.codec);
+    fprintf(stdout, "maxWidth: %u\n", channel.attrib.h265.maxWidth);
+    fprintf(stdout, "maxHeight: %u\n", channel.attrib.h265.maxHeight);
+    fprintf(stdout, "bufSize: %u\n", channel.attrib.h265.bufSize);
+    fprintf(stdout, "profile: %u\n", channel.attrib.h265.profile);
+    fprintf(stdout, "byFrame: 0x%02x\n", channel.attrib.h265.byFrame);
+    fprintf(stdout, "width: %u\n", channel.attrib.h265.width);
+    fprintf(stdout, "height: %u\n", channel.attrib.h265.height);
+    fprintf(stdout, "bFrameNum: %u\n", channel.attrib.h265.bFrameNum);
+    fprintf(stdout, "refNum: %u\n", channel.attrib.h265.refNum);
+    fprintf(stdout, "mode: %u\n", channel.rate.mode);
+    fprintf(stdout, "gop: %u\n", channel.rate.h265Cbr.gop);
+    fprintf(stdout, "statTime: %u\n", channel.rate.h265Cbr.statTime);
+    fprintf(stdout, "fpsNum: %u\n", channel.rate.h265Cbr.fpsNum);
+    fprintf(stdout, "fpsDen: %u\n", channel.rate.h265Cbr.fpsDen);
+    fprintf(stdout, "bitrate: %u\n", channel.rate.h265Cbr.bitrate);
+    fprintf(stdout, "avgLvl: %u\n", channel.rate.h265Cbr.avgLvl);
+
+
     if (ret = i6_venc.fnCreateChannel(index, &channel))
         return ret;
 
@@ -630,24 +669,40 @@ attach:
     //if (ret = i6_venc.fnGetRCParam(index, &pstRcParam))
     //    return ret;
     
-    //TODO pstRcParam.u32ThrdI[0] = 0;
-    //TODO pstRcParam.u32ThrdP[0] = 0;
-    //TODO pstRcParam.u32RowQpDelta = 5;
+    pstRcParam.u32ThrdI[0] = 0;
+    pstRcParam.u32ThrdP[0] = 0;
+    pstRcParam.u32RowQpDelta = 0;
     pstRcParam.stParamH265Cbr.u32MaxQp = 48;
     pstRcParam.stParamH265Cbr.u32MinQp = 12;
     //pstRcParam.stParamH265Cbr.s32IPQPDelta = -4;
     pstRcParam.stParamH265Cbr.s32IPQPDelta = 0;
-    //pstRcParam.stParamH265Cbr.u32MaxIQp = 48;
-    pstRcParam.stParamH265Cbr.u32MaxIQp = 40;
+    pstRcParam.stParamH265Cbr.u32MaxIQp = 48;
+    //pstRcParam.stParamH265Cbr.u32MaxIQp = 40;
     pstRcParam.stParamH265Cbr.u32MinIQp = 12;
-    pstRcParam.stParamH265Cbr.u32MaxIPProp = 1;
+    //pstRcParam.stParamH265Cbr.u32MaxIPProp = 1;
+    pstRcParam.stParamH265Cbr.u32MaxIPProp = 5;
+    pstRcParam.stParamH265Cbr.u32MaxISize = 0;
+    pstRcParam.stParamH265Cbr.u32MaxPSize = 0;
     //pstRcParam.stParamH265Cbr.u32MaxISize = 20*1024;
     //pstRcParam.stParamH265Cbr.u32MaxPSize = 20*1024;
 
+    /*
     fprintf(stdout, "Set RC Param channel %d with ThrI %i, ThrP %i, RowQpDelta %i, MaxQp %i, MinQp %i, IPQPDelta: %i, MaxIQp: %i, MinIQp: %i, MaxIPProp: %i, MaxISize: %i, MaxPSize: %i\n",
         index, pstRcParam.u32ThrdI[0], pstRcParam.u32ThrdP[0], pstRcParam.u32RowQpDelta, pstRcParam.stParamH265Cbr.u32MaxQp, pstRcParam.stParamH265Cbr.u32MinQp,
          pstRcParam.stParamH265Cbr.s32IPQPDelta, pstRcParam.stParamH265Cbr.u32MaxIQp, pstRcParam.stParamH265Cbr.u32MinIQp, pstRcParam.stParamH265Cbr.u32MaxIPProp,
           pstRcParam.stParamH265Cbr.u32MaxISize, pstRcParam.stParamH265Cbr.u32MaxPSize);
+*/
+    fprintf(stdout, "u32ThrdI[0]: %u\n", pstRcParam.u32ThrdI[0]);
+    fprintf(stdout, "u32ThrdP[0]: %u\n", pstRcParam.u32ThrdP[0]);
+    fprintf(stdout, "u32RowQpDelta: %u\n", pstRcParam.u32RowQpDelta);
+    fprintf(stdout, "u32MaxQp: %u\n", pstRcParam.stParamH265Cbr.u32MaxQp);
+    fprintf(stdout, "u32MinQp: %u\n", pstRcParam.stParamH265Cbr.u32MinQp);
+    fprintf(stdout, "s32IPQPDelta: %d\n", pstRcParam.stParamH265Cbr.s32IPQPDelta);
+    fprintf(stdout, "u32MaxIQp: %u\n", pstRcParam.stParamH265Cbr.u32MaxIQp);
+    fprintf(stdout, "u32MinIQp: %u\n", pstRcParam.stParamH265Cbr.u32MinIQp);
+    fprintf(stdout, "u32MaxIPProp: %u\n", pstRcParam.stParamH265Cbr.u32MaxIPProp);
+    fprintf(stdout, "u32MaxISize: %u\n", pstRcParam.stParamH265Cbr.u32MaxISize);
+    fprintf(stdout, "u32MaxPSize: %u\n", pstRcParam.stParamH265Cbr.u32MaxPSize);
 
     if (ret = i6_venc.fnSetRCParam(index, &pstRcParam))
        return ret;
