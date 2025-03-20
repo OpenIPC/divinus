@@ -163,8 +163,14 @@ int i6_channel_bind(char index, char framerate)
             .device = _i6_vpe_dev, .channel = _i6_vpe_chn, .port = index };
         i6_sys_bind dest = { .module = I6_SYS_MOD_VENC,
             .device = device, .channel = index, .port = _i6_venc_port };
+
+
+        fprintf(stdout, "MI_SYS_BindChnPort2 interceptée avec les arguments:\n");
+        fprintf(stdout, "Source Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", source.module, source.device, source.channel, source.port, framerate);
+        fprintf(stdout, "Dest   Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", dest.module, dest.device, dest.channel, dest.port, framerate);
+        fprintf(stdout, "Link: %d, LinkParam: %d\n", I6_SYS_LINK_FRAMEBASE, 1080);
         if (ret = i6_sys.fnBindExt(&source, &dest, framerate, framerate,
-            I6_SYS_LINK_FRAMEBASE, 0))
+            I6_SYS_LINK_FRAMEBASE, 1080))
             return ret;
     }
 
@@ -285,6 +291,9 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
             return EXIT_FAILURE;
     }
 
+    if (ret = i6_snr.fnSetOrien(_i6_snr_index, 1, 1))
+        return ret;
+
     if (ret = i6_snr.fnGetPadInfo(_i6_snr_index, &_i6_snr_pad))
         return ret;
     if (ret = i6_snr.fnGetPlaneInfo(_i6_snr_index, 0, &_i6_snr_plane))
@@ -306,6 +315,21 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
             device.edge = _i6_snr_pad.intfAttr.bt656.edge;
             device.sync = _i6_snr_pad.intfAttr.bt656.sync;
         }
+
+
+        fprintf(stdout, "intf: %u\n", device.intf);
+        fprintf(stdout, "work: %u\n", device.work);
+        fprintf(stdout, "hdr: %u\n", device.hdr);
+        fprintf(stdout, "edge: %u\n", device.edge);
+        fprintf(stdout, "input: %u\n", device.input);
+        fprintf(stdout, "bitswap: %d\n", device.bitswap);
+        fprintf(stdout, "vsyncInv: %d\n", device.sync.vsyncInv);
+        fprintf(stdout, "hsyncInv: %d\n", device.sync.hsyncInv);
+        fprintf(stdout, "pixclkInv: %d\n", device.sync.pixclkInv);
+        fprintf(stdout, "vsyncDelay: %u\n", device.sync.vsyncDelay);
+        fprintf(stdout, "hsyncDelay: %u\n", device.sync.hsyncDelay);
+        fprintf(stdout, "pixclkDelay: %u\n", device.sync.pixclkDelay);
+
         if (ret = i6_vif.fnSetDeviceConfig(_i6_vif_dev, &device))
             return ret;
     }
@@ -323,6 +347,19 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
             _i6_snr_plane.pixFmt : (I6_PIXFMT_RGB_BAYER + _i6_snr_plane.precision * I6_BAYER_END + _i6_snr_plane.bayer));
         port.frate = I6_VIF_FRATE_FULL;
         port.frameLineCnt = 0;
+
+        fprintf(stdout, "capt.x: %u\n", port.capt.x);
+        fprintf(stdout, "capt.y: %u\n", port.capt.y);
+        fprintf(stdout, "capt.width: %u\n", port.capt.width);
+        fprintf(stdout, "capt.height: %u\n", port.capt.height);
+        fprintf(stdout, "dest.width: %u\n", port.dest.width);
+        fprintf(stdout, "dest.height: %u\n", port.dest.height);
+        fprintf(stdout, "field: %d\n", port.field);
+        fprintf(stdout, "interlaceOn: %d\n", port.interlaceOn);
+        fprintf(stdout, "pixFmt: %d\n", port.pixFmt);
+        fprintf(stdout, "frate: %u\n", port.frate);
+        fprintf(stdout, "frameLineCnt: %u\n", port.frameLineCnt);
+
         if (ret = i6_vif.fnSetPortConfig(_i6_vif_chn, _i6_vif_port, &port))
             return ret;
     }
@@ -391,6 +428,11 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
             .device = _i6_vif_dev, .channel = _i6_vif_chn, .port = _i6_vif_port };
         i6_sys_bind dest = { .module = I6_SYS_MOD_VPE,
             .device = _i6_vpe_dev, .channel = _i6_vpe_chn, .port = _i6_vpe_port };
+
+        fprintf(stdout, "MI_SYS_BindChnPort2 interceptée avec les arguments:\n");
+        fprintf(stdout, "Source Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", source.module, source.device, source.channel, source.port, framerate);
+        fprintf(stdout, "Dest   Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", dest.module, dest.device, dest.channel, dest.port, framerate);
+        fprintf(stdout, "Link: %d, LinkParam: %d\n", I6_SYS_LINK_REALTIME, 0);
         return i6_sys.fnBindExt(&source, &dest, _i6_snr_framerate, _i6_snr_framerate,
             I6_SYS_LINK_REALTIME, 0);
     }

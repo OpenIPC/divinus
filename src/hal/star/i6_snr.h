@@ -87,6 +87,7 @@ typedef struct {
     int (*fnGetResolution)(unsigned int sensor, unsigned char index, i6_snr_res *resolution);
     int (*fnGetResolutionCount)(unsigned int sensor, unsigned int *count);
     int (*fnSetResolution)(unsigned int sensor, unsigned char index);
+    int (*fnSetOrien)(unsigned int sensor, unsigned char mirror, unsigned char flip);
 } i6_snr_impl;
 
 static int i6_snr_load(i6_snr_impl *snr_lib) {
@@ -132,6 +133,11 @@ static int i6_snr_load(i6_snr_impl *snr_lib) {
     if (!(snr_lib->fnSetResolution = (int(*)(unsigned int sensor, unsigned char index))
         hal_symbol_load("i6_snr", snr_lib->handle, "MI_SNR_SetRes")))
         return EXIT_FAILURE;
+
+    if (!(snr_lib->fnSetOrien = (int(*)(unsigned int sensor, unsigned char mirror, unsigned char flip))
+        hal_symbol_load("i6_snr", snr_lib->handle, "MI_SNR_SetOrien")))
+        return EXIT_FAILURE;
+        
 
     return EXIT_SUCCESS;
 }
