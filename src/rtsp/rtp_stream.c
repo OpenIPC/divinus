@@ -216,12 +216,77 @@ void send_pkt(void* buffer, size_t size)
 }
 
 
+#define NAL_UNIT_MAX 10
+
+// Structure pour représenter une unité NAL
+typedef struct {
+    uint8_t *data;
+    size_t size;
+} NALUnit;
+
+#define GET_H264_NAL_UNIT_TYPE(byte) (byte & 0x1F)
+#define GET_H265_NAL_UNIT_TYPE(byte) ((byte & 0x7E) >> 1)
+
+// Fonction pour extraire les unités NAL d'un paquet H.265
+void extract_nal_units(uint8_t *packet, size_t packet_size, NALUnit *nal_units, size_t *nal_count) {
+    size_t i = 0;
+    size_t nal_index = 0;
+    int nal_type = 0;
+
+    while (i < packet_size) {
+        // Rechercher le début d'une unité NAL (0x000001 ou 0x00000001)
+        if (i + 2 < packet_size && packet[i] == 0x00 && packet[i + 1] == 0x00 && packet[i + 2] == 0x01) {
+            size_t nal_start = i + 3;
+            i += 3;
+            
+            nal_type = (packet[i] & 0x7E) >> 1;
+            /* if it is an IFrame or PFrame, do not search for other NAL units*/
+            if ((GET_H264_NAL_UNIT_TYPE(packet[i]) == 1)||(GET_H264_NAL_UNIT_TYPE(packet[i]) == 5)||(GET_H265_NAL_UNIT_TYPE(packet[i]) == 1)||(GET_H265_NAL_UNIT_TYPE(packet[i]) == 19))
+            {
+                //fprintf(stdout, "IFrame or PFrame\n");
+                nal_units[nal_index].data = &packet[nal_start];
+                nal_units[nal_index].size = packet_size - nal_start;
+                nal_index++;
+                break;
+            }
+            else
+            {
+                //fprintf(stdout, "NAL type: %i\n", GET_H265_NAL_UNIT_TYPE(packet[i]));
+            }
+
+            // Rechercher la fin de l'unité NAL (le début de la prochaine unité NAL ou la fin du paquet)
+            while (i + 2 < packet_size && !(packet[i] == 0x00 && packet[i + 1] == 0x00 && (packet[i + 2] == 0x01 || (i + 3 < packet_size && packet[i + 2] == 0x00 && packet[i + 3] == 0x01)))) {
+                i++;
+            }
+
+            size_t nal_end = i;
+
+            // Stocker l'unité NAL
+            nal_units[nal_index].data = &packet[nal_start];
+            nal_units[nal_index].size = nal_end - nal_start;
+            nal_index++;
+
+            if (nal_index == NAL_UNIT_MAX)
+            {
+                break;
+            }
+        } else {
+            i++;
+        }
+    }
+
+    *nal_count = nal_index;
+}
+
 
 
 void *rtp_thread_func(void *arg) {
     rtp_thread_params *params = (rtp_thread_params *)arg;
+    unsigned long long curms, lastms = 0;
+    unsigned long long timediff;
+    unsigned long pkt = 0;
 
-    //char buffer[RTP_PACKET_SIZE];
+    //char buffer[RTP_PACKET_SIZE]; 
     // Create UDP socket
     if ((g_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("socket creation failed");
@@ -243,7 +308,23 @@ void *rtp_thread_func(void *arg) {
             continue;
         }
         buffer_t* buf = doublebuffer_read(&g_db);
-        //fprintf(stdout, "read buffer size %i\n", buf->size);
+
+        curms = current_time_microseconds() / 1000;
+        if (lastms)
+        {
+            timediff = curms - lastms;
+            //if (timediff < 10 || timediff > 20)
+            //    fprintf(stdout, "Time diff %llu ms\n", curms - lastms);
+            //if ( buf->size > 25000)
+            //{
+            //    fprintf(stdout, "pkt %i, read buffer %llu ms, size %i, h265 %i\n", pkt, timediff, buf->size, buf->isH265);
+           // }
+            fprintf(stdout, "pkt %i, read buffer %llu ms, size %i, h265 %i\n", pkt, timediff, buf->size, buf->isH265);
+        }
+        lastms = curms;
+        pkt++;
+
+        
         size_t single_len = 0;
 
         //ASSERT(__retrieve_sprop(h, buf, len) == SUCCESS, goto error);
@@ -260,10 +341,37 @@ void *rtp_thread_func(void *arg) {
             //ASSERT(list_map_inline(&(trans.list_head), (__rtcp_poll), &track_id) == SUCCESS, goto error);
         //} 
         unsigned char *nalptr = buf->buffer;
-        while (__split_nal(buf->buffer, &nalptr, &single_len, buf->size) == SUCCESS) {
-            ASSERT(__transfer_nal_h26x_rtp(nalptr, single_len, buf->isH265) == SUCCESS, goto error);
-        }
     
+        #if 0
+        while (__split_nal(buf->buffer, &nalptr, &single_len, buf->size) == SUCCESS) {
+            //fprintf(stderr, "split_nal %i\n", single_len);
+            fprintf(stderr, "Buf 0x%x, size: %i, nal 0x%x, nal_size: %i\n", buf->buffer, buf->size, nalptr, single_len);
+            //ASSERT(__transfer_nal_h26x_rtp(nalptr, single_len, buf->isH265) == SUCCESS, goto error);
+        }
+        //fprintf(stderr, "nalptr %d %d %d %d\n", buf->buffer[0], buf->buffer[1], buf->buffer[2], buf->buffer[3]);
+        #endif
+        
+
+        //nalptr = &(buf->buffer[4]);
+        //single_len = buf->size - 4;
+        //fprintf(stderr, "Buf 0x%x, size: %i, nal 0x%x, nal_size: %i\n", buf->buffer, buf->size, nalptr, single_len);
+        //ASSERT(__transfer_nal_h26x_rtp(nalptr, single_len, buf->isH265) == SUCCESS, goto error);
+    
+
+        NALUnit nal_units[NAL_UNIT_MAX];
+        size_t nal_count = 0;
+    
+        // Extraire les unités NAL
+        extract_nal_units(buf->buffer, buf->size, nal_units, &nal_count);
+    
+        // Envoie des unités NAL extraites
+        for (size_t i = 0; i < nal_count; i++) {
+            //printf("NAL Unit %zu: ", i + 1);
+
+            //fprintf(stderr, "Buf 0x%x, size: %i, nal 0x%x, nal_size: %i\n", buf->buffer, buf->size, nal_units[i].data, nal_units[i].size);
+            ASSERT(__transfer_nal_h26x_rtp(nal_units[i].data, nal_units[i].size, buf->isH265) == SUCCESS, goto error);
+        }
+
 
 /*
         // Prepare RTP packet (for demonstration, we use a dummy packet)
