@@ -156,10 +156,11 @@ int rk_channel_create(char index, short width, short height, char mirror, char f
         channel.dest.height = height;
         channel.pixFmt = RK_PIXFMT_YUV420SP;
         channel.hdr = RK_HDR_SDR8;
-        channel.srcFps = -1;
+        channel.srcFps = framerate;
         channel.dstFps = framerate;
         channel.mirror = mirror;
         channel.flip = flip;
+        channel.depth = 0;
         if (ret = rk_vpss.fnSetChannelConfig(_rk_vpss_grp, index, &channel))
             return ret;
     }
@@ -212,17 +213,27 @@ int rk_pipeline_create(short width, short height)
         memset(&device, 0, sizeof(device));
 
         if (rk_vi.fnGetDeviceConfig(_rk_vi_dev, &device) == 0xa0088007)
-           if (ret = rk_vi.fnSetDeviceConfig(_rk_vi_dev, &device))
-            return ret;
+            if (ret = rk_vi.fnSetDeviceConfig(_rk_vi_dev, &device))
+                return ret;
     }
     if (ret = rk_vi.fnEnableDevice(_rk_vi_dev))
         return ret;
+
+    {
+        rk_vi_pipe pipe;
+        memset(&pipe, 0, sizeof(pipe));
+        if (ret = rk_vi.fnCreatePipe(_rk_vi_pipe, &pipe))
+            return ret;
+        if (ret = rk_vi.fnStartPipe(_rk_vi_pipe))
+            return ret;
+    }
 
     {
         rk_vi_bind bind;
         memset(&bind, 0, sizeof(bind));
         bind.num = 1;
         bind.pipeId[0] = _rk_vi_pipe;
+        bind.userStarted[0] = 1;
         if (ret = rk_vi.fnBindPipe(_rk_vi_dev, &bind))
             return ret;
     }
@@ -234,14 +245,15 @@ int rk_pipeline_create(short width, short height)
         channel.size.height = height;
         channel.pixFmt = RK_PIXFMT_YUV420SP;
         channel.compress = RK_COMPR_NONE;
-        channel.depth = 1;
+        channel.depth = 0;
         channel.srcFps = -1;
         channel.dstFps = -1;
-        channel.ispOpts.bufCount = 2;
+        channel.ispOpts.bufCount = 1;
+        channel.ispOpts.bufSize = width * height * 3 / 2;
+        channel.ispOpts.vidCap = RK_VI_VCAP_VIDEO_MPLANE;
         channel.ispOpts.vidMem = RK_VI_VMEM_DMABUF;
-        channel.ispOpts.maxSize.width = width;
-        channel.ispOpts.maxSize.height = height;
-        memcpy(channel.ispOpts.entityName, "rkisp_mainpath", strlen("rkisp_mainpath"));
+        channel.bufType = RK_VI_BUF_INTERNAL;
+        strcpy(channel.ispOpts.entityName, "rkisp_mainpath");
         if (ret = rk_vi.fnSetChannelConfig(_rk_vi_pipe, _rk_vi_chn, &channel))
             return ret;
     }
@@ -382,83 +394,109 @@ int rk_video_create(char index, hal_vidconfig *config)
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = RK_VENC_RATEMODE_MJPGCBR;
-                channel.rate.mjpgCbr = (rk_venc_rate_mjpgbr){ .statTime = 1, .srcFps = config->framerate,
-                    .dstFps = config->framerate, .maxBitrate = config->bitrate }; break;
+                channel.rate.mjpgCbr = (rk_venc_rate_mjpgcbr){ .statTime = 1, 
+                    .srcFpsNum = config->framerate, .srcFpsDen = 1,
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1,
+                    .bitrate = config->bitrate }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = RK_VENC_RATEMODE_MJPGVBR;
-                channel.rate.mjpgVbr = (rk_venc_rate_mjpgbr){ .statTime = 1, 
-                    .srcFps = config->framerate, .dstFps = config->framerate, 
-                    .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
+                channel.rate.mjpgVbr = (rk_venc_rate_mjpgvbr){ .statTime = 1, 
+                    .srcFpsNum = config->framerate, .srcFpsDen = 1,
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1, .bitrate = config->bitrate,
+                    .maxBitrate = MAX(config->bitrate, config->maxBitrate),
+                    .minBitrate = MIN(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = RK_VENC_RATEMODE_MJPGQP;
-                channel.rate.mjpgQp = (rk_venc_rate_mjpgqp){ .srcFps = config->framerate,
-                    .dstFps = config->framerate, .quality = config->maxQual }; break;
+                channel.rate.mjpgQp = (rk_venc_rate_mjpgqp){ .srcFpsNum = config->framerate,
+                    .srcFpsDen = 1, .dstFpsNum = config->framerate, .dstFpsDen = 1,
+                    .quality = config->maxQual }; break;
             default:
                 HAL_ERROR("rk_venc", "MJPEG encoder can only support CBR, VBR or fixed QP modes!");
         }
     } else if (config->codec == HAL_VIDCODEC_H265) {
         channel.attrib.codec = RK_VENC_CODEC_H265;
-        channel.gop.normalP.ipQualDelta = config->gop / config->framerate;
+        channel.attrib.profile = MAX(config->profile, 1);
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = RK_VENC_RATEMODE_H265CBR;
-                channel.rate.h265Cbr = (rk_venc_rate_h26xbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .maxBitrate = config->bitrate }; break;
+                channel.rate.h265Cbr = (rk_venc_rate_h26xcbr){ .gop = config->gop,
+                    .statTime = 1, .srcFpsNum = config->framerate, .srcFpsDen = 1,
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1,
+                    .bitrate = config->bitrate }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = RK_VENC_RATEMODE_H265VBR;
-                channel.rate.h265Vbr = (rk_venc_rate_h26xbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
-                    .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
+                channel.rate.h265Vbr = (rk_venc_rate_h26xvbr){ .gop = config->gop,
+                    .statTime = 1, .srcFpsNum = config->framerate, .srcFpsDen = 1,
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1, .bitrate = config->bitrate,
+                    .maxBitrate = MAX(config->bitrate, config->maxBitrate),
+                    .minBitrate = MIN(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = RK_VENC_RATEMODE_H265QP;
                 channel.rate.h265Qp = (rk_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .srcFpsNum = config->framerate, .srcFpsDen = 1,
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1, .interQual = config->maxQual, 
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = RK_VENC_RATEMODE_H265AVBR;
-                channel.rate.h265Avbr = (rk_venc_rate_h26xbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .maxBitrate = config->bitrate }; break;
+                channel.rate.h265Avbr = (rk_venc_rate_h26xvbr){ .gop = config->gop,
+                    .statTime = 1, .srcFpsNum = config->framerate, .srcFpsDen = 1,
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1, .bitrate = config->bitrate,
+                    .maxBitrate = MAX(config->bitrate, config->maxBitrate),
+                    .minBitrate = MIN(config->bitrate, config->maxBitrate) }; break;
             default:
                 HAL_ERROR("rk_venc", "H.265 encoder does not support this mode!");
         }
     } else if (config->codec == HAL_VIDCODEC_H264) {
         channel.attrib.codec = RK_VENC_CODEC_H264;
-        channel.gop.normalP.ipQualDelta = config->gop / config->framerate;
+        switch (config->profile) {
+            case 0: channel.attrib.profile = 66; break;
+            case 1: channel.attrib.profile = 77; break;
+            case 2: channel.attrib.profile = 100; break;
+            default: HAL_ERROR("rk_venc", "H.264 encoder does not support this profile!");
+        }
+        channel.attrib.h264.level = 41;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = RK_VENC_RATEMODE_H264CBR;
-                channel.rate.h264Cbr = (rk_venc_rate_h26xbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .maxBitrate = config->bitrate }; break;
+                channel.rate.h264Cbr = (rk_venc_rate_h26xcbr){ .gop = config->gop,
+                    .statTime = 1, .srcFpsNum = config->framerate, .srcFpsDen = 1,
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1,
+                    .bitrate = config->bitrate }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = RK_VENC_RATEMODE_H264VBR;
-                channel.rate.h264Vbr = (rk_venc_rate_h26xbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
-                    .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
+                channel.rate.h264Vbr = (rk_venc_rate_h26xvbr){ .gop = config->gop,
+                    .statTime = 1, .srcFpsNum = config->framerate, .srcFpsDen = 1,
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1, .bitrate = config->bitrate,
+                    .maxBitrate = MAX(config->bitrate, config->maxBitrate),
+                    .minBitrate = MIN(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = RK_VENC_RATEMODE_H264QP;
                 channel.rate.h264Qp = (rk_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .srcFpsNum = config->framerate, .srcFpsDen = 1,
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1, .interQual = config->maxQual, 
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = RK_VENC_RATEMODE_H264AVBR;
-                channel.rate.h264Avbr = (rk_venc_rate_h26xbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
-                    .maxBitrate = config->bitrate }; break;
+                channel.rate.h264Avbr = (rk_venc_rate_h26xvbr){ .gop = config->gop,
+                    .statTime = 1, .srcFpsNum = config->framerate, .srcFpsDen = 1,
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1, .bitrate = config->bitrate,
+                    .maxBitrate = MAX(config->bitrate, config->maxBitrate),
+                    .minBitrate = MIN(config->bitrate, config->maxBitrate) }; break;
             default:
                 HAL_ERROR("rk_venc", "H.264 encoder does not support this mode!");
         }
     } else HAL_ERROR("rk_venc", "This codec is not supported by the hardware!");
-    channel.attrib.maxPic.width = config->width;
-    channel.attrib.maxPic.height = config->height;
-    channel.attrib.bufSize = ALIGN_UP(config->height * config->width * 3 / 4, 64);
-    if (channel.attrib.codec == RK_VENC_CODEC_H264)
-        channel.attrib.profile = MAX(config->profile, 2);
+    channel.attrib.maxPic.width = ALIGN_UP(config->width, 64);
+    channel.attrib.maxPic.height = ALIGN_UP(config->height, 64);
+    channel.attrib.pixFmt = RK_PIXFMT_YUV420SP;
+    channel.attrib.mirror = RK_MIRR_NONE;
+    channel.attrib.bufSize = ALIGN_UP(config->height * config->width * 3 / 2, 64);
     channel.attrib.byFrame = 1;
     channel.attrib.pic.width = config->width;
     channel.attrib.pic.height = config->height;
+    channel.attrib.vir.width = (config->width + 15) & ~15;
+    channel.attrib.vir.height = (config->height + 15) & ~15;
+    channel.attrib.strmBufCnt = 2;
 
     if (ret = rk_venc.fnCreateChannel(index, &channel))
         return ret;

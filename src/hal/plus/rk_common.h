@@ -32,6 +32,14 @@ typedef enum {
 } rk_common_hdr;
 
 typedef enum {
+    RK_MIRR_NONE,
+    RK_MIRR_HORIZ,
+    RK_MIRR_VERT,
+    RK_MIRR_BOTH,
+    RK_MIRR_END
+} rk_common_mirr;
+
+typedef enum {
   RK_PIXFMT_YUV420SP, RK_PIXFMT_YUV = RK_PIXFMT_YUV420SP,
   RK_PIXFMT_YUV420SP_10BIT,
   RK_PIXFMT_YUV422SP,

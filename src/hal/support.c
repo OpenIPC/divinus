@@ -163,8 +163,8 @@ void hal_identify(void) {
         strcpy(family, "rockchip");
         chnCount = RK_VENC_CHN_NUM;
         chnState = (hal_chnstate*)rk_state;
-        //aud_thread = rk_audio_thread;
-        //vid_thread = rk_video_thread;
+        aud_thread = rk_audio_thread;
+        vid_thread = rk_video_thread;
         return;
     }
 #endif
