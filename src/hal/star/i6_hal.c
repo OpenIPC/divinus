@@ -1,6 +1,7 @@
 #ifdef __arm__
 
 #include "i6_hal.h"
+#include <time.h>
 
 i6_aud_impl  i6_aud;
 i6_isp_impl  i6_isp;
@@ -264,20 +265,24 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
 
         if (ret = i6_snr.fnGetResolutionCount(_i6_snr_index, &count))
             return ret;
+
         for (char i = 0; i < count; i++) {
             if (ret = i6_snr.fnGetResolution(_i6_snr_index, i, &resolution))
                 return ret;
-
-
-            fprintf(stdout, "Profile %d: %dx%d @ %d fps\n", i, resolution.crop.width,
+                fprintf(stdout, "Profile %d: %dx%d @ %d fps\n", i, resolution.crop.width,
                 resolution.crop.height, resolution.maxFps);
+        }
+
+        for (char i = 0; i < count; i++) {
+            if (ret = i6_snr.fnGetResolution(_i6_snr_index, i, &resolution))
+                return ret;
 
             if (width > resolution.crop.width ||
                 height > resolution.crop.height ||
                 framerate > resolution.maxFps)
                 continue;
             
-            fprintf(stdout, "Set profile %i\n", i);
+            fprintf(stdout, "Set profile %i, fps %i\n", i, framerate);
 
             _i6_snr_profile = i;
             if (ret = i6_snr.fnSetResolution(_i6_snr_index, _i6_snr_profile))
@@ -970,65 +975,181 @@ abort:
     return ret;
 }
 
+#define DEBUG
+
 extern unsigned long long current_time_microseconds(void);
 
 
+#define PROC_FILENAME "/proc/mi_isr_timestamps"
 
-MI_S32 _mi_vif_framestart1(MI_U64 u64Data)
-{
-    fprintf(stdout, "DATA %llu \n", u64Data);
+typedef struct {
+    unsigned long      ispframedone_nb;
+    unsigned long long vsync_timestamp;
+    unsigned long long framestart_timestamp;
+    unsigned long long frameend_timestamp;
+    unsigned long long ispframedone_timestamp;
+    unsigned long long one_way_delay_ns;
+} timestamp_buffer_t;
+static timestamp_buffer_t timestamps;
 
-    return 0;
+
+static int proc_fd = -1;
+
+
+
+void venc_finished(void) {
+    char buffer[256];
+    ssize_t bytes_read;
+    unsigned long long current_time_us;
+    unsigned long long acquisition_time_us;
+    unsigned long long isp_processing_time_us;
+    unsigned long long vpe_venc_time_us;
+    struct timespec ts;
+    loff_t pos = 0;
+
+    // Obtenir le temps courant
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    current_time_us = ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000ULL;
+
+    // Ouvrir le fichier /proc/mi_isr_timestamps si nécessaire
+    if (proc_fd < 0) {
+        proc_fd = open(PROC_FILENAME, O_RDONLY);
+        if (proc_fd < 0) {
+            perror("Failed to open /proc/mi_isr_timestamps");
+            return;
+        }
+    }
+
+    lseek(proc_fd, 0, SEEK_SET);
+    bytes_read = read(proc_fd, buffer, sizeof(buffer) - 1);
+    if (bytes_read < 0) {
+        perror("Failed to read /proc/mi_isr_timestamps");
+        close(proc_fd);
+        proc_fd = -1;
+        return;
+    }
+    buffer[bytes_read] = '\0';
+
+    // Parse the timestamps
+    sscanf(buffer, "Frame: %u, VSync: %llu us, FrameStart: %llu us, FrameEnd: %llu us, ISPFrameDone: %llu us\n",
+           &timestamps.ispframedone_nb,
+           &timestamps.vsync_timestamp,
+           &timestamps.framestart_timestamp,
+           &timestamps.frameend_timestamp,
+           &timestamps.ispframedone_timestamp);
+
+    // Calculer les temps
+    acquisition_time_us = timestamps.frameend_timestamp - timestamps.vsync_timestamp;
+    isp_processing_time_us = timestamps.ispframedone_timestamp - timestamps.frameend_timestamp;
+    vpe_venc_time_us = current_time_us - timestamps.ispframedone_timestamp;
+
+    // Publier les résultats
+    printf("Acquisition Time: %llu us\n", acquisition_time_us);
+    printf("ISP Processing Time: %llu us\n", isp_processing_time_us);
+    printf("VPE + VENC Time: %llu us\n", vpe_venc_time_us);
 }
-MI_S32 _mi_vif_framestart2(MI_U64 u64Data)
-{
-    fprintf(stdout, "DATA %llu \n", u64Data);
 
-    return 0;
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <time.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+
+
+#define GROUND_IP "192.168.1.14" // Adresse IP du système "ground"
+#define GROUND_PORT 12345       // Port du système "ground"
+#define AIR_PORT 12346          // Port du système "air"
+#define TIMEOUT_US 500          // Timeout en microsecondes
+
+static int sockfd = -1;
+static struct sockaddr_in ground_addr;
+
+int timestamp_init(void)
+{
+    // Créer un socket UDP
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("Failed to create socket");
+        return 1;
+    }
+
+    struct sockaddr_in air_addr;
+    memset(&air_addr, 0, sizeof(air_addr));
+    air_addr.sin_family = AF_INET;
+    air_addr.sin_addr.s_addr = INADDR_ANY;
+    air_addr.sin_port = htons(AIR_PORT);
+
+    if (bind(sockfd, (struct sockaddr *)&air_addr, sizeof(air_addr)) < 0) {
+        perror("Failed to bind socket");
+        close(sockfd);
+        return 1;
+    }
+
+    memset(&ground_addr, 0, sizeof(ground_addr));
+    ground_addr.sin_family = AF_INET;
+    ground_addr.sin_port = htons(GROUND_PORT);
+    if (inet_pton(AF_INET, GROUND_IP, &ground_addr.sin_addr) <= 0) {
+        perror("Invalid address/Address not supported");
+        close(sockfd);
+        return 1;
+    }
 }
 
-static void _mi_vif_testRegVifCallback(void)
+void timestamp_send_finished(void)
 {
-    MI_VIF_CallBackParam_t stCallBackParam1;
-    MI_VIF_CallBackParam_t stCallBackParam2;
-    int u32VifChn = 0;
-    memset(&stCallBackParam1, 0x0, sizeof(MI_VIF_CallBackParam_t));
-    memset(&stCallBackParam2, 0x0, sizeof(MI_VIF_CallBackParam_t));
-    stCallBackParam1.eCallBackMode = E_MI_VIF_CALLBACK_ISR;
-    stCallBackParam1.eIrqType = E_MI_VIF_IRQ_FRAMESTART;
-    stCallBackParam1.pfnCallBackFunc = _mi_vif_framestart1;
-    stCallBackParam1.u64Data = 11;
-    i6_vif.fnSetCB(u32VifChn,&stCallBackParam1);
+    struct timespec ts;
+    unsigned long long air_time_ns, rtt_ns, ground_time_ns;
+    socklen_t addr_len = sizeof(ground_addr);
+    char buffer[256];
 
-    stCallBackParam2.eCallBackMode = E_MI_VIF_CALLBACK_ISR;
-    stCallBackParam2.eIrqType = E_MI_VIF_IRQ_FRAMESTART;
-    stCallBackParam2.pfnCallBackFunc = _mi_vif_framestart2;
-    stCallBackParam2.u64Data = 22;
-    i6_vif.fnSetCB(u32VifChn,&stCallBackParam2);
+    // Capturer le temps "air"
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    air_time_ns = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+
+    // Envoyer le temps "air" au système "ground"
+    if (sendto(sockfd, &air_time_ns, sizeof(air_time_ns), 0, (struct sockaddr *)&ground_addr, sizeof(ground_addr)) < 0) {
+        perror("Failed to send data");
+        return;
+    }
+
+    // Recevoir la réponse du système "ground" avec timeout
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = TIMEOUT_US;
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
+    if (recvfrom(sockfd, &ground_time_ns, sizeof(ground_time_ns), 0, (struct sockaddr *)&ground_addr, &addr_len) < 0) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            printf("Receive timeout\n");
+        } else {
+            perror("Failed to receive data");
+        }
+        return;
+    }
+
+    // Capturer le temps de réception de la réponse
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    rtt_ns = ts.tv_sec * 1000000000ULL + ts.tv_nsec - air_time_ns;
+
+    // Calculer le temps de traversée unidirectionnel
+    timestamps.one_way_delay_ns = rtt_ns / 2;
+
+#ifdef DEBUG
+    printf("Sent air time: %llu ns\n", air_time_ns);
+    printf("Received ground time: %llu ns\n", ground_time_ns);
+    printf("RTT: %llu ns\n", rtt_ns);
+    printf("One-way delay: %llu ns\n", timestamps.one_way_delay_ns);
+#endif
+
+    if (sendto(sockfd, &timestamps, sizeof(timestamps), 0, (struct sockaddr *)&ground_addr, sizeof(ground_addr)) < 0) {
+        perror("Failed to send data");
+        return;
+    }
 }
-
-static void _mi_vif_testUnRegVifCallback(void)
-{
-    MI_VIF_CallBackParam_t stCallBackParam1;
-    MI_VIF_CallBackParam_t stCallBackParam2;
-
-    int u32VifChn = 0;
-    memset(&stCallBackParam1, 0x0, sizeof(MI_VIF_CallBackParam_t));
-    memset(&stCallBackParam1, 0x0, sizeof(MI_VIF_CallBackParam_t));
-    stCallBackParam1.eCallBackMode = E_MI_VIF_CALLBACK_ISR;
-    stCallBackParam1.eIrqType = E_MI_VIF_IRQ_FRAMESTART;
-    stCallBackParam1.pfnCallBackFunc = _mi_vif_framestart1;
-    stCallBackParam1.u64Data = 33;
-    i6_vif.fnUnsetCB(u32VifChn,&stCallBackParam1);
-
-    stCallBackParam2.eCallBackMode = E_MI_VIF_CALLBACK_ISR;
-    stCallBackParam2.eIrqType = E_MI_VIF_IRQ_FRAMESTART;
-    stCallBackParam2.pfnCallBackFunc = _mi_vif_framestart2;
-    stCallBackParam2.u64Data = 44;
-
-    i6_vif.fnUnsetCB(u32VifChn,&stCallBackParam2);
-}
-
 
 void *i6_video_thread(void)
 {
@@ -1059,11 +1180,10 @@ void *i6_video_thread(void)
     struct timeval timeout;
     fd_set readFds;
 
-    //fprintf(stdout, "call _mi_vif_testRegVifCallback\n");
-    //_mi_vif_testRegVifCallback();
-    //fprintf(stdout, "after _mi_vif_testRegVifCallback\n");
 
-
+    unsigned long long lastTs = 0;
+    timestamp_init();
+    
     while (keepRunning) {
         FD_ZERO(&readFds);
         for(int i = 0; i < I6_VENC_CHN_NUM; i++) {
@@ -1125,13 +1245,18 @@ void *i6_video_thread(void)
                         break;
                     }
 
+                    venc_finished();
+
                     if (i6_vid_cb) {
                         hal_vidstream outStrm;
                         hal_vidpack outPack[stream.count];
                         outStrm.count = stream.count;
                         outStrm.seq = stream.sequence;
                         for (int j = 0; j < stream.count; j++) {
+                            
                             i6_venc_pack *pack = &stream.packet[j];
+                            fprintf(stdout, "Stream %d, packet %d, diff %llu\n", j, pack->packNum, pack->timestamp - lastTs);
+                            lastTs = pack->timestamp;
                             outPack[j].data = pack->data;
                             outPack[j].length = pack->length;
                             outPack[j].naluCnt = pack->packNum;
@@ -1199,9 +1324,16 @@ void *i6_video_thread(void)
                     }
                     free(stream.packet);
                     stream.packet = NULL;
+
+                    timestamp_send_finished();
                 }
             }
         }
+    }
+
+    // Fermer le fichier à la fin du programme
+    if (proc_fd >= 0) {
+        close(proc_fd);
     }
 
     HAL_INFO("i6_venc", "Shutting down encoding thread...\n");
