@@ -983,33 +983,37 @@ extern unsigned long long current_time_microseconds(void);
 #define PROC_FILENAME "/proc/mi_isr_timestamps"
 
 typedef struct {
-    unsigned long      ispframedone_nb;
+    unsigned long      frameNb;
     unsigned long long vsync_timestamp;
     unsigned long long framestart_timestamp;
     unsigned long long frameend_timestamp;
     unsigned long long ispframedone_timestamp;
+    unsigned long long vencdone_timestamp;
     unsigned long long one_way_delay_ns;
-} timestamp_buffer_t;
-static timestamp_buffer_t timestamps;
+} air_timestamp_buffer_t;
+static air_timestamp_buffer_t timestamps;
 
 
 static int proc_fd = -1;
 
 
 
-void venc_finished(void) {
+void venc_finished() {
     char buffer[256];
     ssize_t bytes_read;
-    unsigned long long current_time_us;
-    unsigned long long acquisition_time_us;
-    unsigned long long isp_processing_time_us;
-    unsigned long long vpe_venc_time_us;
+    unsigned long long current_time_ns;
+    unsigned long long acquisition_time_ns;
+    unsigned long long isp_processing_time_ns;
+    unsigned long long vpe_venc_time_ns;
+    unsigned long ispframedone_nb;
+
     struct timespec ts;
     loff_t pos = 0;
 
     // Obtenir le temps courant
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    current_time_us = ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000ULL;
+    current_time_ns = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+    timestamps.vencdone_timestamp = current_time_ns;
 
     // Ouvrir le fichier /proc/mi_isr_timestamps si nécessaire
     if (proc_fd < 0) {
@@ -1031,22 +1035,23 @@ void venc_finished(void) {
     buffer[bytes_read] = '\0';
 
     // Parse the timestamps
-    sscanf(buffer, "Frame: %u, VSync: %llu us, FrameStart: %llu us, FrameEnd: %llu us, ISPFrameDone: %llu us\n",
-           &timestamps.ispframedone_nb,
+    sscanf(buffer, "Frame: %u, VSync: %llu ns, FrameStart: %llu ns, FrameEnd: %llu ns, ISPFrameDone: %llu ns\n",
+           &ispframedone_nb,
            &timestamps.vsync_timestamp,
            &timestamps.framestart_timestamp,
            &timestamps.frameend_timestamp,
            &timestamps.ispframedone_timestamp);
 
+
     // Calculer les temps
-    acquisition_time_us = timestamps.frameend_timestamp - timestamps.vsync_timestamp;
-    isp_processing_time_us = timestamps.ispframedone_timestamp - timestamps.frameend_timestamp;
-    vpe_venc_time_us = current_time_us - timestamps.ispframedone_timestamp;
+    acquisition_time_ns = timestamps.frameend_timestamp - timestamps.vsync_timestamp;
+    isp_processing_time_ns = timestamps.ispframedone_timestamp - timestamps.frameend_timestamp;
+    vpe_venc_time_ns = timestamps.vencdone_timestamp - timestamps.ispframedone_timestamp;
 
     // Publier les résultats
-    printf("Acquisition Time: %llu us\n", acquisition_time_us);
-    printf("ISP Processing Time: %llu us\n", isp_processing_time_us);
-    printf("VPE + VENC Time: %llu us\n", vpe_venc_time_us);
+    printf("Acquisition Time: %llu ns\n", acquisition_time_ns);
+    printf("ISP Processing Time: %llu ns\n", isp_processing_time_ns);
+    printf("VPE + VENC Time: %llu ns\n", vpe_venc_time_ns);
 }
 
 
@@ -1099,7 +1104,7 @@ int timestamp_init(void)
     }
 }
 
-void timestamp_send_finished(void)
+void timestamp_send_finished(unsigned long frameNb)
 {
     struct timespec ts;
     unsigned long long air_time_ns, rtt_ns, ground_time_ns;
@@ -1144,7 +1149,7 @@ void timestamp_send_finished(void)
     printf("RTT: %llu ns\n", rtt_ns);
     printf("One-way delay: %llu ns\n", timestamps.one_way_delay_ns);
 #endif
-
+    timestamps.frameNb = frameNb;
     if (sendto(sockfd, &timestamps, sizeof(timestamps), 0, (struct sockaddr *)&ground_addr, sizeof(ground_addr)) < 0) {
         perror("Failed to send data");
         return;
@@ -1325,7 +1330,7 @@ void *i6_video_thread(void)
                     free(stream.packet);
                     stream.packet = NULL;
 
-                    timestamp_send_finished();
+                    //timestamp_send_finished(0);
                 }
             }
         }

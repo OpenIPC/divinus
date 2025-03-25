@@ -16,6 +16,45 @@
 
 #include <time.h>
 
+
+
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define SEI_PAYLOAD_TYPE_USER_DATA_UNREGISTERED 5
+
+typedef struct {
+    uint8_t payloadType;
+    uint8_t payloadSize;
+    uint8_t payload[256];
+} sei_message_t;
+
+static void create_sei_message(sei_message_t *sei, uint32_t frame_number) {
+    sei->payloadType = SEI_PAYLOAD_TYPE_USER_DATA_UNREGISTERED;
+    sei->payloadSize = sizeof(frame_number);
+    frame_number = htonl(frame_number);
+    memcpy(sei->payload, &frame_number, sizeof(frame_number));
+    //fprintf(stderr, "FrameNb: %x %x %x %x\n", sei->payload[0], sei->payload[1], sei->payload[2], sei->payload[3]);
+}
+
+static void format_sei_nalu_h265(uint8_t *sei_nalu, sei_message_t *sei, size_t *sei_nalu_size) {
+    uint8_t sei_header[] = {0x4E}; // NALU header for SEI
+    size_t sei_header_size = sizeof(sei_header);
+    size_t sei_message_size = 2 + sei->payloadSize; // payloadType + payloadSize + payload
+
+    // Copier le header SEI
+    memcpy(sei_nalu, sei_header, sei_header_size);
+    sei_nalu[sei_header_size] = sei->payloadType;
+    sei_nalu[sei_header_size + 1] = sei->payloadSize;
+    memcpy(sei_nalu + sei_header_size + 2, sei->payload, sei->payloadSize);
+
+    *sei_nalu_size = sei_header_size + sei_message_size;
+}
+
+
+
 unsigned long long current_time_microseconds(void) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -74,6 +113,8 @@ buffer_t* doublebuffer_write(doublebuffer_t *db)
 {
     return &db->doublebuffer[db->current];
 }
+
+
 
 int rtp_stream_send_h26x(unsigned char *buf, size_t len, char isH265)
 {
@@ -278,7 +319,7 @@ void extract_nal_units(uint8_t *packet, size_t packet_size, NALUnit *nal_units, 
     *nal_count = nal_index;
 }
 
-
+extern void timestamp_send_finished(unsigned long frameNb);
 
 void *rtp_thread_func(void *arg) {
     rtp_thread_params *params = (rtp_thread_params *)arg;
@@ -360,17 +401,34 @@ void *rtp_thread_func(void *arg) {
 
         NALUnit nal_units[NAL_UNIT_MAX];
         size_t nal_count = 0;
-    
+
         // Extraire les unités NAL
         extract_nal_units(buf->buffer, buf->size, nal_units, &nal_count);
-    
+        
+        // Create sei message and send to ground
+        static unsigned long frameNb = 0;
+        sei_message_t sei;
+        create_sei_message(&sei, frameNb);
+        frameNb++;
+
+        uint8_t sei_nalu[256];
+        size_t sei_nalu_size;
+        format_sei_nalu_h265(sei_nalu, &sei, &sei_nalu_size);
+        // TODO : do it also    for h264
+        ASSERT(__transfer_nal_h26x_rtp(sei_nalu, sei_nalu_size, buf->isH265) == SUCCESS, goto error);
+
         // Envoie des unités NAL extraites
         for (size_t i = 0; i < nal_count; i++) {
+            
+            fprintf(stderr, "%x %x %x %x %x %x %x %x\n", nal_units[i].data[0], nal_units[i].data[1], nal_units[i].data[2], nal_units[i].data[3], nal_units[i].data[4], nal_units[i].data[5], nal_units[i].data[6], nal_units[i].data[7]);
             //printf("NAL Unit %zu: ", i + 1);
 
             //fprintf(stderr, "Buf 0x%x, size: %i, nal 0x%x, nal_size: %i\n", buf->buffer, buf->size, nal_units[i].data, nal_units[i].size);
             ASSERT(__transfer_nal_h26x_rtp(nal_units[i].data, nal_units[i].size, buf->isH265) == SUCCESS, goto error);
         }
+
+        // send timestamps to ground
+        timestamp_send_finished(frameNb);
 
 
 /*
