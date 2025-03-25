@@ -1049,9 +1049,9 @@ void venc_finished() {
     vpe_venc_time_ns = timestamps.vencdone_timestamp - timestamps.ispframedone_timestamp;
 
     // Publier les résultats
-    printf("Acquisition Time: %llu ns\n", acquisition_time_ns);
-    printf("ISP Processing Time: %llu ns\n", isp_processing_time_ns);
-    printf("VPE + VENC Time: %llu ns\n", vpe_venc_time_ns);
+    //printf("Acquisition Time: %llu ns\n", acquisition_time_ns);
+    //printf("ISP Processing Time: %llu ns\n", isp_processing_time_ns);
+    //printf("VPE + VENC Time: %llu ns\n", vpe_venc_time_ns);
 }
 
 
@@ -1104,10 +1104,27 @@ int timestamp_init(void)
     }
 }
 
+// Define htonll and ntohll functions
+uint64_t htonll(uint64_t value) {
+    if (htonl(1) != 1) {
+        return ((uint64_t)htonl(value & 0xFFFFFFFF) << 32) | htonl(value >> 32);
+    } else {
+        return value;
+    }
+}
+
+uint64_t ntohll(uint64_t value) {
+    if (ntohl(1) != 1) {
+        return ((uint64_t)ntohl(value & 0xFFFFFFFF) << 32) | ntohl(value >> 32);
+    } else {
+        return value;
+    }
+}
+
 void timestamp_send_finished(unsigned long frameNb)
 {
     struct timespec ts;
-    unsigned long long air_time_ns, rtt_ns, ground_time_ns;
+    unsigned long long air_time_ns, air_time_ns_network, rtt_ns, ground_time_ns;
     socklen_t addr_len = sizeof(ground_addr);
     char buffer[256];
 
@@ -1116,7 +1133,8 @@ void timestamp_send_finished(unsigned long frameNb)
     air_time_ns = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
 
     // Envoyer le temps "air" au système "ground"
-    if (sendto(sockfd, &air_time_ns, sizeof(air_time_ns), 0, (struct sockaddr *)&ground_addr, sizeof(ground_addr)) < 0) {
+    air_time_ns_network = htonll(air_time_ns);
+    if (sendto(sockfd, &air_time_ns_network, sizeof(air_time_ns_network), 0, (struct sockaddr *)&ground_addr, sizeof(ground_addr)) < 0) {
         perror("Failed to send data");
         return;
     }
@@ -1140,16 +1158,37 @@ void timestamp_send_finished(unsigned long frameNb)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     rtt_ns = ts.tv_sec * 1000000000ULL + ts.tv_nsec - air_time_ns;
 
+    // convertir le temps de réception du système "ground" en réseau en local
+    ground_time_ns = ntohll(ground_time_ns);
+
     // Calculer le temps de traversée unidirectionnel
     timestamps.one_way_delay_ns = rtt_ns / 2;
 
 #ifdef DEBUG
-    printf("Sent air time: %llu ns\n", air_time_ns);
-    printf("Received ground time: %llu ns\n", ground_time_ns);
-    printf("RTT: %llu ns\n", rtt_ns);
-    printf("One-way delay: %llu ns\n", timestamps.one_way_delay_ns);
+    //printf("Packet sent %i =>\n", frameNb);
+    //printf("Sent air time:        %llu ns\n", air_time_ns);
+    //printf("Received ground time: %llu ns\n", ground_time_ns);
+    //printf("RTT:                  %llu ns\n", rtt_ns);
+    //printf("One-way delay:        %llu ns\n", timestamps.one_way_delay_ns);
+
+      
+    //fprintf(stdout, "Packet sent %lu =>\n", frameNb);
+	//fprintf(stdout, "AirTime:                %llu us\n", air_time_ns / 1000);
+	//fprintf(stdout, "GroundTime:             %llu us\n", ground_time_ns / 1000);
+    //fprintf(stdout, "Vsync:                  %llu us\n", timestamps.vsync_timestamp / 1000);
+    //fprintf(stdout, "ISP Done:               %llu us\n", timestamps.ispframedone_timestamp / 1000);
+	//fprintf(stdout, "Venc Done:              %llu us\n", timestamps.vencdone_timestamp / 1000);
+	//fprintf(stdout, "Air One Way Delay:      %llu us\n", timestamps.one_way_delay_ns / 1000);
+
 #endif
-    timestamps.frameNb = frameNb;
+    timestamps.frameNb = htonl(frameNb);
+    timestamps.vsync_timestamp = htonll(timestamps.vsync_timestamp);
+    timestamps.framestart_timestamp = htonll(timestamps.framestart_timestamp);
+    timestamps.frameend_timestamp = htonll(timestamps.frameend_timestamp);
+    timestamps.ispframedone_timestamp = htonll(timestamps.ispframedone_timestamp);
+    timestamps.vencdone_timestamp = htonll(timestamps.vencdone_timestamp);
+    timestamps.one_way_delay_ns = htonll(timestamps.one_way_delay_ns);
+
     if (sendto(sockfd, &timestamps, sizeof(timestamps), 0, (struct sockaddr *)&ground_addr, sizeof(ground_addr)) < 0) {
         perror("Failed to send data");
         return;
@@ -1260,7 +1299,7 @@ void *i6_video_thread(void)
                         for (int j = 0; j < stream.count; j++) {
                             
                             i6_venc_pack *pack = &stream.packet[j];
-                            fprintf(stdout, "Stream %d, packet %d, diff %llu\n", j, pack->packNum, pack->timestamp - lastTs);
+                            //fprintf(stdout, "Stream %d, packet %d, diff %llu\n", j, pack->packNum, pack->timestamp - lastTs);
                             lastTs = pack->timestamp;
                             outPack[j].data = pack->data;
                             outPack[j].length = pack->length;

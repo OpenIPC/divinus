@@ -360,7 +360,7 @@ void *rtp_thread_func(void *arg) {
             //{
             //    fprintf(stdout, "pkt %i, read buffer %llu ms, size %i, h265 %i\n", pkt, timediff, buf->size, buf->isH265);
            // }
-            fprintf(stdout, "pkt %i, read buffer %llu ms, size %i, h265 %i\n", pkt, timediff, buf->size, buf->isH265);
+           // fprintf(stdout, "pkt %i, read buffer %llu ms, size %i, h265 %i\n", pkt, timediff, buf->size, buf->isH265);
         }
         lastms = curms;
         pkt++;
@@ -409,7 +409,6 @@ void *rtp_thread_func(void *arg) {
         static unsigned long frameNb = 0;
         sei_message_t sei;
         create_sei_message(&sei, frameNb);
-        frameNb++;
 
         uint8_t sei_nalu[256];
         size_t sei_nalu_size;
@@ -420,7 +419,7 @@ void *rtp_thread_func(void *arg) {
         // Envoie des unités NAL extraites
         for (size_t i = 0; i < nal_count; i++) {
             
-            fprintf(stderr, "%x %x %x %x %x %x %x %x\n", nal_units[i].data[0], nal_units[i].data[1], nal_units[i].data[2], nal_units[i].data[3], nal_units[i].data[4], nal_units[i].data[5], nal_units[i].data[6], nal_units[i].data[7]);
+            //fprintf(stderr, "%x %x %x %x %x %x %x %x\n", nal_units[i].data[0], nal_units[i].data[1], nal_units[i].data[2], nal_units[i].data[3], nal_units[i].data[4], nal_units[i].data[5], nal_units[i].data[6], nal_units[i].data[7]);
             //printf("NAL Unit %zu: ", i + 1);
 
             //fprintf(stderr, "Buf 0x%x, size: %i, nal 0x%x, nal_size: %i\n", buf->buffer, buf->size, nal_units[i].data, nal_units[i].size);
@@ -429,6 +428,7 @@ void *rtp_thread_func(void *arg) {
 
         // send timestamps to ground
         timestamp_send_finished(frameNb);
+        frameNb++;
 
 
 /*
