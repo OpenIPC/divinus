@@ -980,7 +980,7 @@ abort:
 extern unsigned long long current_time_microseconds(void);
 
 
-#define PROC_FILENAME "/proc/mi_isr_timestamps"
+#define PROC_FILENAME "/proc/sstarts"
 
 typedef struct {
     unsigned long      frameNb;
@@ -1015,11 +1015,11 @@ void venc_finished() {
     current_time_ns = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
     timestamps.vencdone_timestamp = current_time_ns;
 
-    // Ouvrir le fichier /proc/mi_isr_timestamps si nécessaire
+    // Ouvrir le fichier /proc/sstarts si nécessaire
     if (proc_fd < 0) {
         proc_fd = open(PROC_FILENAME, O_RDONLY);
         if (proc_fd < 0) {
-            perror("Failed to open /proc/mi_isr_timestamps");
+            perror("Failed to open /proc/sstarts");
             return;
         }
     }
@@ -1027,7 +1027,7 @@ void venc_finished() {
     lseek(proc_fd, 0, SEEK_SET);
     bytes_read = read(proc_fd, buffer, sizeof(buffer) - 1);
     if (bytes_read < 0) {
-        perror("Failed to read /proc/mi_isr_timestamps");
+        perror("Failed to read /proc/sstarts");
         close(proc_fd);
         proc_fd = -1;
         return;
