@@ -994,6 +994,81 @@ typedef struct {
 static air_timestamp_buffer_t timestamps;
 
 
+
+static int is_module_loaded(const char *module_name) {
+    FILE *fp = fopen("/proc/modules", "r");
+    if (!fp) {
+        perror("Failed to open /proc/modules");
+        return -1;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), fp)) {
+        if (strncmp(line, module_name, strlen(module_name)) == 0) {
+            fclose(fp);
+            return 1; // Module is loaded
+        }
+    }
+
+    fclose(fp);
+    return 0; // Module is not loaded
+}
+
+int load_sstarts(void) {
+    const char *module_name = "sstarts";
+    const char *path1 = "/root/sstarts.ko";
+    const char *path2 = "/lib/modules/4.9.84/extra/sstarts.ko";
+    const char *module_path = NULL;
+
+    // Check if the module is already loaded
+    int loaded = is_module_loaded(module_name);
+    if (loaded < 0) {
+        return 1; // Error occurred while checking
+    } else if (loaded == 1) {
+        printf("Module '%s' is already loaded. Attempting to remove it...\n", module_name);
+        if (system("rmmod sstarts") != 0) {
+            perror("Failed to remove kernel module");
+            return 1;
+        }
+        printf("Module '%s' removed successfully.\n", module_name);
+    }
+
+    // Check if the module exists at the first path
+    if (access(path1, F_OK) == 0) {
+        module_path = path1;
+    }
+    // Check if the module exists at the second path
+    else if (access(path2, F_OK) == 0) {
+        module_path = path2;
+    } else {
+        fprintf(stderr, "%s kernel module not found at either path %s or %s\n", module_name, path1, path2);
+        return 1;
+    }
+
+    // Construct the insmod command
+    char command[256];
+    snprintf(command, sizeof(command), "insmod %s", module_path);
+
+    // Execute the insmod command
+    int ret = system(command);
+
+    // Check the result
+    if (ret == 0) {
+        printf("Kernel module inserted successfully from %s.\n", module_path);
+    } else {
+        perror("Failed to insert kernel module sstarts");
+    }
+
+    return ret;
+}
+
+
+
+
+
+
+
+
 static int proc_fd = -1;
 
 
@@ -1227,6 +1302,8 @@ void *i6_video_thread(void)
 
     unsigned long long lastTs = 0;
     timestamp_init();
+
+    load_sstarts();
     
     while (keepRunning) {
         FD_ZERO(&readFds);
