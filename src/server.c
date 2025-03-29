@@ -1179,11 +1179,8 @@ png_error:
                     osds[id].size = (result != 0 ? result : DEF_SIZE);
                 }
                 else if (EQUALS(key, "color")) {
-                    char base = 16;
-                    if (strlen(value) > 1 && value[1] == 'x') base = 0;
-                    short result = strtol(value, &remain, base);
-                    if (remain != value)
-                        osds[id].color = result;
+                    int result = color_parse(value);
+                    osds[id].color = result;
                 }
                 else if (EQUALS(key, "opal")) {
                     short result = strtol(value, &remain, 10);
@@ -1210,13 +1207,16 @@ png_error:
             }
             osds[id].updt = 1;
         }
+        int color = (((osds[id].color >> 10) & 0x1F) * 255 / 31) << 16 |
+                    (((osds[id].color >> 5) & 0x1F) * 255 / 31) << 8 |
+                    ((osds[id].color & 0x1F) * 255 / 31);
         respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"id\":%d,\"color\":\"%#x\",\"opal\":%d,\"pos\":[%d,%d],\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\"}",
-            id, osds[id].color, osds[id].opal, osds[id].posx, osds[id].posy, osds[id].font, osds[id].size, osds[id].text);
+            "{\"id\":%d,\"color\":\"#%x\",\"opal\":%d,\"pos\":[%d,%d],\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\"}",
+            id, color, osds[id].opal, osds[id].posx, osds[id].posy, osds[id].font, osds[id].size, osds[id].text);
         send_and_close(req->clntFd, response, respLen);
         return;
     }

@@ -39,7 +39,8 @@
 			for (var i = 0; i < elems.length; i++) {
 				if (!elems[i].id || elems[i].id.lastIndexOf(endp + '_', 0)) continue;
 				if (elems[i].type && elems[i].type == "file") continue;
-					dest += elems[i].id.substring(endp.length + 1) + '=' + elems[i].value + '&';
+					dest += elems[i].id.substring(endp.length + 1) +
+						'=' + encodeURIComponent(elems[i].value) + '&';
 			}
 			dest = dest.slice(0, -1);
 			req.open('GET', dest);
@@ -88,6 +89,8 @@
 						elems[j].action = elems[j].action.replace(row, row + '/' + i);
 					if (elems[j].htmlFor)
 						elems[j].htmlFor = elems[j].htmlFor.replace(row, row + '/' + i);
+					if (elems[j].href)
+						elems[j].href = elems[j].href.replace(row, row + '/' + i);
 					if (elems[j].id)
 						elems[j].id = elems[j].id.replace(row, row + '/' + i);
 					if (elems[j].name)
@@ -112,6 +115,11 @@
 			}
 			req.open('GET', '/api/cmd?save');
 			req.send();
+		}
+
+		function saveOsds() {
+			for (var i = 0; i < 10; i++)
+				apiApply('osd/' + i);
 		}
 
 		function setSource(id, src) {
@@ -340,13 +348,14 @@
 		<div class="c bg-black menu pv2 row" tabindex="0">
 			<b><label for="osd-modal" class="lbl-modal ph2 white">Divinus</label></b>
 			<div class="col">
+				<a href="javascript:saveOsds()" class="ph2">Save All</a>
 				<label for="osd-modal" class="btn primary close">Close</label>
 			</div>
 		</div>
 		<div class="c cont">
 			<h2 class="unl">OSD</h2>
 			<div class="row scrollx">
-				<table class="w-100">
+				<table class="tc w-100">
 					<tr>
 						<th>ID</th>
 						<th>Color</th>
@@ -355,6 +364,7 @@
 						<th>Font family</th>
 						<th>Size</th>
 						<th>Text</th>
+						<th></th>
 					</tr>
 					<tr id="osd_tpl" style="display:none">
 						<td>
@@ -373,6 +383,7 @@
 						<td><input type="number" id="osd_size" step="0.1" size="3"
 							style="width:5em"></td>
 						<td><input type="text" id="osd_text"></td>
+						<td><a href="javascript:apiApply('osd')" class="btn">Apply</a></td>
 					</tr>
 				</table>
 			</div>

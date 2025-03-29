@@ -294,7 +294,7 @@ Gracefully stops the server.
 
 **Response**: Message "Closing..."
 
-### `/`
+### `/`, `/index.htm` or `/index.html`
 
 WebUI homepage.
 
