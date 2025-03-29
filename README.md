@@ -67,6 +67,7 @@ _* At the moment, text, RGB or bitfield bitmaps and PNG overlays are handled, mo
 
 ### Documentation
 
+- [Endpoints](doc/endpoints.md) - _doc/endpoints.md_
 - [Overlays](doc/overlays.md) - _doc/overlays.md_
 
 

@@ -27,6 +27,7 @@ enum ConfigError {
     CONFIG_SECTION_NOT_FOUND,
     CONFIG_PARAM_NOT_FOUND,
     CONFIG_PARAM_ISNT_NUMBER,
+    CONFIG_PARAM_ISNT_FLOAT,
     CONFIG_PARAM_ISNT_IN_RANGE,
     CONFIG_ENUM_INCORRECT_STRING,
     CONFIG_REGEX_ERROR,
@@ -42,6 +43,9 @@ enum ConfigError section_pos(
 enum ConfigError parse_param_value(
     struct IniConfig *ini, const char *section, const char *param_name,
     char *param_value);
+enum ConfigError parse_double(
+    struct IniConfig *ini, const char *section, const char *param_name,
+    const double min, const double max, double *double_value);
 enum ConfigError parse_enum(
     struct IniConfig *ini, const char *section, const char *param_name,
     void *enum_value, const char *possible_values[],

@@ -8,6 +8,7 @@
 
 #include "hal/config.h"
 #include "hal/support.h"
+#include "region.h"
 
 struct AppConfig {
     // [system]

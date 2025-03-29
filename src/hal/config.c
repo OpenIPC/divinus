@@ -88,6 +88,38 @@ enum ConfigError parse_param_value(
     return CONFIG_OK;
 }
 
+enum ConfigError parse_double(
+    struct IniConfig *ini, const char *section, const char *param_name,
+    const double min, const double max, double *double_value) {
+    char param_value[64];
+    enum ConfigError err =
+        parse_param_value(ini, section, param_name, param_value);
+    if (err != CONFIG_OK)
+        return err;
+
+    char *end = NULL;
+    double res = strtod(param_value, &end);
+    if (*end) {
+        res = strtod(param_value, &end);
+    }
+    if (!*end) {
+        if (res < min || res > max) {
+            HAL_DANGER("config",
+                "Can't parse param '%s' value '%s'. Value '%lf' is not in a "
+                "range [%lf; %lf].\n",
+                param_name, param_value, res, min, max);
+            return CONFIG_PARAM_ISNT_IN_RANGE;
+        }
+        *double_value = res;
+        return CONFIG_OK;
+    }
+
+    HAL_DANGER("config",
+        "Can't parse param '%s' value '%s'. Is not a double number.\n",
+        param_name, param_value);
+    return CONFIG_PARAM_ISNT_NUMBER;
+}
+
 enum ConfigError parse_enum(
     struct IniConfig *ini, const char *section, const char *param_name,
     void *enum_value, const char *possible_values[],

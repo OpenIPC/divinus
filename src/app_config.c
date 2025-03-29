@@ -95,6 +95,15 @@ int save_app_config(void) {
 
     fprintf(file, "osd:\n");
     fprintf(file, "  enable: %s\n", app_config.osd_enable ? "true" : "false");
+    for (char i = 0; i < MAX_OSD; i++) {
+        fprintf(file, "    reg%d_text: %s\n", i, osds[i].text);
+        fprintf(file, "    reg%d_font: %s\n", i, osds[i].font);
+        fprintf(file, "    reg%d_opal: %d\n", i, osds[i].opal);
+        fprintf(file, "    reg%d_posx: %d\n", i, osds[i].posx);
+        fprintf(file, "    reg%d_posy: %d\n", i, osds[i].posy);
+        fprintf(file, "    reg%d_size: %.1f\n", i, osds[i].size);
+        fprintf(file, "    reg%d_color: %#04x\n", i, osds[i].color);
+    }
 
     fprintf(file, "jpeg:\n");
     fprintf(file, "  enable: %s\n", app_config.jpeg_enable ? "true" : "false");
@@ -261,6 +270,30 @@ enum ConfigError parse_app_config(void) {
     parse_bool(&ini, "mdns", "enable", &app_config.mdns_enable);
 
     parse_bool(&ini, "osd", "enable", &app_config.osd_enable);
+    if (app_config.osd_enable) {
+        for (char i = 0; i < MAX_OSD; i++) {
+            char param[16];
+            int val;
+            sprintf(param, "reg%d_text", i);
+            parse_param_value(&ini, "osd", param, osds[i].text);
+            sprintf(param, "reg%d_font", i);
+            parse_param_value(&ini, "osd", param, osds[i].font);
+            sprintf(param, "reg%d_opal", i);
+            err = parse_int(&ini, "osd", param, 0, UCHAR_MAX, &val);
+            if (err == CONFIG_OK) osds[i].opal = (unsigned char)val;
+            sprintf(param, "reg%d_posx", i);
+            err = parse_int(&ini, "osd", param, 0, SHRT_MAX, &val);
+            if (err == CONFIG_OK) osds[i].posx = (short)val;
+            sprintf(param, "reg%d_posy", i);
+            err = parse_int(&ini, "osd", param, 0, SHRT_MAX, &val);
+            if (err == CONFIG_OK) osds[i].posy = (short)val;
+            sprintf(param, "reg%d_size", i);
+            parse_double(&ini, "osd", param, 0, INT_MAX, &osds[i].size);
+            sprintf(param, "reg%d_color", i);
+            parse_int(&ini, "osd", param, 0, USHRT_MAX, &osds[i].color);
+            osds[i].updt = 1;
+        }
+    }
 
     parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
     parse_int(&ini, "rtsp", "port", 0, 65535, &app_config.rtsp_port);
