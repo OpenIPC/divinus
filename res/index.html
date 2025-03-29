@@ -3,11 +3,11 @@
 	<title>Divinus</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<style>
-		*{box-sizing:border-box}*+*{margin:.5em 0}pre{overflow:auto}.row,.w-100{width:100%}.vh-100{height:100vh}.card:focus,hr{outline:0;border:solid #fa0}.card,pre{padding:1em;border:solid #eee}
+		*{box-sizing:border-box}*+*{margin:.5em 0}pre{overflow:auto}.row,.w-100{width:100%}.vh-100{height:100vh}.card:focus,hr{outline:0;border:solid #fa0}.card,pre{padding:1em;border:solid #eee}.right{float:right}
 		.tc{text-align:center}.c{padding:1em;margin:auto;font:1em/1.6 sans-serif}.cont{max-width:64em}.gapless{border-spacing:0}.vc{position:relative;top:40%;transform:perspective(1px) translateY(-45%)}
 		a{color:#fa0;text-decoration:none}.btn:hover,a:hover{opacity:.6}.btn.primary{color:#fff;background:#fa0;border:solid #fa0}.btn{padding:1em;text-transform:uppercase;background:#fff;border:solid;font:.7em sans-serif}
 		.inline,a.btn{display:inline-block}.nope{display:none}.pill{border-radius:9999px}.rounded{border-radius:4px}.scrollx{overflow-x:auto}.scrolly{overflow-y:auto}.caps{text-transform:uppercase}.tracked{letter-spacing:.1em}
-		.box{vertical-align:top}.box input,select{width:100%}.box td{padding:.5em}.close{position:absolute;right:2em;top:2em}.lbl-modal:focus,.lbl-modal:hover{cursor:pointer;opacity:.6}.right{float:right}
+		.btn.cell{display:table-cell;width:1%}.box{vertical-align:top}.box input,select{width:100%}.box td{padding:.5em}.close{position:absolute;right:2em;top:2em}.lbl-modal:focus,.lbl-modal:hover{cursor:pointer;opacity:.6}
 		.modal{display:none;background:#fff;position:fixed;bottom:0;left:0;right:0;top:0;margin:0;padding:0;z-index:1}.hide{position:absolute;top:-3px;left:-3px;width:1px;height:1px}.unl{border-bottom:2px solid}
 		input,select{font-family:sans-serif}input[type=checkbox]{position:absolute;opacity:0}input[type=checkbox]:checked+.modal{display:block;z-index:4}.menu .col{display:inline}.menu .btn{margin:-1em 0;padding:.75em}
 		.dim{opacity:1;transition:opacity .15s ease-in}.dim:focus,.dim:hover{opacity:.5;transition:opacity .15s ease-in}h6{font:400 1em sans-serif}h5{font:400 1.2em sans-serif}h4{font:400 1.5em sans-serif}
@@ -122,6 +122,20 @@
 				apiApply('osd/' + i);
 		}
 
+		function setFormatTime() {
+			var fmt = document.getElementById('time_fmt').value;
+			apiRead('time');
+			document.getElementById('time_fmt').value = fmt;
+			apiApply('time');
+		}
+
+		function setLocalTime() {
+			var ts = Math.floor(new Date().getTime() / 1000);
+			document.getElementById('time_ts').value = ts;
+			apiApply('time');
+			apiRead('time');
+		}
+
 		function setSource(id, src) {
 			var frame = document.getElementById(id), ext = ".mp4";
 			if (frame.firstChild) frame.firstChild.src = "#";
@@ -146,6 +160,7 @@
 			apiRead('mp4');
 			apiRead('mjpeg');
 			apiRead('night');
+			apiRead('time');
 
 			duplicateRows('osd', 10);
 			for (var i = 0; i < 10; i++)
@@ -390,7 +405,7 @@
 		</div>
 	</div>
 	<input type="checkbox" id="system-modal">
-	<div class="c modal vh-100 w-100 scroll">
+	<div class="c modal vh-100 w-100 scrolly">
 		<div class="c bg-black menu pv2 row" tabindex="0">
 			<b><label for="system-modal" class="lbl-modal ph2 white">Divinus</label></b>
 			<div class="col">
@@ -399,11 +414,11 @@
 		</div>
 		<div class="c cont">
 			<h2 class="unl">System</h2>
-			<div class="row">
+			<div class="row scrollx">
 				<div class="12 col box">
 					<fieldset>
 						<legend>Night</legend>
-						<table class="w-100">
+						<table class="tc w-100">
 							<tr>
 								<td><label for="night_active">Active</label></td>
 								<td><select id="night_active">
@@ -458,6 +473,29 @@
 							</tr>
 						</table>
 						<a href="javascript:apiApply('night')" class="btn right">Apply</a>
+					</fieldset>
+				</div>
+			</div>
+			<div class="row scrollx">
+				<div class="12 col box">
+					<fieldset>
+						<legend>Time</legend>
+						<table class="tc w-100">
+							<tr>
+								<td><label for="time_fmt">Display format</label></td>
+								<td><input type="text" id="time_fmt"></td>
+								<td><a href="javascript:setFormatTime()" class="btn cell">Set</a></td>
+							</tr>
+							<tr>
+								<td><label for="time_ts">Current Unix time</label></td>
+								<td><input type="text" id="time_ts"></td>
+								<td>
+									<a href="javascript:setLocalTime()" class="btn cell">Sync</a>
+									<a href="javascript:apiApply('time')" class="btn cell">Apply</a>
+								</td>
+							</tr>
+						</table>
+						<a href="javascript:apiRead('time')" class="btn right">Refresh</a>
 					</fieldset>
 				</div>
 			</div>

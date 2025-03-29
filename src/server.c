@@ -1271,7 +1271,7 @@ png_error:
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"fmt\":\"%s\",\"ts\":%d}", timefmt, t.tv_sec);
+            "{\"fmt\":\"%s\",\"ts\":%zu}", timefmt, t.tv_sec);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
