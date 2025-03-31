@@ -78,6 +78,9 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if (app_config.stream_enable)
+        start_streaming();
+
     if (start_sdk())
         HAL_ERROR("hal", "Failed to start SDK!\n");
 
@@ -107,6 +110,9 @@ int main(int argc, char *argv[]) {
         disable_night();
 
     stop_sdk();
+
+    if (app_config.stream_enable)
+        stop_streaming();
 
     stop_server();
 

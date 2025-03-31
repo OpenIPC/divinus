@@ -28,6 +28,12 @@ rtsp:
   auth_pass: 12345
   port: 554
 
+stream:
+  enable: false
+  udp_srcport: 5600
+  dest:
+    - udp://239.255.255.0:5600
+
 night_mode:
   enable: false
   ir_sensor_pin: 62

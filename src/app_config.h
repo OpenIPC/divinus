@@ -49,6 +49,11 @@ struct AppConfig {
     char rtsp_auth_pass[32];
     int rtsp_port;
 
+    // [stream]
+    bool stream_enable;
+    unsigned short stream_udp_srcport;
+    char stream_dests[4][256];
+
     // [audio]
     bool audio_enable;
     unsigned int audio_bitrate;

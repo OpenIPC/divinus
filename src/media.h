@@ -16,12 +16,16 @@
 #include "jpeg.h"
 #include "rtsp/rtsp_server.h"
 #include "server.h"
+#include "stream.h"
 
-extern char audioOn;
+extern char audioOn, udpOn;
 extern rtsp_handle rtspHandle;
 
 int start_sdk(void);
 int stop_sdk(void);
+
+int start_streaming(void);
+void stop_streaming(void);
 
 void request_idr(void);
 void set_grayscale(bool active);

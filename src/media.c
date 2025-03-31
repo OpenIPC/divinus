@@ -1,6 +1,6 @@
 #include "media.h"
 
-char audioOn = 0;
+char audioOn = 0, udpOn = 0;
 pthread_mutex_t aencMtx, chnMtx, mp4Mtx;
 pthread_t aencPid = 0, audPid = 0, ispPid = 0, vidPid = 0;
 
@@ -96,6 +96,13 @@ int save_video_stream(char index, hal_vidstream *stream) {
                 for (int i = 0; i < stream->count; i++)
                     rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
                         stream->pack[i].length - stream->pack[i].offset, isH265);
+
+            if (app_config.stream_enable)
+                for (int i = 0; i < stream->count; i++)
+                    udp_stream_send_nal(stream->pack[i].data + stream->pack[i].offset, 
+                        stream->pack[i].length - stream->pack[i].offset, 
+                        stream->pack[i].nalu[0].type == NalUnitType_CodedSliceIdr, isH265);
+            
             break;
         }
         case HAL_VIDCODEC_MJPG:
@@ -137,6 +144,63 @@ int save_video_stream(char index, hal_vidstream *stream) {
             return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
+}
+
+int start_streaming(void) {
+    int ret = EXIT_SUCCESS;
+
+    for (int i = 0; app_config.stream_dests[i] && *app_config.stream_dests[i]; i++) {
+        if (STARTS_WITH(app_config.stream_dests[i], "udp://")) {
+            char *endptr, *hostptr, *portptr, dst[16];
+            unsigned short port = 0;
+            long val;
+
+            if (portptr = strrchr(app_config.stream_dests[i], ':')) {
+                val = strtol(portptr + 1, &endptr, 10);
+                if (endptr != portptr + 1)
+                    port = (unsigned short)val;
+                else {
+                    if (portptr[2] != '/')
+                        HAL_DANGER("media", "Invalid UDP port: %s, going with defaults!\n",
+                            app_config.stream_dests[i]);
+                }
+            }
+
+            hostptr = &app_config.stream_dests[i][6];
+            if (portptr) {
+                size_t hostlen = portptr - hostptr;
+                if (hostlen > sizeof(dst) - 1) hostlen = sizeof(dst) - 1;
+                strncpy(dst, hostptr, hostlen);
+                dst[hostlen] = '\0';
+            } else {
+                strncpy(dst, hostptr, sizeof(dst) - 1);
+                dst[sizeof(dst) - 1] = '\0';
+            }
+
+            if (!udpOn) {
+                val = strtol(hostptr, &endptr, 10);
+                if (endptr != hostptr && val >= 224 && val <= 239) {
+                    if (udp_stream_init(app_config.stream_udp_srcport, dst))
+                        udpOn = 1;
+                    else return EXIT_FAILURE;
+                } else {
+                    if (udp_stream_init(app_config.stream_udp_srcport, NULL))
+                        udpOn = 1;
+                    else return EXIT_FAILURE;
+                }
+            }
+            
+            if (udp_stream_add_client(dst, port) != -1)
+                HAL_INFO("media", "Starting streaming to %s...\n", app_config.stream_dests[i]);
+        }
+    }
+}
+
+void stop_streaming(void) {
+    if (udpOn) {
+        udp_stream_close();
+        udpOn = 0;
+    }
 }
 
 void request_idr(void) {
