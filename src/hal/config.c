@@ -308,6 +308,125 @@ enum ConfigError parse_uint32(
     return CONFIG_OK;
 }
 
+enum ConfigError parse_list(
+    struct IniConfig *ini, const char *section, const char *param_name,
+    const unsigned int max_entries, unsigned int *count, char entries[][256]) {
+    int start_pos = 0, end_pos = 0;
+    *count = 0;
+
+    if (strlen(section) > 0) {
+        enum ConfigError err = section_pos(ini, section, &start_pos, &end_pos);
+        if (err != CONFIG_OK)
+            return err;
+    }
+
+    regex_t param_regex;
+    char param_pattern[128];
+    snprintf(param_pattern, sizeof(param_pattern), "\\n\\s*%s\\s*:", param_name);
+
+    if (compile_regex(&param_regex, param_pattern) < 0) {
+        HAL_DANGER("config", "Error compiling param regex!\n");
+        return CONFIG_REGEX_ERROR;
+    }
+
+    regmatch_t param_match[1];
+    int param_result = regexec(&param_regex, ini->str + start_pos, 1, param_match, 0);
+    regfree(&param_regex);
+    
+    if (param_result || (end_pos >= 0 && start_pos + param_match[0].rm_eo > end_pos)) {
+        HAL_DANGER("config", "Parameter '%s' not found in section '%s'\n", param_name, section);
+        return CONFIG_PARAM_NOT_FOUND;
+    }
+
+    int list_start = start_pos + param_match[0].rm_eo;
+
+    regex_t line_regex;
+    if (compile_regex(&line_regex, "\\n(\\s+)([-*>]?\\s*)([^\\n]*)") < 0) {
+        HAL_DANGER("config", "Error compiling line regex!\n");
+        return CONFIG_REGEX_ERROR;
+    }
+    
+    regmatch_t base_match[2];
+    regex_t base_regex;
+    if (compile_regex(&base_regex, "\\n(\\s+)") < 0) {
+        HAL_DANGER("config", "Error compiling base indent regex!\n");
+        regfree(&line_regex);
+        return CONFIG_REGEX_ERROR;
+    }
+    
+    int base_result = regexec(&base_regex, ini->str + list_start, 2, base_match, 0);
+    int base_indent = 0;
+    
+    if (!base_result) {
+        base_indent = base_match[1].rm_eo - base_match[1].rm_so;
+    }
+    
+    regfree(&base_regex);
+
+    regmatch_t line_match[4];
+    int current_pos = list_start;
+    int end_limit = (end_pos > 0) ? end_pos : strlen(ini->str);
+    
+    while (*count < max_entries) {
+        if (current_pos >= end_limit) // End of section?
+            break;
+        
+        int line_result = regexec(&line_regex, ini->str + current_pos, 4, line_match, 0);
+        
+        if (line_result || current_pos + line_match[0].rm_so >= end_limit)
+            break; // No more lines or end of section
+        
+        int current_indent = line_match[1].rm_eo - line_match[1].rm_so;
+
+        if (!base_indent) // First line holds the base indent
+            base_indent = current_indent;
+        
+        // Smaller indent implicates a new section or parameter,
+        // larger indent implies a continuation or sub-list
+        if (current_indent < base_indent)
+            break;
+        else if (current_indent > base_indent) {
+            current_pos = current_pos + line_match[0].rm_eo;
+            continue;
+        }
+    
+        int content_start = current_pos + line_match[3].rm_so;
+        int content_end = current_pos + line_match[3].rm_eo;
+    
+        snprintf(entries[*count], 256, "%.*s", content_end - content_start, ini->str + content_start);
+
+        char *entry = entries[*count], *start = entry;
+        while (*start == ' ' || *start == '\t') start++;
+        
+        if (start != entry)
+            memmove(entry, start, strlen(start) + 1);
+        
+        char *end = entry + strlen(entry) - 1;
+        while (end > entry && (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n')) {
+            *end = '\0';
+            end--;
+        }
+        
+        (*count)++;
+        current_pos = current_pos + line_match[0].rm_eo;
+        
+        // Exit if the next line is not indented or a new section
+        char next_char = ini->str[current_pos];
+        if (next_char == '\n' && 
+            (ini->str[current_pos + 1] != ' ' && ini->str[current_pos + 1] != '\t'))
+            break;
+    }
+    
+    regfree(&line_regex);
+    
+    if (!*count) {
+        HAL_DANGER("config", "No entries found for parameter '%s'\n", param_name);
+        return CONFIG_PARAM_INVALID_FORMAT;
+    }
+    
+    return CONFIG_OK;
+}
+
 bool open_config(struct IniConfig *ini, FILE **file) {
     if (!*file)
         return false;

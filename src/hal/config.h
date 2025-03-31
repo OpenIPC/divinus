@@ -29,6 +29,7 @@ enum ConfigError {
     CONFIG_PARAM_ISNT_NUMBER,
     CONFIG_PARAM_ISNT_FLOAT,
     CONFIG_PARAM_ISNT_IN_RANGE,
+    CONFIG_PARAM_INVALID_FORMAT,
     CONFIG_ENUM_INCORRECT_STRING,
     CONFIG_REGEX_ERROR,
     CONFIG_CANT_OPEN_PROC_CMDLINE,
@@ -65,3 +66,6 @@ enum ConfigError parse_uint64(
 enum ConfigError parse_uint32(
     struct IniConfig *ini, const char *section, const char *param_name,
     const unsigned int min, const unsigned int max, unsigned int *value);
+enum ConfigError parse_list(
+    struct IniConfig *ini, const char *section, const char *param_name,
+    const unsigned int max_entries, unsigned int *count, char entries[][256]);
