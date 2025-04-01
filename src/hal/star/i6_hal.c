@@ -689,17 +689,16 @@ int i6_video_create(char index, hal_vidconfig *config)
     attrib->maxHeight = config->height;
     attrib->maxWidth = config->width;
     //attrib->bufSize = config->height * config->width;
-    attrib->bufSize = 0;
-    //attrib->profile = MIN((series == 0xEF || config->codec == HAL_VIDCODEC_H265) ? 1 : 2,
-    //    config->profile);
-    attrib->profile = 1;
+    attrib->bufSize = 0; // Set as majestic
+    attrib->profile = MIN((series == 0xEF || config->codec == HAL_VIDCODEC_H265) ? 1 : 2,
+        config->profile);
     attrib->byFrame = 1;
-    //attrib->byFrame = 0;
     attrib->height = config->height;
     attrib->width = config->width;
     attrib->bFrameNum = 0;
     //attrib->refNum = 1;
     attrib->refNum = 0;
+    // Reference frame does not seems to be supported in h264/h265, set to 0 (as majestic) 
 
     channel.rate.h265Cbr.statTime = 0;
     channel.rate.h265Cbr.avgLvl = 0;
