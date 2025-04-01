@@ -318,14 +318,13 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
 
 static void __method_play_rtp(struct connection_item_t *p, rtsp_handle h)
 {
-    fprintf(stdout, "__method_play_rtp\n");
     for (int i = 0; i < sizeof(p->trans) / sizeof(*p->trans); i++) {
-        fprintf(stdout, " => i %i\n", i);
+        HAL_DEBUG("RTP",  " => i %i\n", i);
         p->trans[i].client_port_rtp = 5600;
         if (!p->trans[i].client_port_rtp) continue;
         p->track_id = i;
 
-        fprintf(stdout, "p->trans[%i].client_port_rtp %i \n", p->track_id, p->trans[p->track_id].client_port_rtp);
+        HAL_DEBUG("RTP",  "p->trans[%i].client_port_rtp %i \n", p->track_id, p->trans[p->track_id].client_port_rtp);
         //ASSERT(__bind_rtcp(p) == SUCCESS, return);
         ASSERT(__bind_rtp(p) == SUCCESS, return);
         p->trans[p->track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
@@ -757,7 +756,7 @@ static void create_rtp_connection(rtsp_handle rh)
 {
     static bool con_started = false;
     if (!con_started) {
-        fprintf(stdout, "!!!!!!!!!!!!! Create RTP connection\n");
+        HAL_DEBUG("RTP", "Create RTP connection\n");
         struct sockaddr_in from_addr;
         from_addr.sin_family = AF_INET;
         from_addr.sin_addr.s_addr = inet_addr("192.168.1.14");

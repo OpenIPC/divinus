@@ -152,7 +152,7 @@ int i6_channel_bind(char index, char framerate)
 {
     int ret;
 
-    fprintf(stdout, "fnEnablePort %d, %d\n", _i6_vpe_chn, index);
+    HAL_DEBUG("HAL",  "fnEnablePort %d, %d\n", _i6_vpe_chn, index);
     if (ret = i6_vpe.fnEnablePort(_i6_vpe_chn, index))
         return ret;
 
@@ -166,10 +166,10 @@ int i6_channel_bind(char index, char framerate)
             .device = device, .channel = index, .port = _i6_venc_port };
 
 
-        fprintf(stdout, "MI_SYS_BindChnPort2 interceptée avec les arguments:\n");
-        fprintf(stdout, "Source Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", source.module, source.device, source.channel, source.port, framerate);
-        fprintf(stdout, "Dest   Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", dest.module, dest.device, dest.channel, dest.port, framerate);
-        fprintf(stdout, "Link: %d, LinkParam: %d\n", I6_SYS_LINK_FRAMEBASE, 1080);
+        HAL_DEBUG("HAL",  "MI_SYS_BindChnPort2 interceptée avec les arguments:\n");
+        HAL_DEBUG("HAL",  "Source Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", source.module, source.device, source.channel, source.port, framerate);
+        HAL_DEBUG("HAL",  "Dest   Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", dest.module, dest.device, dest.channel, dest.port, framerate);
+        HAL_DEBUG("HAL",  "Link: %d, LinkParam: %d\n", I6_SYS_LINK_FRAMEBASE, 1080);
         if (ret = i6_sys.fnBindExt(&source, &dest, framerate, framerate,
             I6_SYS_LINK_FRAMEBASE, 1080))
             return ret;
@@ -188,12 +188,12 @@ int i6_channel_create(char index, short width, short height, char mirror, char f
     port.compress = I6_COMPR_NONE;
     port.pixFmt = jpeg ? I6_PIXFMT_YUV422_YUYV : I6_PIXFMT_YUV420SP;
 
-    fprintf(stdout, "output.width: %u\n", port.output.width);
-    fprintf(stdout, "output.height: %u\n", port.output.height);
-    fprintf(stdout, "mirror: %d\n", port.mirror);
-    fprintf(stdout, "flip: %d\n", port.flip);
-    fprintf(stdout, "pixFmt: %d\n", port.pixFmt);
-    fprintf(stdout, "compress: %d\n", port.compress);
+    HAL_DEBUG("HAL",  "output.width: %u\n", port.output.width);
+    HAL_DEBUG("HAL",  "output.height: %u\n", port.output.height);
+    HAL_DEBUG("HAL",  "mirror: %d\n", port.mirror);
+    HAL_DEBUG("HAL",  "flip: %d\n", port.flip);
+    HAL_DEBUG("HAL",  "pixFmt: %d\n", port.pixFmt);
+    HAL_DEBUG("HAL",  "compress: %d\n", port.compress);
 
     return i6_vpe.fnSetPortConfig(_i6_vpe_chn, index, &port);
 }
@@ -209,7 +209,7 @@ int i6_channel_sensorexposure(unsigned int timeus)
     MI_ISP_AE_EXPO_LIMIT_TYPE_t data;
     if (ret = i6_isp.getExposureLimit(0, &data))
         return ret;
-    fprintf(stdout, "Set Exposure limit to: %u us\n", timeus);
+    HAL_DEBUG("HAL",  "Set Exposure limit to: %u us\n", timeus);
     data.u32MaxShutterUS = timeus;
     ret = i6_isp.setExposureLimit(0, &data);
     return ret;
@@ -246,7 +246,7 @@ void i6_sensor_config(char framerate)
 {
     i6_channel_grayscale(0);
     unsigned int timeus = 1000000 / framerate;
-    fprintf(stdout, "Set sensor exposure to: %u us, framerate %i\n", timeus, framerate); 
+    HAL_DEBUG("HAL",  "Set sensor exposure to: %u us, framerate %i\n", timeus, framerate); 
     i6_channel_sensorexposure(timeus);
 }
 
@@ -269,7 +269,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         for (char i = 0; i < count; i++) {
             if (ret = i6_snr.fnGetResolution(_i6_snr_index, i, &resolution))
                 return ret;
-                fprintf(stdout, "Profile %d: %dx%d @ %d fps\n", i, resolution.crop.width,
+                HAL_DEBUG("HAL",  "Profile %d: %dx%d @ %d fps\n", i, resolution.crop.width,
                 resolution.crop.height, resolution.maxFps);
         }
 
@@ -282,7 +282,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
                 framerate > resolution.maxFps)
                 continue;
             
-            fprintf(stdout, "Set profile %i, fps %i\n", i, framerate);
+            HAL_DEBUG("HAL",  "Set profile %i, fps %i\n", i, framerate);
 
             _i6_snr_profile = i;
             if (ret = i6_snr.fnSetResolution(_i6_snr_index, _i6_snr_profile))
@@ -322,18 +322,18 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         }
 
 
-        fprintf(stdout, "intf: %u\n", device.intf);
-        fprintf(stdout, "work: %u\n", device.work);
-        fprintf(stdout, "hdr: %u\n", device.hdr);
-        fprintf(stdout, "edge: %u\n", device.edge);
-        fprintf(stdout, "input: %u\n", device.input);
-        fprintf(stdout, "bitswap: %d\n", device.bitswap);
-        fprintf(stdout, "vsyncInv: %d\n", device.sync.vsyncInv);
-        fprintf(stdout, "hsyncInv: %d\n", device.sync.hsyncInv);
-        fprintf(stdout, "pixclkInv: %d\n", device.sync.pixclkInv);
-        fprintf(stdout, "vsyncDelay: %u\n", device.sync.vsyncDelay);
-        fprintf(stdout, "hsyncDelay: %u\n", device.sync.hsyncDelay);
-        fprintf(stdout, "pixclkDelay: %u\n", device.sync.pixclkDelay);
+        HAL_DEBUG("HAL",  "intf: %u\n", device.intf);
+        HAL_DEBUG("HAL",  "work: %u\n", device.work);
+        HAL_DEBUG("HAL",  "hdr: %u\n", device.hdr);
+        HAL_DEBUG("HAL",  "edge: %u\n", device.edge);
+        HAL_DEBUG("HAL",  "input: %u\n", device.input);
+        HAL_DEBUG("HAL",  "bitswap: %d\n", device.bitswap);
+        HAL_DEBUG("HAL",  "vsyncInv: %d\n", device.sync.vsyncInv);
+        HAL_DEBUG("HAL",  "hsyncInv: %d\n", device.sync.hsyncInv);
+        HAL_DEBUG("HAL",  "pixclkInv: %d\n", device.sync.pixclkInv);
+        HAL_DEBUG("HAL",  "vsyncDelay: %u\n", device.sync.vsyncDelay);
+        HAL_DEBUG("HAL",  "hsyncDelay: %u\n", device.sync.hsyncDelay);
+        HAL_DEBUG("HAL",  "pixclkDelay: %u\n", device.sync.pixclkDelay);
 
         if (ret = i6_vif.fnSetDeviceConfig(_i6_vif_dev, &device))
             return ret;
@@ -353,17 +353,17 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         port.frate = I6_VIF_FRATE_FULL;
         port.frameLineCnt = 0;
 
-        fprintf(stdout, "capt.x: %u\n", port.capt.x);
-        fprintf(stdout, "capt.y: %u\n", port.capt.y);
-        fprintf(stdout, "capt.width: %u\n", port.capt.width);
-        fprintf(stdout, "capt.height: %u\n", port.capt.height);
-        fprintf(stdout, "dest.width: %u\n", port.dest.width);
-        fprintf(stdout, "dest.height: %u\n", port.dest.height);
-        fprintf(stdout, "field: %d\n", port.field);
-        fprintf(stdout, "interlaceOn: %d\n", port.interlaceOn);
-        fprintf(stdout, "pixFmt: %d\n", port.pixFmt);
-        fprintf(stdout, "frate: %u\n", port.frate);
-        fprintf(stdout, "frameLineCnt: %u\n", port.frameLineCnt);
+        HAL_DEBUG("HAL",  "capt.x: %u\n", port.capt.x);
+        HAL_DEBUG("HAL",  "capt.y: %u\n", port.capt.y);
+        HAL_DEBUG("HAL",  "capt.width: %u\n", port.capt.width);
+        HAL_DEBUG("HAL",  "capt.height: %u\n", port.capt.height);
+        HAL_DEBUG("HAL",  "dest.width: %u\n", port.dest.width);
+        HAL_DEBUG("HAL",  "dest.height: %u\n", port.dest.height);
+        HAL_DEBUG("HAL",  "field: %d\n", port.field);
+        HAL_DEBUG("HAL",  "interlaceOn: %d\n", port.interlaceOn);
+        HAL_DEBUG("HAL",  "pixFmt: %d\n", port.pixFmt);
+        HAL_DEBUG("HAL",  "frate: %u\n", port.frate);
+        HAL_DEBUG("HAL",  "frameLineCnt: %u\n", port.frameLineCnt);
 
         if (ret = i6_vif.fnSetPortConfig(_i6_vif_chn, _i6_vif_port, &port))
             return ret;
@@ -393,11 +393,11 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         param.flip = 0;
         param.lensAdjOn = 0;
 
-        fprintf(stdout, "hdr: %d\n", param.hdr);
-        fprintf(stdout, "level3DNR: %d\n", param.level3DNR);
-        fprintf(stdout, "mirror: %d\n", param.mirror);
-        fprintf(stdout, "flip: %d\n", param.flip);
-        fprintf(stdout, "lensAdjOn: %d\n", param.lensAdjOn);
+        HAL_DEBUG("HAL",  "hdr: %d\n", param.hdr);
+        HAL_DEBUG("HAL",  "level3DNR: %d\n", param.level3DNR);
+        HAL_DEBUG("HAL",  "mirror: %d\n", param.mirror);
+        HAL_DEBUG("HAL",  "flip: %d\n", param.flip);
+        HAL_DEBUG("HAL",  "lensAdjOn: %d\n", param.lensAdjOn);
 
         if (ret = i6_vpe.fnSetChannelParam(_i6_vpe_chn, (i6_vpe_para*)&param))
             return ret;
@@ -434,10 +434,10 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         i6_sys_bind dest = { .module = I6_SYS_MOD_VPE,
             .device = _i6_vpe_dev, .channel = _i6_vpe_chn, .port = _i6_vpe_port };
 
-        fprintf(stdout, "MI_SYS_BindChnPort2 interceptée avec les arguments:\n");
-        fprintf(stdout, "Source Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", source.module, source.device, source.channel, source.port, framerate);
-        fprintf(stdout, "Dest   Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", dest.module, dest.device, dest.channel, dest.port, framerate);
-        fprintf(stdout, "Link: %d, LinkParam: %d\n", I6_SYS_LINK_REALTIME, 0);
+        HAL_DEBUG("HAL",  "MI_SYS_BindChnPort2 interceptée avec les arguments:\n");
+        HAL_DEBUG("HAL",  "Source Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", source.module, source.device, source.channel, source.port, framerate);
+        HAL_DEBUG("HAL",  "Dest   Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", dest.module, dest.device, dest.channel, dest.port, framerate);
+        HAL_DEBUG("HAL",  "Link: %d, LinkParam: %d\n", I6_SYS_LINK_REALTIME, 0);
         return i6_sys.fnBindExt(&source, &dest, _i6_snr_framerate, _i6_snr_framerate,
             I6_SYS_LINK_REALTIME, 0);
     }
@@ -605,14 +605,14 @@ int i6_video_create(char index, hal_vidconfig *config)
         attrib = &channel.attrib.h265;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
-                fprintf(stdout, "H265: Mode CBR\n");
+                HAL_DEBUG("HAL",  "H265: Mode CBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H265CBR :
                     I6_VENC_RATEMODE_H265CBR;
                 channel.rate.h265Cbr = (i6_venc_rate_h26xcbr){ .gop = config->gop,
                     .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
                     (unsigned int)(config->bitrate) << 10, .avgLvl = 1 }; break;
             case HAL_VIDMODE_VBR:
-                fprintf(stdout, "H265: Mode VBR\n");
+                HAL_DEBUG("HAL",  "H265: Mode VBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H265VBR :
                     I6_VENC_RATEMODE_H265VBR;
                 channel.rate.h265Vbr = (i6_venc_rate_h26xvbr){ .gop = config->gop,
@@ -620,7 +620,7 @@ int i6_video_create(char index, hal_vidconfig *config)
                     (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
-                fprintf(stdout, "H265: Mode QP\n");
+                HAL_DEBUG("HAL",  "H265: Mode QP\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H265QP :
                     I6_VENC_RATEMODE_H265QP;
                 channel.rate.h265Qp = (i6_venc_rate_h26xqp){ .gop = config->gop,
@@ -629,7 +629,7 @@ int i6_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_ABR:
                 HAL_ERROR("i6_venc", "H.265 encoder does not support ABR mode!");
             case HAL_VIDMODE_AVBR:
-                fprintf(stdout, "H265: Mode AVBR\n");
+                HAL_DEBUG("HAL",  "H265: Mode AVBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H265AVBR :
                     I6_VENC_RATEMODE_H265AVBR;
                 channel.rate.h265Avbr = (i6_venc_rate_h26xvbr){ .gop = config->gop,
@@ -646,14 +646,14 @@ int i6_video_create(char index, hal_vidconfig *config)
             config->mode = -1;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
-                fprintf(stdout, "H264: Mode CBR\n");
+                HAL_DEBUG("HAL",  "H264: Mode CBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H264CBR :
                     I6_VENC_RATEMODE_H264CBR;
                 channel.rate.h264Cbr = (i6_venc_rate_h26xcbr){ .gop = config->gop,
                     .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
                     (unsigned int)(config->bitrate) << 10, .avgLvl = 1 }; break;
             case HAL_VIDMODE_VBR:
-                fprintf(stdout, "H264: Mode VBR\n");
+                HAL_DEBUG("HAL",  "H264: Mode VBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H264VBR :
                     I6_VENC_RATEMODE_H264VBR;
                 channel.rate.h264Vbr = (i6_venc_rate_h26xvbr){ .gop = config->gop,
@@ -661,21 +661,21 @@ int i6_video_create(char index, hal_vidconfig *config)
                     (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
-                fprintf(stdout, "H264: Mode QP\n");
+                HAL_DEBUG("HAL",  "H264: Mode QP\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H264QP :
                     I6_VENC_RATEMODE_H264QP;
                 channel.rate.h264Qp = (i6_venc_rate_h26xqp){ .gop = config->gop,
                     .fpsNum = config->framerate, .fpsDen = 1, .interQual = config->maxQual,
                     .predQual = config->minQual }; break;
             case HAL_VIDMODE_ABR:
-                fprintf(stdout, "H264: Mode ABR\n");
+                HAL_DEBUG("HAL",  "H264: Mode ABR\n");
                 channel.rate.mode = I6_VENC_RATEMODE_H264ABR;
                 channel.rate.h264Abr = (i6_venc_rate_h26xabr){ .gop = config->gop,
                     .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1,
                     .avgBitrate = (unsigned int)(config->bitrate) << 10,
                     .maxBitrate = (unsigned int)(config->maxBitrate) << 10 }; break;
             case HAL_VIDMODE_AVBR:
-                fprintf(stdout, "H264: Mode AVBR\n");
+                HAL_DEBUG("HAL",  "H264: Mode AVBR\n");
                 channel.rate.mode = series == 0xEF ? I6OG_VENC_RATEMODE_H264AVBR :
                     I6_VENC_RATEMODE_H264AVBR;
                 channel.rate.h264Avbr = (i6_venc_rate_h26xvbr){ .gop = config->gop, .statTime = 1,
@@ -705,23 +705,23 @@ int i6_video_create(char index, hal_vidconfig *config)
     channel.rate.h265Cbr.avgLvl = 0;
 attach:
 
-    fprintf(stdout, "codec: %u\n", channel.attrib.codec);
-    fprintf(stdout, "maxWidth: %u\n", channel.attrib.h265.maxWidth);
-    fprintf(stdout, "maxHeight: %u\n", channel.attrib.h265.maxHeight);
-    fprintf(stdout, "bufSize: %u\n", channel.attrib.h265.bufSize);
-    fprintf(stdout, "profile: %u\n", channel.attrib.h265.profile);
-    fprintf(stdout, "byFrame: 0x%02x\n", channel.attrib.h265.byFrame);
-    fprintf(stdout, "width: %u\n", channel.attrib.h265.width);
-    fprintf(stdout, "height: %u\n", channel.attrib.h265.height);
-    fprintf(stdout, "bFrameNum: %u\n", channel.attrib.h265.bFrameNum);
-    fprintf(stdout, "refNum: %u\n", channel.attrib.h265.refNum);
-    fprintf(stdout, "mode: %u\n", channel.rate.mode);
-    fprintf(stdout, "gop: %u\n", channel.rate.h265Cbr.gop);
-    fprintf(stdout, "statTime: %u\n", channel.rate.h265Cbr.statTime);
-    fprintf(stdout, "fpsNum: %u\n", channel.rate.h265Cbr.fpsNum);
-    fprintf(stdout, "fpsDen: %u\n", channel.rate.h265Cbr.fpsDen);
-    fprintf(stdout, "bitrate: %u\n", channel.rate.h265Cbr.bitrate);
-    fprintf(stdout, "avgLvl: %u\n", channel.rate.h265Cbr.avgLvl);
+    HAL_DEBUG("HAL",  "codec: %u\n", channel.attrib.codec);
+    HAL_DEBUG("HAL",  "maxWidth: %u\n", channel.attrib.h265.maxWidth);
+    HAL_DEBUG("HAL",  "maxHeight: %u\n", channel.attrib.h265.maxHeight);
+    HAL_DEBUG("HAL",  "bufSize: %u\n", channel.attrib.h265.bufSize);
+    HAL_DEBUG("HAL",  "profile: %u\n", channel.attrib.h265.profile);
+    HAL_DEBUG("HAL",  "byFrame: 0x%02x\n", channel.attrib.h265.byFrame);
+    HAL_DEBUG("HAL",  "width: %u\n", channel.attrib.h265.width);
+    HAL_DEBUG("HAL",  "height: %u\n", channel.attrib.h265.height);
+    HAL_DEBUG("HAL",  "bFrameNum: %u\n", channel.attrib.h265.bFrameNum);
+    HAL_DEBUG("HAL",  "refNum: %u\n", channel.attrib.h265.refNum);
+    HAL_DEBUG("HAL",  "mode: %u\n", channel.rate.mode);
+    HAL_DEBUG("HAL",  "gop: %u\n", channel.rate.h265Cbr.gop);
+    HAL_DEBUG("HAL",  "statTime: %u\n", channel.rate.h265Cbr.statTime);
+    HAL_DEBUG("HAL",  "fpsNum: %u\n", channel.rate.h265Cbr.fpsNum);
+    HAL_DEBUG("HAL",  "fpsDen: %u\n", channel.rate.h265Cbr.fpsDen);
+    HAL_DEBUG("HAL",  "bitrate: %u\n", channel.rate.h265Cbr.bitrate);
+    HAL_DEBUG("HAL",  "avgLvl: %u\n", channel.rate.h265Cbr.avgLvl);
 
 
     if (ret = i6_venc.fnCreateChannel(index, &channel))
@@ -749,33 +749,33 @@ attach:
     //pstRcParam.stParamH265Cbr.u32MaxPSize = 20*1024;
 
     /*
-    fprintf(stdout, "Set RC Param channel %d with ThrI %i, ThrP %i, RowQpDelta %i, MaxQp %i, MinQp %i, IPQPDelta: %i, MaxIQp: %i, MinIQp: %i, MaxIPProp: %i, MaxISize: %i, MaxPSize: %i\n",
+    HAL_DEBUG("HAL",  "Set RC Param channel %d with ThrI %i, ThrP %i, RowQpDelta %i, MaxQp %i, MinQp %i, IPQPDelta: %i, MaxIQp: %i, MinIQp: %i, MaxIPProp: %i, MaxISize: %i, MaxPSize: %i\n",
         index, pstRcParam.u32ThrdI[0], pstRcParam.u32ThrdP[0], pstRcParam.u32RowQpDelta, pstRcParam.stParamH265Cbr.u32MaxQp, pstRcParam.stParamH265Cbr.u32MinQp,
          pstRcParam.stParamH265Cbr.s32IPQPDelta, pstRcParam.stParamH265Cbr.u32MaxIQp, pstRcParam.stParamH265Cbr.u32MinIQp, pstRcParam.stParamH265Cbr.u32MaxIPProp,
           pstRcParam.stParamH265Cbr.u32MaxISize, pstRcParam.stParamH265Cbr.u32MaxPSize);
 */
-    fprintf(stdout, "u32ThrdI[0]: %u\n", pstRcParam.u32ThrdI[0]);
-    fprintf(stdout, "u32ThrdP[0]: %u\n", pstRcParam.u32ThrdP[0]);
-    fprintf(stdout, "u32RowQpDelta: %u\n", pstRcParam.u32RowQpDelta);
-    fprintf(stdout, "u32MaxQp: %u\n", pstRcParam.stParamH265Cbr.u32MaxQp);
-    fprintf(stdout, "u32MinQp: %u\n", pstRcParam.stParamH265Cbr.u32MinQp);
-    fprintf(stdout, "s32IPQPDelta: %d\n", pstRcParam.stParamH265Cbr.s32IPQPDelta);
-    fprintf(stdout, "u32MaxIQp: %u\n", pstRcParam.stParamH265Cbr.u32MaxIQp);
-    fprintf(stdout, "u32MinIQp: %u\n", pstRcParam.stParamH265Cbr.u32MinIQp);
-    fprintf(stdout, "u32MaxIPProp: %u\n", pstRcParam.stParamH265Cbr.u32MaxIPProp);
-    fprintf(stdout, "u32MaxISize: %u\n", pstRcParam.stParamH265Cbr.u32MaxISize);
-    fprintf(stdout, "u32MaxPSize: %u\n", pstRcParam.stParamH265Cbr.u32MaxPSize);
+    HAL_DEBUG("HAL",  "u32ThrdI[0]: %u\n", pstRcParam.u32ThrdI[0]);
+    HAL_DEBUG("HAL",  "u32ThrdP[0]: %u\n", pstRcParam.u32ThrdP[0]);
+    HAL_DEBUG("HAL",  "u32RowQpDelta: %u\n", pstRcParam.u32RowQpDelta);
+    HAL_DEBUG("HAL",  "u32MaxQp: %u\n", pstRcParam.stParamH265Cbr.u32MaxQp);
+    HAL_DEBUG("HAL",  "u32MinQp: %u\n", pstRcParam.stParamH265Cbr.u32MinQp);
+    HAL_DEBUG("HAL",  "s32IPQPDelta: %d\n", pstRcParam.stParamH265Cbr.s32IPQPDelta);
+    HAL_DEBUG("HAL",  "u32MaxIQp: %u\n", pstRcParam.stParamH265Cbr.u32MaxIQp);
+    HAL_DEBUG("HAL",  "u32MinIQp: %u\n", pstRcParam.stParamH265Cbr.u32MinIQp);
+    HAL_DEBUG("HAL",  "u32MaxIPProp: %u\n", pstRcParam.stParamH265Cbr.u32MaxIPProp);
+    HAL_DEBUG("HAL",  "u32MaxISize: %u\n", pstRcParam.stParamH265Cbr.u32MaxISize);
+    HAL_DEBUG("HAL",  "u32MaxPSize: %u\n", pstRcParam.stParamH265Cbr.u32MaxPSize);
 
     if (ret = i6_venc.fnSetRCParam(index, &pstRcParam))
        return ret;
 
-    fprintf(stdout, "RC Set\n");
+    HAL_DEBUG("HAL",  "RC Set\n");
 
     // some reverse engineering with ltrace and LD_PRELOAD to see what's majestic is doing
-    fprintf(stdout, "disable 3A and reactivate it\n");
+    HAL_DEBUG("HAL",  "disable 3A and reactivate it\n");
     if (ret = i6_isp.fnDisableUserspace3A(0))
         return ret;
-    fprintf(stdout, "after 3A deactivation\n");
+    HAL_DEBUG("HAL",  "after 3A deactivation\n");
     cus3AEnable_t data;
     data.args[0] = 0x4000000;
     data.args[1] = 0;
@@ -793,7 +793,7 @@ attach:
 
     if (ret = i6_isp.fnCUS3AEnable(0, &data))
         return ret;
-    fprintf(stdout, "after 3A reactivation\n");
+    HAL_DEBUG("HAL",  "after 3A reactivation\n");
 
 
 
@@ -802,10 +802,10 @@ attach:
     stIntraRefresh.u32RefreshLineNum = 16;
     stIntraRefresh.u32ReqIQp = 1;
     #if 1
-    fprintf(stdout, "call setIntraRefresh, enable %i, RefreshLine : %i, u32ReqIQp: %i\n",
+    HAL_DEBUG("HAL",  "call setIntraRefresh, enable %i, RefreshLine : %i, u32ReqIQp: %i\n",
         stIntraRefresh.bEnable, stIntraRefresh.u32RefreshLineNum, stIntraRefresh.u32ReqIQp);
     i6_venc.fnSetIntraRefresh(0, &stIntraRefresh);
-    fprintf(stdout, "after call setIntraRefresh\n");
+    HAL_DEBUG("HAL",  "after call setIntraRefresh\n");
     #endif
 
 
@@ -816,7 +816,7 @@ attach:
 
     i6_state[index].payload = config->codec;
 
-    fprintf(stdout, "VENC channel started\n");
+    HAL_DEBUG("HAL",  "VENC channel started\n");
 
     return EXIT_SUCCESS;
 }
@@ -1041,7 +1041,7 @@ int load_sstarts(void) {
     else if (access(path2, F_OK) == 0) {
         module_path = path2;
     } else {
-        fprintf(stderr, "%s kernel module not found at either path %s or %s\n", module_name, path1, path2);
+        HAL_INFO("HAL", "%s kernel module not found at either path %s or %s\n", module_name, path1, path2);
         return 1;
     }
 
@@ -1247,13 +1247,13 @@ void timestamp_send_finished(unsigned long frameNb)
     //printf("One-way delay:        %llu ns\n", timestamps.one_way_delay_ns);
 
       
-    //fprintf(stdout, "Packet sent %lu =>\n", frameNb);
-	//fprintf(stdout, "AirTime:                %llu us\n", air_time_ns / 1000);
-	//fprintf(stdout, "GroundTime:             %llu us\n", ground_time_ns / 1000);
-    //fprintf(stdout, "Vsync:                  %llu us\n", timestamps.vsync_timestamp / 1000);
-    //fprintf(stdout, "ISP Done:               %llu us\n", timestamps.ispframedone_timestamp / 1000);
-	//fprintf(stdout, "Venc Done:              %llu us\n", timestamps.vencdone_timestamp / 1000);
-	//fprintf(stdout, "Air One Way Delay:      %llu us\n", timestamps.one_way_delay_ns / 1000);
+    //HAL_DEBUG("HAL",  "Packet sent %lu =>\n", frameNb);
+	//HAL_DEBUG("HAL",  "AirTime:                %llu us\n", air_time_ns / 1000);
+	//HAL_DEBUG("HAL",  "GroundTime:             %llu us\n", ground_time_ns / 1000);
+    //HAL_DEBUG("HAL",  "Vsync:                  %llu us\n", timestamps.vsync_timestamp / 1000);
+    //HAL_DEBUG("HAL",  "ISP Done:               %llu us\n", timestamps.ispframedone_timestamp / 1000);
+	//HAL_DEBUG("HAL",  "Venc Done:              %llu us\n", timestamps.vencdone_timestamp / 1000);
+	//HAL_DEBUG("HAL",  "Air One Way Delay:      %llu us\n", timestamps.one_way_delay_ns / 1000);
 
 #endif
     timestamps.frameNb = htonl(frameNb);
@@ -1329,8 +1329,8 @@ void *i6_video_thread(void)
             {
                 timediff = curms - lastms;
                 //if (timediff < 10 || timediff > 20)
-                //    fprintf(stdout, "Time diff %llu ms\n", curms - lastms);
-                //fprintf(stdout, "Time diff %llu ms\n", curms - lastms);
+                //    HAL_DEBUG("HAL",  "Time diff %llu ms\n", curms - lastms);
+                //HAL_DEBUG("HAL",  "Time diff %llu ms\n", curms - lastms);
             }
             lastms = curms;
             #endif
@@ -1376,7 +1376,7 @@ void *i6_video_thread(void)
                         for (int j = 0; j < stream.count; j++) {
                             
                             i6_venc_pack *pack = &stream.packet[j];
-                            //fprintf(stdout, "Stream %d, packet %d, diff %llu\n", j, pack->packNum, pack->timestamp - lastTs);
+                            //HAL_DEBUG("HAL",  "Stream %d, packet %d, diff %llu\n", j, pack->packNum, pack->timestamp - lastTs);
                             lastTs = pack->timestamp;
                             outPack[j].data = pack->data;
                             outPack[j].length = pack->length;

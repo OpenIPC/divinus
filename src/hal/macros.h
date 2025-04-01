@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define DEBUG
+
 #define HAL_DANGER(mod, x, ...) \
     do { \
         fprintf(stderr, "[%s] \033[31m", (mod)); \
@@ -23,6 +25,18 @@
         fprintf(stderr, "[%s] ", (mod)); \
         fprintf(stderr, (x), ##__VA_ARGS__); \
     } while (0)
+
+#ifdef DEBUG
+#define HAL_DEBUG(mod, x, ...) \
+    do { \
+        fprintf(stderr, "DBG [%s] ", (mod)); \
+        fprintf(stderr, (x), ##__VA_ARGS__); \
+    } while (0)
+#else
+#define HAL_DEBUG(mod, x, ...) \
+    do { \
+    } while (0)
+#endif
 
 #define HAL_WARNING(mod, x, ...) \
     do { \
