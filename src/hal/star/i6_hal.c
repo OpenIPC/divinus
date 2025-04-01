@@ -252,7 +252,7 @@ void i6_sensor_config(char framerate)
     i6_channel_sensorexposure(timeus);
 }
 
-int i6_pipeline_create(char sensor, short width, short height, char framerate, char mirror, char flip)
+int i6_pipeline_create(char sensor, short width, short height, char framerate, char mirror, char flip, unsigned int noiselevel)
 {
     int ret;
 
@@ -389,8 +389,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
         i6e_vpe_para param;
         memset(&param, 0, sizeof(param));
         param.hdr = I6_HDR_OFF;
-        //param.level3DNR = 1;
-        param.level3DNR = 0;
+        param.level3DNR = noiselevel;
         param.mirror = 0;
         param.flip = 0;
         param.lensAdjOn = 0;
@@ -419,8 +418,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
         i6_vpe_para param;
         memset(&param, 0, sizeof(param));
         param.hdr = I6_HDR_OFF;
-        //param.level3DNR = 1;
-        param.level3DNR = 0;
+        param.level3DNR = noiselevel;
         param.mirror = 0;
         param.flip = 0;
         param.lensAdjOn = 0;

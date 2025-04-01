@@ -148,6 +148,7 @@ enum ConfigError parse_app_config(void) {
     app_config.rtp_enable = false;
     app_config.rtp_port = 0;
     app_config.rtp_ip[0] = 0;
+    app_config.noiselevel = 0;
 
     app_config.sensor_config[0] = 0;
     app_config.audio_enable = false;
@@ -281,6 +282,8 @@ enum ConfigError parse_app_config(void) {
             &ini, "rtp", "port", 1, 65536, &app_config.rtp_port);
         parse_param_value(
             &ini, "rtp", "ip", app_config.rtp_ip);
+        parse_int(
+                &ini, "rtp", "noiselevel", 0, 2, &app_config.noiselevel);
     }
 
     parse_bool(&ini, "audio", "enable", &app_config.audio_enable);

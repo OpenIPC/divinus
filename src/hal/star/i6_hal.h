@@ -38,7 +38,7 @@ int i6_channel_sensorexposure(unsigned int timeus);
 int i6_config_load(char *path);
 void i6_sensor_config(char framerate);
 
-int i6_pipeline_create(char sensor, short width, short height, char framerate, char mirror, char flip);
+int i6_pipeline_create(char sensor, short width, short height, char framerate, char mirror, char flip, unsigned int noiselevel);
 void i6_pipeline_destroy(void);
 
 int i6_region_create(char handle, hal_rect rect, short opacity);

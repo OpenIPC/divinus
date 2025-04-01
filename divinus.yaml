@@ -32,6 +32,7 @@ rtp:
   enable: true
   port: 5600
   ip: 127.0.0.1
+  noiselevel: 0
 
 night_mode:
   enable: false
