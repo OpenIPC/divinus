@@ -97,10 +97,6 @@ int save_video_stream(char index, hal_vidstream *stream) {
                     rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
                         stream->pack[i].length - stream->pack[i].offset, isH265);
 
-            if (app_config.rtp_enable)
-                for (int i = 0; i < stream->count; i++)
-                    rtp_stream_send_h26x(stream->pack[i].data + stream->pack[i].offset, 
-                        stream->pack[i].length - stream->pack[i].offset, isH265);
             break;
         case HAL_VIDCODEC_MJPG:
             if (app_config.mjpeg_enable) {
@@ -585,6 +581,14 @@ int start_sdk(void) {
         case HAL_PLATFORM_I6:
             i6_aud_cb = save_audio_stream;
             i6_vid_cb = save_video_stream;
+            if (app_config.fpv_enable)
+            {
+                i6_fpv_cb = rtp_send_frame_h26x;
+            }
+            else
+            {
+                i6_fpv_cb = NULL;
+            }
             break;
         case HAL_PLATFORM_I6C:
             i6c_aud_cb = save_audio_stream;
@@ -699,7 +703,7 @@ int start_sdk(void) {
         pthread_attr_destroy(&thread_attr);
     }
 
-    if ((app_config.mp4_enable || app_config.rtp_enable) && (ret = enable_mp4()))
+    if ((app_config.mp4_enable || app_config.fpv_enable) && (ret = enable_mp4()))
         HAL_ERROR("media", "MP4 initialization failed with %#x!\n", ret);
 
     if (app_config.mjpeg_enable && (ret = enable_mjpeg()))

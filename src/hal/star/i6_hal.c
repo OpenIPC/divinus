@@ -14,6 +14,7 @@ i6_vpe_impl  i6_vpe;
 hal_chnstate i6_state[I6_VENC_CHN_NUM] = {0};
 int (*i6_aud_cb)(hal_audframe*);
 int (*i6_vid_cb)(char, hal_vidstream*);
+void (*i6_fpv_cb)(unsigned long, NALUnit_t* , bool);
 
 i6_snr_pad _i6_snr_pad;
 i6_snr_plane _i6_snr_plane;
@@ -1044,9 +1045,22 @@ void *i6_video_thread(void)
                         break;
                     }
 
-                    timestamp_venc_finished();
+                    if (i6_fpv_cb)
+                    {
+                        timestamp_venc_finished();
 
-                    if (i6_vid_cb) {
+                        for (int j = 0; j < stream.count; j++) 
+                        {
+                            i6_venc_pack *pack = &stream.packet[j];
+                            NALUnit_t nals[pack->packNum];
+                            for (int k = 0; k < pack->packNum; k++) {
+                                nals[k].data = pack->data + pack->packetInfo[k].offset;
+                                nals[k].size = pack->packetInfo[k].length;
+                            }
+                            (*i6_fpv_cb)(pack->packNum, nals, i6_state[i].payload == HAL_VIDCODEC_H265); 
+                        }
+                    }
+                    else if (i6_vid_cb) {
                         hal_vidstream outStrm;
                         hal_vidpack outPack[stream.count];
                         outStrm.count = stream.count;
@@ -1056,6 +1070,7 @@ void *i6_video_thread(void)
                             outPack[j].data = pack->data;
                             outPack[j].length = pack->length;
                             outPack[j].naluCnt = pack->packNum;
+
                             if (series == 0xEF) {
                                 signed char n = 0;
                                 switch (i6_state[i].payload) {

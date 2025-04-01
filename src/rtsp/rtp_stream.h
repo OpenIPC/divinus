@@ -28,15 +28,24 @@ extern "C" {
 #endif
 #include <unistd.h>
 #include <time.h>
+#include <stdbool.h>
 
 /******************************************************************************
  *              DEFINITIONS
  ******************************************************************************/
 
 
-void rtp_create(const char *rtp_ip, unsigned int rtp_port);
-void rtp_finish(void);
-int rtp_stream_send_h26x(unsigned char *buf, size_t len, char isH265);
+void rtp_init(const char *rtp_ip, unsigned int rtp_port);
+void rtp_deinit(void);
+
+// Structure pour représenter une unité NAL
+typedef struct {
+    unsigned char *data;
+    unsigned int size;
+} NALUnit_t;
+
+void rtp_send_frame_h26x(unsigned long nbNal, NALUnit_t* nals, bool isH265);
+
 
 #if defined (__cplusplus)
 }

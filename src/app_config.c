@@ -73,8 +73,8 @@ int save_app_config(void) {
     fprintf(file, "rtsp:\n");
     fprintf(file, "  enable: %s\n", app_config.rtsp_enable ? "true" : "false");
 
-    fprintf(file, "rtp:\n");
-    fprintf(file, "  enable: %s\n", app_config.rtp_enable ? "true" : "false");
+    fprintf(file, "fpv:\n");
+    fprintf(file, "  enable: %s\n", app_config.fpv_enable ? "true" : "false");
 
     fprintf(file, "mdns:\n");
     fprintf(file, "  enable: %s\n", app_config.mdns_enable ? "true" : "false");
@@ -145,7 +145,7 @@ enum ConfigError parse_app_config(void) {
     app_config.rtsp_enable = false;
     app_config.rtsp_enable_auth = false;
 
-    app_config.rtp_enable = false;
+    app_config.fpv_enable = false;
     app_config.rtp_port = 0;
     app_config.rtp_ip[0] = 0;
     app_config.noiselevel = 0;
@@ -292,35 +292,36 @@ enum ConfigError parse_app_config(void) {
                 &ini, "rtsp", "auth_pass", app_config.rtsp_auth_pass);
     }
 
-    parse_bool(&ini, "rtp", "enable", &app_config.rtp_enable);
-    if (app_config.rtp_enable) {
+    parse_bool(&ini, "fpv", "enable", &app_config.fpv_enable);
+    if (app_config.fpv_enable) {
+        fprintf (stderr, "FPV is enabled\n");
         parse_int(
-            &ini, "rtp", "port", 1, 65536, &app_config.rtp_port);
+            &ini, "fpv", "port", 1, 65536, &app_config.rtp_port);
         parse_param_value(
-            &ini, "rtp", "ip", app_config.rtp_ip);
+            &ini, "fpv", "ip", app_config.rtp_ip);
         parse_int(
-                &ini, "rtp", "noiselevel", 0, 2, &app_config.noiselevel);
-        parse_bool(&ini, "rtp", "intraQp", &app_config.intraQp);
+                &ini, "fpv", "noiselevel", 0, 2, &app_config.noiselevel);
+        parse_bool(&ini, "fpv", "intraQp", &app_config.intraQp);
         parse_int(
-            &ini, "rtp", "intraLine", 1, 32, &app_config.intraLine);
-        parse_bool(&ini, "rtp", "cus3A", &app_config.cus3A);
+            &ini, "fpv", "intraLine", 1, 32, &app_config.intraLine);
+        parse_bool(&ini, "fpv", "cus3A", &app_config.cus3A);
 
         parse_int(
-            &ini, "rtp", "maxQp", 12, 48, &app_config.maxQp);
+            &ini, "fpv", "maxQp", 12, 48, &app_config.maxQp);
         parse_int(
-            &ini, "rtp", "minQp", 12, 48, &app_config.intraLine);
+            &ini, "fpv", "minQp", 12, 48, &app_config.minQp);
         parse_int(
-            &ini, "rtp", "IPQPDelta", -12, 12, &app_config.IPQPDelta);
+            &ini, "fpv", "IPQPDelta", -12, 12, &app_config.IPQPDelta);
         parse_int(
-            &ini, "rtp", "maxIQp", 12, 48, &app_config.maxIQp);
+            &ini, "fpv", "maxIQp", 12, 48, &app_config.maxIQp);
         parse_int(
-            &ini, "rtp", "minIQp", 12, 48, &app_config.minIQp);
+            &ini, "fpv", "minIQp", 12, 48, &app_config.minIQp);
         parse_int(
-            &ini, "rtp", "maxIPProp", 5, 100, &app_config.maxIPProp);
+            &ini, "fpv", "maxIPProp", 5, 100, &app_config.maxIPProp);
         parse_int(
-            &ini, "rtp", "maxISize", 0, 0xFFFFFFFF, &app_config.maxISize);
+            &ini, "fpv", "maxISize", 0, 0xFFFFFFFF, &app_config.maxISize);
         parse_int(
-            &ini, "rtp", "maxPSize", 0, 0xFFFFFFFF, &app_config.maxPSize);
+            &ini, "fpv", "maxPSize", 0, 0xFFFFFFFF, &app_config.maxPSize);
         
         }
 
@@ -345,7 +346,7 @@ enum ConfigError parse_app_config(void) {
     }
 
     parse_bool(&ini, "mp4", "enable", &app_config.mp4_enable);
-    if (app_config.mp4_enable || app_config.rtp_enable) {
+    if (app_config.mp4_enable || app_config.fpv_enable) {
         {
             const char *possible_values[] = {"H.264", "H.265", "H264", "H265", "AVC", "HEVC"};
             const int count = sizeof(possible_values) / sizeof(const char *);

@@ -47,8 +47,8 @@ struct AppConfig {
     char rtsp_auth_user[32];
     char rtsp_auth_pass[32];
 
-    // [rtp]
-    bool rtp_enable;
+    // [fpv]
+    bool fpv_enable;
     unsigned int rtp_port;
     char rtp_ip[128];
     unsigned int noiselevel;

@@ -5,9 +5,11 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "list.h"
 #include "rtp.h"
@@ -15,14 +17,7 @@
 
 #include "timestamp.h"
 
-#include <time.h>
 
-
-
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #define SEI_PAYLOAD_TYPE_USER_DATA_UNREGISTERED 5
 
@@ -56,72 +51,7 @@ static void format_sei_nalu_h265(uint8_t *sei_nalu, sei_message_t *sei, size_t *
 
 #define RTP_PACKET_SIZE 1500
 
-typedef struct {
-    char *rtp_ip;
-    int rtp_port;
-} rtp_thread_params;
 
-unsigned int quit = 0;
-
-#define MAX_BUFFER_SIZE 10*1024*1024
-
-typedef struct
-{
-    unsigned char buffer[MAX_BUFFER_SIZE];
-    size_t size;
-    char isH265;
-} buffer_t;
-
-typedef struct
-{
-    buffer_t doublebuffer[2];
-    int current;
-    bool data_ready;
-} doublebuffer_t;
-
-doublebuffer_t g_db;
-
-void doublebuffer_init(doublebuffer_t *db)
-{
-    db->doublebuffer[0].size = 0;
-    db->doublebuffer[1].size = 0;
-    db->current = 0;
-    db->data_ready = false;
-}
-
-
-void doublebuffer_swap(doublebuffer_t *db)
-{
-    db->current = !db->current;
-    db->doublebuffer[db->current].size = 0;
-    db->data_ready = true;
-}
-
-buffer_t* doublebuffer_read(doublebuffer_t *db)
-{
-    return &db->doublebuffer[!db->current];
-}
-
-buffer_t* doublebuffer_write(doublebuffer_t *db)
-{
-    return &db->doublebuffer[db->current];
-}
-
-
-
-int rtp_stream_send_h26x(unsigned char *buf, size_t len, char isH265)
-{
-    int ret = FAILURE;
-
-    buffer_t* buffer = doublebuffer_write(&g_db);
-    ASSERT(len < MAX_BUFFER_SIZE, return FAILURE);
-    // TODO: see if we can avoid memcpy at this stage
-    memcpy(buffer->buffer, buf, len);
-    buffer->size = len;
-    buffer->isH265 = isH265;
-    doublebuffer_swap(&g_db);
-    return SUCCESS;
-}
 
 void send_pkt(void* buffer, size_t size);
 
@@ -227,7 +157,7 @@ static inline int __transfer_nal_h26x_rtp(unsigned char *nalptr, size_t nalsize,
     return SUCCESS;
 }
 
-int g_sockfd;
+static int g_sockfd;
 struct sockaddr_in g_servaddr;
 
 void send_pkt(void* buffer, size_t size)
@@ -238,74 +168,9 @@ void send_pkt(void* buffer, size_t size)
 }
 
 
-#define NAL_UNIT_MAX 10
+void rtp_init(const char *rtp_ip, unsigned int rtp_port)
+{
 
-// Structure pour représenter une unité NAL
-typedef struct {
-    uint8_t *data;
-    size_t size;
-} NALUnit;
-
-#define GET_H264_NAL_UNIT_TYPE(byte) (byte & 0x1F)
-#define GET_H265_NAL_UNIT_TYPE(byte) ((byte & 0x7E) >> 1)
-
-// Fonction pour extraire les unités NAL d'un paquet H.265
-void extract_nal_units(uint8_t *packet, size_t packet_size, NALUnit *nal_units, size_t *nal_count) {
-    size_t i = 0;
-    size_t nal_index = 0;
-    int nal_type = 0;
-
-    while (i < packet_size) {
-        // Rechercher le début d'une unité NAL (0x000001 ou 0x00000001)
-        if (i + 2 < packet_size && packet[i] == 0x00 && packet[i + 1] == 0x00 && packet[i + 2] == 0x01) {
-            size_t nal_start = i + 3;
-            i += 3;
-            
-            nal_type = (packet[i] & 0x7E) >> 1;
-            /* if it is an IFrame or PFrame, do not search for other NAL units*/
-            if ((GET_H264_NAL_UNIT_TYPE(packet[i]) == 1)||(GET_H264_NAL_UNIT_TYPE(packet[i]) == 5)||(GET_H265_NAL_UNIT_TYPE(packet[i]) == 1)||(GET_H265_NAL_UNIT_TYPE(packet[i]) == 19))
-            {
-                HAL_DEBUG("RTP",  "IFrame or PFrame\n");
-                nal_units[nal_index].data = &packet[nal_start];
-                nal_units[nal_index].size = packet_size - nal_start;
-                nal_index++;
-                break;
-            }
-            else
-            {
-                HAL_DEBUG("RTP",  "NAL type: %i\n", GET_H265_NAL_UNIT_TYPE(packet[i]));
-            }
-
-            // Rechercher la fin de l'unité NAL (le début de la prochaine unité NAL ou la fin du paquet)
-            while (i + 2 < packet_size && !(packet[i] == 0x00 && packet[i + 1] == 0x00 && (packet[i + 2] == 0x01 || (i + 3 < packet_size && packet[i + 2] == 0x00 && packet[i + 3] == 0x01)))) {
-                i++;
-            }
-
-            size_t nal_end = i;
-
-            // Stocker l'unité NAL
-            nal_units[nal_index].data = &packet[nal_start];
-            nal_units[nal_index].size = nal_end - nal_start;
-            nal_index++;
-
-            if (nal_index == NAL_UNIT_MAX)
-            {
-                break;
-            }
-        } else {
-            i++;
-        }
-    }
-
-    *nal_count = nal_index;
-}
-
-
-void *rtp_thread_func(void *arg) {
-    rtp_thread_params *params = (rtp_thread_params *)arg;
-
-    //char buffer[RTP_PACKET_SIZE]; 
-    // Create UDP socket
     if ((g_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("socket creation failed");
         pthread_exit(NULL);
@@ -315,87 +180,43 @@ void *rtp_thread_func(void *arg) {
 
     // Fill server information
     g_servaddr.sin_family = AF_INET;
-    g_servaddr.sin_port = htons(params->rtp_port);
-    g_servaddr.sin_addr.s_addr = inet_addr(params->rtp_ip);
+    g_servaddr.sin_port = htons(rtp_port);
+    g_servaddr.sin_addr.s_addr = inet_addr(rtp_ip);
+}
 
-    // Loop indefinitely to send RTP packets
-    while (!quit) {
-
-        if (!g_db.data_ready) {
-            usleep(1);
-            continue;
-        }
-        buffer_t* buf = doublebuffer_read(&g_db);
-       
-        size_t single_len = 0;
-
-
-        unsigned char *nalptr = buf->buffer;
-
-
-        NALUnit nal_units[NAL_UNIT_MAX];
-        size_t nal_count = 0;
-
-        // Extraire les unités NAL
-        extract_nal_units(buf->buffer, buf->size, nal_units, &nal_count);
-        
-        // Create sei message and send to ground
-        static unsigned long frameNb = 0;
-        sei_message_t sei;
-        create_sei_message(&sei, frameNb);
-
-        uint8_t sei_nalu[256];
-        size_t sei_nalu_size;
-        format_sei_nalu_h265(sei_nalu, &sei, &sei_nalu_size);
-        // TODO : do it also    for h264
-        ASSERT(__transfer_nal_h26x_rtp(sei_nalu, sei_nalu_size, buf->isH265) == SUCCESS, goto error);
-
-        // Envoie des unités NAL extraites
-        for (size_t i = 0; i < nal_count; i++) {
-            
-            ASSERT(__transfer_nal_h26x_rtp(nal_units[i].data, nal_units[i].size, buf->isH265) == SUCCESS, goto error);
-        }
-
-        // send timestamps to ground
-        timestamp_send_finished(frameNb);
-        frameNb++;
-
-        // TODO: check race conditions
-        g_db.data_ready = false;
-    }
-
-error:
+void rtp_deinit(void)
+{
     close(g_sockfd);
-    pthread_exit(NULL);
 }
 
 
-void rtp_create(const char *rtp_ip, unsigned int rtp_port)
+void rtp_send_frame_h26x(unsigned long nbNal, NALUnit_t* nals, bool isH265)
 {
-    doublebuffer_init(&g_db);
+    fprintf(stderr, "nal_count %i\n", nbNal);
 
-    pthread_t rtp_thread;
-    rtp_thread_params *params = malloc(sizeof(rtp_thread_params));
-    if (!params) {
-        perror("malloc failed");
-        return;
+    // Create sei message and send to ground
+    static unsigned long frameNb = 0;
+    sei_message_t sei;
+    create_sei_message(&sei, frameNb);
+
+    uint8_t sei_nalu[256];
+    size_t sei_nalu_size;
+    format_sei_nalu_h265(sei_nalu, &sei, &sei_nalu_size);
+    // TODO : do it also for h264
+    __transfer_nal_h26x_rtp(sei_nalu, sei_nalu_size, isH265);
+
+    // Envoie des unités NAL 
+    for (size_t i = 0; i < nbNal; i++) {
+        
+        // TODO : do it also for h264
+        fprintf(stderr, "Send NAL %i\n", nals[i].size - 4);
+        /* do not set NAL header */
+        __transfer_nal_h26x_rtp(nals[i].data + 4, nals[i].size - 4, isH265);
     }
 
-    params->rtp_ip = strdup(rtp_ip);
-    params->rtp_port = rtp_port;
-
-    if (pthread_create(&rtp_thread, NULL, rtp_thread_func, params) != 0) {
-        perror("pthread_create failed");
-        free(params->rtp_ip);
-        free(params);
-        return;
-    }
-
-    // Optionally, detach the thread if you don't need to join it later
-    pthread_detach(rtp_thread);
+    // send timestamps to ground
+    timestamp_send_finished(frameNb);
+    frameNb++;
 }
 
-void rtp_finish(void)
-{
-    quit = 1;
-}
+

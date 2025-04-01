@@ -28,7 +28,7 @@ rtsp:
   auth_user: admin
   auth_pass: 12345
 
-rtp:
+fpv:
   enable: true
   port: 5600
   ip: 127.0.0.1
@@ -85,7 +85,7 @@ mp4:
   height: 1080
   fps: 60
   gop: 90
-  bitrate: 1024
+  bitrate: 8192
   profile: 1
 
 jpeg:

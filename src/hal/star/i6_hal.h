@@ -13,6 +13,7 @@
 
 #include "../support.h"
 #include "../../rtsp/timestamp.h"
+#include "../../rtsp/rtp_stream.h"
 
 #include <sys/select.h>
 #include <unistd.h>
@@ -22,6 +23,7 @@ extern char keepRunning;
 extern hal_chnstate i6_state[I6_VENC_CHN_NUM];
 extern int (*i6_aud_cb)(hal_audframe*);
 extern int (*i6_vid_cb)(char, hal_vidstream*);
+extern void (*i6_fpv_cb)(unsigned long, NALUnit_t* , bool);
 
 void i6_hal_deinit(void);
 int i6_hal_init(void);

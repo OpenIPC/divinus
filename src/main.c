@@ -80,13 +80,13 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (app_config.rtp_enable) {
+    if (app_config.fpv_enable) {
         if (!app_config.rtp_ip)
         {
-            HAL_ERROR("rtp", "RTP IP address is not set!\n");
+            HAL_ERROR("fpv", "RTP IP address is not set!\n");
         } 
-        HAL_INFO("rtp", "Started sending RTP stream to %s:%i...\n", app_config.rtp_ip, app_config.rtp_port);
-        rtp_create(app_config.rtp_ip, app_config.rtp_port);
+        HAL_INFO("fpv", "Started sending RTP stream to %s:%i...\n", app_config.rtp_ip, app_config.rtp_port);
+        rtp_init(app_config.rtp_ip, app_config.rtp_port);
     }
 
     if (start_sdk())
@@ -124,9 +124,9 @@ int main(int argc, char *argv[]) {
         HAL_INFO("rtsp", "Server has closed!\n");
     }
 
-    if (app_config.rtp_enable) {
-        rtp_finish();
-        HAL_INFO("rtp", "RTP has closed!\n");
+    if (app_config.fpv_enable) {
+        rtp_deinit();
+        HAL_INFO("fpv", "FPV has closed!\n");
     }
 
     if (app_config.osd_enable)
