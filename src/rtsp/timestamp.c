@@ -246,22 +246,30 @@ void timestamp_send_finished(unsigned long frameNb)
 
         if (recvfrom(sockfd, &ground_time_ns, sizeof(ground_time_ns), 0, (struct sockaddr *)&ground_addr, &addr_len) < 0) {
             if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                printf("Receive timeout\n");
+                printf("Receive timeout, send ground to 0\n");
+                ground_time_ns = 0;
             } else {
                 perror("Failed to receive data");
+                ground_time_ns = 0;
             }
-            return;
         }
+        
+        if (ground_time_ns)
+        {
+            // Capturer le temps de réception de la réponse
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            rtt_ns = ts.tv_sec * 1000000000ULL + ts.tv_nsec - air_time_ns;
 
-        // Capturer le temps de réception de la réponse
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        rtt_ns = ts.tv_sec * 1000000000ULL + ts.tv_nsec - air_time_ns;
+            // convertir le temps de réception du système "ground" en réseau en local
+            ground_time_ns = ntohll(ground_time_ns);
 
-        // convertir le temps de réception du système "ground" en réseau en local
-        ground_time_ns = ntohll(ground_time_ns);
-
-        // Calculer le temps de traversée unidirectionnel
-        timestamps.one_way_delay_ns = rtt_ns / 2;
+            // Calculer le temps de traversée unidirectionnel
+            timestamps.one_way_delay_ns = rtt_ns / 2;
+        }
+        else
+        {
+            timestamps.one_way_delay_ns = 0;
+        }
 
         
         HAL_DEBUG("TS",  "Packet sent %lu =>\n", frameNb);
