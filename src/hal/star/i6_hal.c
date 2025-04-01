@@ -178,11 +178,13 @@ int i6_channel_bind(char index, char framerate)
     return EXIT_SUCCESS;
 }
 
+
 int i6_channel_create(char index, short width, short height, char mirror, char flip, char jpeg)
 {
     i6_vpe_port port;
     port.output.width = width;
     port.output.height = height;
+    /* use sensor mirror/flip instead of VPE one */
     port.mirror = 0;
     port.flip = 0;
     port.compress = I6_COMPR_NONE;
@@ -250,7 +252,7 @@ void i6_sensor_config(char framerate)
     i6_channel_sensorexposure(timeus);
 }
 
-int i6_pipeline_create(char sensor, short width, short height, char framerate)
+int i6_pipeline_create(char sensor, short width, short height, char framerate, char mirror, char flip)
 {
     int ret;
 
@@ -296,7 +298,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
             return EXIT_FAILURE;
     }
 
-    if (ret = i6_snr.fnSetOrien(_i6_snr_index, 1, 1))
+    if (ret = i6_snr.fnSetOrien(_i6_snr_index, mirror, flip))
         return ret;
 
     if (ret = i6_snr.fnGetPadInfo(_i6_snr_index, &_i6_snr_pad))
