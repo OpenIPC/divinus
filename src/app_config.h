@@ -52,6 +52,8 @@ struct AppConfig {
     unsigned int rtp_port;
     char rtp_ip[128];
     unsigned int noiselevel;
+    bool intraQp;
+    unsigned int intraLine;
     
     // [audio]
     bool audio_enable;

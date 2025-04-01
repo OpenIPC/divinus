@@ -747,12 +747,6 @@ attach:
     //pstRcParam.stParamH265Cbr.u32MaxISize = 20*1024;
     //pstRcParam.stParamH265Cbr.u32MaxPSize = 20*1024;
 
-    /*
-    HAL_DEBUG("HAL",  "Set RC Param channel %d with ThrI %i, ThrP %i, RowQpDelta %i, MaxQp %i, MinQp %i, IPQPDelta: %i, MaxIQp: %i, MinIQp: %i, MaxIPProp: %i, MaxISize: %i, MaxPSize: %i\n",
-        index, pstRcParam.u32ThrdI[0], pstRcParam.u32ThrdP[0], pstRcParam.u32RowQpDelta, pstRcParam.stParamH265Cbr.u32MaxQp, pstRcParam.stParamH265Cbr.u32MinQp,
-         pstRcParam.stParamH265Cbr.s32IPQPDelta, pstRcParam.stParamH265Cbr.u32MaxIQp, pstRcParam.stParamH265Cbr.u32MinIQp, pstRcParam.stParamH265Cbr.u32MaxIPProp,
-          pstRcParam.stParamH265Cbr.u32MaxISize, pstRcParam.stParamH265Cbr.u32MaxPSize);
-*/
     HAL_DEBUG("HAL",  "u32ThrdI[0]: %u\n", pstRcParam.u32ThrdI[0]);
     HAL_DEBUG("HAL",  "u32ThrdP[0]: %u\n", pstRcParam.u32ThrdP[0]);
     HAL_DEBUG("HAL",  "u32RowQpDelta: %u\n", pstRcParam.u32RowQpDelta);
@@ -795,19 +789,21 @@ attach:
     HAL_DEBUG("HAL",  "after 3A reactivation\n");
 
 
-
-    MI_VENC_IntraRefresh_t stIntraRefresh;
-    stIntraRefresh.bEnable = 1;
-    stIntraRefresh.u32RefreshLineNum = 16;
-    stIntraRefresh.u32ReqIQp = 1;
-    #if 1
-    HAL_DEBUG("HAL",  "call setIntraRefresh, enable %i, RefreshLine : %i, u32ReqIQp: %i\n",
-        stIntraRefresh.bEnable, stIntraRefresh.u32RefreshLineNum, stIntraRefresh.u32ReqIQp);
-    i6_venc.fnSetIntraRefresh(0, &stIntraRefresh);
-    HAL_DEBUG("HAL",  "after call setIntraRefresh\n");
-    #endif
-
-
+    if (config->intraQp)
+    {
+        MI_VENC_IntraRefresh_t stIntraRefresh;
+        stIntraRefresh.bEnable = 1;
+        stIntraRefresh.u32RefreshLineNum = config->intraLine;
+        stIntraRefresh.u32ReqIQp = 1;
+        HAL_DEBUG("HAL",  "call setIntraRefresh, enable %i, RefreshLine : %i, u32ReqIQp: %i\n",
+            stIntraRefresh.bEnable, stIntraRefresh.u32RefreshLineNum, stIntraRefresh.u32ReqIQp);
+        i6_venc.fnSetIntraRefresh(0, &stIntraRefresh);
+        HAL_DEBUG("HAL",  "after call setIntraRefresh\n");
+    }
+    else
+    {
+        HAL_DEBUG("HAL",  "IntraRefresh deactivated\n");
+    }
 
     if (config->codec != HAL_VIDCODEC_JPG && 
         (ret = i6_venc.fnStartReceiving(index)))

@@ -505,6 +505,8 @@ int enable_mp4(void) {
         config.framerate = app_config.mp4_fps;
         config.bitrate = app_config.mp4_bitrate;
         config.maxBitrate = app_config.mp4_bitrate * 5 / 4;
+        config.intraQp = app_config.intraQp;
+        config.intraLine = app_config.intraLine;
 
         switch (plat) {
 #if defined(__arm__)

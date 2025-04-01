@@ -33,6 +33,8 @@ rtp:
   port: 5600
   ip: 127.0.0.1
   noiselevel: 0
+  intraQp: true
+  intraLine: 16
 
 night_mode:
   enable: false
