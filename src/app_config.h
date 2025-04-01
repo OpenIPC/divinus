@@ -63,7 +63,13 @@ struct AppConfig {
     unsigned int maxIPProp;
     unsigned int maxISize;
     unsigned int maxPSize;
-    
+
+    // [timestamp]
+    bool ts_enable;
+    unsigned int ts_port_rx;
+    unsigned int ts_port_tx;
+    char ts_ip[128];
+
     // [audio]
     bool audio_enable;
     unsigned int audio_bitrate;

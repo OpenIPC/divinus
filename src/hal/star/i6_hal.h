@@ -12,6 +12,7 @@
 #include "i6_vpe.h"
 
 #include "../support.h"
+#include "../../rtsp/timestamp.h"
 
 #include <sys/select.h>
 #include <unistd.h>

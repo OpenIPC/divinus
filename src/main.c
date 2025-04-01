@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "rtsp/timestamp.h"
 
 rtsp_handle rtspHandle;
 char graceful = 0, keepRunning = 1;
@@ -90,6 +91,19 @@ int main(int argc, char *argv[]) {
 
     if (start_sdk())
         HAL_ERROR("hal", "Failed to start SDK!\n");
+
+    if (app_config.ts_enable){
+        if (!app_config.ts_ip)
+        {
+            HAL_ERROR("ts", "TS IP address is not set!\n");
+        } 
+        timestamp_init(app_config.ts_ip, app_config.ts_port_rx, app_config.ts_port_tx);
+        HAL_INFO("ts", "Started timestamping...\n");
+    }
+    else
+    {
+        HAL_INFO("ts", "TimeStamp not started.\n");
+    }
 
     if (app_config.night_mode_enable)
         start_monitor_light_sensor();

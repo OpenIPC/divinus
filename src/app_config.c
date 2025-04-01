@@ -161,6 +161,11 @@ enum ConfigError parse_app_config(void) {
     app_config.maxISize = 0;
     app_config.maxPSize = 0;
 
+    app_config.ts_enable = false;
+    app_config.ts_port_rx = 5850;
+    app_config.ts_port_tx = 5851;
+    app_config.ts_ip[0] = 0;
+
     app_config.sensor_config[0] = 0;
     app_config.audio_enable = false;
     app_config.audio_bitrate = 128;
@@ -316,6 +321,17 @@ enum ConfigError parse_app_config(void) {
             &ini, "rtp", "maxISize", 0, 0xFFFFFFFF, &app_config.maxISize);
         parse_int(
             &ini, "rtp", "maxPSize", 0, 0xFFFFFFFF, &app_config.maxPSize);
+        
+        }
+
+    parse_bool(&ini, "ts", "enable", &app_config.ts_enable);
+    if (app_config.ts_enable){
+        parse_int(
+            &ini, "ts", "ts_port_rx", 1, 65536, &app_config.ts_port_rx);
+        parse_int(
+            &ini, "ts", "ts_port_tx", 1, 65536, &app_config.ts_port_tx);
+        parse_param_value(
+            &ini, "ts", "ip", app_config.ts_ip);
     }
 
     parse_bool(&ini, "audio", "enable", &app_config.audio_enable);

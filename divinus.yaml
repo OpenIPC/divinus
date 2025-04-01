@@ -45,6 +45,12 @@ rtp:
   maxISize: 0
   maxPSize: 0
 
+ts:
+  enable: true
+  ts_port_rx: 5850
+  ts_port_tx: 5851
+  ip: 127.0.0.1
+  
 night_mode:
   enable: false
   ir_sensor_pin: 62

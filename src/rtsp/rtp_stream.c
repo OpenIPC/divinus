@@ -13,6 +13,7 @@
 #include "rtp.h"
 #include "rfc.h"
 
+#include "timestamp.h"
 
 #include <time.h>
 
@@ -52,13 +53,6 @@ static void format_sei_nalu_h265(uint8_t *sei_nalu, sei_message_t *sei, size_t *
     *sei_nalu_size = sei_header_size + sei_message_size;
 }
 
-
-
-unsigned long long current_time_microseconds(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    return (unsigned long long)(ts.tv_sec) * 1000000 + (unsigned long long)(ts.tv_nsec) / 1000;
-}
 
 #define RTP_PACKET_SIZE 1500
 
@@ -306,13 +300,9 @@ void extract_nal_units(uint8_t *packet, size_t packet_size, NALUnit *nal_units, 
     *nal_count = nal_index;
 }
 
-extern void timestamp_send_finished(unsigned long frameNb);
 
 void *rtp_thread_func(void *arg) {
     rtp_thread_params *params = (rtp_thread_params *)arg;
-    unsigned long long curms, lastms = 0;
-    unsigned long long timediff;
-    unsigned long pkt = 0;
 
     //char buffer[RTP_PACKET_SIZE]; 
     // Create UDP socket
@@ -336,16 +326,7 @@ void *rtp_thread_func(void *arg) {
             continue;
         }
         buffer_t* buf = doublebuffer_read(&g_db);
-
-        curms = current_time_microseconds() / 1000;
-        if (lastms)
-        {
-            timediff = curms - lastms;
-        }
-        lastms = curms;
-        pkt++;
-
-        
+       
         size_t single_len = 0;
 
 
