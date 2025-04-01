@@ -163,7 +163,7 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
     list_upcast(trans,e); 
 
     MUST(con = trans->con, return FAILURE);
-    if (!con->trans[track_id].client_port_rtp) return SUCCESS;
+    if (!con->trans[track_id].server_port_rtp) return SUCCESS;
 
     rtp->packet.header.seq = htons(con->trans[track_id].rtp_seq);
     if (rtp->packet.header.m)
@@ -388,12 +388,12 @@ int rtp_send_h26x(rtsp_handle h, unsigned char *buf, size_t len, char isH265)
 
     /* setup transmission objecl t*/
     ASSERT(list_map_inline(&h->con_list, (__rtp_setup_transfer), &trans) == SUCCESS, goto error);
-
+    
     if (trans.list_head.list) {
         while (__split_nal(buf, &nalptr, &single_len, len) == SUCCESS) {
             ASSERT(__transfer_nal_h26x(&(trans.list_head), nalptr, single_len, h->isH265) == SUCCESS, goto error);
         }
-        //ASSERT(list_map_inline(&(trans.list_head), (__rtcp_poll), &track_id) == SUCCESS, goto error);
+        ASSERT(list_map_inline(&(trans.list_head), (__rtcp_poll), &track_id) == SUCCESS, goto error);
     } 
 
     ret = SUCCESS;

@@ -15,7 +15,6 @@
 #include "rfc.h"
 #include "rtcp.h"
 #include "bufpool.h"
-#include "../app_config.h"
 #include <netinet/in.h>
 #include <sys/ioctl.h>
 
@@ -316,32 +315,6 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
     request_idr();
 }
 
-static void __method_play_rtp(struct connection_item_t *p, rtsp_handle h)
-{
-    for (int i = 0; i < sizeof(p->trans) / sizeof(*p->trans); i++) {
-        HAL_DEBUG("RTP",  " => i %i\n", i);
-        p->trans[i].client_port_rtp = 5600;
-        if (!p->trans[i].client_port_rtp) continue;
-        p->track_id = i;
-
-        HAL_DEBUG("RTP",  "p->trans[%i].client_port_rtp %i \n", p->track_id, p->trans[p->track_id].client_port_rtp);
-        //ASSERT(__bind_rtcp(p) == SUCCESS, return);
-        ASSERT(__bind_rtp(p) == SUCCESS, return);
-        p->trans[p->track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
-        p->trans[p->track_id].rtp_seq = rand_r(&h->ctx);
-        p->trans[p->track_id].rtcp_octet = 0; 
-        p->trans[p->track_id].rtcp_packet_cnt = 0; 
-        p->trans[p->track_id].rtcp_tick_org = 150; // TODO: must be variant
-        p->trans[p->track_id].rtcp_tick = p->trans[p->track_id].rtcp_tick_org;
-    }
-
-    p->con_state = __CON_S_PLAYING;
-
-    //ASSERT(__rtcp_send_sr(p) == SUCCESS, return);
-
-    request_idr();
-}
-
 static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
 {
     fprintf(p->fp_tcp_write,
@@ -508,29 +481,6 @@ static int __connection_reset(void *v)
 }
 
     static inline int
-__connection_list_add_rtp(bufpool_handle con_pool, struct list_head_t *head, struct sockaddr_in addr)
-{
-    DASSERT(head, return FAILURE);
-
-    struct connection_item_t *p = NULL;
-
-    ASSERT(bufpool_get_free(con_pool, &p) == SUCCESS, return FAILURE);
-
-    DASSERT(p, return FAILURE);
-
-    DBG("previous fd=%d\n", p->client_fd);
-
-    p->addr=addr;
-    p->client_fd=-1;
-    p->con_state = __CON_S_INIT;
-
-    return list_add(head, &(p->list_entry));
-error:
-    __connection_reset(&p->list_entry);
-    return FAILURE;
-}
-
-static inline int
 __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd, struct sockaddr_in addr)
 {
     DASSERT(head, return FAILURE);
@@ -752,101 +702,69 @@ static int __connection_is_dead(struct list_t *l)
     return c->con_state == __CON_S_DISCONNECTED;
 }
 
-static void create_rtp_connection(rtsp_handle rh)
-{
-    static bool con_started = false;
-    if (!con_started) {
-        HAL_DEBUG("RTP", "Create RTP connection\n");
-        struct sockaddr_in from_addr;
-        from_addr.sin_family = AF_INET;
-        from_addr.sin_addr.s_addr = inet_addr("192.168.1.14");
-        from_addr.sin_port = htons(5600);
-        ASSERT(__connection_list_add_rtp(rh->con_pool, &rh->con_list, from_addr) == SUCCESS,
-                return);
-
-        struct connection_item_t *con;
-        list_upcast(con, rh->con_list.list);
-        __method_play_rtp(con, rh);
-
-        con_started = true; 
-    }
-
-}
-
 /******************************************************************************
  *                  THREAD CALLBACKS
  ******************************************************************************/
 static void *rtspThrFxn(void *v)
 {
-    if (!app_config.rtsp_enable)
-    {
-        return THREAD_SUCCESS;
+    thread_handle           h = v;
+    rtsp_handle             rh = h->sharedp->param_shared;
+    void                    *status = THREAD_FAILURE;
+    struct sock_select_t    socks = {};
+
+    int     ret_select;
+    int     server_fd = -1;
+
+    DASSERT(thread_check_isoleted_job(h) == SUCCESS, goto error);
+
+    /* open tcp connection */
+    ASSERT((server_fd = __bind_tcp(SERVER_RTSP_PORT)) > 0, goto error);
+
+    socks.nfds = server_fd + 1;
+    socks.h_rtsp = rh;
+
+    thread_sync_init(h);
+
+    while (!gbl_get_quit(h->sharedp->gbl)) {
+        FD_ZERO(&(socks.rfds));
+        FD_SET(server_fd, &(socks.rfds));
+        socks.timeout.tv_sec = 1;
+        socks.timeout.tv_usec = 0;
+
+        ASSERT(list_map_inline(&rh->con_list, (__set_select_sock), &socks) == SUCCESS, goto error);
+
+        ASSERT((ret_select = select(socks.nfds, &(socks.rfds), NULL, NULL, &(socks.timeout))) >= 0, ({
+                    ERR("select:%s\n", strerror(errno));
+                    goto error;}));
+
+        if (ret_select > 0){
+            /* lock while tcp layer is done */
+            rtsp_lock(rh);
+
+            ASSERT(__accept_proc_sock(rh, server_fd, &socks) == SUCCESS, 
+                    ({ rtsp_unlock(rh); goto error;}));
+
+            ASSERT(list_map_inline(&rh->con_list, __message_proc_sock, &socks) == SUCCESS, 
+                    ({ rtsp_unlock(rh); goto error;}));
+
+            MUST(list_sweep(&rh->con_list, __connection_is_dead) == SUCCESS, 
+                    ({ rtsp_unlock(rh); goto error;}));
+
+            socks.nfds = max(server_fd, __find_fd_max(&rh->con_list)) + 1;
+
+            rtsp_unlock(rh);
+        } 
+        //bufpool_statistics(rh->con_pool);
     }
-    else
-    {
-        thread_handle           h = v;
-        rtsp_handle             rh = h->sharedp->param_shared;
-        void                    *status = THREAD_FAILURE;
-        struct sock_select_t    socks = {};
 
-        int     ret_select;
-        int     server_fd = -1;
+    status = THREAD_SUCCESS;
+error:
+    /* Make sure the other threads aren't waiting for us */
+    thread_sync_cleanup(h);
 
-        DASSERT(thread_check_isoleted_job(h) == SUCCESS, goto error);
+    if (server_fd > 0) close(server_fd);
 
-        /* open tcp connection */
-        ASSERT((server_fd = __bind_tcp(SERVER_RTSP_PORT)) > 0, goto error);
-
-        socks.nfds = server_fd + 1;
-        socks.h_rtsp = rh;
-
-        thread_sync_init(h);
-
-        while (!gbl_get_quit(h->sharedp->gbl)) {
-            FD_ZERO(&(socks.rfds));
-            FD_SET(server_fd, &(socks.rfds));
-            socks.timeout.tv_sec = 1;
-            socks.timeout.tv_usec = 0;
-
-            
-            //create_rtp_connection(rh);
-            
-            
-            ASSERT(list_map_inline(&rh->con_list, (__set_select_sock), &socks) == SUCCESS, goto error);
-
-            ASSERT((ret_select = select(socks.nfds, &(socks.rfds), NULL, NULL, &(socks.timeout))) >= 0, ({
-                        ERR("select:%s\n", strerror(errno));
-                        goto error;}));
-
-            if (ret_select > 0){
-                /* lock while tcp layer is done */
-                rtsp_lock(rh);
-
-                ASSERT(__accept_proc_sock(rh, server_fd, &socks) == SUCCESS, 
-                        ({ rtsp_unlock(rh); goto error;}));
-
-                ASSERT(list_map_inline(&rh->con_list, __message_proc_sock, &socks) == SUCCESS, 
-                        ({ rtsp_unlock(rh); goto error;}));
-
-                MUST(list_sweep(&rh->con_list, __connection_is_dead) == SUCCESS, 
-                        ({ rtsp_unlock(rh); goto error;}));
-
-                socks.nfds = max(server_fd, __find_fd_max(&rh->con_list)) + 1;
-
-                rtsp_unlock(rh);
-            } 
-            //bufpool_statistics(rh->con_pool);
-        }
-
-        status = THREAD_SUCCESS;
-    error:
-        /* Make sure the other threads aren't waiting for us */
-        thread_sync_cleanup(h);
-
-        if (server_fd > 0) close(server_fd);
-
-        return status;
-    }
+    return status;
 }
 
 
