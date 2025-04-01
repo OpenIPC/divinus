@@ -508,6 +508,14 @@ int enable_mp4(void) {
         config.intraQp = app_config.intraQp;
         config.intraLine = app_config.intraLine;
         config.cus3A = app_config.cus3A;
+        config.maxQp = app_config.maxQp;
+        config.minQp = app_config.minQp;
+        config.IPQPDelta = app_config.IPQPDelta;
+        config.maxIQp = app_config.maxIQp;
+        config.minIQp = app_config.minIQp;
+        config.maxIPProp = app_config.maxIPProp;
+        config.maxISize = app_config.maxISize;
+        config.maxPSize = app_config.maxPSize;
 
         switch (plat) {
 #if defined(__arm__)

@@ -152,6 +152,14 @@ enum ConfigError parse_app_config(void) {
     app_config.intraQp = false;
     app_config.intraLine = 1;
     app_config.cus3A = false;
+    app_config.maxQp = 48;
+    app_config.minQp = 12;
+    app_config.IPQPDelta = 0;
+    app_config.maxIQp = 48;
+    app_config.minIQp = 12;
+    app_config.maxIPProp = 5;
+    app_config.maxISize = 0;
+    app_config.maxPSize = 0;
 
     app_config.sensor_config[0] = 0;
     app_config.audio_enable = false;
@@ -291,6 +299,23 @@ enum ConfigError parse_app_config(void) {
         parse_int(
             &ini, "rtp", "intraLine", 1, 32, &app_config.intraLine);
         parse_bool(&ini, "rtp", "cus3A", &app_config.cus3A);
+
+        parse_int(
+            &ini, "rtp", "maxQp", 12, 48, &app_config.maxQp);
+        parse_int(
+            &ini, "rtp", "minQp", 12, 48, &app_config.intraLine);
+        parse_int(
+            &ini, "rtp", "IPQPDelta", -12, 12, &app_config.IPQPDelta);
+        parse_int(
+            &ini, "rtp", "maxIQp", 12, 48, &app_config.maxIQp);
+        parse_int(
+            &ini, "rtp", "minIQp", 12, 48, &app_config.minIQp);
+        parse_int(
+            &ini, "rtp", "maxIPProp", 5, 100, &app_config.maxIPProp);
+        parse_int(
+            &ini, "rtp", "maxISize", 0, 0xFFFFFFFF, &app_config.maxISize);
+        parse_int(
+            &ini, "rtp", "maxPSize", 0, 0xFFFFFFFF, &app_config.maxPSize);
     }
 
     parse_bool(&ini, "audio", "enable", &app_config.audio_enable);

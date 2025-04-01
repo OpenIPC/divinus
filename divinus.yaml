@@ -35,6 +35,15 @@ rtp:
   noiselevel: 0
   intraQp: true
   intraLine: 16
+  cus3A: true
+  maxQp: 48
+  minQp: 12
+  IPQPDelta: 0
+  maxIQp: 48
+  minIQp: 12
+  maxIPProp: 5
+  maxISize: 0
+  maxPSize: 0
 
 night_mode:
   enable: false
@@ -66,12 +75,12 @@ mp4:
   enable: true
   codec: H264
   mode: CBR
-  width: 3840
-  height: 2160
-  fps: 20
-  gop: 40
+  width: 1920
+  height: 1080
+  fps: 60
+  gop: 90
   bitrate: 1024
-  profile: 2
+  profile: 1
 
 jpeg:
   enable: false

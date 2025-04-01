@@ -733,19 +733,14 @@ attach:
     pstRcParam.u32ThrdI[0] = 0;
     pstRcParam.u32ThrdP[0] = 0;
     pstRcParam.u32RowQpDelta = 0;
-    pstRcParam.stParamH265Cbr.u32MaxQp = 48;
-    pstRcParam.stParamH265Cbr.u32MinQp = 12;
-    //pstRcParam.stParamH265Cbr.s32IPQPDelta = -4;
-    pstRcParam.stParamH265Cbr.s32IPQPDelta = 0;
-    pstRcParam.stParamH265Cbr.u32MaxIQp = 48;
-    //pstRcParam.stParamH265Cbr.u32MaxIQp = 40;
-    pstRcParam.stParamH265Cbr.u32MinIQp = 12;
-    //pstRcParam.stParamH265Cbr.u32MaxIPProp = 1;
-    pstRcParam.stParamH265Cbr.u32MaxIPProp = 5;
-    pstRcParam.stParamH265Cbr.u32MaxISize = 0;
-    pstRcParam.stParamH265Cbr.u32MaxPSize = 0;
-    //pstRcParam.stParamH265Cbr.u32MaxISize = 20*1024;
-    //pstRcParam.stParamH265Cbr.u32MaxPSize = 20*1024;
+    pstRcParam.stParamH265Cbr.u32MaxQp = config->maxQp;
+    pstRcParam.stParamH265Cbr.u32MinQp = config->minQp;
+    pstRcParam.stParamH265Cbr.s32IPQPDelta = config->IPQPDelta;
+    pstRcParam.stParamH265Cbr.u32MaxIQp = config->maxIQp;
+    pstRcParam.stParamH265Cbr.u32MinIQp = config->minIQp;
+    pstRcParam.stParamH265Cbr.u32MaxIPProp = config->maxIPProp;
+    pstRcParam.stParamH265Cbr.u32MaxISize = config->maxISize;
+    pstRcParam.stParamH265Cbr.u32MaxPSize = config->maxPSize;
 
     HAL_DEBUG("HAL",  "u32ThrdI[0]: %u\n", pstRcParam.u32ThrdI[0]);
     HAL_DEBUG("HAL",  "u32ThrdP[0]: %u\n", pstRcParam.u32ThrdP[0]);

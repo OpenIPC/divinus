@@ -114,6 +114,15 @@ typedef struct {
     char intraQp;
     unsigned int intraLine;
     char cus3A;
+    unsigned int maxQp;
+    unsigned int minQp;
+    int IPQPDelta;
+    unsigned int maxIQp;
+    unsigned int minIQp;
+    unsigned int maxIPProp;
+    unsigned int maxISize;
+    unsigned int maxPSize;
+
 } hal_vidconfig;
 
 typedef struct {

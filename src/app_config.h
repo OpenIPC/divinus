@@ -55,6 +55,14 @@ struct AppConfig {
     bool intraQp;
     unsigned int intraLine;
     bool cus3A;
+    unsigned int maxQp;
+    unsigned int minQp;
+    int IPQPDelta;
+    unsigned int maxIQp;
+    unsigned int minIQp;
+    unsigned int maxIPProp;
+    unsigned int maxISize;
+    unsigned int maxPSize;
     
     // [audio]
     bool audio_enable;
