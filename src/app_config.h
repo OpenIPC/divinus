@@ -54,6 +54,7 @@ struct AppConfig {
     unsigned int noiselevel;
     bool intraQp;
     unsigned int intraLine;
+    bool cus3A;
     
     // [audio]
     bool audio_enable;

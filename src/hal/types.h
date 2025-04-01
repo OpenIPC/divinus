@@ -113,6 +113,7 @@ typedef struct {
     unsigned short bitrate, maxBitrate;
     char intraQp;
     unsigned int intraLine;
+    char cus3A;
 } hal_vidconfig;
 
 typedef struct {

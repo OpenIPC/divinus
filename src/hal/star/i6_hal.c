@@ -764,29 +764,36 @@ attach:
 
     HAL_DEBUG("HAL",  "RC Set\n");
 
-    // some reverse engineering with ltrace and LD_PRELOAD to see what's majestic is doing
-    HAL_DEBUG("HAL",  "disable 3A and reactivate it\n");
-    if (ret = i6_isp.fnDisableUserspace3A(0))
-        return ret;
-    HAL_DEBUG("HAL",  "after 3A deactivation\n");
-    cus3AEnable_t data;
-    data.args[0] = 0x4000000;
-    data.args[1] = 0;
-    data.args[2] = 0xb;
-    data.args[3] = 0;
-    data.args[4] = 0;
-    data.args[5] = 0;
-    data.args[6] = 0;
-    data.args[7] = 0;
-    data.args[8] = 0;
-    data.args[9] = 0;
-    data.args[10] = 0;
-    data.args[11] = 0;
-    data.args[12] = 0;
+    if (config->cus3A)
+    {
+        // some reverse engineering with ltrace and LD_PRELOAD to see what's majestic is doing
+        HAL_DEBUG("HAL",  "disable 3A and reactivate it\n");
+        if (ret = i6_isp.fnDisableUserspace3A(0))
+            return ret;
+        HAL_DEBUG("HAL",  "after 3A deactivation\n");
+        cus3AEnable_t data;
+        data.args[0] = 0x4000000;
+        data.args[1] = 0;
+        data.args[2] = 0xb;
+        data.args[3] = 0;
+        data.args[4] = 0;
+        data.args[5] = 0;
+        data.args[6] = 0;
+        data.args[7] = 0;
+        data.args[8] = 0;
+        data.args[9] = 0;
+        data.args[10] = 0;
+        data.args[11] = 0;
+        data.args[12] = 0;
 
-    if (ret = i6_isp.fnCUS3AEnable(0, &data))
-        return ret;
-    HAL_DEBUG("HAL",  "after 3A reactivation\n");
+        if (ret = i6_isp.fnCUS3AEnable(0, &data))
+            return ret;
+        HAL_DEBUG("HAL",  "after 3A reactivation\n");
+    }
+    else
+    {
+        HAL_DEBUG("HAL",  "Keep default 3A\n");
+    }
 
 
     if (config->intraQp)
