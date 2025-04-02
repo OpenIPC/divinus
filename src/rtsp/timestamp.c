@@ -15,6 +15,8 @@
 
 #define PROC_FILENAME "/proc/sstarts"
 
+#define PACKET_MAGIC 0xA1B2C3D4
+
 typedef struct {
     unsigned long      frameNb;
     unsigned long long vsync_timestamp;
@@ -26,7 +28,19 @@ typedef struct {
 } air_timestamp_buffer_t;
 static air_timestamp_buffer_t timestamps;
 
+typedef enum {
+    PACKET_TYPE_AIR_TIME,
+    PACKET_TYPE_AIR_TIMESTAMPS
+} packet_type_t;
 
+typedef struct {
+    uint32_t magic; // Magic number for validation
+    packet_type_t type;
+    union {
+        uint64_t air_time_ns;
+        air_timestamp_buffer_t air_timestamps;
+    } data;
+} air_packet_t;
 
 static int is_module_loaded(const char *module_name) {
     FILE *fp = fopen("/proc/modules", "r");
@@ -217,84 +231,89 @@ void timestamp_venc_finished(void) {
     }
 }
 
+// Helper function to send air_packet_t
+static int send_air_packet(air_packet_t *packet, size_t packet_size) {
+    if (sendto(sockfd, packet, packet_size, 0, (struct sockaddr *)&ground_addr, sizeof(ground_addr)) < 0) {
+        perror("Failed to send packet");
+        return -1;
+    }
+    return 0;
+}
 
 void timestamp_send_finished(unsigned long frameNb)
 {
     if (timestamp_enabled)
     {
         struct timespec ts;
-        unsigned long long air_time_ns, air_time_ns_network, rtt_ns, ground_time_ns;
+        unsigned long long air_time_ns, rtt_ns, ground_time_ns;
         socklen_t addr_len = sizeof(ground_addr);
-        char buffer[256];
 
-        // Capturer le temps "air"
+        // Capture air time
         clock_gettime(CLOCK_MONOTONIC, &ts);
         air_time_ns = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
 
-        // Envoyer le temps "air" au système "ground"
-        air_time_ns_network = htonll(air_time_ns);
-        if (sendto(sockfd, &air_time_ns_network, sizeof(air_time_ns_network), 0, (struct sockaddr *)&ground_addr, sizeof(ground_addr)) < 0) {
-            perror("Failed to send data");
+        // Prepare and send air_time_ns packet
+        air_packet_t air_time_packet;
+        air_time_packet.magic = htonl(PACKET_MAGIC);
+        air_time_packet.type = htonl(PACKET_TYPE_AIR_TIME);
+        air_time_packet.data.air_time_ns = htonll(air_time_ns);
+
+        if (send_air_packet(&air_time_packet, sizeof(air_time_packet)) < 0) {
             return;
         }
 
-        // Recevoir la réponse du système "ground" avec timeout
-        struct timeval timeout;
-        timeout.tv_sec = 0;
-        timeout.tv_usec = TIMEOUT_US;
+        // Receive response from ground system with timeout
+        struct timeval timeout = { .tv_sec = 0, .tv_usec = TIMEOUT_US };
         setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
         if (recvfrom(sockfd, &ground_time_ns, sizeof(ground_time_ns), 0, (struct sockaddr *)&ground_addr, &addr_len) < 0) {
             if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                printf("Receive timeout, send ground to 0\n");
+                printf("Receive timeout, setting ground_time_ns to 0\n");
                 ground_time_ns = 0;
             } else {
                 perror("Failed to receive data");
                 ground_time_ns = 0;
             }
         }
-        
-        if (ground_time_ns)
-        {
-            // Capturer le temps de réception de la réponse
+
+        if (ground_time_ns) {
+            // Capture response time and calculate RTT
             clock_gettime(CLOCK_MONOTONIC, &ts);
             rtt_ns = ts.tv_sec * 1000000000ULL + ts.tv_nsec - air_time_ns;
 
-            // convertir le temps de réception du système "ground" en réseau en local
+            // Convert ground time to host byte order
             ground_time_ns = ntohll(ground_time_ns);
 
-            // Calculer le temps de traversée unidirectionnel
+            // Calculate one-way delay
             timestamps.one_way_delay_ns = rtt_ns / 2;
-        }
-        else
-        {
+        } else {
             timestamps.one_way_delay_ns = 0;
         }
 
-        
-        HAL_DEBUG("TS",  "Packet sent %lu =>\n", frameNb);
-        HAL_DEBUG("TS",  "AirTime:                %llu us\n", air_time_ns / 1000);
-        HAL_DEBUG("TS",  "GroundTime:             %llu us\n", ground_time_ns / 1000);
-        HAL_DEBUG("TS",  "Vsync:                  %llu us\n", timestamps.vsync_timestamp / 1000);
-        HAL_DEBUG("TS",  "ISP Done:               %llu us\n", timestamps.ispframedone_timestamp / 1000);
-        HAL_DEBUG("TS",  "Venc Done:              %llu us\n", timestamps.vencdone_timestamp / 1000);
-        HAL_DEBUG("TS",  "Air One Way Delay:      %llu us\n", timestamps.one_way_delay_ns / 1000);
+        HAL_DEBUG("TS", "Packet sent %lu =>\n", frameNb);
+        HAL_DEBUG("TS", "AirTime:                %llu us\n", air_time_ns / 1000);
+        HAL_DEBUG("TS", "GroundTime:             %llu us\n", ground_time_ns / 1000);
+        HAL_DEBUG("TS", "Vsync:                  %llu us\n", timestamps.vsync_timestamp / 1000);
+        HAL_DEBUG("TS", "ISP Done:               %llu us\n", timestamps.ispframedone_timestamp / 1000);
+        HAL_DEBUG("TS", "Venc Done:              %llu us\n", timestamps.vencdone_timestamp / 1000);
+        HAL_DEBUG("TS", "Air One Way Delay:      %llu us\n", timestamps.one_way_delay_ns / 1000);
 
-        timestamps.frameNb = htonl(frameNb);
-        timestamps.vsync_timestamp = htonll(timestamps.vsync_timestamp);
-        timestamps.framestart_timestamp = htonll(timestamps.framestart_timestamp);
-        timestamps.frameend_timestamp = htonll(timestamps.frameend_timestamp);
-        timestamps.ispframedone_timestamp = htonll(timestamps.ispframedone_timestamp);
-        timestamps.vencdone_timestamp = htonll(timestamps.vencdone_timestamp);
-        timestamps.one_way_delay_ns = htonll(timestamps.one_way_delay_ns);
+        // Prepare and send timestamps packet
+        air_packet_t timestamp_packet;
+        timestamp_packet.magic = htonl(PACKET_MAGIC);
+        timestamp_packet.type = htonl(PACKET_TYPE_AIR_TIMESTAMPS);
 
-        if (sendto(sockfd, &timestamps, sizeof(timestamps), 0, (struct sockaddr *)&ground_addr, sizeof(ground_addr)) < 0) {
-            perror("Failed to send data");
-            return;
-        }
+        timestamp_packet.data.air_timestamps.frameNb = htonl(frameNb);
+        timestamp_packet.data.air_timestamps.vsync_timestamp = htonll(timestamps.vsync_timestamp);
+        timestamp_packet.data.air_timestamps.framestart_timestamp = htonll(timestamps.framestart_timestamp);
+        timestamp_packet.data.air_timestamps.frameend_timestamp = htonll(timestamps.frameend_timestamp);
+        timestamp_packet.data.air_timestamps.ispframedone_timestamp = htonll(timestamps.ispframedone_timestamp);
+        timestamp_packet.data.air_timestamps.vencdone_timestamp = htonll(timestamps.vencdone_timestamp);
+        timestamp_packet.data.air_timestamps.one_way_delay_ns = htonll(timestamps.one_way_delay_ns);
+
+        send_air_packet(&timestamp_packet, sizeof(timestamp_packet));
     }
 }
-
 
 void timestamp_deinit(void)
 {
