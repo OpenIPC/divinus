@@ -414,9 +414,9 @@ enum ConfigError parse_app_config(void) {
         parse_int(
             &ini, "fpv", "maxIPProp", 5, 100, &app_config.maxIPProp);
         parse_int(
-            &ini, "fpv", "maxISize", 0, 0xFFFFFFFF, &app_config.maxISize);
+            &ini, "fpv", "maxISize", 0, 0x40000000, &app_config.maxISize);
         parse_int(
-            &ini, "fpv", "maxPSize", 0, 0xFFFFFFFF, &app_config.maxPSize);
+            &ini, "fpv", "maxPSize", 0, 0x40000000, &app_config.maxPSize);
         
         }
 
