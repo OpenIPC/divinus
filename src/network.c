@@ -2,6 +2,14 @@
 
 IMPORT_STR(.rodata, "../res/onvif/discovery.xml", discoveryxml);
 extern const char discoveryxml[];
+IMPORT_STR(.rodata, "../res/onvif/mediaprofile.xml", mediaprofilexml);
+extern const char mediaprofilexml[];
+IMPORT_STR(.rodata, "../res/onvif/mediaprofiles.xml", mediaprofilesxml);
+extern const char mediaprofilesxml[];
+IMPORT_STR(.rodata, "../res/onvif/snapshot.xml", snapshotxml);
+extern const char snapshotxml[];
+IMPORT_STR(.rodata, "../res/onvif/stream.xml", streamxml);
+extern const char streamxml[];
 
 struct {
     char intf[3][16];
@@ -190,4 +198,94 @@ void *onvif_thread(void) {
 
     close(servfd);
     return (void*)EXIT_SUCCESS;
+}
+
+char* onvif_extract_soap_action(const char* soap_data) {
+    static char action[128];
+    char *action_start = NULL;
+    
+    char *body_start = strstr(soap_data, "Body");
+    if (!body_start) return NULL;
+    
+    body_start = strchr(body_start, '>');
+    if (!body_start) return NULL;
+    body_start++;
+
+    while (*body_start && isspace(*body_start)) body_start++;
+    
+    if (*body_start != '<') return NULL;
+    body_start++;
+    
+    char *action_end = strchr(body_start, ' ');
+    if (!action_end) action_end = strchr(body_start, '>');
+    if (!action_end) return NULL;
+    
+    int action_len = action_end - body_start;
+    if (action_len >= sizeof(action)) action_len = sizeof(action) - 1;
+    
+    strncpy(action, body_start, action_len);
+    action[action_len] = '\0';
+    
+    return action;
+}
+
+void onvif_respond_mediaprofiles(char **response, int *respLen) {
+    char profile[4096];
+    char profileCnt = 0;
+    int profileLen = 0;
+    if (app_config.mp4_enable) {
+        profileLen += sprintf(&profile[profileLen], mediaprofilexml,
+            "MainStream", "profile_1",
+            profileCnt + 1, profileCnt + 1,
+            app_config.mp4_height, app_config.mp4_width,
+            profileCnt + 1, profileCnt + 1,
+            app_config.mp4_codecH265 ? "H265" : "H264",
+            app_config.mp4_width, app_config.mp4_height,
+            app_config.mp4_fps, app_config.mp4_bitrate);
+        profileCnt++;
+    }
+    if (app_config.mjpeg_enable) {
+        profileLen += sprintf(&profile[profileLen], mediaprofilexml,
+            "SubStream", "profile 2",
+            profileCnt + 1, profileCnt + 1,
+            app_config.mjpeg_height, app_config.mjpeg_width,
+            profileCnt + 1, profileCnt + 1,
+            "JPEG", app_config.mjpeg_width, app_config.mjpeg_height,
+            app_config.mjpeg_fps, app_config.mjpeg_bitrate);
+        profileCnt++;
+    }
+    *respLen = sprintf(*response,
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: application/soap+xml; charset=utf-8\r\n"
+        "Connection: close\r\n"
+        "\r\n", mediaprofilesxml,
+        profile);
+}
+
+void onvif_respond_snapshot(char **response, int *respLen) {
+    char snapshot_url[128];
+
+    snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%d/image.jpg",
+        netinfo.ipaddr[0], app_config.web_port);
+
+    *respLen = sprintf(*response,
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: application/soap+xml; charset=utf-8\r\n"
+        "Connection: close\r\n"
+        "\r\n", snapshotxml,
+        snapshot_url);
+}
+
+void onvif_respond_stream(char **response, int *respLen) {
+    char stream_url[128];
+
+    snprintf(stream_url, sizeof(stream_url), "rtsp://%s:%d/",
+        netinfo.ipaddr[0], app_config.rtsp_port);
+
+    *respLen = sprintf(*response,
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: application/soap+xml; charset=utf-8\r\n"
+        "Connection: close\r\n"
+        "\r\n", streamxml,
+        stream_url);
 }

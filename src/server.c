@@ -1058,20 +1058,48 @@ void respond_request(struct Request *req) {
     }
 
     if (app_config.onvif_enable && STARTS_WITH(req->uri, "/onvif")) {
-        char *remain;
+        char lngResp[4096];
         int respLen;
         char *path = req->uri + 6;
         if (*path == '/') path++;
-        /*if (EQUALS(path, "device_service")) {
+        if (EQUALS(path, "device_service")) {
             send_and_close(req->clntFd, (char*)error501, strlen(error501));
             return;
-        } else if (EQUALS(path, "media_service")) {
+        }
+        if (EQUALS(path, "media_service")) {
+            if (!EQUALS(req->method, "POST")) {
+                respLen = sprintf(response,
+                    "HTTP/1.1 405 Method Not Allowed\r\n"
+                    "Content-Type: text/plain\r\n"
+                    "Connection: close\r\n"
+                    "\r\n"
+                    "The payload must be presented as application/soap+xml.\r\n"
+                );
+                send_and_close(req->clntFd, response, respLen);
+            }
+
+            char *action = onvif_extract_soap_action(req->input);
+            if (EQUALS(action, "GetProfiles")) {
+                onvif_respond_mediaprofiles((char**)&lngResp, &respLen);
+                send_and_close(req->clntFd, lngResp, respLen);
+                return;
+            }
+            if (EQUALS(action, "GetSnapshotUri")) {
+                onvif_respond_snapshot((char**)&lngResp, &respLen);
+                send_and_close(req->clntFd, lngResp, respLen);
+                return;
+            }
+            if (EQUALS(action, "GetStreamUri")) {
+                onvif_respond_stream((char**)&lngResp, &respLen);
+                send_and_close(req->clntFd, lngResp, respLen);
+                return;
+            }
             send_and_close(req->clntFd, (char*)error501, strlen(error501));
             return;
-        } else {*/
+        } else {
             send_and_close(req->clntFd, (char*)error501, strlen(error501));
             return;
-        //}
+        }
     }
 
     if (app_config.osd_enable && STARTS_WITH(req->uri, "/api/osd/")) {

@@ -20,3 +20,8 @@ int start_onvif(void);
 void stop_onvif(void);
 
 void *onvif_thread();
+
+char* onvif_extract_soap_action(const char* soap_data);
+void onvif_respond_mediaprofiles(char **response, int *respLen);
+void onvif_respond_snapshot(char **response, int *respLen);
+void onvif_respond_stream(char **response, int *respLen);

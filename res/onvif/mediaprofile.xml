@@ -1,0 +1,24 @@
+      <trt:Profiles fixed="true" token="%s">
+        <tt:Name>%s</tt:Name>
+        <tt:VideoSourceConfiguration token="VSC_%d">
+          <tt:Name>VideoSourceConfig_%d</tt:Name>
+          <tt:UseCount>1</tt:UseCount>
+          <tt:SourceToken>VideoSource_1</tt:SourceToken>
+          <tt:Bounds height="%d" width="%d" y="0" x="0"/>
+        </tt:VideoSourceConfiguration>
+        <tt:VideoEncoderConfiguration token="VEC_%d">
+          <tt:Name>VideoEncoderConfig_%d</tt:Name>
+          <tt:UseCount>1</tt:UseCount>
+          <tt:Encoding>%s</tt:Encoding>
+          <tt:Resolution>
+            <tt:Width>%d</tt:Width>
+            <tt:Height>%d</tt:Height>
+          </tt:Resolution>
+          <tt:Quality>5</tt:Quality>
+          <tt:RateControl>
+            <tt:FrameRateLimit>%d</tt:FrameRateLimit>
+            <tt:EncodingInterval>1</tt:EncodingInterval>
+            <tt:BitrateLimit>%d</tt:BitrateLimit>
+          </tt:RateControl>
+        </tt:VideoEncoderConfiguration>
+      </trt:Profiles>
