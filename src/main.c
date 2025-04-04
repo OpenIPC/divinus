@@ -58,11 +58,7 @@ int main(int argc, char *argv[]) {
     if (app_config.watchdog)
         watchdog_start(app_config.watchdog);
 
-    if (app_config.mdns_enable)
-        start_mdns();
-
-    if (app_config.onvif_enable)
-        start_onvif_server();
+    start_network();
 
     start_server();
 
@@ -111,11 +107,7 @@ int main(int argc, char *argv[]) {
 
     stop_server();
 
-    if (app_config.onvif_enable)
-        stop_onvif_server();
-
-    if (app_config.mdns_enable)
-        stop_mdns();
+    stop_network();
 
     if (app_config.watchdog)
         watchdog_stop();
