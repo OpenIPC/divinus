@@ -247,7 +247,7 @@ void *region_thread(void) {
 
     for (char id = 0; id < MAX_OSD; id++)
     {
-        if (!EMPTY(osds[id].text)) continue;
+        if (!EMPTY(osds[id].text) || !EMPTY(osds[id].img)) continue;
         osds[id].hand = -1;
         osds[id].color = DEF_COLOR;
         osds[id].opal = DEF_OPAL;
@@ -257,6 +257,7 @@ void *region_thread(void) {
         osds[id].updt = 0;
         strcpy(osds[id].font, DEF_FONT);
         osds[id].text[0] = '\0';
+        osds[id].img[0] = '\0';
     }
 
     while (keepRunning) {
@@ -337,8 +338,10 @@ found_font:;
             }
             else if (EMPTY(osds[id].text) && osds[id].updt)
             {
-                char img[32];
-                sprintf(img, "/tmp/osd%d.bmp", id);
+                char img[64];
+                if (EMPTY(osds[id].img))
+                    sprintf(img, "/tmp/osd%d.bmp", id);
+                else strcpy(img, osds[id].img);
                 if (!access(img, F_OK))
                 {
                     hal_bitmap bitmap;

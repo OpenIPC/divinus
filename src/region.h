@@ -63,6 +63,7 @@ typedef struct {
     char updt;
     char font[32];
     char text[80];
+    char img[64];
 } osd;
 
 extern osd osds[MAX_OSD];

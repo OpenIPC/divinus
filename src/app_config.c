@@ -116,7 +116,14 @@ int save_app_config(void) {
     fprintf(file, "osd:\n");
     fprintf(file, "  enable: %s\n", app_config.osd_enable ? "true" : "false");
     for (char i = 0; i < MAX_OSD; i++) {
-        if (!osds[i].text) continue;
+        char imgEmpty = EMPTY(osds[i].img);
+        char textEmpty = EMPTY(osds[i].text);
+        if (imgEmpty && textEmpty) continue;
+    
+        if (!imgEmpty)
+            fprintf(file, "  reg_%dimg: %s\n", i, osds[i].img);
+        if (textEmpty)
+            continue;
         fprintf(file, "    reg%d_text: %s\n", i, osds[i].text);
         fprintf(file, "    reg%d_font: %s\n", i, osds[i].font);
         fprintf(file, "    reg%d_opal: %d\n", i, osds[i].opal);
@@ -307,6 +314,8 @@ enum ConfigError parse_app_config(void) {
         for (char i = 0; i < MAX_OSD; i++) {
             char param[16];
             int val;
+            sprintf(param, "reg%d_img", i);
+            parse_param_value(&ini, "osd", param, osds[i].img);
             sprintf(param, "reg%d_text", i);
             parse_param_value(&ini, "osd", param, osds[i].text);
             sprintf(param, "reg%d_font", i);
