@@ -61,6 +61,11 @@ const char error500[] = "HTTP/1.1 500 Internal Server Error\r\n" \
                         "Connection: close\r\n" \
                         "\r\n" \
                         "An invalid operation was caught on this request.\r\n";
+const char error501[] = "HTTP/1.1 501 Not Implemented\r\n" \
+                        "Content-Type: text/plain\r\n" \
+                        "Connection: close\r\n" \
+                        "\r\n" \
+                        "The server does not support the functionality required to fulfill this request.\r\n";
 
 void close_socket_fd(int socket_fd) {
     shutdown(socket_fd, SHUT_RDWR);
@@ -1050,6 +1055,23 @@ void respond_request(struct Request *req) {
             app_config.adc_device, app_config.adc_threshold);
         send_and_close(req->clntFd, response, respLen);
         return;
+    }
+
+    if (app_config.onvif_enable && STARTS_WITH(req->uri, "/onvif")) {
+        char *remain;
+        int respLen;
+        char *path = req->uri + 6;
+        if (*path == '/') path++;
+        /*if (EQUALS(path, "device_service")) {
+            send_and_close(req->clntFd, (char*)error501, strlen(error501));
+            return;
+        } else if (EQUALS(path, "media_service")) {
+            send_and_close(req->clntFd, (char*)error501, strlen(error501));
+            return;
+        } else {*/
+            send_and_close(req->clntFd, (char*)error501, strlen(error501));
+            return;
+        //}
     }
 
     if (app_config.osd_enable && STARTS_WITH(req->uri, "/api/osd/")) {
