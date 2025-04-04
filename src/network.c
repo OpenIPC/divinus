@@ -1,5 +1,7 @@
 #include "network.h"
 
+IMPORT_STR(.rodata, "../res/onvif/deviceinfo.xml", deviceinfoxml);
+extern const char deviceinfoxml[];
 IMPORT_STR(.rodata, "../res/onvif/discovery.xml", discoveryxml);
 extern const char discoveryxml[];
 IMPORT_STR(.rodata, "../res/onvif/mediaprofile.xml", mediaprofilexml);
@@ -10,6 +12,11 @@ IMPORT_STR(.rodata, "../res/onvif/snapshot.xml", snapshotxml);
 extern const char snapshotxml[];
 IMPORT_STR(.rodata, "../res/onvif/stream.xml", streamxml);
 extern const char streamxml[];
+
+const char onvifgood[] = "HTTP/1.1 200 OK\r\n" \
+                         "Content-Type: application/soap+xml; charset=utf-8\r\n" \
+                         "Connection: close\r\n" \
+                         "\r\n";
 
 struct {
     char intf[3][16];
@@ -84,7 +91,7 @@ int start_mdns(void) {
     if (!(mdns = mdnsd_start()))
         HAL_ERROR("mdns", "Failed to start mDNS server!\n");
 
-    strcat(hostname, netinfo.host);
+    strcpy(hostname, netinfo.host);
     strcat(hostname, ".local");
     mdnsd_set_hostname(mdns, hostname, ip_to_int(netinfo.ipaddr[0]));
 
@@ -229,6 +236,16 @@ char* onvif_extract_soap_action(const char* soap_data) {
     return action;
 }
 
+void onvif_respond_deviceinfo(char **response, int *respLen) {
+    int maxLen = *respLen;
+    int headerLen = strlen(onvifgood);
+    memcpy(*response, onvifgood, headerLen);
+
+    *respLen = snprintf((*response) + headerLen, maxLen - headerLen,
+        deviceinfoxml,
+        "OpenIPC", "IP Camera", "1.0", "To be replaced", "To be replaced");
+}
+
 void onvif_respond_mediaprofiles(char **response, int *respLen) {
     char profile[4096];
     char profileCnt = 0;
@@ -254,11 +271,13 @@ void onvif_respond_mediaprofiles(char **response, int *respLen) {
             app_config.mjpeg_fps, app_config.mjpeg_bitrate);
         profileCnt++;
     }
-    *respLen = sprintf(*response,
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: application/soap+xml; charset=utf-8\r\n"
-        "Connection: close\r\n"
-        "\r\n", mediaprofilesxml,
+
+    int maxLen = *respLen;
+    int headerLen = strlen(onvifgood);
+    memcpy(*response, onvifgood, headerLen);
+
+    *respLen = snprintf((*response) + headerLen, maxLen - headerLen,
+        mediaprofilesxml,
         profile);
 }
 
@@ -268,11 +287,12 @@ void onvif_respond_snapshot(char **response, int *respLen) {
     snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%d/image.jpg",
         netinfo.ipaddr[0], app_config.web_port);
 
-    *respLen = sprintf(*response,
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: application/soap+xml; charset=utf-8\r\n"
-        "Connection: close\r\n"
-        "\r\n", snapshotxml,
+    int maxLen = *respLen;
+    int headerLen = strlen(onvifgood);
+    memcpy(*response, onvifgood, headerLen);
+
+    *respLen = snprintf((*response) + headerLen, maxLen - headerLen,
+        snapshotxml,
         snapshot_url);
 }
 
@@ -282,10 +302,11 @@ void onvif_respond_stream(char **response, int *respLen) {
     snprintf(stream_url, sizeof(stream_url), "rtsp://%s:%d/",
         netinfo.ipaddr[0], app_config.rtsp_port);
 
-    *respLen = sprintf(*response,
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: application/soap+xml; charset=utf-8\r\n"
-        "Connection: close\r\n"
-        "\r\n", streamxml,
+    int maxLen = *respLen;
+    int headerLen = strlen(onvifgood);
+    memcpy(*response, onvifgood, headerLen);
+
+    *respLen = snprintf((*response) + headerLen, maxLen - headerLen,
+        streamxml,
         stream_url);
 }

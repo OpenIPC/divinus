@@ -66,6 +66,11 @@ const char error501[] = "HTTP/1.1 501 Not Implemented\r\n" \
                         "Connection: close\r\n" \
                         "\r\n" \
                         "The server does not support the functionality required to fulfill this request.\r\n";
+const char onvifmtd[] =  "HTTP/1.1 405 Method Not Allowed\r\n" \
+                         "Content-Type: text/plain\r\n" \
+                         "Connection: close\r\n" \
+                         "\r\n" \
+                         "The payload must be presented as application/soap+xml.\r\n";
 
 void close_socket_fd(int socket_fd) {
     shutdown(socket_fd, SHUT_RDWR);
@@ -1058,48 +1063,51 @@ void respond_request(struct Request *req) {
     }
 
     if (app_config.onvif_enable && STARTS_WITH(req->uri, "/onvif")) {
-        char lngResp[4096];
-        int respLen;
+        char lngResp[8192] = {0};
+        int respLen = sizeof(lngResp);
         char *path = req->uri + 6;
         if (*path == '/') path++;
+
         if (EQUALS(path, "device_service")) {
-            send_and_close(req->clntFd, (char*)error501, strlen(error501));
-            return;
-        }
-        if (EQUALS(path, "media_service")) {
             if (!EQUALS(req->method, "POST")) {
-                respLen = sprintf(response,
-                    "HTTP/1.1 405 Method Not Allowed\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Connection: close\r\n"
-                    "\r\n"
-                    "The payload must be presented as application/soap+xml.\r\n"
-                );
-                send_and_close(req->clntFd, response, respLen);
+                send_and_close(req->clntFd, (char*)onvifmtd, strlen(onvifmtd));
+                return;
             }
 
-            char *action = onvif_extract_soap_action(req->input);
+            char *action = onvif_extract_soap_action(req->payload);
+            if (EQUALS(action, "GetDeviceInformation")) {
+                onvif_respond_deviceinfo((char**)&lngResp, &respLen);
+                send_and_close(req->clntFd, lngResp, respLen);
+                return;
+            }
+            send_and_close(req->clntFd, (char*)error501, strlen(error501));
+            return;
+        } else if (EQUALS(path, "media_service")) {
+            if (!EQUALS(req->method, "POST")) {
+                send_and_close(req->clntFd, (char*)onvifmtd, strlen(onvifmtd));
+                return;
+            }
+
+            char *action = onvif_extract_soap_action(req->payload);
             if (EQUALS(action, "GetProfiles")) {
                 onvif_respond_mediaprofiles((char**)&lngResp, &respLen);
                 send_and_close(req->clntFd, lngResp, respLen);
                 return;
-            }
-            if (EQUALS(action, "GetSnapshotUri")) {
+            } else if (EQUALS(action, "GetSnapshotUri")) {
                 onvif_respond_snapshot((char**)&lngResp, &respLen);
                 send_and_close(req->clntFd, lngResp, respLen);
                 return;
-            }
-            if (EQUALS(action, "GetStreamUri")) {
+            } else if (EQUALS(action, "GetStreamUri")) {
                 onvif_respond_stream((char**)&lngResp, &respLen);
                 send_and_close(req->clntFd, lngResp, respLen);
                 return;
             }
             send_and_close(req->clntFd, (char*)error501, strlen(error501));
             return;
-        } else {
-            send_and_close(req->clntFd, (char*)error501, strlen(error501));
-            return;
         }
+        
+        send_and_close(req->clntFd, (char*)error501, strlen(error501));
+        return;
     }
 
     if (app_config.osd_enable && STARTS_WITH(req->uri, "/api/osd/")) {
