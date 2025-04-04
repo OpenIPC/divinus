@@ -2,9 +2,7 @@
 
 #include "cvi_hal.h"
 
-cvi_isp_alg      cvi_ae_lib = { .id = 0, .libName = "ae_lib" };
 cvi_aud_impl     cvi_aud;
-cvi_isp_alg      cvi_awb_lib = { .id = 0, .libName = "awb_lib" };
 cvi_config_impl  cvi_config;
 cvi_isp_impl     cvi_isp;
 cvi_snr_drv_impl cvi_snr_drv;
@@ -19,16 +17,17 @@ hal_chnstate cvi_state[CVI_VENC_CHN_NUM] = {0};
 int (*cvi_aud_cb)(hal_audframe*);
 int (*cvi_vid_cb)(char, hal_vidstream*);
 
+const char _cvi_vi_pipe = 0;
 char _cvi_aud_chn = 0;
 char _cvi_aud_dev = 0;
-char _cvi_isp_chn = 0;
-char _cvi_isp_dev = 0;
 char _cvi_venc_dev = 0;
 char _cvi_vi_chn = 0;
 char _cvi_vi_dev = 0;
-char _cvi_vi_pipe = 0;
 char _cvi_vpss_chn = 0;
 char _cvi_vpss_grp = 0;
+
+cvi_isp_alg cvi_ae_lib = { .id = _cvi_vi_pipe, .libName = "ae_lib" };
+cvi_isp_alg cvi_awb_lib = { .id = _cvi_vi_pipe, .libName = "awb_lib" };
 
 void cvi_hal_deinit(void)
 {
@@ -110,7 +109,7 @@ void *cvi_audio_thread(void)
     memset(&frame, 0, sizeof(frame));
     memset(&echoFrame, 0, sizeof(echoFrame));
 
-    while (keepRunning) {
+    while (keepRunning && audioOn) {
         if (ret = cvi_aud.fnGetFrame(_cvi_aud_dev, _cvi_aud_chn, 
             &frame, &echoFrame, 128)) {
             HAL_WARNING("cvi_aud", "Getting the frame failed "
@@ -156,20 +155,21 @@ int cvi_channel_bind(char index)
     return EXIT_SUCCESS;
 }
 
-int cvi_channel_create(char index, char mirror, char flip, char framerate)
+int cvi_channel_create(char index, short width, short height, char mirror, char flip)
 {
     int ret;
 
     {
         cvi_vpss_chn channel;
         memset(&channel, 0, sizeof(channel));
-        channel.dest.width = cvi_config.isp.capt.width;
-        channel.dest.height = cvi_config.isp.capt.height;
-        channel.pixFmt = CVI_PIXFMT_YUV420P;
-        channel.srcFps = cvi_config.isp.framerate;
-        channel.dstFps = framerate;
+        channel.dest.width = width;
+        channel.dest.height = height;
+        channel.pixFmt = CVI_PIXFMT_NV21;
+        channel.srcFps = -1;
+        channel.dstFps = -1;
         channel.mirror = mirror;
         channel.flip = flip;
+        channel.depth = 0;
         if (ret = cvi_vpss.fnSetChannelConfig(_cvi_vpss_grp, index, &channel))
             return ret;
     }
@@ -217,7 +217,7 @@ void *cvi_image_thread(void)
 {
     int ret;
 
-    if (ret = cvi_isp.fnRun(_cvi_isp_dev))
+    if (ret = cvi_isp.fnRun(_cvi_vi_pipe))
         HAL_DANGER("cvi_isp", "Operation failed with %#x!\n", ret);
     HAL_INFO("cvi_isp", "Shutting down ISP thread...\n");
 }
@@ -229,11 +229,10 @@ int cvi_pipeline_create(void)
     cvi_vpss.fnDestroyGroup(_cvi_vpss_grp);
 
     {
-        cvi_sys_oper mode[4];
-        cvi_sys.fnGetViVpssMode((cvi_sys_oper**)&mode);
-        for (int i = 0; i < 4; i++)
-            mode[i] = CVI_SYS_OPER_VIOFF_VPSSOFF;
-        if (ret = cvi_sys.fnSetViVpssMode((cvi_sys_oper**)&mode))
+        cvi_sys_vimd mode[4];
+        cvi_sys.fnGetViVpssMode((cvi_sys_vimd**)&mode);
+        mode[0] = CVI_SYS_VIMD_VION_VPSSON;
+        if (ret = cvi_sys.fnSetViVpssMode((cvi_sys_vimd**)&mode))
             return ret;
     }
 
@@ -261,7 +260,7 @@ int cvi_pipeline_create(void)
         pipe.compress = CVI_COMPR_NONE;
         pipe.prec = cvi_config.mipi.prec;
         pipe.nRedOn = 0;
-        pipe.sharpenOn = 1;
+        pipe.sharpenOn = 0;
         pipe.srcFps = -1;
         pipe.dstFps = -1;
         if (ret = cvi_vi.fnCreatePipe(_cvi_vi_pipe, &pipe))
@@ -274,14 +273,14 @@ int cvi_pipeline_create(void)
         cvi_vi_chn channel;
         channel.size.width = cvi_config.isp.capt.width;
         channel.size.height = cvi_config.isp.capt.height;
-        channel.pixFmt = CVI_PIXFMT_YUV420P;
+        channel.pixFmt = CVI_PIXFMT_NV21;
         channel.dynRange = CVI_HDR_SDR8;
         channel.compress = CVI_COMPR_NONE;
         channel.mirror = 0;
         channel.flip = 0;
         channel.depth = 0;
-        channel.srcFps = cvi_config.isp.framerate;
-        channel.dstFps = cvi_config.isp.framerate;
+        channel.srcFps = -1;
+        channel.dstFps = -1;
         if (ret = cvi_vi.fnSetChannelConfig(_cvi_vi_pipe, _cvi_vi_chn, &channel))
             return ret;
     }
@@ -304,20 +303,31 @@ int cvi_pipeline_create(void)
         return ret;
     if (ret = cvi_isp.fnInit(_cvi_vi_pipe))
         return ret;
-    
+
+    {
+        cvi_sys_vpcf config = {
+            .mode = CVI_SYS_VPSS_SINGLE,
+            .inputIsIsp = {1, 0},
+            .pipeId = {_cvi_vi_pipe, 0}
+        };
+        if (ret = cvi_sys.fnSetVpssMode(&config))
+            return ret;
+    }
+
     {
         cvi_vpss_grp group;
         memset(&group, 0, sizeof(group));
         group.dest.width = cvi_config.isp.capt.width;
         group.dest.height = cvi_config.isp.capt.height;
-        group.pixFmt = CVI_PIXFMT_YUV420P;
-        group.srcFps = cvi_config.isp.framerate;
-        group.dstFps = cvi_config.isp.framerate;
+        group.pixFmt = CVI_PIXFMT_NV21;
+        group.srcFps = -1;
+        group.dstFps = -1;
+        group.device = 1;
         if (ret = cvi_vpss.fnCreateGroup(_cvi_vpss_grp, &group))
             return ret;
+        if (ret = cvi_vpss.fnStartGroup(_cvi_vpss_grp))
+            return ret;
     }
-    if (ret = cvi_vpss.fnStartGroup(_cvi_vpss_grp))
-        return ret;
 
     {
         cvi_sys_bind source = { .module = CVI_SYS_MOD_VI, 
@@ -451,6 +461,8 @@ int cvi_sensor_config(void) {
     cvi_isp.fnSetIntfConfig(_cvi_vi_pipe, &config);
 
     cvi_isp.fnSetSensorClock(device, 1);
+
+    usleep(20);
 
     cvi_isp.fnResetSensor(device, 0);
 
@@ -883,10 +895,14 @@ int cvi_system_init(char *snrConfig)
         memset(&pool, 0, sizeof(pool));
 
         pool.count = 2;
-        pool.comm[0].blockSize = 1920 * 1080 * 3;
-        pool.comm[0].blockCnt = 4;
-        pool.comm[1].blockSize = 1920 * 1080 * 3;
-        pool.comm[1].blockCnt = 4;
+        pool.comm[0].blockSize = cvi_config.videv.size.width *
+            cvi_config.videv.size.height * 3 / 2;
+        pool.comm[0].blockCnt = 3;
+        pool.comm[0].rempVirt = 2;
+        pool.comm[1].blockSize = cvi_config.videv.size.width *
+            cvi_config.videv.size.height * 3 / 2;
+        pool.comm[1].blockCnt = 3;
+        pool.comm[1].rempVirt = 2;
 
         if (ret = cvi_vb.fnConfigPool(&pool))
             return ret;

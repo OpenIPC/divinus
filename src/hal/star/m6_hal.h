@@ -12,7 +12,7 @@
 #include <sys/select.h>
 #include <unistd.h>
 
-extern char keepRunning;
+extern char audioOn, keepRunning;
 
 extern hal_chnstate m6_state[M6_VENC_CHN_NUM];
 extern int (*m6_aud_cb)(hal_audframe*);

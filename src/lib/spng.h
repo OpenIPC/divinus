@@ -473,6 +473,7 @@ SPNG_API int spng_decode_chunks(spng_ctx *ctx);
 /* Encode/decode */
 SPNG_API int spng_get_row_info(spng_ctx *ctx, struct spng_row_info *row_info);
 
+#ifdef SPNG_ENCODE
 /* Encode */
 SPNG_API int spng_encode_image(spng_ctx *ctx, const void *img, size_t len, int fmt, int flags);
 
@@ -480,6 +481,7 @@ SPNG_API int spng_encode_image(spng_ctx *ctx, const void *img, size_t len, int f
 SPNG_API int spng_encode_scanline(spng_ctx *ctx, const void *scanline, size_t len);
 SPNG_API int spng_encode_row(spng_ctx *ctx, const void *row, size_t len);
 SPNG_API int spng_encode_chunks(spng_ctx *ctx);
+#endif
 
 SPNG_API int spng_get_ihdr(spng_ctx *ctx, struct spng_ihdr *ihdr);
 SPNG_API int spng_get_plte(spng_ctx *ctx, struct spng_plte *plte);
@@ -503,7 +505,7 @@ SPNG_API int spng_get_unknown_chunks(spng_ctx *ctx, struct spng_unknown_chunk *c
 SPNG_API int spng_get_offs(spng_ctx *ctx, struct spng_offs *offs);
 SPNG_API int spng_get_exif(spng_ctx *ctx, struct spng_exif *exif);
 
-
+#ifdef SPNG_ENCODE
 SPNG_API int spng_set_ihdr(spng_ctx *ctx, struct spng_ihdr *ihdr);
 SPNG_API int spng_set_plte(spng_ctx *ctx, struct spng_plte *plte);
 SPNG_API int spng_set_trns(spng_ctx *ctx, struct spng_trns *trns);
@@ -525,7 +527,7 @@ SPNG_API int spng_set_unknown_chunks(spng_ctx *ctx, struct spng_unknown_chunk *c
 /* Official extensions */
 SPNG_API int spng_set_offs(spng_ctx *ctx, struct spng_offs *offs);
 SPNG_API int spng_set_exif(spng_ctx *ctx, struct spng_exif *exif);
-
+#endif
 
 SPNG_API const char *spng_strerror(int err);
 SPNG_API const char *spng_version_string(void);

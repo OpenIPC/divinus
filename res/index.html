@@ -3,12 +3,31 @@
 	<title>Divinus</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<style>
-		*{box-sizing:border-box}*+*{margin:.5em 0}pre{overflow:auto}@media(min-width:50em){.col{display:table-cell}.\31{width:5%}.\33{width:22%}.\34{width:30%}.\35{width:40%}.\32{width:15%}.\36{width:50%}.row{display:table;border-spacing:1em 0;height:fit-content}}.row,.w-100{width:100%}.card:focus,hr{outline:0;border:solid #fa0}.card,pre{padding:1em;border:solid #eee}.btn:hover,a:hover{opacity:.6}.c{padding:1em;margin:auto;font:1em/1.6 sans-serif}h6{font:400 1em sans-serif}h5{font:400 1.2em sans-serif}h3{font:400 2em sans-serif}h4{font:400 1.5em sans-serif}h2{font:400 2.2em sans-serif}h1{font:400 2.5em sans-serif}a{color:#fa0;text-decoration:none}.btn.primary{color:#fff;background:#fa0;border:solid #fa0}td,th{padding:1em;text-align:left;border-bottom:solid #eee}.btn{padding:1em;text-transform:uppercase;background:#fff;border:solid;font:.7em sans-serif}a.btn{display:inline-block}input,select{font-family:sans-serif}
-		.white{color:#fff}.bg-white{background-color:#fff}.b-white{border-color:#fff}.gray{color:#ccc}.bg-gray{background-color:#ccc}.b-gray{border-color:#ccc}.black{color:#000}.bg-black{background-color:#000}.b-black{border-color:#000}.accent{color:#fa0}.bg-accent{background-color:#fa0}.b-accent{border-color:#fa0}.warning{color:#ffd600}.bg-warning{background-color:#ffd600}.b-warning{border-color:#ffd600}.error{color:#d50000}.bg-error{background-color:#d50000}.b-error{border-color:#d50000}.success{color:#00c853}.bg-success{background-color:#00c853}.b-success{border-color:#00c853}.info{color:#2962ff}.bg-info{background-color:#2962ff}.b-info{border-color:#2962ff}.m0{margin:0}.m1{margin:.5em}.m2{margin:1em}.m3{margin:2em}.m4{margin:4em}.mt0{margin-top:0}.mt1{margin-top:.5em}.mt2{margin-top:1em}.mt3{margin-top:2em}.mt4{margin-top:4em}.mr0{margin-right:0}.mr1{margin-right:.5em}.mr2{margin-right:1em}.mr3{margin-right:2em}.mr4{margin-right:4em}.mb0{margin-bottom:0}.mb1{margin-bottom:.5em}.mb2{margin-bottom:1em}.mb3{margin-bottom:2em}.mb4{margin-bottom:4em}.ml0{margin-left:0}.ml1{margin-left:.5em}.ml2{margin-left:1em}.ml3{margin-left:2em}.ml4{margin-left:4em}.p0{padding:0}.p1{padding:.5em}.p2{padding:1em}.p3{padding:2em}.p4{padding:4em}.pv0{padding-top:0;padding-bottom:0}.pv1{padding-top:.5em;padding-bottom:.5em}.pv2{padding-top:1em;padding-bottom:1em}.pv3{padding-top:2em;padding-bottom:2em}.pv4{padding-top:4em;padding-bottom:4em}.ph0{padding-right:0;padding-left:0}.ph1{padding-right:.5em;padding-left:.5em}.ph2{padding-right:1em;padding-left:1em}.ph3{padding-right:2em;padding-left:2em}.ph4{padding-right:4em;padding-left:4em}.gapless{border-spacing:0}.vc{position:relative;top:40%;transform:perspective(1px) translateY(-45%)}.pill{border-radius:9999px}.rounded{border-radius:4px}.tc{text-align:center}.mega{font-size:3.5em}.large{font-size:1.5em}.small{font-size:.7em}.caps{text-transform:uppercase}.tracked{letter-spacing:.1em}.vh-100{height:100vh}.inline{display:inline-block}.bold{font-weight:700}.normal{font-weight:400}.light{font-weight:300}.dim{opacity:1;transition:opacity .15s ease-in}.dim:focus,.dim:hover{opacity:.5;transition:opacity .15s ease-in}
-		.box{vertical-align:top}.box input,select{width:100%}.box td{padding:0.5em}.close{position:absolute;right:2em;top:2em}@media(min-width:50em){.box > fieldset{height:100%}.close{right:4em}}
-		.cont{max-width:64em}.menu .btn{margin:-1em 0;padding:0.75em}.lbl-modal:focus,.lbl-modal:hover{cursor:pointer;opacity:.6}.right{float:right}.unl{border-bottom:2px solid}
-		.modal{display:none;background:#fff;position:fixed;bottom:0;left:0;right:0;top:0;margin:0;padding:0;z-index:1}
-		input[type=checkbox]{position:absolute;opacity:0}input[type=checkbox]:checked+.modal{display:block}
+		*{box-sizing:border-box}*+*{margin:.5em 0}pre{overflow:auto}.row,.w-100{width:100%}.vh-100{height:100vh}.card:focus,hr{outline:0;border:solid #fa0}.card,pre{padding:1em;border:solid #eee}.right{float:right}
+		.tc{text-align:center}.c{padding:1em;margin:auto;font:1em/1.6 sans-serif}.cont{max-width:64em}.gapless{border-spacing:0}.vc{position:relative;top:40%;transform:perspective(1px) translateY(-45%)}
+		a{color:#fa0;text-decoration:none}.btn:hover,a:hover{opacity:.6}.btn.primary{color:#fff;background:#fa0;border:solid #fa0}.btn{padding:1em;text-transform:uppercase;background:#fff;border:solid;font:.7em sans-serif}
+		.inline,a.btn{display:inline-block}.nope{display:none}.pill{border-radius:9999px}.rounded{border-radius:4px}.scrollx{overflow-x:auto}.scrolly{overflow-y:auto}.caps{text-transform:uppercase}.tracked{letter-spacing:.1em}
+		.btn.cell{display:table-cell;width:1%}.box{vertical-align:top}.box input,select{width:100%}.box td{padding:.5em}.close{position:absolute;right:2em;top:2em}.lbl-modal:focus,.lbl-modal:hover{cursor:pointer;opacity:.6}
+		.modal{display:none;background:#fff;position:fixed;bottom:0;left:0;right:0;top:0;margin:0;padding:0;z-index:1}.hide{position:absolute;top:-3px;left:-3px;width:1px;height:1px}.unl{border-bottom:2px solid}
+		input,select{font-family:sans-serif}input[type=checkbox]{position:absolute;opacity:0}input[type=checkbox]:checked+.modal{display:block;z-index:4}.menu .col{display:inline}.menu .btn{margin:-1em 0;padding:.75em}
+		.dim{opacity:1;transition:opacity .15s ease-in}.dim:focus,.dim:hover{opacity:.5;transition:opacity .15s ease-in}h6{font:400 1em sans-serif}h5{font:400 1.2em sans-serif}h4{font:400 1.5em sans-serif}
+		h3{font:400 2em sans-serif}h2{font:400 2.2em sans-serif}h1{font:400 2.5em sans-serif}.mega{font-size:3.5em}.large{font-size:1.5em}.small{font-size:.7em}.bold{font-weight:700}.normal{font-weight:400}.light{font-weight:300}
+		.m0{margin:0}.m1{margin:.5em}.m2{margin:1em}.m3{margin:2em}.m4{margin:4em}.mt0{margin-top:0}.mt1{margin-top:.5em}.mt2{margin-top:1em}.mt3{margin-top:2em}.mt4{margin-top:4em}
+		.mr0{margin-right:0}.mr1{margin-right:.5em}.mr2{margin-right:1em}.mr3{margin-right:2em}.mr4{margin-right:4em}.mb0{margin-bottom:0}.mb1{margin-bottom:.5em}.mb2{margin-bottom:1em}.mb3{margin-bottom:2em}.mb4{margin-bottom:4em}
+		.ml0{margin-left:0}.ml1{margin-left:.5em}.ml2{margin-left:1em}.ml3{margin-left:2em}.ml4{margin-left:4em}.p0{padding:0}.p1{padding:.5em}.p2{padding:1em}.p3{padding:2em}.p4{padding:4em}
+		.pv0{padding-top:0;padding-bottom:0}.pv1{padding-top:.5em;padding-bottom:.5em}.pv2{padding-top:1em;padding-bottom:1em}.pv3{padding-top:2em;padding-bottom:2em}.pv4{padding-top:4em;padding-bottom:4em}
+		.ph0{padding-right:0;padding-left:0}.ph1{padding-right:.5em;padding-left:.5em}.ph2{padding-right:1em;padding-left:1em}.ph3{padding-right:2em;padding-left:2em}.ph4{padding-right:4em;padding-left:4em}
+		.white{color:#fff}.bg-white{background-color:#fff}.b-white{border-color:#fff}.gray{color:#ccc}.bg-gray{background-color:#ccc}.b-gray{border-color:#ccc}.black{color:#000}.bg-black{background-color:#000}.b-black{border-color:#000}
+		.accent{color:#fa0}.bg-accent{background-color:#fa0}.b-accent{border-color:#fa0}.info{color:#2962ff}.bg-info{background-color:#2962ff}.b-info{border-color:#2962ff}.error{color:#d50000}.bg-error{background-color:#d50000}.b-error{border-color:#d50000}
+		.warning{color:#ffd600}.bg-warning{background-color:#ffd600}.b-warning{border-color:#ffd600}.success{color:#00c853}.bg-success{background-color:#00c853}.b-success{border-color:#00c853}
+		@media(min-width:50em){.col{display:table-cell}.\31{width:5%}.\33{width:22%}.\34{width:30%}.\35{width:40%}.\32{width:15%}.\36{width:50%}.row{display:table;border-spacing:1em 0;height:fit-content}.box > fieldset{height:100%}.close{right:4em}}
+		@media(max-width:40em){.menu{position:relative;padding:.5em 0;min-height:3em;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);tap-highlight-color:rgba(0,0,0,0);outline:none;tabindex:0}
+		 .menu b{display:block;text-align:center;padding:.5em 0}.menu .col *{padding:.75em 1.5em}.menu .col *:hover{background:#222}
+		 .menu .col{display:block;overflow:hidden;position:absolute;height:0;width:100%;left:0;top:100%;margin:0;background:#000;border:0;border-top:1px solid #fff;transition:height .3s}
+		 .menu .col a{display:block;margin-top:.5em}.menu .col .lbl-modal{display:block;margin-top:.5em;}.modal .menu .col{position:static;height:auto;border:0}
+		 .modal .menu .col a{display:table-cell;text-align:center;width:9%}.menu:after{content:"\2261";position:absolute;right:.225em;top:-.275em;color:#fff;font-size:3em;z-index:3}
+		 .menu:focus:after,.menu:active:after{content:"\2715";right:.375em;top:.125em;font-size:2em}.menu:focus .col,.menu:active .col{height:auto;border-top:1px solid #333}
+		 .modal .menu:after{display:none}.modal .btn.primary.close{position:static;margin:1em;display:table-cell;text-align:center;width:1%}.unl{margin-top:.25em}}
 	</style>
 	<script>
 		var ua = window.navigator.userAgent;
@@ -19,7 +38,9 @@
 			var elems = document.getElementsByTagName('*');
 			for (var i = 0; i < elems.length; i++) {
 				if (!elems[i].id || elems[i].id.lastIndexOf(endp + '_', 0)) continue;
-				dest += elems[i].id.substring(endp.length + 1) + '=' + elems[i].value + '&';
+				if (elems[i].type && elems[i].type == "file") continue;
+					dest += elems[i].id.substring(endp.length + 1) +
+						'=' + encodeURIComponent(elems[i].value) + '&';
 			}
 			dest = dest.slice(0, -1);
 			req.open('GET', dest);
@@ -29,12 +50,22 @@
 		function apiRead(endp) {
 			var req = new XMLHttpRequest();
 			req.onreadystatechange = function() {
-				if (this.readyState != 4 || this.status != 200) return;
+				if (this.readyState != 4 || this.status != 200) return false;
 				var dec = JSON.parse(req.responseText);
 				for (var key in dec) {
 					if (!dec.hasOwnProperty(key)) continue;
+
 					var elem = document.getElementById(endp + '_' + key);
-					if (!elem) continue;
+					if (elem && elem.type && elem.type == "file") {
+						var lbls = document.getElementsByTagName('LABEL');
+						for (var i = 0; i < lbls.length; i++) {
+							if (lbls[i].htmlFor != endp + '_' + key) continue;
+							lbls[i].innerHTML = dec[key];
+							break;
+						}
+						continue;
+					} else if (!elem) continue;
+
 					if (elem.tagName == 'INPUT' || elem.tagName == 'SELECT')
 						elem.value = dec[key];
 					else
@@ -43,6 +74,7 @@
 			}
 			req.open('GET', '/api/' + endp);
 			req.send();
+			return true;
 		}
 
 		function duplicateRows(row, num) {
@@ -53,8 +85,18 @@
 				clone.style.display = '';
 				var elems = clone.getElementsByTagName('*');
 				for (var j = 0; j < elems.length; j++) {
-					if (!elems[j].id) continue;
-					elems[j].id = elems[j].id.replace(row, row + '/' + i);
+					if (elems[j].action)
+						elems[j].action = elems[j].action.replace(row, row + '/' + i);
+					if (elems[j].htmlFor)
+						elems[j].htmlFor = elems[j].htmlFor.replace(row, row + '/' + i);
+					if (elems[j].href)
+						elems[j].href = elems[j].href.replace(row, row + '/' + i);
+					if (elems[j].id)
+						elems[j].id = elems[j].id.replace(row, row + '/' + i);
+					if (elems[j].name)
+						elems[j].name = elems[j].name.replace(row, row + '/' + i);
+					if (elems[j].target)
+						elems[j].target = elems[j].target.replace(row, row + '/' + i);
 				}
 				tpl.parentNode.appendChild(clone);
 			}
@@ -73,6 +115,25 @@
 			}
 			req.open('GET', '/api/cmd?save');
 			req.send();
+		}
+
+		function saveOsds() {
+			for (var i = 0; i < 10; i++)
+				apiApply('osd/' + i);
+		}
+
+		function setFormatTime() {
+			var fmt = document.getElementById('time_fmt').value;
+			apiRead('time');
+			document.getElementById('time_fmt').value = fmt;
+			apiApply('time');
+		}
+
+		function setLocalTime() {
+			var ts = Math.floor(new Date().getTime() / 1000);
+			document.getElementById('time_ts').value = ts;
+			apiApply('time');
+			apiRead('time');
 		}
 
 		function setSource(id, src) {
@@ -96,12 +157,13 @@
 		function onLoad() {
 			apiRead('audio');
 			apiRead('jpeg');
-			apiRead('night');
 			apiRead('mp4');
 			apiRead('mjpeg');
+			apiRead('night');
+			apiRead('time');
 
-			duplicateRows('osd', 8);
-			for (var i = 0; i < 8; i++)
+			duplicateRows('osd', 10);
+			for (var i = 0; i < 10; i++)
 				apiRead('osd/' + i);
 
 			every5Sec();
@@ -119,10 +181,10 @@
 		</div>
 	</noscript>
 	<input type="checkbox" id="live-modal">
-	<div class="c modal vh-100 w-100">
-		<div class="c bg-black menu pv2 row">
+	<div class="c modal vh-100 w-100 scrolly">
+		<div class="c bg-black menu pv2 row" tabindex="0">
+			<b><label for="live-modal" class="lbl-modal ph2 white">Divinus</label></b>
 			<div class="col">
-				<b><label for="live-modal" class="lbl-modal ph2 white">Divinus</label></b>
 				<a href="javascript:setSource('preview', 'video.mp4')" class="ph2">MP4</a>
 				<a href="javascript:setSource('preview', 'mjpeg')" class="ph2">MJPEG</a>
 				<a href="javascript:setSource('preview', '')" class="ph2">Stop</a>
@@ -135,10 +197,10 @@
 		</div>
 	</div>
 	<input type="checkbox" id="media-modal">
-	<div class="c modal vh-100 w-100">
-		<div class="c bg-black menu pv2 row">
+	<div class="c modal vh-100 w-100 scrolly">
+		<div class="c bg-black menu pv2 row" tabindex="0">
+			<b><label for="media-modal" class="lbl-modal ph2 white">Divinus</label></b>
 			<div class="col">
-				<b><label for="media-modal" class="lbl-modal ph2 white">Divinus</label></b>
 				<a href="javascript:saveConfig()" class="ph2">Save</a>
 				<label for="media-modal" class="btn primary close">Close</label>
 			</div>
@@ -146,10 +208,17 @@
 		<div class="c cont">
 			<h2 class="unl">Media</h2>
 			<div class="row">
-				<div class="4 col box">
+				<div class="6 col box">
 					<fieldset>
 						<legend>Audio</legend>
 						<table class="w-100">
+							<tr>
+								<td><label for="audio_enable">Enabled</label></td>
+								<td><select id="audio_enable">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
 							<tr>
 								<td><label for="audio_bitrate">Bitrate&nbsp;(kbps)</label></td>
 								<td><input type="number" id="audio_bitrate"></td>
@@ -166,10 +235,17 @@
 						<a href="javascript:apiApply('audio')" class="btn right">Apply</a>
 					</fieldset>
 				</div>
-				<div class="4 col box">
+				<div class="6 col box">
 					<fieldset>
-						<legend>JPEG</legend>
+						<legend>JPEG snapshots</legend>
 						<table class="w-100">
+							<tr>
+								<td><label for="jpeg_enable">Enabled</label></td>
+								<td><select id="jpeg_enable">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
 							<tr>
 								<td><label for="jpeg_width">Width</label></td>
 								<td><input type="number" id="jpeg_width"></td>
@@ -186,27 +262,19 @@
 						<a href="javascript:apiApply('jpeg')" class="btn right">Apply</a>
 					</fieldset>
 				</div>
-				<div class="4 col box">
-					<fieldset>
-						<legend>Night</legend>
-						<table class="w-100">
-							<tr>
-								<td><label for="night_active">Manual</label></td>
-								<td><select id="night_active">
-									<option value="false">OFF</option>
-									<option value="true">ON</option>
-								</select></td>
-							</tr>
-						</table>
-						<a href="javascript:apiApply('night')" class="btn right">Apply</a>
-					</fieldset>
-				</div>
 			</div>
 			<div class="row">
 				<div class="6 col box">
 					<fieldset>
 						<legend>MP4</legend>
 						<table class="w-100">
+							<tr>
+								<td><label for="mp4_enable">Enabled</label></td>
+								<td><select id="mp4_enable">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
 							<tr>
 								<td><label for="mp4_width">Width</label></td>
 								<td><input type="number" id="mp4_width"></td>
@@ -257,6 +325,13 @@
 						<legend>MJPEG</legend>
 						<table class="w-100">
 							<tr>
+								<td><label for="mjpeg_enable">Enabled</label></td>
+								<td><select id="mjpeg_enable">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
 								<td><label for="mjpeg_width">Width</label></td>
 								<td><input type="number" id="mjpeg_width"></td>
 							</tr>
@@ -284,17 +359,19 @@
 		</div>
 	</div>
 	<input type="checkbox" id="osd-modal">
-	<div class="c modal vh-100 w-100">
-		<div class="c bg-black menu pv2 row">
+	<div class="c modal vh-100 w-100 scrolly">
+		<div class="c bg-black menu pv2 row" tabindex="0">
+			<b><label for="osd-modal" class="lbl-modal ph2 white">Divinus</label></b>
 			<div class="col">
-				<b><label for="osd-modal" class="lbl-modal ph2 white">Divinus</label></b>
+				<a href="javascript:saveOsds()" class="ph2">Apply all</a>
+				<a href="javascript:saveConfig()" class="ph2">Save</a>
 				<label for="osd-modal" class="btn primary close">Close</label>
 			</div>
 		</div>
 		<div class="c cont">
 			<h2 class="unl">OSD</h2>
-			<div class="row">
-				<table class="w-100">
+			<div class="row scrollx">
+				<table class="tc w-100">
 					<tr>
 						<th>ID</th>
 						<th>Color</th>
@@ -303,26 +380,137 @@
 						<th>Font family</th>
 						<th>Size</th>
 						<th>Text</th>
+						<th>Local file</th>
+						<th></th>
 					</tr>
 					<tr id="osd_tpl" style="display:none">
-						<td><span id="osd_id"></td>
+						<td>
+							<iframe name="osd_file" class="hide"></iframe>
+							<form target="osd_file" method="post" 
+							 enctype="multipart/form-data" action="/api/osd">
+								<input type="file" id="osd_id" class="nope" name="osd_upld"
+								 accept=".bmp,.png" onchange="this.form.submit()">
+								<label for="osd_id" class="btn"></label>
+							</form>
+						</td>
 						<td><input type="color" id="osd_color"></td>
 						<td><input type="range" id="osd_opal" min="0" max="255"></td>
 						<td><input type="text" id="osd_pos" size="5"></td>
 						<td><input type="text" id="osd_font"></td>
-						<td><input type="number" id="osd_size" step="0.1" size="3"></td>
+						<td><input type="number" id="osd_size" step="0.1" size="3"
+							style="width:5em"></td>
 						<td><input type="text" id="osd_text"></td>
+						<td><input type="text" id="osd_img" placeholder="Leave empty for file uploads"></td>
+						<td><a href="javascript:apiApply('osd')" class="btn">Apply</a></td>
 					</tr>
 				</table>
 			</div>
 		</div>
 	</div>
-	<div class="c bg-black menu pv2 row">
+	<input type="checkbox" id="system-modal">
+	<div class="c modal vh-100 w-100 scrolly">
+		<div class="c bg-black menu pv2 row" tabindex="0">
+			<b><label for="system-modal" class="lbl-modal ph2 white">Divinus</label></b>
+			<div class="col">
+				<label for="system-modal" class="btn primary close">Close</label>
+			</div>
+		</div>
+		<div class="c cont">
+			<h2 class="unl">System</h2>
+			<div class="row scrollx">
+				<div class="12 col box">
+					<fieldset>
+						<legend>Night</legend>
+						<table class="tc w-100">
+							<tr>
+								<td><label for="night_active">Active</label></td>
+								<td><select id="night_active">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="night_manual">Manual</label></td>
+								<td><select id="night_manual">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="night_ircut">IR cut</label></td>
+								<td><select id="night_ircut">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="night_ircut_pin1">IR filter - pin 1</label></td>
+								<td><input type="number" id="night_ircut_pin1"></td>
+							</tr>
+							<tr>
+								<td><label for="night_ircut_pin2">IR filter - pin 2</label></td>
+								<td><input type="number" id="night_ircut_pin2"></td>
+							</tr>
+							<tr>
+								<td><label for="night_irled">IR LED</label></td>
+								<td><select id="night_irled">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="night_irled_pin">IR LED - pin</label></td>
+								<td><input type="number" id="night_irled_pin"></td>
+							</tr>
+							<tr>
+								<td><label for="night_irsense_pin">IR sense - pin</label></td>
+								<td><input type="number" id="night_irsense_pin"></td>
+							</tr>
+							<tr>
+								<td><label for="night_adc_device">ADC device endpoint</label></td>
+								<td><input type="text" id="night_adc_device"></td>
+							</tr>
+							<tr>
+								<td><label for="night_adc_threshold">ADC threshold</label></td>
+								<td><input type="number" id="night_adc_threshold"></td>
+							</tr>
+						</table>
+						<a href="javascript:apiApply('night')" class="btn right">Apply</a>
+					</fieldset>
+				</div>
+			</div>
+			<div class="row scrollx">
+				<div class="12 col box">
+					<fieldset>
+						<legend>Time</legend>
+						<table class="tc w-100">
+							<tr>
+								<td><label for="time_fmt">Display format</label></td>
+								<td><input type="text" id="time_fmt"></td>
+								<td><a href="javascript:setFormatTime()" class="btn cell">Set</a></td>
+							</tr>
+							<tr>
+								<td><label for="time_ts">Current Unix time</label></td>
+								<td><input type="text" id="time_ts"></td>
+								<td>
+									<a href="javascript:setLocalTime()" class="btn cell">Sync</a>
+									<a href="javascript:apiApply('time')" class="btn cell">Apply</a>
+								</td>
+							</tr>
+						</table>
+						<a href="javascript:apiRead('time')" class="btn right">Refresh</a>
+					</fieldset>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="c bg-black menu pv2 row" tabindex="0">
+		<b><a href="./" class="ph2 white">Divinus</a></b>
 		<div class="col">
-			<b><a href="./" class="ph2 white">Divinus</a></b>
 			<label for="live-modal" class="lbl-modal ph2 white">Live</label>
 			<label for="media-modal" class="lbl-modal ph2 white">Media</label>
 			<label for="osd-modal" class="lbl-modal ph2 white">OSD</label>
+			<label for="system-modal" class="lbl-modal ph2 white">System</label>
 			<a href="image.jpg" class="ph2 white" target="_blank">Snapshot</a>
 		</div>
 	</div>

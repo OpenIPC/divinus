@@ -16,6 +16,13 @@ typedef struct {
 } cvi_isp_alg;
 
 typedef struct {
+	int sensorId;
+	cvi_isp_alg aeLib;
+	cvi_isp_alg afLib;
+	cvi_isp_alg awbLib;
+} cvi_isp_bind;
+
+typedef struct {
     cvi_common_rect capt;
     cvi_common_dim size;
     float framerate;
@@ -32,6 +39,7 @@ typedef struct {
     int (*fnMemInit)(int pipe);
     int (*fnRun)(int pipe);
 
+    int (*fnSetDeviceBind)(int pipe, cvi_isp_bind *bind);
     int (*fnSetDeviceConfig)(int pipe, cvi_isp_dev *config);
 
     int (*fnResetIntf)(int device, int state);
@@ -68,6 +76,10 @@ static int cvi_isp_load(cvi_isp_impl *isp_lib) {
 
     if (!(isp_lib->fnRun = (int(*)(int pipe))
         hal_symbol_load("cvi_isp", isp_lib->handle, "CVI_ISP_Run")))
+        return EXIT_FAILURE;
+
+    if (!(isp_lib->fnSetDeviceBind = (int(*)(int pipe, cvi_isp_bind *bind))
+        hal_symbol_load("cvi_isp", isp_lib->handle, "CVI_ISP_SetBindAttr")))
         return EXIT_FAILURE;
 
     if (!(isp_lib->fnSetDeviceConfig = (int(*)(int pipe, cvi_isp_dev *config))

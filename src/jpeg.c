@@ -47,6 +47,8 @@ int jpeg_init() {
             case HAL_PLATFORM_V4:  ret = v4_video_create(jpeg_index, &config); break;
 #elif defined(__mips__)
             case HAL_PLATFORM_T31: ret = t31_video_create(jpeg_index, &config); break;
+#elif defined(__riscv) || defined(__riscv__)
+            case HAL_PLATFORM_CVI: ret = cvi_video_create(jpeg_index, &config); break;
 #endif
             default: 
                 pthread_mutex_unlock(&jpeg_mutex);
@@ -86,6 +88,8 @@ void jpeg_deinit() {
             if (app_config.mjpeg_enable) goto active;
             t31_video_destroy(jpeg_index);
             break;
+#elif defined(__riscv) || defined(__riscv__)
+        case HAL_PLATFORM_CVI: cvi_video_destroy(jpeg_index); break;
 #endif
         default: 
             pthread_mutex_unlock(&jpeg_mutex);
@@ -120,6 +124,8 @@ int jpeg_get(short width, short height, char quality, char grayscale,
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: ret = t31_video_snapshot_grab(app_config.mjpeg_enable ? 
             -1 : jpeg_index, jpeg); break;
+#elif defined(__riscv) || defined(__riscv__)
+        case HAL_PLATFORM_CVI: ret = cvi_video_snapshot_grab(jpeg_index, jpeg); break;
 #endif
     }
     if (ret) {

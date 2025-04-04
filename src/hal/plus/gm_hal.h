@@ -9,7 +9,7 @@
 #define GM_LIB_API "1.0"
 #define GM_MAX_SNAP (1024 * 1024)
 
-extern char keepRunning;
+extern char audioOn, keepRunning;
 
 extern hal_chnstate gm_state[GM_VENC_CHN_NUM];
 extern int (*gm_aud_cb)(hal_audframe*);

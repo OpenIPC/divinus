@@ -123,7 +123,7 @@ void *m6_audio_thread(void)
     m6_aud_frm frame;
     memset(&frame, 0, sizeof(frame));
 
-    while (keepRunning) {
+    while (keepRunning && audioOn) {
         if (ret = m6_aud.fnGetFrame(_m6_aud_dev, _m6_aud_chn, 
             &frame, NULL, 128)) {
             HAL_WARNING("m6_aud", "Getting the frame failed "

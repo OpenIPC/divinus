@@ -2,7 +2,7 @@
 
 pthread_t httpPostPid = 0;
 
-int post_send(hal_jpegdata *jpeg) {
+int http_post_send(hal_jpegdata *jpeg) {
     char *host_addr = app_config.http_post_host;
 
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -67,7 +67,7 @@ int post_send(hal_jpegdata *jpeg) {
     return EXIT_SUCCESS;
 }
 
-void *send_thread(void *vargp) {
+void *http_post_thread(void) {
     hal_jpegdata jpeg = {0};
     jpeg.data = NULL;
     jpeg.length = 0;
@@ -89,7 +89,7 @@ void *send_thread(void *vargp) {
         }
         last_time = current_time;
 
-        if (post_send(&jpeg)) {
+        if (http_post_send(&jpeg)) {
             HAL_WARNING("http_post", "Sending the picture has failed!\n");
             continue;
         }
@@ -105,8 +105,8 @@ void start_http_post_send() {
     if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
         HAL_DANGER("http_post", "Can't set stack size %zu\n", new_stacksize);
     if (pthread_create(
-                    &httpPostPid, &thread_attr, send_thread, NULL))
-        HAL_DANGER("http_post", "Starting the HTTP poster thread failed!\n");
+            &httpPostPid, &thread_attr, (void *(*)(void *))http_post_thread, NULL))
+        HAL_DANGER("http_post", "Starting the sender thread failed!\n");
     if (pthread_attr_setstacksize(&thread_attr, stacksize))
         HAL_DANGER("http_post", "Can't set stack size %zu\n", stacksize);
     pthread_attr_destroy(&thread_attr);

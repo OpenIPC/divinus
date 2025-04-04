@@ -8,12 +8,14 @@
 
 #include "hal/config.h"
 #include "hal/support.h"
+#include "region.h"
 
 struct AppConfig {
     // [system]
     char sensor_config[128];
     bool server_enable;
     unsigned short web_port;
+    char web_whitelist[4][256];
     bool web_enable_auth;
     char web_auth_user[32];
     char web_auth_pass[32];
@@ -27,6 +29,7 @@ struct AppConfig {
     bool night_mode_enable;
     unsigned int ir_cut_pin1;
     unsigned int ir_cut_pin2;
+    unsigned int ir_led_pin;
     unsigned int ir_sensor_pin;
     unsigned int check_interval_s;
     unsigned int pin_switch_delay_us;
@@ -46,6 +49,12 @@ struct AppConfig {
     bool rtsp_enable_auth;
     char rtsp_auth_user[32];
     char rtsp_auth_pass[32];
+    int rtsp_port;
+
+    // [stream]
+    bool stream_enable;
+    unsigned short stream_udp_srcport;
+    char stream_dests[4][256];
 
     // [fpv]
     bool fpv_enable;

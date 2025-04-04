@@ -14,7 +14,7 @@
 #include <sys/select.h>
 #include <unistd.h>
 
-extern char keepRunning;
+extern char audioOn, keepRunning;
 
 extern hal_chnstate t31_state[T31_VENC_CHN_NUM];
 extern int (*t31_aud_cb)(hal_audframe*);
@@ -28,8 +28,7 @@ int t31_audio_init(int samplerate);
 void *t31_audio_thread(void);
 
 int t31_channel_bind(char index);
-int t31_channel_create(char index, short width, short height, char framerate);
-void t31_channel_destroy(char index);
+int t31_channel_create(char index, short width, short height, char framerate, char jpeg);
 int t31_channel_grayscale(char enable);
 int t31_channel_unbind(char index);
 

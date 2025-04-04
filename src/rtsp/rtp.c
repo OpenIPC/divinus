@@ -364,6 +364,11 @@ static inline int __rtcp_poll(struct list_t *e, void *v)
 /******************************************************************************
  *              PUBLIC FUNCTIONS
  ******************************************************************************/
+void rtp_disable_audio(rtsp_handle h)
+{
+    h->audioPt = 255;
+}
+
 int rtp_send_h26x(rtsp_handle h, unsigned char *buf, size_t len, char isH265)
 {
     unsigned char *nalptr = buf;
@@ -376,7 +381,9 @@ int rtp_send_h26x(rtsp_handle h, unsigned char *buf, size_t len, char isH265)
     DASSERT(h, return FAILURE);
 
     if (gbl_get_quit(h->pool->sharedp->gbl)) {
+#ifdef DEBUG_RTSP
         ERR("server threads have gone already. call rtsp_finish()\n");
+#endif
         return FAILURE;
     }
 
@@ -414,7 +421,9 @@ int rtp_send_mp3(rtsp_handle h, unsigned char *buf, size_t len)
     DASSERT(h, return FAILURE);
 
     if (gbl_get_quit(h->pool->sharedp->gbl)) {
+#ifdef DEBUG_RTSP
         ERR("server threads have gone already. call rtsp_finish()\n");
+#endif
         return FAILURE;
     }
 

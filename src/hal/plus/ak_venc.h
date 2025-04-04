@@ -56,7 +56,7 @@ typedef struct {
 } ak_venc_strm;
 
 typedef struct {
-    void *handle;
+    void *handle, *handleStrmEnc;
 
     void* (*fnBindChannel)(void *input, void *output);
     int   (*fnDisableChannel)(void *channel);
@@ -70,6 +70,9 @@ typedef struct {
 } ak_venc_impl;
 
 static int ak_venc_load(ak_venc_impl *venc_lib) {
+    if (!(venc_lib->handleStrmEnc = dlopen("libakstreamenc.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("ak_venc", "Failed to load library!\nError: %s\n", dlerror());
+
     if (!(venc_lib->handle = dlopen("libmpi_venc.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("ak_venc", "Failed to load library!\nError: %s\n", dlerror());
 
@@ -107,5 +110,7 @@ static int ak_venc_load(ak_venc_impl *venc_lib) {
 static void ak_venc_unload(ak_venc_impl *venc_lib) {
     if (venc_lib->handle) dlclose(venc_lib->handle);
     venc_lib->handle = NULL;
+    if (venc_lib->handleStrmEnc) dlclose(venc_lib->handleStrmEnc);
+    venc_lib->handleStrmEnc = NULL;
     memset(venc_lib, 0, sizeof(*venc_lib));
 }

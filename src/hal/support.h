@@ -4,6 +4,7 @@
 #if defined(__arm__)
 #include "plus/ak_hal.h"
 #include "plus/gm_hal.h"
+#include "plus/rk_hal.h"
 #include "hisi/v1_hal.h"
 #include "hisi/v2_hal.h"
 #include "hisi/v3_hal.h"

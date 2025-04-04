@@ -110,7 +110,7 @@ void *v4_audio_thread(void)
     memset(&frame, 0, sizeof(frame));
     memset(&echoFrame, 0, sizeof(echoFrame));
 
-    while (keepRunning) {
+    while (keepRunning && audioOn) {
         if (ret = v4_aud.fnGetFrame(_v4_aud_dev, _v4_aud_chn, 
             &frame, &echoFrame, 128)) {
             HAL_WARNING("v4_aud", "Getting the frame failed "

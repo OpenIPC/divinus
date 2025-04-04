@@ -130,7 +130,7 @@ void *i6c_audio_thread(void)
     i6c_aud_frm frame;
     memset(&frame, 0, sizeof(frame));
 
-    while (keepRunning) {
+    while (keepRunning && audioOn) {
         if (ret = i6c_aud.fnGetFrame(_i6c_aud_dev, _i6c_aud_chn, 
             &frame, NULL, 128)) {
             HAL_WARNING("i6c_aud", "Getting the frame failed "

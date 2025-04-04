@@ -93,7 +93,7 @@ void *gm_audio_thread(void)
     char *bsData = malloc(bufSize);
     if (!bsData) goto abort;
 
-    while (keepRunning) {
+    while (keepRunning && audioOn) {
         ret = gm_lib.fnPollStream(_gm_aud_fds, GM_AUD_CHN_NUM, 500);
         if (ret == GM_ERR_TIMEOUT) {
             HAL_WARNING("gm_aud", "Main stream loop timed out!\n");

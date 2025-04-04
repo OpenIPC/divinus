@@ -2,8 +2,7 @@
 
 #include "t31_common.h"
 
-// To be validated
-#define T31_VENC_CHN_NUM 4
+#define T31_VENC_CHN_NUM 6
 
 typedef enum {
     T31_VENC_CODEC_H264,
@@ -284,12 +283,14 @@ typedef struct {
     int (*fnCreateChannel)(int channel, t31_venc_chn *config);
     int (*fnDestroyChannel)(int channel);
     int (*fnRegisterChannel)(int group, int channel);
+    int (*fnSetChannelShared)(int channel, int shrChn);
     int (*fnUnregisterChannel)(int channel);
 
     int (*fnGetDescriptor)(int channel);
 
     int (*fnFreeStream)(int channel, t31_venc_strm *stream);
     int (*fnGetStream)(int channel, t31_venc_strm *stream, char blockingOn);
+    int (*fnPollStream)(int channel, int timeoutMs);
 
     int (*fnQuery)(int channel, t31_venc_stat* stats);
 
@@ -329,6 +330,10 @@ static int t31_venc_load(t31_venc_impl *venc_lib) {
         hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_RegisterChn")))
         return EXIT_FAILURE;
 
+    if (!(venc_lib->fnSetChannelShared = (int(*)(int channel, int shrChn))
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_SetbufshareChn")))
+        return EXIT_FAILURE;
+
     if (!(venc_lib->fnUnregisterChannel = (int(*)(int channel))
         hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_UnRegisterChn")))
         return EXIT_FAILURE;
@@ -343,6 +348,10 @@ static int t31_venc_load(t31_venc_impl *venc_lib) {
 
     if (!(venc_lib->fnGetStream = (int(*)(int channel, t31_venc_strm *stream, char blockingOn))
         hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_GetStream")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnPollStream = (int(*)(int channel, int timeoutMs))
+        hal_symbol_load("t31_venc", venc_lib->handle, "IMP_Encoder_PollingStream")))
         return EXIT_FAILURE;
 
     if (!(venc_lib->fnQuery = (int(*)(int channel, t31_venc_stat *stats))

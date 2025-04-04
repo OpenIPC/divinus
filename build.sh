@@ -58,7 +58,7 @@ elif [ "$1" = "riscv64-musl" ] || [ "$1" = "cvitek" ]; then
 	EXT="tar.xz"
 	toolchain riscv64-lp64d--musl--stable-2024.05-1 riscv64
 else
-	echo "Usage: $0 [arm-glibc|arm-musl3|arm-musl4|arm9-musl3|arm9-musl4|arm9-uclibc|"
+	echo "Usage: $0 [arm-glibc|arm-musl3|arm-musl4|arm9-glibc|arm9-musl3|arm9-musl4|arm9-uclibc|"
         echo "           armhf-glibc|armhf-musl|mips-musl|riscv64-musl|ak39xx|cvitek|gm813x|"
         echo "           hisi-v1|hisi-v2|hisi-v2a|hisi-v3|hisi-v3a|hisi-v4|hisi-v4a|inge-t31|"
         echo "           star6|star6e] (debug)"
