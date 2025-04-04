@@ -247,6 +247,7 @@ void *region_thread(void) {
 
     for (char id = 0; id < MAX_OSD; id++)
     {
+        if (!EMPTY(osds[id].text)) continue;
         osds[id].hand = -1;
         osds[id].color = DEF_COLOR;
         osds[id].opal = DEF_OPAL;

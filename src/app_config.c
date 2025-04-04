@@ -80,8 +80,8 @@ int save_app_config(void) {
     fprintf(file, "stream:\n");
     fprintf(file, "  enable: %s\n", app_config.stream_enable ? "true" : "false");
     fprintf(file, "  udp_srcport: %d\n", app_config.stream_udp_srcport);
-    fprintf(file, "  dests: ");
     if (app_config.stream_dests) {
+        fprintf(file, "  dests: ");
         for (int i = 0; app_config.stream_dests[i] && *app_config.stream_dests[i]; i++) {
             fprintf(file, "    - %s\n", app_config.stream_dests[i]);
         }
@@ -103,13 +103,14 @@ int save_app_config(void) {
     fprintf(file, "  width: %d\n", app_config.mp4_width);
     fprintf(file, "  height: %d\n", app_config.mp4_height);
     fprintf(file, "  fps: %d\n", app_config.mp4_fps);
-    fprintf(file, "  gop: %f\n", app_config.mp4_gop);
+    fprintf(file, "  gop: %d\n", app_config.mp4_gop);
     fprintf(file, "  profile: %d\n", app_config.mp4_profile);
     fprintf(file, "  bitrate: %d\n", app_config.mp4_bitrate);
 
     fprintf(file, "osd:\n");
     fprintf(file, "  enable: %s\n", app_config.osd_enable ? "true" : "false");
     for (char i = 0; i < MAX_OSD; i++) {
+        if (!osds[i].text) continue;
         fprintf(file, "    reg%d_text: %s\n", i, osds[i].text);
         fprintf(file, "    reg%d_font: %s\n", i, osds[i].font);
         fprintf(file, "    reg%d_opal: %d\n", i, osds[i].opal);
