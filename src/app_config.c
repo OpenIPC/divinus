@@ -96,6 +96,9 @@ int save_app_config(void) {
     fprintf(file, "mdns:\n");
     fprintf(file, "  enable: %s\n", app_config.mdns_enable ? "true" : "false");
 
+    fprintf(file, "onvif:\n");
+    fprintf(file, "  enable: %s\n", app_config.onvif_enable ? "true" : "false");
+
     fprintf(file, "audio:\n");
     fprintf(file, "  enable: %s\n", app_config.audio_enable ? "true" : "false");
     fprintf(file, "  bitrate: %d\n", app_config.audio_bitrate);
@@ -177,6 +180,7 @@ enum ConfigError parse_app_config(void) {
     app_config.mdns_enable = false;
 
     app_config.osd_enable = false;
+    app_config.onvif_enable = false;
     app_config.rtsp_enable = false;
     app_config.rtsp_port = 554;
     app_config.rtsp_enable_auth = false;
@@ -336,6 +340,8 @@ enum ConfigError parse_app_config(void) {
             osds[i].updt = 1;
         }
     }
+
+    parse_bool(&ini, "onvif", "enable", &app_config.onvif_enable);
 
     parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
     parse_int(&ini, "rtsp", "port", 0, USHRT_MAX, &app_config.rtsp_port);

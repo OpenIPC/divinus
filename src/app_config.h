@@ -42,6 +42,7 @@ struct AppConfig {
 
     bool osd_enable;
     bool mdns_enable;
+    bool onvif_enable;
 
     // [rtsp]
     bool rtsp_enable;
