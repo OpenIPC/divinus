@@ -1081,88 +1081,15 @@ void respond_request(struct Request *req) {
                 if (payloade) payloade -= 4;
 
                 char path[32];
-                sprintf(path, "/tmp/osd%d.bmp", id);
 
-                if (!memcmp(payloadb, "\x89\x50\x4E\x47\xD\xA\x1A\xA", 8)) {
-                    spng_ctx *ctx = spng_ctx_new(0);
-                    if (!ctx) {
-                        HAL_DANGER("server", "Constructing the PNG decoder context failed!\n");
-                        goto png_error;
-                    }
+                if (!memcmp(payloadb, "\x89\x50\x4E\x47\xD\xA\x1A\xA", 8)) 
+                    sprintf(path, "/tmp/osd%d.png", id);
+                else
+                    sprintf(path, "/tmp/osd%d.bmp", id);
 
-                    spng_set_crc_action(ctx, SPNG_CRC_USE, SPNG_CRC_USE);
-                    spng_set_chunk_limits(ctx,
-                        app_config.web_server_thread_stack_size,
-                        app_config.web_server_thread_stack_size);
-                    spng_set_png_buffer(ctx, payloadb, payloade - payloadb);
-
-                    struct spng_ihdr ihdr;
-                    int err = spng_get_ihdr(ctx, &ihdr);
-                    if (err) {
-                        HAL_DANGER("server", "Parsing the PNG IHDR chunk failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-#ifdef DEBUG_IMAGE
-    printf("[image] (PNG) width: %u, height: %u, depth: %u, color type: %u -> %s\n",
-        ihdr.width, ihdr.height, ihdr.bit_depth, ihdr.color_type, color_type_str(ihdr.color_type));
-    printf("        compress: %u, filter: %u, interl: %u\n",
-        ihdr.compression_method, ihdr.filter_method, ihdr.interlace_method);
-#endif
-
-                    struct spng_plte plte = {0};
-                    err = spng_get_plte(ctx, &plte);
-                    if (err && err != SPNG_ECHUNKAVAIL) {
-                        HAL_DANGER("server", "Parsing the PNG PLTE chunk failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-#ifdef DEBUG_IMAGE
-    printf("        palette: %u\n", plte.n_entries);
-#endif
-
-                    size_t bitmapsize;
-                    err = spng_decoded_image_size(ctx, SPNG_FMT_RGBA8, &bitmapsize);
-                    if (err) {
-                        HAL_DANGER("server", "Recovering the resulting image size failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-
-                    unsigned char *bitmap = malloc(bitmapsize);
-                    if (!bitmap) {
-                        HAL_DANGER("server", "Allocating the PNG bitmap output buffer for size %u failed!\n", bitmapsize);
-                        goto png_error;
-                    }
-
-                    err = spng_decode_image(ctx, bitmap, bitmapsize, SPNG_FMT_RGBA8, 0);
-                    if (!bitmap) {
-                        HAL_DANGER("server", "Decoding the PNG image failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-
-                    int headersize = 2 + sizeof(bitmapfile) + sizeof(bitmapinfo) + sizeof(bitmapfields);
-                    bitmapfile headerfile = {.size = bitmapsize + headersize, .offBits = headersize};
-                    bitmapinfo headerinfo = {.size = sizeof(bitmapinfo), 
-                                             .width = ihdr.width, .height = -ihdr.height, .planes = 1, .bitCount = 32,
-                                             .compression = 3, .sizeImage = bitmapsize, .xPerMeter = 2835, .yPerMeter = 2835};
-                    bitmapfields headerfields = {.redMask = 0xFF << 0, .greenMask = 0xFF << 8, .blueMask = 0xFF << 16, .alphaMask = 0xFF << 24,
-                                                 .clrSpace = {'W', 'i', 'n', ' '}};
-
-                    FILE *img = fopen(path, "wb");
-                    fwrite("BM", sizeof(char), 2, img);
-                    fwrite(&headerfile, sizeof(bitmapfile), 1, img);
-                    fwrite(&headerinfo, sizeof(bitmapinfo), 1, img);
-                    fwrite(&headerfields, sizeof(bitmapfields), 1, img);
-                    fwrite(bitmap, sizeof(char), bitmapsize, img);
-                    fclose(img);
-
-png_error:
-                    spng_ctx_free(ctx);
-                    free(bitmap);
-                    send_and_close(req->clntFd, (char*)error500, strlen(error500));
-                } else {
-                    FILE *img = fopen(path, "wb");
-                    fwrite(payloadb, sizeof(char), payloade - payloadb, img);
-                    fclose(img);
-                }
+                FILE *img = fopen(path, "wb");
+                fwrite(payloadb, sizeof(char), payloade - payloadb, img);
+                fclose(img);
 
                 strcpy(osds[id].text, "");
                 osds[id].updt = 1;

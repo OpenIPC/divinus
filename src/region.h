@@ -10,6 +10,7 @@
 
 #include "app_config.h"
 #include "hal/support.h"
+#include "lib/spng.h"
 #include "text.h"
 
 #define DEF_COLOR 0xFFFF
