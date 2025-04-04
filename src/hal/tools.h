@@ -2,9 +2,11 @@
 
 #include "types.h"
 
+#include <arpa/inet.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <netinet/in.h>
 #include <regex.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,6 +14,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -40,6 +43,10 @@ bool get_uint8(char *str, char *pattern, uint8_t *value);
 bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op);
 
 int hex_to_int(char value);
+
+unsigned int ip_to_int(const char *ip);
+
+char ip_in_cidr(const char *ip, const char *cidr);
 
 char *memstr(char *haystack, char *needle, int size, char needlesize);
 

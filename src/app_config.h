@@ -14,6 +14,7 @@ struct AppConfig {
     // [system]
     char sensor_config[128];
     unsigned short web_port;
+    char web_whitelist[4][256];
     bool web_enable_auth;
     char web_auth_user[32];
     char web_auth_pass[32];

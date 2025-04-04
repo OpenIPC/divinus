@@ -212,6 +212,37 @@ int hex_to_int(char value) {
     return -1;
 }
 
+unsigned int ip_to_int(const char *ip) {
+    struct in_addr addr;
+
+    if (!inet_aton(ip, &addr)) 
+        return 0;
+
+    return ntohl(addr.s_addr);
+}
+
+char ip_in_cidr(const char *ip, const char *cidr) {
+    char network[18];
+    int prefix_len = 32;
+
+    strncpy(network, cidr, sizeof(network) - 1);
+    network[sizeof(network) - 1] = '\0';
+
+    char *slash = strchr(network, '/');
+    if (slash) {
+        *slash = '\0';
+        prefix_len = atoi(slash + 1);
+        if (prefix_len < 0 || prefix_len > 32)
+            prefix_len = 32;
+    }
+
+    unsigned int ip_int = ip_to_int(ip);
+    unsigned int network_int = ip_to_int(network);
+    unsigned int mask = prefix_len ? ~((1 << (32 - prefix_len)) - 1) : 0;
+
+    return (ip_int & mask) == (network_int & mask);
+}
+
 char *memstr(char *haystack, char *needle, int size, char needlesize) {
 	for (char *p = haystack; p <= (haystack - needlesize + size); p++)
 		if (!memcmp(p, needle, needlesize)) return p;
