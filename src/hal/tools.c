@@ -291,3 +291,17 @@ void unescape_uri(char *uri) {
     }
     *dst = '\0';
 }
+
+void uuid_generate(char *uuid) {
+    const char *chars = "0123456789abcdef";
+
+    int i, j = 0;
+    for (i = 0; i < 36; i++) {
+        if (i == 8 || i == 13 || i == 18 || i == 23) {
+            uuid[i] = '-';
+        } else {
+            uuid[i] = chars[rand() % 16];
+        }
+    }
+    uuid[36] = '\0';
+}
