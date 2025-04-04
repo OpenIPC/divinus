@@ -61,6 +61,9 @@ int main(int argc, char *argv[]) {
     if (app_config.mdns_enable)
         start_mdns();
 
+    if (app_config.onvif_enable)
+        start_onvif_server();
+
     start_server();
 
     if (app_config.rtsp_enable) {
@@ -107,6 +110,9 @@ int main(int argc, char *argv[]) {
     stop_sdk();
 
     stop_server();
+
+    if (app_config.onvif_enable)
+        stop_onvif_server();
 
     if (app_config.mdns_enable)
         stop_mdns();

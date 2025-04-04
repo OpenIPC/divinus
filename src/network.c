@@ -86,9 +86,10 @@ void *onvif_thread(void) {
         return (void*)EXIT_FAILURE;
     }
 
-    struct ip_mreq group;
-    group.imr_multiaddr.s_addr = inet_addr("239.255.255.250");
-    group.imr_interface.s_addr = inet_addr(ipaddr);
+    struct ip_mreq group = {
+        .imr_multiaddr.s_addr = inet_addr("239.255.255.250"),
+        .imr_interface.s_addr = inet_addr(ipaddr)
+    };
     if (setsockopt(servfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group)) < 0){
         close(servfd);
         return (void*)EXIT_FAILURE;
@@ -107,9 +108,63 @@ void *onvif_thread(void) {
         if (!strstr(msgbuf, "http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe"))
             continue;
 
-        char uuid[37], response[2048] = {0};
+        char uuid[37], msgid[100] = {0};
         uuid_generate(uuid);
-        sendto(servfd, response, strlen(response), 0, (struct sockaddr *)&clntaddr, clntsz);
+    
+        char *msgid_init = strstr(msgbuf, "MessageID>");
+        if (msgid_init) {
+            msgid_init += 10;
+            char *msgid_end = strstr(msgid_init, "<");
+            if (msgid_end && (msgid_end - msgid_init) < sizeof(msgid)) {
+                strncpy(msgid, msgid_init, msgid_end - msgid_init);
+                msgid[msgid_end - msgid_init] = '\0';
+            }
+        }
+
+        char response[4096] = {0};
+        char device_uuid[64];
+        snprintf(device_uuid, sizeof(device_uuid), "urn:uuid:%s", uuid);
+        
+        char device_name[64];
+        snprintf(device_name, sizeof(device_name), "Divinus");
+        
+        char device_url[128];
+        snprintf(device_url, sizeof(device_url), "http://%s:%d/onvif/device_service", ipaddr, app_config.web_port);
+        
+        int respLen = snprintf(response, sizeof(response),
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<SOAP-ENV:Envelope "
+                "xmlns:SOAP-ENV=\"http://www.w3.org/2003/05/soap-envelope\" "
+                "xmlns:wsa=\"http://schemas.xmlsoap.org/ws/2004/08/addressing\" "
+                "xmlns:d=\"http://schemas.xmlsoap.org/ws/2005/04/discovery\" "
+                "xmlns:dn=\"http://www.onvif.org/ver10/network/wsdl\">\n"
+            "  <SOAP-ENV:Header>\n"
+            "    <wsa:MessageID>%s</wsa:MessageID>\n"
+            "    <wsa:RelatesTo>%s</wsa:RelatesTo>\n"
+            "    <wsa:To>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</wsa:To>\n"
+            "    <wsa:Action>http://schemas.xmlsoap.org/ws/2005/04/discovery/ProbeMatches</wsa:Action>\n"
+            "  </SOAP-ENV:Header>\n"
+            "  <SOAP-ENV:Body>\n"
+            "    <d:ProbeMatches>\n"
+            "      <d:ProbeMatch>\n"
+            "        <wsa:EndpointReference>\n"
+            "          <wsa:Address>%s</wsa:Address>\n"
+            "        </wsa:EndpointReference>\n"
+            "        <d:Types>dn:NetworkVideoTransmitter</d:Types>\n"
+            "        <d:Scopes>onvif://www.onvif.org/type/video_encoder onvif://www.onvif.org/Profile/Streaming onvif://www.onvif.org/name/%s onvif://www.onvif.org/hardware/Divinus</d:Scopes>\n"
+            "        <d:XAddrs>%s</d:XAddrs>\n"
+            "        <d:MetadataVersion>1</d:MetadataVersion>\n"
+            "      </d:ProbeMatch>\n"
+            "    </d:ProbeMatches>\n"
+            "  </SOAP-ENV:Body>\n"
+            "</SOAP-ENV:Envelope>",
+            device_uuid, msgid, device_uuid, device_name, device_url);
+    
+        HAL_INFO("onvif", "Sending discovery response to %s:%d\n", 
+                 inet_ntoa(clntaddr.sin_addr), ntohs(clntaddr.sin_port));
+    
+        if (sendto(servfd, response, strlen(response), 0, (struct sockaddr *)&clntaddr, clntsz) < 0)
+            HAL_WARNING("onvif", "Failed to send discovery response: %s\n", strerror(errno));
     }
 
     close(servfd);
