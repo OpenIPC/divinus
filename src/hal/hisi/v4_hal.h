@@ -19,7 +19,7 @@
 #include <sys/select.h>
 #include <unistd.h>
 
-extern char keepRunning;
+extern char audioOn, keepRunning;
 
 extern hal_chnstate v4_state[V4_VENC_CHN_NUM];
 extern int (*v4_aud_cb)(hal_audframe*);

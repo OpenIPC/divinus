@@ -16,11 +16,11 @@
 
 #include "app_config.h"
 #include "hal/types.h"
-#include "lib/spng.h"
 #include "jpeg.h"
 #include "media.h"
 #include "mp4/mp4.h"
 #include "mp4/nal.h"
+#include "night.h"
 #include "region.h"
 #include "watchdog.h"
 

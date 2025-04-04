@@ -52,34 +52,24 @@ typedef struct {
 } rk_sys_impl;
 
 static int rk_sys_load(rk_sys_impl *sys_lib) {
-    if (!(sys_lib->handle = dlopen("librockit.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[rk_sys] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(sys_lib->handle = dlopen("librockit.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("rk_sys", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(sys_lib->fnExit = (int(*)(void))
-        dlsym(sys_lib->handle, "RK_MPI_SYS_Exit"))) {
-        fprintf(stderr, "[rk_sys] Failed to acquire symbol RK_MPI_SYS_Exit!\n");
+        hal_symbol_load("rk_sys", sys_lib->handle, "RK_MPI_SYS_Exit")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnInit = (int(*)(void))
-        dlsym(sys_lib->handle, "RK_MPI_SYS_Init"))) {
-        fprintf(stderr, "[rk_sys] Failed to acquire symbol RK_MPI_SYS_Init!\n");
+        hal_symbol_load("rk_sys", sys_lib->handle, "RK_MPI_SYS_Init")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnBind = (int(*)(rk_sys_bind *source, rk_sys_bind *dest))
-        dlsym(sys_lib->handle, "RK_MPI_SYS_Bind"))) {
-        fprintf(stderr, "[rk_sys] Failed to acquire symbol RK_MPI_SYS_Bind!\n");
+        hal_symbol_load("rk_sys", sys_lib->handle, "RK_MPI_SYS_Bind")))
         return EXIT_FAILURE;
-    }
 
     if (!(sys_lib->fnUnbind = (int(*)(rk_sys_bind *source, rk_sys_bind *dest))
-        dlsym(sys_lib->handle, "RK_MPI_SYS_UnBind"))) {
-        fprintf(stderr, "[rk_sys] Failed to acquire symbol RK_MPI_SYS_UnBind!\n");
+        hal_symbol_load("rk_sys", sys_lib->handle, "RK_MPI_SYS_UnBind")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

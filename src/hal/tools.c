@@ -35,6 +35,55 @@ int base64_encode(char *encoded, const char *string, int len) {
     return p - encoded;
 }
 
+int color_convert555(int color) {
+    unsigned char r = (color >> 16) & 0xF8;
+    unsigned char g = (color >> 8) & 0xF8;
+    unsigned char b = color & 0xF8;
+    return (1 << 15) | (r << 7) | (g << 2) | (b >> 3);
+}
+
+int color_parse(const char *str) {
+    char *remain = NULL;
+    int len = strlen(str);
+    int result = 0;
+    
+    // Ignore leading spaces
+    while (*str == ' ' || *str == '\t') str++;
+    
+    // 4-bit hex format "#RGB"
+    if (str[0] == '#' && len == 4) {
+        int r = hex_to_int(str[1]);
+        int g = hex_to_int(str[2]);
+        int b = hex_to_int(str[3]);
+        
+        if (r >= 0 && g >= 0 && b >= 0)
+            return (1 << 16) | (r << 11) | (g << 6) | (b << 1);
+    }
+    
+    // 8-bit hex format "#RRGGBB"
+    else if (str[0] == '#') {
+        result = strtol(str + 1, &remain, 16);
+        if (remain != str + 1 && *remain == '\0')
+            return color_convert555(result);
+    }
+    
+    // C standard format "0xRRGGBB"
+    else if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) {
+        result = strtol(str, &remain, 0);
+        if (remain != str && *remain == '\0')
+            return color_convert555(result);
+    }
+    
+    // No prefix format "RRGGBB"
+    else if (len >= 6) {
+        result = strtol(str, &remain, 16);
+        if (remain != str && *remain == '\0')
+            return color_convert555(result);
+    }
+
+    return 0xFFFF;
+}
+
 
 #define REG_ERR_LEN 0x1000
 
@@ -156,6 +205,13 @@ bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
     return true;
 }
 
+int hex_to_int(char value) {
+    if (value >= '0' && value <= '9') return value - '0';
+    if (value >= 'A' && value <= 'F') return value - 'A' + 10;
+    if (value >= 'a' && value <= 'f') return value - 'a' + 10;
+    return -1;
+}
+
 unsigned int ip_to_int(const char *ip) {
     struct in_addr addr;
 
@@ -234,18 +290,4 @@ void unescape_uri(char *uri) {
         src++;
     }
     *dst = '\0';
-}
-
-void uuid_generate(char *uuid) {
-    const char *chars = "0123456789abcdef";
-
-    int i, j = 0;
-    for (i = 0; i < 36; i++) {
-        if (i == 8 || i == 13 || i == 18 || i == 23) {
-            uuid[i] = '-';
-        } else {
-            uuid[i] = chars[rand() % 16];
-        }
-    }
-    uuid[36] = '\0';
 }

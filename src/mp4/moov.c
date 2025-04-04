@@ -1,8 +1,4 @@
-#include <string.h>
-
 #include "moov.h"
-
-#include "nal.h"
 
 enum BufError write_ftyp(struct BitBuf *ptr, const struct MoovInfo *moov_info);
 enum BufError write_moov(struct BitBuf *ptr, const struct MoovInfo *moov_info);

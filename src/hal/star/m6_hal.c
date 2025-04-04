@@ -76,7 +76,7 @@ void m6_audio_deinit(void)
 }
 
 
-int m6_audio_init(int samplerate)
+int m6_audio_init(int samplerate, int gain)
 {
     int ret;
 
@@ -103,7 +103,7 @@ int m6_audio_init(int samplerate)
     
     if (ret = m6_aud.fnEnableChannel(_m6_aud_dev, _m6_aud_chn))
         return ret;
-    if (ret = m6_aud.fnSetVolume(_m6_aud_dev, _m6_aud_chn, 13))
+    if (ret = m6_aud.fnSetVolume(_m6_aud_dev, _m6_aud_chn, gain))
         return ret;
 
     {
@@ -123,7 +123,7 @@ void *m6_audio_thread(void)
     m6_aud_frm frame;
     memset(&frame, 0, sizeof(frame));
 
-    while (keepRunning) {
+    while (keepRunning && audioOn) {
         if (ret = m6_aud.fnGetFrame(_m6_aud_dev, _m6_aud_chn, 
             &frame, NULL, 128)) {
             HAL_WARNING("m6_aud", "Getting the frame failed "

@@ -11,7 +11,7 @@ hal_chnstate ak_state[AK_VENC_CHN_NUM] = {0};
 int (*ak_aud_cb)(hal_audframe*);
 int (*ak_vid_cb)(char, hal_vidstream*);
 
-ak_vi_cnf _ak_vi_cnf;
+ak_vi_res _ak_vi_res;
 
 void *_ak_vi_dev;
 void *_ak_venc_dev[AK_VENC_CHN_NUM];
@@ -43,11 +43,14 @@ int ak_hal_init(void)
 
 int ak_channel_bind(char index)
 {
+    int ret = EXIT_SUCCESS;
+
     if (!(_ak_venc_strm[index] =
         ak_venc.fnBindChannel(_ak_vi_dev, _ak_venc_dev[index])))
-        return EXIT_FAILURE;
+        HAL_ERROR("ak_venc", "Binding the channel failed with %#x!\n%s\n",
+            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
 
-    return EXIT_SUCCESS;
+    return ret;
 }
 
 int ak_channel_grayscale(char enable)
@@ -69,23 +72,20 @@ int ak_pipeline_create(char mirror, char flip)
     int ret;
 
     if (!(_ak_vi_dev = ak_vi.fnEnableDevice(0)))
-        return EXIT_FAILURE;
+        HAL_ERROR("ak_vi", "Enabling the sensor failed with %#x!\n%s\n",
+            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
 
-    if (ret = ak_vi.fnGetSensorResolution(_ak_vi_dev, _ak_vi_cnf.dest))
-        return ret;
+    if (ak_vi.fnGetDeviceResolution(_ak_vi_dev, &_ak_vi_res))
+        HAL_ERROR("ak_vi", "Getting the sensor resolution failed with %#x!\n%s\n",
+            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
 
-    _ak_vi_cnf.capt.x = 0;
-    _ak_vi_cnf.capt.y = 0;
-    _ak_vi_cnf.capt.width = _ak_vi_cnf.dest[0].width;
-    _ak_vi_cnf.capt.height = _ak_vi_cnf.dest[0].height;
-    if (ret = ak_vi.fnSetDeviceConfig(_ak_vi_dev, &_ak_vi_cnf))
-        return ret;
+    if (ak_vi.fnStartDevice(_ak_vi_dev))
+        HAL_ERROR("ak_vi", "Starting the acquisition failed with %#x!\n%s\n",
+            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
 
-    if (ret = ak_vi.fnStartDevice(_ak_vi_dev))
-        return ret;
-
-    if (ret = ak_vi.fnSetDeviceFlipMirror(_ak_vi_dev, flip & 1, mirror & 1))
-        return ret;
+    if (ak_vi.fnSetDeviceFlipMirror(_ak_vi_dev, flip & 1, mirror & 1))
+        HAL_ERROR("ak_vi", "Setting image parameters failed with %#x!\n%s\n",
+            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
 
     return EXIT_SUCCESS;
 }
@@ -131,8 +131,10 @@ int ak_video_create(char index, hal_vidconfig *config)
 
     {
         ak_venc_cnf channel = {.codec = codec, .width = config->width, .height = config->height,
-            .minQual = config->minQual, .maxQual = config->maxQual, .dstFps = config->framerate,
-            .gop = config->gop, .maxBitrate = config->maxBitrate, .profile = profile, .subChnOn = index,
+            .minQual = MIN(MAX(config->minQual, 20), 50), 
+            .maxQual = MIN(MAX(config->maxQual ? config->maxQual : 50, 20), 50), 
+            .dstFps = config->framerate, .gop = config->gop, .maxBitrate = config->maxBitrate, 
+            .profile = profile, .subChnOn = index, 
             .output = index ? AK_VENC_OUT_SUBSTRM : AK_VENC_OUT_MAINSTRM, .vbrModeOn = ratemode};
 
         if (!(_ak_venc_dev[index] = ak_venc.fnEnableChannel(&channel)))
@@ -181,9 +183,8 @@ void *ak_video_thread(void)
 
             ak_venc_strm stream;
             if (ak_venc.fnGetStream(_ak_venc_strm[i], &stream)) {
-                ret = ak_sys.fnGetErrorNum();
-                HAL_DANGER("ak_venc", "Getting the stream on "
-                    "channel %d failed with %#x!\n%s\n", i, ret,
+                HAL_DANGER("ak_venc", "Getting the stream on channel %d"
+                    " failed with %#x!\n%s\n", i, ret = ak_sys.fnGetErrorNum(),
                     ak_sys.fnGetErrorStr(ret));
             };
             if (!stream.length) continue;
@@ -222,12 +223,14 @@ void ak_system_deinit(void)
 
 int ak_system_init(char *snrConfig)
 {
-    int ret;
+    int ret = EXIT_SUCCESS;
+    
+    if (ak_vi.fnLoadSensorConfig(snrConfig))
+        HAL_DANGER("ak_vi", "Loading the sensor config failed"
+            " with %#x!\n%s\n", ret = ak_sys.fnGetErrorNum(),
+            ak_sys.fnGetErrorStr(ret));
 
-    if (ret = ak_vi.fnLoadSensorConfig(snrConfig))
-        return ret;
-
-    return EXIT_SUCCESS;
+    return ret;
 }
 
 #endif

@@ -1,7 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "mp4.h"
 
 uint32_t default_sample_size = 40000;

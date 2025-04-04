@@ -1,6 +1,9 @@
 #pragma once
 
+#include <string.h>
+
 #include "bitbuf.h"
+#include "nal.h"
 
 struct MoovInfo {
     char audio_codec;

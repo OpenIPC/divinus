@@ -18,6 +18,7 @@ t31_common_dim _t31_snr_dim;
 
 char _t31_aud_chn = 0;
 char _t31_aud_dev = 0;
+char _t31_fs_chn[T31_VENC_CHN_NUM] = {-1, -1, -1, -1};
 char _t31_osd_grp = 0;
 
 void t31_hal_deinit(void)
@@ -100,7 +101,7 @@ void *t31_audio_thread(void)
     t31_aud_frm frame;
     memset(&frame, 0, sizeof(frame));
 
-    while (keepRunning) {
+    while (keepRunning && audioOn) {
         if (ret = t31_aud.fnPollFrame(_t31_aud_dev, _t31_aud_chn, 1000))
             continue;
 
@@ -133,7 +134,7 @@ int t31_channel_bind(char index)
     int ret;
 
     {
-        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = index ^ 1, .port = 0 };
+        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = 0, .port = _t31_fs_chn[index] };
         t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         if (ret = t31_sys.fnBind(&source, &dest))
             return ret;
@@ -146,26 +147,26 @@ int t31_channel_bind(char index)
             return ret;
     }
 
-    if (ret = t31_fs.fnEnableChannel(index ^ 1))
+    if (ret = t31_fs.fnEnableChannel(_t31_fs_chn[index]))
         return ret;
 
     return EXIT_SUCCESS;
 }
 
-int t31_channel_create(char index, short width, short height, char framerate)
+int t31_channel_create(char index, short width, short height, char framerate, char jpeg)
 {
     int ret;
 
     {
         t31_fs_chn channel = {
-            .dest = { .width = width, .height = height }, .pixFmt = T31_PIXFMT_NV12,
-            .scale = { .enable = (_t31_snr_dim.width != width || _t31_snr_dim.height != height) 
-                ? 1 : 0, .width = width, .height = height },
-            .fpsNum = framerate, .fpsDen = 1, 
-            .bufCount = 2, .phyOrExtChn = 0,  
+            .dest = { .width = _t31_snr_dim.width, .height = _t31_snr_dim.height }, .pixFmt = T31_PIXFMT_NV12,
+            .scale = { .enable = 0, .width = width, .height = height },
+            .fpsNum = framerate, .fpsDen = 1, .bufCount = 1, .phyOrExtChn = 0,
         };
     
-        if (ret = t31_fs.fnCreateChannel(index ^ 1, &channel))
+        _t31_fs_chn[index] = index;
+
+        if (ret = t31_fs.fnCreateChannel(_t31_fs_chn[index], &channel))
             return ret;
     }
 
@@ -174,7 +175,9 @@ int t31_channel_create(char index, short width, short height, char framerate)
 
 void t31_channel_destroy(char index)
 {
-    t31_fs.fnDestroyChannel(index ^ 1);
+    t31_fs.fnDestroyChannel(_t31_fs_chn[index]);
+
+    _t31_fs_chn[index] = -1;
 }
 
 int t31_channel_grayscale(char enable)
@@ -186,7 +189,7 @@ int t31_channel_unbind(char index)
 {
     int ret;
 
-    t31_fs.fnDisableChannel(index ^ 1);
+    t31_fs.fnDisableChannel(_t31_fs_chn[index]);
 
     {
         t31_sys_bind source = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
@@ -195,7 +198,7 @@ int t31_channel_unbind(char index)
     }
 
     {
-        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = index ^ 1, .port = 0 };
+        t31_sys_bind source = { .device = T31_SYS_DEV_FS, .group = 0, .port = _t31_fs_chn[index] };
         t31_sys_bind dest = { .device = T31_SYS_DEV_OSD, .group = _t31_osd_grp, .port = index };
         t31_sys.fnUnbind(&source, &dest);
     }
@@ -214,20 +217,30 @@ int t31_config_load(char *path)
 
 int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate)
 {
-    int ret;
+    int ret = EXIT_FAILURE;
 
     {
+        char* paths[] = {"/proc/jz/sinfo/info", "/proc/jz/sensor/name"};
+        char **path = paths;
         char *sensorlocal, sensorname[50];
-        FILE *sensorinfo = fopen("/proc/jz/sinfo/info", "r");
-        if (!fgets(sensorname, 50, sensorinfo))
-            HAL_INFO("t31_hal", "Couldn't determine the sensor name from sinfo module!\n");
-        else {
-            sensorlocal = strstr(sensorname, ":");
-            if (!sensorlocal++) goto sensor_from_env;
-            sensorlocal[strlen(sensorlocal) - 1] = '\0';
-            goto sensor_found;
+        FILE *sensorinfo;
+
+        while (*path) {
+            if (sensorinfo = fopen(*path, "r")) {
+                sensorlocal = fgets(sensorname, 50, sensorinfo);
+                fclose(sensorinfo);
+                if (sensorlocal) {
+                    sensorlocal = strstr(sensorname, ":");
+                    if (!sensorlocal++) goto sensor_from_env;
+                    sensorlocal[strlen(sensorlocal) - 1] = '\0';
+                    goto sensor_found;
+                }
+            }
+            else *path++;
         }
-        fclose(sensorinfo);
+        
+        if (!sensorlocal)
+            HAL_INFO("t31_hal", "Couldn't determine the sensor name from kernel modules!\n");
 
 sensor_from_env:
         sensorlocal = getenv("SENSOR");
@@ -247,7 +260,7 @@ sensor_found:
             break;
         }
         if (ret)
-            return EXIT_FAILURE;
+            HAL_ERROR("t31_hal", "Unknown sensor, please update the app!\n");
     }
     if (ret = t31_isp.fnInit())
         return ret;
@@ -307,14 +320,14 @@ int t31_region_create(int *handle, hal_rect rect, short opacity)
     region.data.picture = NULL;
 
     if (t31_osd.fnGetRegionConfig(*handle, &regionCurr)) {
-        HAL_INFO("t31_osd", "Creating region...\n", _t31_osd_grp);
+        HAL_INFO("t31_osd", "Creating region...\n");
         if ((ret = t31_osd.fnCreateRegion(&region)) < 0)
             return ret;
         else *handle = ret;
     } else if (regionCurr.rect.p1.y - regionCurr.rect.p0.y != rect.height || 
         regionCurr.rect.p1.x - regionCurr.rect.p0.x != rect.width) {
         HAL_INFO("t31_osd", "Parameters are different, recreating "
-            "region...\n", _t31_osd_grp);
+            "region...\n");
         if (ret = t31_osd.fnSetRegionConfig(*handle, &region))
             return ret;
         if (ret = t31_osd.fnUnregisterRegion(*handle, _t31_osd_grp))
@@ -322,7 +335,7 @@ int t31_region_create(int *handle, hal_rect rect, short opacity)
     }
 
     if (t31_osd.fnGetGroupConfig(*handle, _t31_osd_grp, &attribCurr))
-        HAL_INFO("t31_osd", "Attaching region...\n", _t31_osd_grp);
+        HAL_INFO("t31_osd", "Attaching region...\n");
 
     memset(&attrib, 0, sizeof(attrib));
     attrib.show = 1;
@@ -368,7 +381,14 @@ int t31_video_create(char index, hal_vidconfig *config)
     }
     switch (config->codec) {
         case HAL_VIDCODEC_JPG:
-        case HAL_VIDCODEC_MJPG: profile = T31_VENC_PROF_MJPG; break;
+            config->framerate = config->gop = 1;
+        case HAL_VIDCODEC_MJPG:
+            profile = T31_VENC_PROF_MJPG;
+            if (ratemode == T31_VENC_RATEMODE_QP) {
+                config->minQual = config->minQual * (48 - 3) / 99 + 3;
+                config->maxQual = config->maxQual * (48 - 3) / 99 + 3;
+            } else config->minQual = config->maxQual = 42;
+            break;
         case HAL_VIDCODEC_H265: profile = T31_VENC_PROF_H265_MAIN; break;
         case HAL_VIDCODEC_H264:
             switch (config->profile) {
@@ -377,14 +397,6 @@ int t31_video_create(char index, hal_vidconfig *config)
                 default: profile = T31_VENC_PROF_H264_HIGH; break;
             } break;
         default: HAL_ERROR("t31_venc", "This codec is not supported by the hardware!");
-    }
-
-    if (profile == T31_VENC_PROF_MJPG) {
-        config->framerate = config->gop = 1;
-        if (ratemode == T31_VENC_RATEMODE_QP) {
-            config->minQual = config->minQual * (48 - 3) / 99 + 3;
-            config->maxQual = config->maxQual * (48 - 3) / 99 + 3;
-        } else config->minQual = config->maxQual = 42;
     }
 
     memset(&channel, 0, sizeof(channel));
@@ -435,6 +447,8 @@ int t31_video_destroy(char index)
     t31_state[index].enable = 0;
     t31_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
+    t31_channel_destroy(index);
+
     t31_venc.fnStopReceiving(index);
 
     if (ret = t31_venc.fnUnregisterChannel(index))
@@ -468,7 +482,7 @@ void t31_video_request_idr(char index)
 
 int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 {
-    int ret, fd;
+    int ret;
     char mjpeg = 0;
 
     if (index == -1) {
@@ -477,7 +491,6 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         for (char i = 0; i < T31_VENC_CHN_NUM; i++) {
             if (!t31_state[i].enable) continue; 
             if (t31_state[i].payload != HAL_VIDCODEC_MJPG) continue;
-            fd = t31_state[i].fileDesc;
             index = i;
             mjpeg = 1;
         }
@@ -492,77 +505,67 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         }
 
         if (ret = t31_venc.fnStartReceiving(index)) {
-            HAL_DANGER("t31_venc", "Requesting one frame "
-                "%d failed with %#x!\n", index, ret);
-            goto abort;
-        }
-
-        fd = t31_venc.fnGetDescriptor(index);
-    }
-
-    struct timeval timeout = { .tv_sec = 3, .tv_usec = 0 };
-    fd_set readFds;
-    FD_ZERO(&readFds);
-    FD_SET(fd, &readFds);
-    ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
-    if (ret < 0) {
-        HAL_DANGER("t31_venc", "Select operation failed!\n");
-        goto abort;
-    } else if (ret == 0) {
-        HAL_DANGER("t31_venc", "Capture stream timed out!\n");
-        goto abort;
-    }
-
-    if (FD_ISSET(fd, &readFds)) {
-        t31_venc_stat stat;
-        if (ret = t31_venc.fnQuery(index, &stat)) {
-            HAL_DANGER("t31_venc", "Querying the encoder channel "
-                "%d failed with %#x!\n", index, ret);
-            goto abort;
-        }
-
-        if (!stat.curPacks) {
-            HAL_DANGER("t31_venc", "Current frame is empty, skipping it!\n");
-            goto abort;
-        }
-
-        t31_venc_strm strm;
-        memset(&strm, 0, sizeof(strm));
-        strm.packet = (t31_venc_pack*)malloc(sizeof(t31_venc_pack) * stat.curPacks);
-        if (!strm.packet) {
-            HAL_DANGER("t31_venc", "Memory allocation on channel %d failed!\n", index);
-            goto abort;
-        }
-        strm.count = stat.curPacks;
-
-        if (ret = t31_venc.fnGetStream(index, &strm, 0)) {
-            HAL_DANGER("t31_venc", "Getting the stream on "
+            HAL_DANGER("t31_venc", "Requesting one frame on"
                 "channel %d failed with %#x!\n", index, ret);
-            free(strm.packet);
-            strm.packet = NULL;
             goto abort;
         }
+    }
 
-        {
-            jpeg->jpegSize = 0;
-            for (unsigned int i = 0; i < strm.count; i++) {
-                t31_venc_pack *pack = &strm.packet[i];
-                unsigned int packLen = pack->length - pack->offset;
-                unsigned char *packData = (unsigned char*)(strm.addr + pack->offset);
+    ret = t31_venc.fnPollStream(index, 2000);
+    if (ret < 0) {
+        HAL_DANGER("t31_venc", "Polling the encoder channel "
+            "%d failed!\n", index);
+        goto abort;
+    }
+    
+    t31_venc_stat stat;
+    if (ret = t31_venc.fnQuery(index, &stat)) {
+        HAL_DANGER("t31_venc", "Querying the encoder channel "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
 
-                unsigned int newLen = jpeg->jpegSize + packLen;
-                if (newLen > jpeg->length) {
-                    jpeg->data = realloc(jpeg->data, newLen);
-                    jpeg->length = newLen;
-                }
-                memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
-                jpeg->jpegSize += packLen;
+    if (!stat.curPacks) {
+        HAL_DANGER("t31_venc", "Current frame is empty, skipping it!\n");
+        goto abort;
+    }
+
+    t31_venc_strm strm;
+    memset(&strm, 0, sizeof(strm));
+    strm.packet = (t31_venc_pack*)malloc(sizeof(t31_venc_pack) * stat.curPacks);
+    if (!strm.packet) {
+        HAL_DANGER("t31_venc", "Memory allocation on channel %d failed!\n", index);
+        goto abort;
+    }
+    strm.count = stat.curPacks;
+
+    if (ret = t31_venc.fnGetStream(index, &strm, 0)) {
+        HAL_DANGER("t31_venc", "Getting the stream on "
+            "channel %d failed with %#x!\n", index, ret);
+        free(strm.packet);
+        strm.packet = NULL;
+        goto abort;
+    }
+
+    {
+        jpeg->jpegSize = 0;
+        for (unsigned int i = 0; i < strm.count; i++) {
+            t31_venc_pack *pack = &strm.packet[i];
+            unsigned int packLen = pack->length - pack->offset;
+            unsigned char *packData = (unsigned char*)(strm.addr + pack->offset);
+
+            unsigned int newLen = jpeg->jpegSize + packLen;
+            if (newLen > jpeg->length) {
+                jpeg->data = realloc(jpeg->data, newLen);
+                jpeg->length = newLen;
             }
+            memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
+            jpeg->jpegSize += packLen;
         }
+    }
 
 abort:
-        t31_venc.fnFreeStream(index, &strm);
-    }
+    t31_venc.fnFreeStream(index, &strm);
 
     if (!mjpeg) {
         t31_venc.fnStopReceiving(index);

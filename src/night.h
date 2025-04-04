@@ -12,9 +12,17 @@
 #include "hal/macros.h"
 #include "media.h"
 
-void set_night_mode(bool night);
-bool night_mode_is_enabled();
-void *night_thread();
+bool night_grayscale_on(void);
+bool night_ircut_on(void);
+bool night_irled_on(void);
+bool night_manual_on(void);
+bool night_mode_on(void);
 
-int start_monitor_light_sensor();
-void stop_monitor_light_sensor();
+void night_grayscale(bool enable);
+void night_ircut(bool enable);
+void night_irled(bool enable);
+void night_manual(bool enable);
+void night_mode(bool enable);
+
+void disable_night(void);
+int enable_night(void);

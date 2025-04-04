@@ -19,7 +19,9 @@ rtsp_handle rtspHandle;
 char graceful = 0, keepRunning = 1;
 
 void handle_error(int signo) {
-    write(STDERR_FILENO, "Error occurred! Quitting...\n", 28);
+    char msg[64];
+    sprintf(msg, "Error occured (%d)! Quitting...\n", signo);
+    write(STDERR_FILENO, msg, strlen(msg));
     keepRunning = 0;
     exit(EXIT_FAILURE);
 }
@@ -63,7 +65,7 @@ int main(int argc, char *argv[]) {
     start_server();
 
     if (app_config.rtsp_enable) {
-        rtspHandle = rtsp_create(RTSP_MAXIMUM_CONNECTIONS, 1);
+        rtspHandle = rtsp_create(RTSP_MAXIMUM_CONNECTIONS, app_config.rtsp_port, 1);
         HAL_INFO("rtsp", "Started listening for clients...\n");
         if (app_config.rtsp_enable_auth) {
             if (!app_config.rtsp_auth_user || !app_config.rtsp_auth_pass)
@@ -75,11 +77,14 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if (app_config.stream_enable)
+        start_streaming();
+
     if (start_sdk())
         HAL_ERROR("hal", "Failed to start SDK!\n");
 
     if (app_config.night_mode_enable)
-        start_monitor_light_sensor();
+        enable_night();
 
     if (app_config.http_post_enable)
         start_http_post_send();
@@ -101,9 +106,12 @@ int main(int argc, char *argv[]) {
         stop_region_handler();
 
     if (app_config.night_mode_enable)
-        stop_monitor_light_sensor();
+        disable_night();
 
     stop_sdk();
+
+    if (app_config.stream_enable)
+        stop_streaming();
 
     stop_server();
 

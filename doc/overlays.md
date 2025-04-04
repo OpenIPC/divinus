@@ -1,6 +1,6 @@
-## Overlays
+## Overlays Reference
 
-### Usage example
+### Usage Example
 
 Parameters for each region can be passed in one or many calls:
 ```

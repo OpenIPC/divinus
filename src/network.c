@@ -11,6 +11,7 @@ struct {
 } netinfo;
 
 char configured = 0;
+
 struct mdnsd *mdns = {0};
 pthread_t onvifPid = 0;
 

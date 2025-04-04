@@ -37,7 +37,7 @@ typedef struct {
     unsigned int chnNum;
     // If not setted, will use the device index
     // to open the audio card
-    char cardName­[8];
+    char cardName[8];
 } rk_aud_cnf;
 
 typedef struct {
@@ -71,52 +71,36 @@ typedef struct {
 } rk_aud_impl;
 
 static int rk_aud_load(rk_aud_impl *aud_lib) {
-    if (!(aud_lib->handle = dlopen("librockit.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[rk_aud] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(aud_lib->handle = dlopen("librockit.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("rk_aud", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(aud_lib->fnDisableDevice = (int(*)(int device))
-        dlsym(aud_lib->handle, "RK_MPI_AI_Disable"))) {
-        fprintf(stderr, "[rk_aud] Failed to acquire symbol RK_MPI_AI_Disable!\n");
+        hal_symbol_load("rk_aud", aud_lib->handle, "RK_MPI_AI_Disable")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnEnableDevice = (int(*)(int device))
-        dlsym(aud_lib->handle, "RK_MPI_AI_Enable"))) {
-        fprintf(stderr, "[rk_aud] Failed to acquire symbol RK_MPI_AI_Enable!\n");
+        hal_symbol_load("rk_aud", aud_lib->handle, "RK_MPI_AI_Enable")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnSetDeviceConfig = (int(*)(int device, rk_aud_cnf *config))
-        dlsym(aud_lib->handle, "RK_MPI_AI_SetPubAttr"))) {
-        fprintf(stderr, "[rk_aud] Failed to acquire symbol RK_MPI_AI_SetPubAttr!\n");
+        hal_symbol_load("rk_aud", aud_lib->handle, "RK_MPI_AI_SetPubAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnDisableChannel = (int(*)(int device, int channel))
-        dlsym(aud_lib->handle, "RK_MPI_AI_DisableChn"))) {
-        fprintf(stderr, "[rk_aud] Failed to acquire symbol RK_MPI_AI_DisableChn!\n");
+        hal_symbol_load("rk_aud", aud_lib->handle, "RK_MPI_AI_DisableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnEnableChannel = (int(*)(int device, int channel))
-        dlsym(aud_lib->handle, "RK_MPI_AI_EnableChn"))) {
-        fprintf(stderr, "[rk_aud] Failed to acquire symbol RK_MPI_AI_EnableChn!\n");
+        hal_symbol_load("rk_aud", aud_lib->handle, "RK_MPI_AI_EnableChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnFreeFrame = (int(*)(int device, int channel, rk_aud_frm *frame, rk_aud_efrm *encFrame))
-        dlsym(aud_lib->handle, "RK_MPI_AI_ReleaseFrame"))) {
-        fprintf(stderr, "[rk_aud] Failed to acquire symbol RK_MPI_AI_ReleaseFrame!\n");
+        hal_symbol_load("rk_aud", aud_lib->handle, "RK_MPI_AI_ReleaseFrame")))
         return EXIT_FAILURE;
-    }
 
     if (!(aud_lib->fnGetFrame = (int(*)(int device, int channel, rk_aud_frm *frame, rk_aud_efrm *encFrame, int millis))
-        dlsym(aud_lib->handle, "RK_MPI_AI_GetFrame"))) {
-        fprintf(stderr, "[rk_aud] Failed to acquire symbol RK_MPI_AI_GetFrame!\n");
+        hal_symbol_load("rk_aud", aud_lib->handle, "RK_MPI_AI_GetFrame")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

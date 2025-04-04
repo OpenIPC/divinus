@@ -41,6 +41,11 @@ const char error400[] = "HTTP/1.1 400 Bad Request\r\n" \
                         "Connection: close\r\n" \
                         "\r\n" \
                         "The server has no handler to the request.\r\n";
+const char error403[] = "HTTP/1.1 403 Forbidden\r\n" \
+                        "Content-Type: text/plain\r\n" \
+                        "Connection: close\r\n" \
+                        "\r\n" \
+                        "You have been denied access to this resource.\r\n";
 const char error404[] = "HTTP/1.1 404 Not Found\r\n" \
                         "Content-Type: text/plain\r\n" \
                         "Connection: close\r\n" \
@@ -433,18 +438,29 @@ void parse_request(struct Request *req) {
     socklen_t client_sock_len = sizeof(client_sock);
     memset(&client_sock, 0, client_sock_len);
 
+    getpeername(req->clntFd,
+        (struct sockaddr *)&client_sock, &client_sock_len);
+    char *client_ip = inet_ntoa(client_sock.sin_addr);
+
+    if (!EMPTY(*app_config.web_whitelist)) {
+        for (int i = 0; app_config.web_whitelist[i] && *app_config.web_whitelist[i]; i++)
+            if (ip_in_cidr(client_ip, app_config.web_whitelist[i])) goto grant_access;
+        close_socket_fd(req->clntFd);
+        req->clntFd = -1;
+        req->total = 0;
+        return;
+    }
+grant_access:
+
     req->total = 0;
     int received = recv(req->clntFd, req->input, REQSIZE, 0);
     if (received < 0)
-        HAL_WARNING("server", "recv() error\n");
+        HAL_WARNING("server", "Reading from client failed!\n");
     else if (!received)
-        HAL_WARNING("server", "Client disconnected unexpectedly\n");
+        HAL_WARNING("server", "Client disconnected unexpectedly!\n");
     req->total += received;
 
     if (req->total <= 0) return;
-
-    getpeername(req->clntFd,
-        (struct sockaddr *)&client_sock, &client_sock_len);
 
     char *state = NULL;
     req->method = strtok_r(req->input, " \t\r\n", &state);
@@ -453,7 +469,7 @@ void parse_request(struct Request *req) {
 
     HAL_INFO("server", "\x1b[32mNew request: (%s) %s\n"
         "         Received from: %s\x1b[0m\n",
-        req->method, req->uri, inet_ntoa(client_sock.sin_addr));
+        req->method, req->uri, client_ip);
 
     if (req->query = strchr(req->uri, '?'))
         *req->query++ = '\0';
@@ -485,10 +501,10 @@ void parse_request(struct Request *req) {
     while (l && req->total < req->paysize) {
         received = recv(req->clntFd, req->input + req->total, REQSIZE - req->total, 0);
         if (received < 0) {
-            HAL_WARNING("server", "recv() error\n");
+            HAL_WARNING("server", "Reading from client failed!\n");
             break;
         } else if (!received) {
-            HAL_WARNING("server", "Client disconnected unexpectedly\n");
+            HAL_WARNING("server", "Client disconnected unexpectedly!\n");
             break;
         }
         req->total += received;
@@ -499,6 +515,8 @@ void parse_request(struct Request *req) {
 
 void respond_request(struct Request *req) {
     char response[256];
+
+    if (req->clntFd < 0) return;
 
     if (!EQUALS(req->method, "GET") && !EQUALS(req->method, "POST")) {
         send_and_close(req->clntFd, (char*)error405, strlen(error405));
@@ -690,7 +708,7 @@ void respond_request(struct Request *req) {
         return;
     }
 
-    if (app_config.audio_enable && EQUALS(req->uri, "/api/audio")) {
+    if (EQUALS(req->uri, "/api/audio")) {
         if (!EMPTY(req->query)) {
             char *remain;
             while (req->query) {
@@ -703,6 +721,15 @@ void respond_request(struct Request *req) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
                         app_config.audio_bitrate = result;
+                } else if (EQUALS(key, "enable")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.audio_enable = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.audio_enable = 0;
+                } else if (EQUALS(key, "gain")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.audio_gain = result;
                 } else if (EQUALS(key, "srate")) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
@@ -711,7 +738,7 @@ void respond_request(struct Request *req) {
             }
 
             disable_audio();
-            enable_audio();
+            if (app_config.audio_enable) enable_audio();
         }
 
         int respLen = sprintf(response,
@@ -719,8 +746,9 @@ void respond_request(struct Request *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"bitrate\":%d,\"srate\":%d}",
-            app_config.audio_bitrate, app_config.audio_srate);
+            "{\"enable\":%s,\"bitrate\":%d,\"gain\":%d,\"srate\":%d}",
+            app_config.audio_enable ? "true" : "false",
+            app_config.audio_bitrate, app_config.audio_gain, app_config.audio_srate);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
@@ -789,7 +817,8 @@ void respond_request(struct Request *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"width\":%d,\"height\":%d,\"qfactor\":%d}",
+            "{\"enable\":%s,\"width\":%d,\"height\":%d,\"qfactor\":%d}",
+            app_config.jpeg_enable ? "true" : "false",
             app_config.jpeg_width, app_config.jpeg_height, app_config.jpeg_qfactor);
         send_and_close(req->clntFd, response, respLen);
         return;
@@ -804,7 +833,12 @@ void respond_request(struct Request *req) {
                 unescape_uri(value);
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
-                if (EQUALS(key, "width")) {
+                if (EQUALS(key, "enable")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.mjpeg_enable = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.mjpeg_enable = 0;
+                } else if (EQUALS(key, "width")) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
                         app_config.mjpeg_width = result;
@@ -841,7 +875,8 @@ void respond_request(struct Request *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"width\":%d,\"height\":%d,\"fps\":%d,\"mode\":\"%s\",\"bitrate\":%d}",
+            "{\"enable\":%s,\"width\":%d,\"height\":%d,\"fps\":%d,\"mode\":\"%s\",\"bitrate\":%d}",
+            app_config.mjpeg_enable ? "true" : "false",
             app_config.mjpeg_width, app_config.mjpeg_height, app_config.mjpeg_fps, mode,
             app_config.mjpeg_bitrate);
         send_and_close(req->clntFd, response, respLen);
@@ -857,7 +892,12 @@ void respond_request(struct Request *req) {
                 unescape_uri(value);
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
-                if (EQUALS(key, "width")) {
+                if (EQUALS(key, "enable")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.mp4_enable = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.mp4_enable = 0;
+                } else if (EQUALS(key, "width")) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
                         app_config.mp4_width = result;
@@ -925,15 +965,17 @@ void respond_request(struct Request *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"width\":%d,\"height\":%d,\"fps\":%d,\"h265\":%s,\"mode\":\"%s\",\"profile\":\"%s\",\"bitrate\":%d}",
+            "{\"enable\":%s,\"width\":%d,\"height\":%d,\"fps\":%d,"
+            "\"h265\":%s,\"mode\":\"%s\",\"profile\":\"%s\",\"bitrate\":%d}",
+            app_config.mp4_enable ? "true" : "false",
             app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps, h265, mode,
             profile, app_config.mp4_bitrate);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
 
-    if (app_config.night_mode_enable && EQUALS(req->uri, "/api/night")) {
-        if (app_config.ir_sensor_pin == 999 && !EMPTY(req->query)) {
+    if (EQUALS(req->uri, "/api/night")) {
+        if (!EMPTY(req->query)) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
@@ -941,21 +983,71 @@ void respond_request(struct Request *req) {
                 unescape_uri(value);
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
-                if (EQUALS(key, "active")) {
+                if (EQUALS(key, "enable")) {
                     if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
-                        set_night_mode(1);
+                        app_config.night_mode_enable = 1;
                     else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
-                        set_night_mode(0);
+                        app_config.night_mode_enable = 0;
+                } else if (EQUALS(key, "adc_device")) {
+                    strncpy(app_config.adc_device, value, sizeof(app_config.adc_device));
+                } else if (EQUALS(key, "adc_threshold")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.adc_threshold = result;
+                } else if (EQUALS(key, "grayscale")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        night_grayscale(1);
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        night_grayscale(0);
+                } else if (EQUALS(key, "ircut")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        night_ircut(1);
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        night_ircut(0);
+                } else if (EQUALS(key, "ircut_pin1")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.ir_cut_pin1 = result;
+                } else if (EQUALS(key, "ircut_pin2")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.ir_cut_pin2 = result;
+                } else if (EQUALS(key, "irled")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        night_irled(1);
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        night_irled(0);
+                } else if (EQUALS(key, "irled_pin")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.ir_led_pin = result;
+                } else if (EQUALS(key, "irsense_pin")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.ir_sensor_pin = result;
+                } else if (EQUALS(key, "manual")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        night_manual(1);
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        night_manual(0);
                 }
             }
+
+            disable_night();
+            if (app_config.night_mode_enable) enable_night();
         }
         int respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"active\":%s}",
-            night_mode_is_enabled() ? "true" : "false");
+            "{\"active\":%s,\"manual\":%s,\"grayscale\":%s,\"ircut\":%s,\"ircut_pin1\":%d,\"ircut_pin2\":%d,"
+            "\"irled\":%s,\"irled_pin\":%d,\"irsense_pin\":%d,\"adc_device\":\"%s\",\"adc_threshold\":%d}",
+            app_config.night_mode_enable ? "true" : "false", night_manual_on() ? "true" : "false", 
+            night_grayscale_on() ? "true" : "false",
+            night_ircut_on() ? "true" : "false", app_config.ir_cut_pin1, app_config.ir_cut_pin2,
+            night_irled_on() ? "true" : "false", app_config.ir_led_pin, app_config.ir_sensor_pin,
+            app_config.adc_device, app_config.adc_threshold);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
@@ -989,88 +1081,15 @@ void respond_request(struct Request *req) {
                 if (payloade) payloade -= 4;
 
                 char path[32];
-                sprintf(path, "/tmp/osd%d.bmp", id);
 
-                if (!memcmp(payloadb, "\x89\x50\x4E\x47\xD\xA\x1A\xA", 8)) {
-                    spng_ctx *ctx = spng_ctx_new(0);
-                    if (!ctx) {
-                        HAL_DANGER("server", "Constructing the PNG decoder context failed!\n");
-                        goto png_error;
-                    }
+                if (!memcmp(payloadb, "\x89\x50\x4E\x47\xD\xA\x1A\xA", 8)) 
+                    sprintf(path, "/tmp/osd%d.png", id);
+                else
+                    sprintf(path, "/tmp/osd%d.bmp", id);
 
-                    spng_set_crc_action(ctx, SPNG_CRC_USE, SPNG_CRC_USE);
-                    spng_set_chunk_limits(ctx,
-                        app_config.web_server_thread_stack_size,
-                        app_config.web_server_thread_stack_size);
-                    spng_set_png_buffer(ctx, payloadb, payloade - payloadb);
-
-                    struct spng_ihdr ihdr;
-                    int err = spng_get_ihdr(ctx, &ihdr);
-                    if (err) {
-                        HAL_DANGER("server", "Parsing the PNG IHDR chunk failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-#ifdef DEBUG_IMAGE
-    printf("[image] (PNG) width: %u, height: %u, depth: %u, color type: %u -> %s\n",
-        ihdr.width, ihdr.height, ihdr.bit_depth, ihdr.color_type, color_type_str(ihdr.color_type));
-    printf("        compress: %u, filter: %u, interl: %u\n",
-        ihdr.compression_method, ihdr.filter_method, ihdr.interlace_method);
-#endif
-
-                    struct spng_plte plte = {0};
-                    err = spng_get_plte(ctx, &plte);
-                    if (err && err != SPNG_ECHUNKAVAIL) {
-                        HAL_DANGER("server", "Parsing the PNG PLTE chunk failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-#ifdef DEBUG_IMAGE
-    printf("        palette: %u\n", plte.n_entries);
-#endif
-
-                    size_t bitmapsize;
-                    err = spng_decoded_image_size(ctx, SPNG_FMT_RGBA8, &bitmapsize);
-                    if (err) {
-                        HAL_DANGER("server", "Recovering the resulting image size failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-
-                    unsigned char *bitmap = malloc(bitmapsize);
-                    if (!bitmap) {
-                        HAL_DANGER("server", "Allocating the PNG bitmap output buffer for size %u failed!\n", bitmapsize);
-                        goto png_error;
-                    }
-
-                    err = spng_decode_image(ctx, bitmap, bitmapsize, SPNG_FMT_RGBA8, 0);
-                    if (!bitmap) {
-                        HAL_DANGER("server", "Decoding the PNG image failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-
-                    int headersize = 2 + sizeof(bitmapfile) + sizeof(bitmapinfo) + sizeof(bitmapfields);
-                    bitmapfile headerfile = {.size = bitmapsize + headersize, .offBits = headersize};
-                    bitmapinfo headerinfo = {.size = sizeof(bitmapinfo), 
-                                             .width = ihdr.width, .height = -ihdr.height, .planes = 1, .bitCount = 32,
-                                             .compression = 3, .sizeImage = bitmapsize, .xPerMeter = 2835, .yPerMeter = 2835};
-                    bitmapfields headerfields = {.redMask = 0xFF << 0, .greenMask = 0xFF << 8, .blueMask = 0xFF << 16, .alphaMask = 0xFF << 24,
-                                                 .clrSpace = {'W', 'i', 'n', ' '}};
-
-                    FILE *img = fopen(path, "wb");
-                    fwrite("BM", sizeof(char), 2, img);
-                    fwrite(&headerfile, sizeof(bitmapfile), 1, img);
-                    fwrite(&headerinfo, sizeof(bitmapinfo), 1, img);
-                    fwrite(&headerfields, sizeof(bitmapfields), 1, img);
-                    fwrite(bitmap, sizeof(char), bitmapsize, img);
-                    fclose(img);
-
-png_error:
-                    spng_ctx_free(ctx);
-                    free(bitmap);
-                    send_and_close(req->clntFd, (char*)error500, strlen(error500));
-                } else {
-                    FILE *img = fopen(path, "wb");
-                    fwrite(payloadb, sizeof(char), payloade - payloadb, img);
-                    fclose(img);
-                }
+                FILE *img = fopen(path, "wb");
+                fwrite(payloadb, sizeof(char), payloade - payloadb, img);
+                fclose(img);
 
                 strcpy(osds[id].text, "");
                 osds[id].updt = 1;
@@ -1095,7 +1114,9 @@ png_error:
                 unescape_uri(value);
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
-                if (EQUALS(key, "font"))
+                if (EQUALS(key, "img"))
+                    strcpy(osds[id].img, value);
+                else if (EQUALS(key, "font"))
                     strcpy(osds[id].font, !EMPTY(value) ? value : DEF_FONT);
                 else if (EQUALS(key, "text"))
                     strcpy(osds[id].text, value);
@@ -1105,11 +1126,8 @@ png_error:
                     osds[id].size = (result != 0 ? result : DEF_SIZE);
                 }
                 else if (EQUALS(key, "color")) {
-                    char base = 16;
-                    if (strlen(value) > 1 && value[1] == 'x') base = 0;
-                    short result = strtol(value, &remain, base);
-                    if (remain != value)
-                        osds[id].color = result;
+                    int result = color_parse(value);
+                    osds[id].color = result;
                 }
                 else if (EQUALS(key, "opal")) {
                     short result = strtol(value, &remain, 10);
@@ -1136,13 +1154,18 @@ png_error:
             }
             osds[id].updt = 1;
         }
+        int color = (((osds[id].color >> 10) & 0x1F) * 255 / 31) << 16 |
+                    (((osds[id].color >> 5) & 0x1F) * 255 / 31) << 8 |
+                    ((osds[id].color & 0x1F) * 255 / 31);
         respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"id\":%d,\"color\":\"%#x\",\"opal\":%d,\"pos\":[%d,%d],\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\"}",
-            id, osds[id].color, osds[id].opal, osds[id].posx, osds[id].posy, osds[id].font, osds[id].size, osds[id].text);
+            "{\"id\":%d,\"color\":\"#%x\",\"opal\":%d,\"pos\":[%d,%d],"
+            "\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\",\"img\":\"%s\"}",
+            id, color, osds[id].opal, osds[id].posx, osds[id].posy,
+            osds[id].font, osds[id].size, osds[id].text, osds[id].img);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
@@ -1197,7 +1220,7 @@ png_error:
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"fmt\":\"%s\",\"ts\":%d}", timefmt, t.tv_sec);
+            "{\"fmt\":\"%s\",\"ts\":%zu}", timefmt, t.tv_sec);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
@@ -1232,7 +1255,6 @@ void *server_thread(void *vargp) {
     req.input = malloc(REQSIZE);
 
     while (keepRunning) {
-        // Waiting for a new connection
         if ((req.clntFd = accept(server_fd, NULL, NULL)) == -1)
             break;
 
@@ -1256,7 +1278,6 @@ int start_server() {
     }
     pthread_mutex_init(&client_fds_mutex, NULL);
 
-    // Start the server and HTTP video streams thread
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
 
     {
@@ -1281,7 +1302,6 @@ int start_server() {
 int stop_server() {
     keepRunning = 0;
 
-    // Stop server_thread when server_fd is closed
     close_socket_fd(server_fd);
     pthread_join(server_thread_id, NULL);
 

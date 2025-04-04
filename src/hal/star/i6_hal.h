@@ -16,7 +16,7 @@
 #include <sys/select.h>
 #include <unistd.h>
 
-extern char keepRunning;
+extern char audioOn, keepRunning;
 
 extern hal_chnstate i6_state[I6_VENC_CHN_NUM];
 extern int (*i6_aud_cb)(hal_audframe*);
@@ -26,7 +26,7 @@ void i6_hal_deinit(void);
 int i6_hal_init(void);
 
 void i6_audio_deinit(void);
-int i6_audio_init(int samplerate);
+int i6_audio_init(int samplerate, int gain);
 void *i6_audio_thread(void);
 
 int i6_channel_bind(char index, char framerate);

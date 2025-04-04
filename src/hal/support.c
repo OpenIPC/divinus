@@ -16,11 +16,7 @@ int series = 0;
 void hal_identify(void) {
     unsigned int val = 0;
     FILE *file;
-    char *endMark;
-    char line[200] = {0};
-
-    char *sensorlocal = getenv("SENSOR");
-    if (*sensorlocal) strncpy(sensor, sensorlocal, sizeof(sensor));
+    char *endMark, line[200] = {0};
 
 #ifdef __arm__
     if (!access("/proc/mi_modules", F_OK) && 
@@ -64,7 +60,7 @@ void hal_identify(void) {
                 if (package[2] == 'A')
                     strcpy(chip, "SSC33[8/9]G");
                 else {
-                    if (sysconf(_SC_NPROCESSORS_CONF) == 1)
+                    if (sysconf(_SC_NPROCESSORS_ONLN) == 1)
                         strcpy(chip, "SSC30K");
                     else
                         strcpy(chip, "SSC33[6/8]");
@@ -158,6 +154,17 @@ void hal_identify(void) {
         chnState = (hal_chnstate*)ak_state;
         //aud_thread = ak_audio_thread;
         vid_thread = ak_video_thread;
+        return;
+    }
+
+    if (!access("/proc/rk_cma", F_OK)) {
+        plat = HAL_PLATFORM_RK;
+        strcpy(chip, "rv11xx");
+        strcpy(family, "rockchip");
+        chnCount = RK_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)rk_state;
+        aud_thread = rk_audio_thread;
+        vid_thread = rk_video_thread;
         return;
     }
 #endif
@@ -301,6 +308,7 @@ void hal_identify(void) {
         chnCount = CVI_VENC_CHN_NUM;
         chnState = (hal_chnstate*)cvi_state;
         aud_thread = cvi_audio_thread;
+        isp_thread = cvi_image_thread;
         vid_thread = cvi_video_thread;
     }
 #endif

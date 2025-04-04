@@ -102,64 +102,44 @@ typedef struct {
 } rk_rgn_impl;
 
 static int rk_rgn_load(rk_rgn_impl *rgn_lib) {
-    if (!(rgn_lib->handle = dlopen("librockit.so", RTLD_LAZY | RTLD_GLOBAL))) {
-        fprintf(stderr, "[rk_rgn] Failed to load library!\nError: %s\n", dlerror());
-        return EXIT_FAILURE;
-    }
+    if (!(rgn_lib->handle = dlopen("librockit.so", RTLD_LAZY | RTLD_GLOBAL)))
+        HAL_ERROR("rk_rgn", "Failed to load library!\nError: %s\n", dlerror());
 
     if (!(rgn_lib->fnCreateRegion = (int(*)(unsigned int handle, rk_rgn_cnf *config))
-        dlsym(rgn_lib->handle, "RK_MPI_RGN_Create"))) {
-        fprintf(stderr, "[rk_rgn] Failed to acquire symbol RK_MPI_RGN_Create!\n");
+        hal_symbol_load("rk_rgn", rgn_lib->handle, "RK_MPI_RGN_Create")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnDestroyRegion = (int(*)(unsigned int handle))
-        dlsym(rgn_lib->handle, "RK_MPI_RGN_Destroy"))) {
-        fprintf(stderr, "[rk_rgn] Failed to acquire symbol RK_MPI_RGN_Destroy!\n");
+        hal_symbol_load("rk_rgn", rgn_lib->handle, "RK_MPI_RGN_Destroy")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnGetRegionConfig = (int(*)(unsigned int handle, rk_rgn_cnf *config))
-        dlsym(rgn_lib->handle, "RK_MPI_RGN_GetAttr"))) {
-        fprintf(stderr, "[rk_rgn] Failed to acquire symbol RK_MPI_RGN_GetAttr!\n");
+        hal_symbol_load("rk_rgn", rgn_lib->handle, "RK_MPI_RGN_GetAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnSetRegionConfig = (int(*)(unsigned int handle, rk_rgn_cnf *config))
-        dlsym(rgn_lib->handle, "RK_MPI_RGN_SetAttr"))) {
-        fprintf(stderr, "[rk_rgn] Failed to acquire symbol RK_MPI_RGN_SetAttr!\n");
+        hal_symbol_load("rk_rgn", rgn_lib->handle, "RK_MPI_RGN_SetAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnAttachChannel = (int(*)(unsigned int handle, rk_sys_bind *dest, rk_rgn_chn *config))
-        dlsym(rgn_lib->handle, "RK_MPI_RGN_AttachToChn"))) {
-        fprintf(stderr, "[rk_rgn] Failed to acquire symbol RK_MPI_RGN_AttachToChn!\n");
+        hal_symbol_load("rk_rgn", rgn_lib->handle, "RK_MPI_RGN_AttachToChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnDetachChannel = (int(*)(unsigned int handle, rk_sys_bind *dest))
-        dlsym(rgn_lib->handle, "RK_MPI_RGN_DetachFromChn"))) {
-        fprintf(stderr, "[rk_rgn] Failed to acquire symbol RK_MPI_RGN_DetachFromChn!\n");
+        hal_symbol_load("rk_rgn", rgn_lib->handle, "RK_MPI_RGN_DetachFromChn")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnGetChannelConfig = (int(*)(unsigned int handle, rk_sys_bind *dest, rk_rgn_chn *config))
-        dlsym(rgn_lib->handle, "RK_MPI_RGN_GetDisplayAttr"))) {
-        fprintf(stderr, "[rk_rgn] Failed to acquire symbol RK_MPI_RGN_GetDisplayAttr!\n");
+        hal_symbol_load("rk_rgn", rgn_lib->handle, "RK_MPI_RGN_GetDisplayAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnSetChannelConfig = (int(*)(unsigned int handle, rk_sys_bind *dest, rk_rgn_chn *config))
-        dlsym(rgn_lib->handle, "RK_MPI_RGN_SetDisplayAttr"))) {
-        fprintf(stderr, "[rk_rgn] Failed to acquire symbol RK_MPI_RGN_SetDisplayAttr!\n");
+        hal_symbol_load("rk_rgn", rgn_lib->handle, "RK_MPI_RGN_SetDisplayAttr")))
         return EXIT_FAILURE;
-    }
 
     if (!(rgn_lib->fnSetBitmap = (int(*)(unsigned int handle, rk_rgn_bmp *bitmap))
-        dlsym(rgn_lib->handle, "RK_MPI_RGN_SetBitMap"))) {
-        fprintf(stderr, "[rk_rgn] Failed to acquire symbol RK_MPI_RGN_SetBitMap!\n");
+        hal_symbol_load("rk_rgn", rgn_lib->handle, "RK_MPI_RGN_SetBitMap")))
         return EXIT_FAILURE;
-    }
 
     return EXIT_SUCCESS;
 }

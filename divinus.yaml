@@ -26,6 +26,13 @@ rtsp:
   enable_auth: false
   auth_user: admin
   auth_pass: 12345
+  port: 554
+
+stream:
+  enable: false
+  udp_srcport: 5600
+  dest:
+    - udp://239.255.255.0:5600
 
 night_mode:
   enable: false
@@ -33,6 +40,7 @@ night_mode:
   check_interval_s: 10
   ir_cut_pin1: 1
   ir_cut_pin2: 2
+  ir_led_pin: 3
   pin_switch_delay_us: 150
   adc_device: /dev/sar_adc_drv
   adc_threshold: 128

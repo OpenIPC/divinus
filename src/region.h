@@ -10,6 +10,7 @@
 
 #include "app_config.h"
 #include "hal/support.h"
+#include "lib/spng.h"
 #include "text.h"
 
 #define DEF_COLOR 0xFFFF
@@ -19,7 +20,7 @@
 #define DEF_POSY 16
 #define DEF_SIZE 32.0f
 #define DEF_TIMEFMT "%Y/%m/%d %H:%M:%S"
-#define MAX_OSD 8
+#define MAX_OSD 10
 
 extern char keepRunning;
 
@@ -63,6 +64,7 @@ typedef struct {
     char updt;
     char font[32];
     char text[80];
+    char img[64];
 } osd;
 
 extern osd osds[MAX_OSD];
