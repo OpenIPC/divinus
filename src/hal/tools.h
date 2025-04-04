@@ -30,6 +30,8 @@ int color_parse(const char *str);
 
 int compile_regex(regex_t *r, const char *regex_text);
 
+int escape_url(char *dst, const char *src, size_t maxlen);
+
 const char *get_extension(const char *path);
 
 bool get_uint64(char *str, char *pattern, uint64_t *value);

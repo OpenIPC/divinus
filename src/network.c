@@ -170,7 +170,7 @@ void *onvif_thread(void) {
         HAL_INFO("onvif", "Received message: %s\n", msgbuf);
 #endif
 
-        if (!strstr(request, "http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe"))
+        if (!CONTAINS(request, "http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe"))
             continue;
 
         char device_name[64], device_uuid[64], device_url[128], msgid[100];
@@ -237,16 +237,20 @@ char* onvif_extract_soap_action(const char* soap_data) {
 }
 
 void onvif_respond_deviceinfo(char **response, int *respLen) {
+    if (!response || !*response || !respLen) return;
+
     int maxLen = *respLen;
     int headerLen = strlen(onvifgood);
     memcpy(*response, onvifgood, headerLen);
 
     *respLen = snprintf((*response) + headerLen, maxLen - headerLen,
         deviceinfoxml,
-        "OpenIPC", "IP Camera", "1.0", "To be replaced", "To be replaced");
+        "OpenIPC", "IP Camera", "1.0", "To be replaced", chip);
 }
 
 void onvif_respond_mediaprofiles(char **response, int *respLen) {
+    if (!response || !*response || !respLen) return;
+
     char profile[4096];
     char profileCnt = 0;
     int profileLen = 0;
@@ -263,7 +267,7 @@ void onvif_respond_mediaprofiles(char **response, int *respLen) {
     }
     if (app_config.mjpeg_enable) {
         profileLen += sprintf(&profile[profileLen], mediaprofilexml,
-            "SubStream", "profile 2",
+            "SubStream", "profile_2",
             profileCnt + 1, profileCnt + 1,
             app_config.mjpeg_height, app_config.mjpeg_width,
             profileCnt + 1, profileCnt + 1,
@@ -282,10 +286,20 @@ void onvif_respond_mediaprofiles(char **response, int *respLen) {
 }
 
 void onvif_respond_snapshot(char **response, int *respLen) {
-    char snapshot_url[128];
+    if (!response || !*response || !respLen) return;
 
-    snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%d/image.jpg",
-        netinfo.ipaddr[0], app_config.web_port);
+    char snapshot_url[256];
+
+    if (app_config.web_enable_auth && 
+        *app_config.web_auth_user && *app_config.web_auth_pass) {
+        char user[96], pass[96];
+        escape_url(user, app_config.web_auth_user, sizeof(user));
+        escape_url(pass, app_config.web_auth_pass, sizeof(pass));
+        snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%s@%s:%d/image.jpg",
+            user, pass, netinfo.ipaddr[0], app_config.web_port);
+    } else
+        snprintf(snapshot_url, sizeof(snapshot_url), "http:///%s:%d/image.jpg",
+            netinfo.ipaddr[0], app_config.web_port);
 
     int maxLen = *respLen;
     int headerLen = strlen(onvifgood);
@@ -297,10 +311,20 @@ void onvif_respond_snapshot(char **response, int *respLen) {
 }
 
 void onvif_respond_stream(char **response, int *respLen) {
-    char stream_url[128];
+    if (!response || !*response || !respLen) return;
 
-    snprintf(stream_url, sizeof(stream_url), "rtsp://%s:%d/",
-        netinfo.ipaddr[0], app_config.rtsp_port);
+    char stream_url[256];
+
+    if (app_config.rtsp_enable_auth && 
+        *app_config.rtsp_auth_user && *app_config.rtsp_auth_pass) {
+        char user[96], pass[96];
+        escape_url(user, app_config.rtsp_auth_user, sizeof(user));
+        escape_url(pass, app_config.rtsp_auth_pass, sizeof(pass));
+        snprintf(stream_url, sizeof(stream_url), "rtsp://%s:%s@%s:%d/",
+            user, pass, netinfo.ipaddr[0], app_config.rtsp_port);
+    } else
+        snprintf(stream_url, sizeof(stream_url), "rtsp://%s:%d/",
+            netinfo.ipaddr[0], app_config.rtsp_port);
 
     int maxLen = *respLen;
     int headerLen = strlen(onvifgood);

@@ -100,6 +100,37 @@ int compile_regex(regex_t *r, const char *regex_text) {
 }
 
 
+int escape_url(char *dst, const char *src, size_t maxlen) {
+    static const char hex[] = "0123456789ABCDEF";
+    int len = 0;
+    
+    if (!dst || !src || !maxlen)
+        return 0;
+        
+    while (*src && len < maxlen - 1) {
+        unsigned char c = *src;
+
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            *dst++ = c;
+            len++;
+        } else {
+            if (len + 3 > maxlen - 1)
+                break;
+                
+            *dst++ = '%';
+            *dst++ = hex[c >> 4];
+            *dst++ = hex[c & 0xF];
+            len += 3;
+        }
+        
+        src++;
+    }
+    
+    *dst = '\0';
+    return len;
+}
+
+
 const char *get_extension(const char *path) {
     const char *dot = strrchr(path, '.');
     if (!dot || dot == path)
