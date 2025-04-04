@@ -15,6 +15,8 @@
 #include "miniz/miniz.h"
 
 #define SPNG_MULTITHREADING
+#define SPNG_NO_ENCODE
+#define SPNG_NO_ERRORS
 
 /*#ifdef __FRAMAC__
     #define SPNG_DISABLE_OPT
@@ -854,6 +856,7 @@ static int require_bytes(spng_ctx *ctx, size_t bytes)
     return 0;
 }
 
+#ifdef SPNG_ENCODE
 static int write_data(spng_ctx *ctx, const void *data, size_t bytes)
 {
     if(ctx == NULL) return SPNG_EINTERNAL;
@@ -1020,6 +1023,7 @@ static int write_unknown_chunks(spng_ctx *ctx, enum spng_location location)
 
     return 0;
 }
+#endif
 
 /* Read and check the current chunk's crc,
    returns -SPNG_CRC_DISCARD if the chunk should be discarded */
@@ -1220,6 +1224,7 @@ static int spng__inflate_init(spng_ctx *ctx, int window_bits)
     return 0;
 }
 
+#ifdef SPNG_ENCODE
 static int spng__deflate_init(spng_ctx *ctx, struct spng__zlib_options *options)
 {
     if(ctx->zstream.state) deflateEnd(&ctx->zstream);
@@ -1238,6 +1243,7 @@ static int spng__deflate_init(spng_ctx *ctx, struct spng__zlib_options *options)
 
     return 0;
 }
+    #endif
 
 /* Inflate a zlib stream starting with start_buf if non-NULL,
    continuing from the datastream till an end marker,
@@ -4022,6 +4028,7 @@ int spng_get_row_info(spng_ctx *ctx, struct spng_row_info *row_info)
     return 0;
 }
 
+#ifdef SPNG_ENCODE
 static int write_chunks_before_idat(spng_ctx *ctx)
 {
     if(ctx == NULL) return SPNG_EINTERNAL;
@@ -4879,6 +4886,7 @@ int spng_encode_image(spng_ctx *ctx, const void *img, size_t len, int fmt, int f
 
     return 0;
 }
+#endif
 
 spng_ctx *spng_ctx_new(int flags)
 {
@@ -4993,8 +5001,11 @@ void spng_ctx_free(spng_ctx *ctx)
         spng__free(ctx, ctx->chunk_list);
     }
 
-    if(ctx->deflate) deflateEnd(&ctx->zstream);
-    else inflateEnd(&ctx->zstream);
+
+    if(!ctx->deflate) inflateEnd(&ctx->zstream);
+#ifdef SPNG_ENCODE
+    else deflateEnd(&ctx->zstream);
+#endif
 
     if(!ctx->user_owns_out_png) spng__free(ctx, ctx->out_png);
 
@@ -5606,6 +5617,7 @@ int spng_get_exif(spng_ctx *ctx, struct spng_exif *exif)
     return 0;
 }
 
+#ifdef SPNG_ENCODE
 int spng_set_ihdr(spng_ctx *ctx, struct spng_ihdr *ihdr)
 {
     SPNG_SET_CHUNK_BOILERPLATE(ihdr);
@@ -6042,11 +6054,13 @@ int spng_set_exif(spng_ctx *ctx, struct spng_exif *exif)
 
     return 0;
 }
+#endif
 
 const char *spng_strerror(int err)
 {
     switch(err)
     {
+#ifdef SPNG_ERRORS
         case SPNG_IO_EOF: return "end of stream";
         case SPNG_IO_ERROR: return "stream error";
         case SPNG_OK: return "success";
@@ -6135,6 +6149,7 @@ const char *spng_strerror(int err)
         case SPNG_ENODST: return "PNG output not set";
         case SPNG_EOPSTATE: return "invalid operation for state";
         case SPNG_ENOTFINAL: return "PNG not finalized";
+#endif
         default: return "unknown error";
     }
 }
