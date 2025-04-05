@@ -1087,6 +1087,10 @@ void respond_request(struct Request *req) {
                 onvif_respond_scopes((char*)lngResp, &respLen);
                 send_and_close(req->clntFd, lngResp, respLen);
                 return;
+            } else if (EQUALS(action, "GetServices")) {
+                onvif_respond_services((char*)lngResp, &respLen);
+                send_and_close(req->clntFd, lngResp, respLen);
+                return;
             } else if (EQUALS(action, "GetSystemDateAndTime")) {
                 onvif_respond_systemtime((char*)lngResp, &respLen);
                 send_and_close(req->clntFd, lngResp, respLen);

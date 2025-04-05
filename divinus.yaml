@@ -21,6 +21,9 @@ osd:
 mdns:
   enable: false
 
+onvif:
+  enable: false
+
 rtsp:
   enable: true
   enable_auth: false

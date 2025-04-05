@@ -28,6 +28,7 @@ void onvif_respond_capabilities(char *response, int *respLen);
 void onvif_respond_deviceinfo(char *response, int *respLen);
 void onvif_respond_mediaprofiles(char *response, int *respLen);
 void onvif_respond_scopes(char *response, int *respLen);
+void onvif_respond_services(char *response, int *respLen);
 void onvif_respond_snapshot(char *response, int *respLen);
 void onvif_respond_stream(char *response, int *respLen);
 void onvif_respond_systemtime(char *response, int *respLen);
