@@ -1,7 +1,5 @@
 #include "network.h"
 
-IMPORT_STR(.rodata, "../res/onvif/capabilities.xml", capabilitiesxml);
-extern const char capabilitiesxml[];
 IMPORT_STR(.rodata, "../res/onvif/deviceinfo.xml", deviceinfoxml);
 extern const char deviceinfoxml[];
 IMPORT_STR(.rodata, "../res/onvif/discovery.xml", discoveryxml);
@@ -10,16 +8,10 @@ IMPORT_STR(.rodata, "../res/onvif/mediaprofile.xml", mediaprofilexml);
 extern const char mediaprofilexml[];
 IMPORT_STR(.rodata, "../res/onvif/mediaprofiles.xml", mediaprofilesxml);
 extern const char mediaprofilesxml[];
-IMPORT_STR(.rodata, "../res/onvif/scopes.xml", scopesxml);
-extern const char scopesxml[];
-IMPORT_STR(.rodata, "../res/onvif/services.xml", servicesxml);
-extern const char servicesxml[];
 IMPORT_STR(.rodata, "../res/onvif/snapshot.xml", snapshotxml);
 extern const char snapshotxml[];
 IMPORT_STR(.rodata, "../res/onvif/stream.xml", streamxml);
 extern const char streamxml[];
-IMPORT_STR(.rodata, "../res/onvif/systemtime.xml", systemtimexml);
-extern const char systemtimexml[];
 
 const char onvifgood[] = "HTTP/1.1 200 OK\r\n" \
                          "Content-Type: application/soap+xml; charset=utf-8\r\n" \
@@ -255,35 +247,6 @@ char* onvif_extract_soap_action(const char* soap_data) {
     return action;
 }
 
-void onvif_respond_capabilities(char *response, int *respLen) {
-    if (!response || !respLen) return;
-
-    char device_url[128], media_url[128], ptz_section[128] = {0};
-    snprintf(device_url, sizeof(device_url), "http://%s:%d/onvif/device_service",
-        netinfo.ipaddr[0], app_config.web_port);
-    snprintf(media_url, sizeof(media_url), "http://%s:%d/onvif/media_service",
-        netinfo.ipaddr[0], app_config.web_port);
-#if 0
-    if (app_config.ptz_enable) {
-        snprintf(ptz_section, sizeof(ptz_section),
-            "        <tds:PTZ>\n"
-            "          <tds:XAddr>http://%s:%d/onvif/ptz_service</tds:XAddr>\n"
-            "        </td:PTZ>\n", netinfo.ipaddr[0], app_config.web_port);
-            netinfo.ipaddr[0], app_config.web_port);
-    }
-#endif
-
-    int maxLen = *respLen;
-    int headerLen = strlen(onvifgood);
-    memcpy(response, onvifgood, headerLen);
-    *respLen = headerLen;
-
-    *respLen += snprintf(response + headerLen, maxLen - headerLen,
-        capabilitiesxml,
-        device_url, app_config.web_enable_auth ? "true" : "false",
-        media_url, ptz_section);
-}
-
 void onvif_respond_deviceinfo(char *response, int *respLen) {
     if (!response || !respLen) return;
 
@@ -337,95 +300,6 @@ void onvif_respond_mediaprofiles(char *response, int *respLen) {
         profile);
 }
 
-void onvif_respond_scopes(char *response, int *respLen) {
-    if (!response || !respLen) return;
-
-    char scopes[2048];
-    int scopesLen = 0;
-
-    const char* scope_items[] = {
-        "onvif://www.onvif.org/type/video_encoder",
-        "onvif://www.onvif.org/type/audio_encoder",
-        "onvif://www.onvif.org/location/Unknown",
-        "onvif://www.onvif.org/Profile/Streaming"
-    };
-
-    for (char i = 0; i < sizeof(scope_items) / sizeof(*scope_items); i++)
-        scopesLen += snprintf(&scopes[scopesLen], sizeof(scopes) - scopesLen,
-            "      <tds:Scopes>\n"
-            "        <tds:ScopeDef>Fixed</tds:ScopeDef>\n"
-            "        <tds:ScopeItem>%s</tds:ScopeItem>\n"
-            "      </tds:Scopes>\n", scope_items[i]);
-
-    int maxLen = *respLen;
-    int headerLen = strlen(onvifgood);
-    memcpy(response, onvifgood, headerLen);
-    *respLen = headerLen;
-
-    *respLen += snprintf(response + headerLen, maxLen - headerLen,
-        scopesxml,
-        scopes);
-}
-
-void onvif_respond_services(char *response, int *respLen) {
-    if (!response || !respLen) return;
-
-    char services[4096] = {0};
-    int servicesLen = 0;
-
-    char device_url[128], media_url[128], ptz_url[128] = {0};
-    snprintf(device_url, sizeof(device_url), "http://%s:%d/onvif/device_service",
-        netinfo.ipaddr[0], app_config.web_port);
-    snprintf(media_url, sizeof(media_url), "http://%s:%d/onvif/media_service",
-        netinfo.ipaddr[0], app_config.web_port);
-
-    servicesLen += snprintf(services + servicesLen, sizeof(services) - servicesLen,
-        "      <tds:Service>\n"
-        "        <tds:Namespace>http://www.onvif.org/ver10/device/wsdl</tds:Namespace>\n"
-        "        <tds:XAddr>%s</tds:XAddr>\n"
-        "        <tds:Version>\n"
-        "          <tt:Major>2</tt:Major>\n"
-        "          <tt:Minor>40</tt:Minor>\n"
-        "        </tds:Version>\n"
-        "      </tds:Service>\n", device_url);
-
-    servicesLen += snprintf(services + servicesLen, sizeof(services) - servicesLen,
-        "      <tds:Service>\n"
-        "        <tds:Namespace>http://www.onvif.org/ver10/media/wsdl</tds:Namespace>\n"
-        "        <tds:XAddr>%s</tds:XAddr>\n"
-        "        <tds:Version>\n"
-        "          <tt:Major>2</tt:Major>\n"
-        "          <tt:Minor>40</tt:Minor>\n"
-        "        </tds:Version>\n"
-        "      </tds:Service>\n", media_url);
-
-#if 0
-    if (app_config.ptz_enable) {
-        snprintf(ptz_url, sizeof(ptz_url), "http://%s:%d/onvif/ptz_service",
-            netinfo.ipaddr[0], app_config.web_port);
-        
-        servicesLen += snprintf(services + servicesLen, sizeof(services) - servicesLen,
-            "      <tds:Service>\n"
-            "        <tds:Namespace>http://www.onvif.org/ver20/ptz/wsdl</tds:Namespace>\n"
-            "        <tds:XAddr>%s</tds:XAddr>\n"
-            "        <tds:Version>\n"
-            "          <tt:Major>2</tt:Major>\n"
-            "          <tt:Minor>40</tt:Minor>\n"
-            "        </tds:Version>\n"
-            "      </tds:Service>\n", ptz_url);
-    }
-#endif
-
-    int maxLen = *respLen;
-    int headerLen = strlen(onvifgood);
-    memcpy(response, onvifgood, headerLen);
-    *respLen = headerLen;
-
-    *respLen += snprintf(response + headerLen, maxLen - headerLen,
-        servicesxml,
-        services);
-}
-
 void onvif_respond_snapshot(char *response, int *respLen) {
     if (!response || !respLen) return;
 
@@ -476,24 +350,4 @@ void onvif_respond_stream(char *response, int *respLen) {
     *respLen += snprintf(response + headerLen, maxLen - headerLen,
         streamxml,
         stream_url);
-}
-
-void onvif_respond_systemtime(char *response, int *respLen) {
-    if (!response || !respLen) return;
-
-    time_t now;
-    struct tm *tm_info;
-
-    time(&now);
-    tm_info = gmtime(&now);
-
-    int maxLen = *respLen;
-    int headerLen = strlen(onvifgood);
-    memcpy(response, onvifgood, headerLen);
-    *respLen = headerLen;
-
-    *respLen += snprintf(response + headerLen, maxLen - headerLen,
-        systemtimexml,
-        tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec,
-        tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday);
 }

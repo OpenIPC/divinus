@@ -43,7 +43,7 @@ enum ConfigError section_pos(
         if (ini->sections[i].pos > 0 &&
             strcasecmp(ini->sections[i].name, section) == 0) {
             *start_pos = ini->sections[i].pos;
-            if (i + 1 < MAX_SECTIONS && ini->sections[i + i].pos > 0)
+            if (i + 1 < MAX_SECTIONS && ini->sections[i + 1].pos > 0)
                 *end_pos = ini->sections[i + 1].pos;
             else {
                 *end_pos = -1;
