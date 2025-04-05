@@ -1068,44 +1068,48 @@ void respond_request(struct Request *req) {
         char *path = req->uri + 6;
         if (*path == '/') path++;
 
-        if (EQUALS(path, "device_service")) {
-            if (!EQUALS(req->method, "POST")) {
-                send_and_close(req->clntFd, (char*)onvifmtd, strlen(onvifmtd));
-                return;
-            }
+        if (!EQUALS(req->method, "POST")) {
+            send_and_close(req->clntFd, (char*)onvifmtd, strlen(onvifmtd));
+            return;
+        }
 
-            char *action = onvif_extract_soap_action(req->payload);
-            if (EQUALS(action, "GetDeviceInformation")) {
-                onvif_respond_deviceinfo((char**)&lngResp, &respLen);
+        char *action = onvif_extract_soap_action(req->payload);
+        if (EQUALS(path, "device_service")) {
+            if (EQUALS(action, "GetCapabilities")) {
+                onvif_respond_capabilities((char*)lngResp, &respLen);
+                send_and_close(req->clntFd, lngResp, respLen);
+                return;
+            } else if (EQUALS(action, "GetDeviceInformation")) {
+                onvif_respond_deviceinfo((char*)lngResp, &respLen);
+                send_and_close(req->clntFd, lngResp, respLen);
+                return;
+            } else if (EQUALS(action, "GetScopes")) {
+                onvif_respond_scopes((char*)lngResp, &respLen);
+                send_and_close(req->clntFd, lngResp, respLen);
+                return;
+            } else if (EQUALS(action, "GetSystemDateAndTime")) {
+                onvif_respond_systemtime((char*)lngResp, &respLen);
                 send_and_close(req->clntFd, lngResp, respLen);
                 return;
             }
-            send_and_close(req->clntFd, (char*)error501, strlen(error501));
-            return;
         } else if (EQUALS(path, "media_service")) {
-            if (!EQUALS(req->method, "POST")) {
-                send_and_close(req->clntFd, (char*)onvifmtd, strlen(onvifmtd));
-                return;
-            }
-
-            char *action = onvif_extract_soap_action(req->payload);
             if (EQUALS(action, "GetProfiles")) {
-                onvif_respond_mediaprofiles((char**)&lngResp, &respLen);
+                onvif_respond_mediaprofiles((char*)lngResp, &respLen);
                 send_and_close(req->clntFd, lngResp, respLen);
                 return;
             } else if (EQUALS(action, "GetSnapshotUri")) {
-                onvif_respond_snapshot((char**)&lngResp, &respLen);
+                onvif_respond_snapshot((char*)lngResp, &respLen);
                 send_and_close(req->clntFd, lngResp, respLen);
                 return;
             } else if (EQUALS(action, "GetStreamUri")) {
-                onvif_respond_stream((char**)&lngResp, &respLen);
+                onvif_respond_stream((char*)lngResp, &respLen);
                 send_and_close(req->clntFd, lngResp, respLen);
                 return;
             }
-            send_and_close(req->clntFd, (char*)error501, strlen(error501));
-            return;
         }
-        
+
+        if (!EMPTY(action))
+            HAL_WARNING("server", "Unknown ONVIF request: %s->%s\n", path, action);
         send_and_close(req->clntFd, (char*)error501, strlen(error501));
         return;
     }

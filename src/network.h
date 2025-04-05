@@ -3,7 +3,9 @@
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <stdio.h>
+#include <sys/select.h>
 #include <sys/utsname.h>
+#include <time.h>
 
 #include "app_config.h"
 #include "hal/support.h"
@@ -22,7 +24,10 @@ void stop_onvif(void);
 void *onvif_thread();
 
 char* onvif_extract_soap_action(const char* soap_data);
-void onvif_respond_deviceinfo(char **response, int *respLen);
-void onvif_respond_mediaprofiles(char **response, int *respLen);
-void onvif_respond_snapshot(char **response, int *respLen);
-void onvif_respond_stream(char **response, int *respLen);
+void onvif_respond_capabilities(char *response, int *respLen);
+void onvif_respond_deviceinfo(char *response, int *respLen);
+void onvif_respond_mediaprofiles(char *response, int *respLen);
+void onvif_respond_scopes(char *response, int *respLen);
+void onvif_respond_snapshot(char *response, int *respLen);
+void onvif_respond_stream(char *response, int *respLen);
+void onvif_respond_systemtime(char *response, int *respLen);
