@@ -74,9 +74,8 @@ _* At the moment, text, RGB or bitfield bitmaps and PNG overlays are handled, mo
 ### Roadmap
 
 - [ ] Audio source, input gain and output volume
+- [ ] ONVIF write support, enhanced compatiblity
 - [ ] Motors and PTZ control
-- [ ] ONVIF services
-- [ ] Additional WebUI functionalities
 - [ ] Lens correction profiles
 - [ ] Local recordings with motion detection
 - [ ] Alternative audio codecs

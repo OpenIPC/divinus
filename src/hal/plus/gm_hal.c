@@ -1,4 +1,4 @@
-#ifdef __arm__
+#if defined(__ARM_PCS)
 
 #include "gm_hal.h"
 

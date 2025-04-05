@@ -1,4 +1,4 @@
-#ifdef __arm__
+#if defined(__ARM_PCS_VFP)
 
 #include "rk_hal.h"
 

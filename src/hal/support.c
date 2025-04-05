@@ -18,7 +18,7 @@ void hal_identify(void) {
     FILE *file;
     char *endMark, line[200] = {0};
 
-#ifdef __arm__
+#if defined(__ARM_PCS_VFP)
     if (!access("/proc/mi_modules", F_OK) && 
         hal_registry(0x1F003C00, &series, OP_READ)) {
         char package[4] = {0};
@@ -122,7 +122,20 @@ void hal_identify(void) {
         //vid_thread = i3_video_thread;
         return;
     }
+
+    if (!access("/proc/rk_cma", F_OK)) {
+        plat = HAL_PLATFORM_RK;
+        strcpy(chip, "rv11xx");
+        strcpy(family, "rockchip");
+        chnCount = RK_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)rk_state;
+        aud_thread = rk_audio_thread;
+        vid_thread = rk_video_thread;
+        return;
+    }
+#endif
     
+#if defined(__ARM_PCS)
     if (!access("/dev/vpd", F_OK)) {
         plat = HAL_PLATFORM_GM;
         strcpy(chip, "GM813x");
@@ -154,17 +167,6 @@ void hal_identify(void) {
         chnState = (hal_chnstate*)ak_state;
         //aud_thread = ak_audio_thread;
         vid_thread = ak_video_thread;
-        return;
-    }
-
-    if (!access("/proc/rk_cma", F_OK)) {
-        plat = HAL_PLATFORM_RK;
-        strcpy(chip, "rv11xx");
-        strcpy(family, "rockchip");
-        chnCount = RK_VENC_CHN_NUM;
-        chnState = (hal_chnstate*)rk_state;
-        aud_thread = rk_audio_thread;
-        vid_thread = rk_video_thread;
         return;
     }
 #endif
@@ -199,7 +201,20 @@ void hal_identify(void) {
     }
 #endif
 
-#ifdef __arm__
+#if defined(__riscv) || defined(__riscv__)
+    if (!access("/proc/cvi", F_OK)) {
+        plat = HAL_PLATFORM_CVI;
+        strcpy(family, "CV181x");
+        chnCount = CVI_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)cvi_state;
+        aud_thread = cvi_audio_thread;
+        isp_thread = cvi_image_thread;
+        vid_thread = cvi_video_thread;
+        return;
+    }
+#endif
+
+#if defined(__ARM_PCS)
     if (file = fopen("/proc/iomem", "r")) {
         while (fgets(line, 200, file))
             if (strstr(line, "uart")) {
@@ -299,17 +314,5 @@ void hal_identify(void) {
     aud_thread = v4_audio_thread;
     isp_thread = v4_image_thread;
     vid_thread = v4_video_thread;
-#endif
-
-#if defined(__riscv) || defined(__riscv__)
-    if (!access("/proc/cvi", F_OK)) {
-        plat = HAL_PLATFORM_CVI;
-        strcpy(family, "CV181x");
-        chnCount = CVI_VENC_CHN_NUM;
-        chnState = (hal_chnstate*)cvi_state;
-        aud_thread = cvi_audio_thread;
-        isp_thread = cvi_image_thread;
-        vid_thread = cvi_video_thread;
-    }
 #endif
 }
