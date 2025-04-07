@@ -15,11 +15,11 @@
 #include <unistd.h>
 
 #include "app_config.h"
+#include "fmt/mp4.h"
+#include "fmt/nal.h"
 #include "hal/types.h"
 #include "jpeg.h"
 #include "media.h"
-#include "mp4/mp4.h"
-#include "mp4/nal.h"
 #include "network.h"
 #include "night.h"
 #include "region.h"
