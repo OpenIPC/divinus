@@ -410,7 +410,8 @@ found_font:;
                         case HAL_PLATFORM_GM:
                             gm_region_setbitmap(id, &bitmap);
                             gm_region_create(id, rect, osds[id].opal);
-                            break;      case HAL_PLATFORM_V1:
+                            break;
+                        case HAL_PLATFORM_V1:
                             v1_region_create(id, rect, osds[id].opal);
                             v1_region_setbitmap(id, &bitmap);
                             break;
