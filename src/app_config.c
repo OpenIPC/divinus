@@ -58,6 +58,8 @@ int save_app_config(void) {
     fprintf(file, "  isp_thread_stack_size: %d\n", app_config.isp_thread_stack_size);
     fprintf(file, "  venc_stream_thread_stack_size: %d\n", app_config.venc_stream_thread_stack_size);
     fprintf(file, "  web_server_thread_stack_size: %d\n", app_config.web_server_thread_stack_size);
+    if (!EMPTY(timefmt) || EQUALS(timefmt, DEF_TIMEFMT))
+        fprintf(file, "  time_format: %s\n", timefmt);
     fprintf(file, "  watchdog: %d\n", app_config.watchdog);
 
     fprintf(file, "night_mode:\n");
@@ -271,6 +273,9 @@ enum ConfigError parse_app_config(void) {
         &app_config.web_server_thread_stack_size);
     if (err != CONFIG_OK)
         goto RET_ERR;
+    parse_param_value(&ini, "system", "time_format", timefmt);
+    if (EMPTY(timefmt))
+        strcpy(timefmt, DEF_TIMEFMT);
     parse_int(&ini, "system", "watchdog", 0, INT_MAX, &app_config.watchdog);
 
     err =

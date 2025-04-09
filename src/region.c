@@ -2,7 +2,7 @@
 
 osd osds[MAX_OSD];
 pthread_t regionPid = 0;
-char timefmt[32] = DEF_TIMEFMT;
+char timefmt[64];
 unsigned int rxb_l, txb_l, cpu_l[6];
 
 void region_fill_formatted(char* str) {
@@ -109,7 +109,11 @@ void region_fill_formatted(char* str) {
             ipos++;
             char s[64];
             time_t t = time(NULL);
-            struct tm *tm = gmtime(&t);
+            struct tm *tm;
+            if (str[ipos + 1] == 'u') {
+                ipos++;
+                tm = gmtime(&t);
+            } else tm = localtime(&t);
             strftime(s, 64, timefmt, tm);
             strcat(out, s);
             opos += strlen(s);
