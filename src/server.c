@@ -1075,7 +1075,11 @@ void respond_request(struct Request *req) {
 
         char *action = onvif_extract_soap_action(req->payload);
         if (EQUALS(path, "device_service")) {
-            if (EQUALS(action, "GetDeviceInformation")) {
+            if (EQUALS(action, "GetCapabilities")) {
+                onvif_respond_capabilities((char*)lngResp, &respLen);
+                send_and_close(req->clntFd, lngResp, respLen);
+                return;
+            } else if (EQUALS(action, "GetDeviceInformation")) {
                 onvif_respond_deviceinfo((char*)lngResp, &respLen);
                 send_and_close(req->clntFd, lngResp, respLen);
                 return;
