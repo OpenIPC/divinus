@@ -3,9 +3,9 @@
 osd osds[MAX_OSD];
 pthread_t regionPid = 0;
 char timefmt[32] = DEF_TIMEFMT;
+unsigned int rxb_l, txb_l, cpu_l[6];
 
 void region_fill_formatted(char* str) {
-    unsigned int rxb_l, txb_l, cpu_l[6];
     char out[80] = "";
     char param = 0;
     int ipos = 0, opos = 0;
