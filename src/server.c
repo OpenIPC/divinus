@@ -547,7 +547,7 @@ void respond_request(struct Request *req) {
         }
 
         char *action = onvif_extract_soap_action(req->payload);
-        HAL_INFO("onvif", " \x1b[32mAction: %s\x1b[0m\n", action);
+        HAL_INFO("onvif", "\x1b[32mAction: %s\x1b[0m\n", action);
 
         if (app_config.onvif_enable_auth && !onvif_validate_soap_auth(req->payload)) {
             int respLen = sprintf(response,
