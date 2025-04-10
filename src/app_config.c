@@ -78,13 +78,6 @@ int save_app_config(void) {
     fprintf(file, "  flip: %s\n", app_config.flip ? "true" : "false");
     fprintf(file, "  antiflicker: %d\n", app_config.antiflicker);
 
-    fprintf(file, "rtsp:\n");
-    fprintf(file, "  enable: %s\n", app_config.rtsp_enable ? "true" : "false");
-    fprintf(file, "  port: %d\n", app_config.rtsp_port);
-    fprintf(file, "  enable_auth: %s\n", app_config.rtsp_enable_auth ? "true" : "false");
-    fprintf(file, "  auth_user: %s\n", app_config.rtsp_auth_user);
-    fprintf(file, "  auth_pass: %s\n", app_config.rtsp_auth_pass);
-
     fprintf(file, "stream:\n");
     fprintf(file, "  enable: %s\n", app_config.stream_enable ? "true" : "false");
     fprintf(file, "  udp_srcport: %d\n", app_config.stream_udp_srcport);
@@ -100,6 +93,16 @@ int save_app_config(void) {
 
     fprintf(file, "onvif:\n");
     fprintf(file, "  enable: %s\n", app_config.onvif_enable ? "true" : "false");
+    fprintf(file, "  enable_auth: %s\n", app_config.onvif_enable_auth ? "true" : "false");
+    fprintf(file, "  auth_user: %s\n", app_config.onvif_auth_user);
+    fprintf(file, "  auth_pass: %s\n", app_config.onvif_auth_pass);
+
+    fprintf(file, "rtsp:\n");
+    fprintf(file, "  enable: %s\n", app_config.rtsp_enable ? "true" : "false");
+    fprintf(file, "  port: %d\n", app_config.rtsp_port);
+    fprintf(file, "  enable_auth: %s\n", app_config.rtsp_enable_auth ? "true" : "false");
+    fprintf(file, "  auth_user: %s\n", app_config.rtsp_auth_user);
+    fprintf(file, "  auth_pass: %s\n", app_config.rtsp_auth_pass);
 
     fprintf(file, "audio:\n");
     fprintf(file, "  enable: %s\n", app_config.audio_enable ? "true" : "false");
@@ -181,7 +184,12 @@ enum ConfigError parse_app_config(void) {
     app_config.mdns_enable = false;
 
     app_config.osd_enable = false;
+
     app_config.onvif_enable = false;
+    app_config.onvif_enable_auth = false;
+    app_config.onvif_auth_user[0] = '\0';
+    app_config.onvif_auth_pass[0] = '\0';
+
     app_config.rtsp_enable = false;
     app_config.rtsp_port = 554;
     app_config.rtsp_enable_auth = false;
@@ -346,6 +354,13 @@ enum ConfigError parse_app_config(void) {
     }
 
     parse_bool(&ini, "onvif", "enable", &app_config.onvif_enable);
+    if (app_config.onvif_enable) {
+        parse_bool(&ini, "onvif", "enable_auth", &app_config.onvif_enable_auth);
+        parse_param_value(
+            &ini, "onvif", "auth_user", app_config.onvif_auth_user);
+        parse_param_value(
+            &ini, "onvif", "auth_pass", app_config.onvif_auth_pass);
+    }
 
     parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
     parse_int(&ini, "rtsp", "port", 0, USHRT_MAX, &app_config.rtsp_port);

@@ -353,6 +353,129 @@ void reverse(void *arr, size_t width) {
 	}
 }
 
+
+void sha1_init(sha1_context *context) {
+    context->state[0] = 0x67452301;
+    context->state[1] = 0xEFCDAB89;
+    context->state[2] = 0x98BADCFE;
+    context->state[3] = 0x10325476;
+    context->state[4] = 0xC3D2E1F0;
+    context->count[0] = 0;
+    context->count[1] = 0;
+}
+
+static void sha1_transform(unsigned int state[5], const unsigned char buffer[64]) {
+    unsigned int a, b, c, d, e;
+    unsigned int w[80];
+    int i;
+
+    // Break chunk into 16 words (big-endian)
+    for (i = 0; i < 16; i++) {
+        w[i]  = ((unsigned int)buffer[i * 4 + 0] << 24);
+        w[i] |= ((unsigned int)buffer[i * 4 + 1] << 16);
+        w[i] |= ((unsigned int)buffer[i * 4 + 2] <<  8);
+        w[i] |= ((unsigned int)buffer[i * 4 + 3]);
+    }
+
+    // Extend the 16 words into 80
+    for (i = 16; i < 80; i++) {
+        w[i] = (w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16]);
+        w[i] = (w[i] << 1) | (w[i] >> 31);
+    }
+
+    a = state[0];
+    b = state[1];
+    c = state[2];
+    d = state[3];
+    e = state[4];
+
+    for (i = 0; i < 20; i++) {
+        unsigned int temp = ((a << 5) | (a >> 27)) + 
+            ((b & c) | ((~b) & d)) + e + w[i] + 0x5A827999;
+        e = d;
+        d = c;
+        c = ((b << 30) | (b >> 2));
+        b = a;
+        a = temp;
+    }
+    for (; i < 40; i++) {
+        unsigned int temp = ((a << 5) | (a >> 27)) +
+            (b ^ c ^ d) + e + w[i] + 0x6ED9EBA1;
+        e = d;
+        d = c;
+        c = ((b << 30) | (b >> 2));
+        b = a;
+        a = temp;
+    }
+    for (; i < 60; i++) {
+        unsigned int temp = ((a << 5) | (a >> 27)) +
+            ((b & c) | (b & d) | (c & d)) + e + w[i] + 0x8F1BBCDC;
+        e = d;
+        d = c;
+        c = ((b << 30) | (b >> 2));
+        b = a;
+        a = temp;
+    }
+    for (; i < 80; i++) {
+        unsigned int temp = ((a << 5) | (a >> 27)) +
+            (b ^ c ^ d) + e + w[i] + 0xCA62C1D6;
+        e = d;
+        d = c;
+        c = ((b << 30) | (b >> 2));
+        b = a;
+        a = temp;
+    }
+
+    state[0] += a;
+    state[1] += b;
+    state[2] += c;
+    state[3] += d;
+    state[4] += e;
+}
+
+void sha1_update(sha1_context *context, const unsigned char *data, unsigned int len) {
+    unsigned int i, j;
+    j = (context->count[0] >> 3) & 63;
+    context->count[0] += (len << 3);
+    if (context->count[0] < (len << 3)) context->count[1]++;
+    context->count[1] += (len >> 29);
+
+    if ((j + len) > 63) {
+        memcpy(&context->buffer[j], data, (i = 64 - j));
+        sha1_transform(context->state, context->buffer);
+        for (; i + 63 < len; i += 64)
+            sha1_transform(context->state, &data[i]);
+        j = 0;
+    } else i = 0;
+
+    memcpy(&context->buffer[j], &data[i], (len - i));
+}
+
+void sha1_final(unsigned char digest[20], sha1_context *context) {
+    unsigned char finalcount[8];
+    unsigned int i;
+
+    // Store bit count
+    for (i = 0; i < 8; i++)
+        finalcount[i] = (unsigned char)(
+            (context->count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 0xFF);
+
+    // Pad with a "1" bit, then zero bits
+    sha1_update(context, (unsigned char *)"\x80", 1);
+    // Pad until message length in bits ≡ 448 (mod 512)
+    while ((context->count[0] & 504) != 448)
+        sha1_update(context, (unsigned char *)"\0", 1);
+
+    // Append length in bits
+    sha1_update(context, finalcount, 8);
+
+    // Output final hash
+    for (i = 0; i < 20; i++)
+        digest[i] = (unsigned char)(
+            (context->state[i >> 2] >> ((3 - (i & 3)) * 8)) & 0xFF);
+}
+
+
 char *split(char **input, char *sep) {
     char *curr = (char *)"";
     while (curr && !curr[0] && *input) curr = strsep(input, sep);

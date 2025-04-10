@@ -85,6 +85,17 @@ enum ConfigError parse_param_value(
     int res = sprintf(param_value, "%.*s", (int)(m[1].rm_eo - m[1].rm_so),
         ini->str + start_pos + m[1].rm_so);
     param_value[res] = 0;
+
+    if (res >= 2 && param_value[0] == '"' && param_value[res - 1] == '"') {
+        memmove(param_value, param_value + 1, res - 2);
+        param_value[res - 2] = '\0';
+        res -= 2;
+    }
+
+    while (res > 0 && isspace(param_value[res - 1])) {
+        param_value[--res] = '\0';
+    }
+
     return CONFIG_OK;
 }
 
