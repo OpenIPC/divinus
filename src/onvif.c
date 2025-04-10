@@ -14,6 +14,8 @@ IMPORT_STR(.rodata, "../res/onvif/snapshot.xml", snapshotxml);
 extern const char snapshotxml[];
 IMPORT_STR(.rodata, "../res/onvif/stream.xml", streamxml);
 extern const char streamxml[];
+IMPORT_STR(.rodata, "../res/onvif/systemtime.xml", systemtimexml);
+extern const char systemtimexml[];
 
 const char onvifgood[] = "HTTP/1.1 200 OK\r\n" \
                          "Content-Type: application/soap+xml; charset=utf-8\r\n" \
@@ -281,4 +283,24 @@ void onvif_respond_stream(char *response, int *respLen) {
     *respLen += snprintf(response + headerLen, maxLen - headerLen,
         streamxml,
         stream_url);
+}
+
+void onvif_respond_systemtime(char *response, int *respLen) {
+    if (!response || !respLen) return;
+
+    time_t now;
+    struct tm *tm_info;
+
+    time(&now);
+    tm_info = gmtime(&now);
+
+    int maxLen = *respLen;
+    int headerLen = strlen(onvifgood);
+    memcpy(response, onvifgood, headerLen);
+    *respLen = headerLen;
+
+    *respLen += snprintf(response + headerLen, maxLen - headerLen,
+        systemtimexml,
+        tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec,
+        tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday);
 }

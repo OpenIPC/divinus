@@ -1,7 +1,47 @@
 #include "tools.h"
 
-static const char basis_64[] =
+static const char base64_table[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+int base64_decode(char *decoded, const char *string, int maxLen) {
+    char buf[3];
+    int buflen = 0, i = 0, v;
+
+    while (*string && *string != '=' && i < maxLen) {
+        const char *p = strchr(base64_table, *string++);
+        if (!p) continue;
+        
+        v = p - base64_table;
+        switch (buflen) {
+            case 0:
+                buf[buflen++] = v << 2;
+                break;
+            case 1:
+                buf[buflen - 1] |= v >> 4;
+                buf[buflen++] = (v & 0xF) << 4;
+                break;
+            case 2:
+                buf[buflen - 1] |= v >> 2;
+                buf[buflen++] = (v & 0x3) << 6;
+                break;
+            case 3:
+                buf[buflen - 1] |= v;
+                if (i + 3 <= maxLen) {
+                    memcpy(decoded + i, buf, 3);
+                    i += 3;
+                }
+                buflen = 0;
+                break;
+        }
+    }
+
+    if (buflen > 0 && i + buflen <= maxLen) {
+        memcpy(decoded + i, buf, buflen);
+        i += buflen;
+    }
+
+    return i;
+}
 
 int base64_encode_length(int len) { return ((len + 2) / 3 * 4) + 1; }
 
@@ -11,22 +51,22 @@ int base64_encode(char *encoded, const char *string, int len) {
 
     p = encoded;
     for (i = 0; i < len - 2; i += 3) {
-        *p++ = basis_64[(string[i] >> 2) & 0x3F];
-        *p++ = basis_64
+        *p++ = base64_table[(string[i] >> 2) & 0x3F];
+        *p++ = base64_table
             [((string[i] & 0x3) << 4) | ((int)(string[i + 1] & 0xF0) >> 4)];
-        *p++ = basis_64
+        *p++ = base64_table
             [((string[i + 1] & 0xF) << 2) | ((int)(string[i + 2] & 0xC0) >> 6)];
-        *p++ = basis_64[string[i + 2] & 0x3F];
+        *p++ = base64_table[string[i + 2] & 0x3F];
     }
     if (i < len) {
-        *p++ = basis_64[(string[i] >> 2) & 0x3F];
+        *p++ = base64_table[(string[i] >> 2) & 0x3F];
         if (i == (len - 1)) {
-            *p++ = basis_64[((string[i] & 0x3) << 4)];
+            *p++ = base64_table[((string[i] & 0x3) << 4)];
             *p++ = '=';
         } else {
-            *p++ = basis_64
+            *p++ = base64_table
                 [((string[i] & 0x3) << 4) | ((int)(string[i + 1] & 0xF0) >> 4)];
-            *p++ = basis_64[((string[i + 1] & 0xF) << 2)];
+            *p++ = base64_table[((string[i + 1] & 0xF) << 2)];
         }
         *p++ = '=';
     }
@@ -128,6 +168,21 @@ int escape_url(char *dst, const char *src, size_t maxlen) {
     
     *dst = '\0';
     return len;
+}
+
+
+void generate_nonce(char *nonce, size_t len) {
+    static const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    if (len < 2) return;
+
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    unsigned int seed = ts.tv_nsec;
+
+    for (size_t i = 0; i < len - 1; i++)
+        nonce[i] = charset[rand_r(&seed) % (sizeof(charset) - 1)];
+
+    nonce[len - 1] = '\0';
 }
 
 

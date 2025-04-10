@@ -16,9 +16,12 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off);
+
+int base64_decode(char *decoded, const char *string, int maxLen);
 
 int base64_encode_length(int len);
 
@@ -31,6 +34,8 @@ int color_parse(const char *str);
 int compile_regex(regex_t *r, const char *regex_text);
 
 int escape_url(char *dst, const char *src, size_t maxlen);
+
+void generate_nonce(char *nonce, size_t len);
 
 const char *get_extension(const char *path);
 

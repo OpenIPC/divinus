@@ -32,6 +32,7 @@
 	<script>
 		var ua = window.navigator.userAgent;
 		var isIe = ua.indexOf('MSIE ') > -1 || ua.indexOf('Trident/') > -1;
+		window.XMLHttpRequest = window.XMLHttpRequest || new ActiveXObject("Msxml2.XMLHTTP") || new ActiveXObject("Microsoft.XMLHTTP");
 
 		function apiApply(endp) {
 			var dest = "/api/" + endp + "?", req = new XMLHttpRequest();
