@@ -52,3 +52,4 @@ extern char sensor[16];
 extern int series;
 
 void hal_identify(void);
+float hal_temperature_read(void);

@@ -1267,8 +1267,10 @@ void respond_request(http_request_t *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"chip\":\"%s\",\"loadavg\":[%.2f,%.2f,%.2f],\"memory\":\"%s\",\"sensor\":\"%s\",\"uptime\":\"%s\"}",
-            chip, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0, memory, sensor, uptime);
+            "{\"chip\":\"%s\",\"loadavg\":[%.2f,%.2f,%.2f],\"memory\":\"%s\","
+            "\"sensor\":\"%s\",\"temp\":\"%.1f\u00B0C\",\"uptime\":\"%s\"}",
+            chip, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0, 
+            memory, sensor, hal_temperature_read(), uptime);
         send_and_close(req->clntFd, response, respLen);
         return;
     }

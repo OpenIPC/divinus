@@ -13,6 +13,9 @@ hal_platform plat = HAL_PLATFORM_UNK;
 char sensor[16] = "unidentified";
 int series = 0;
 
+unsigned long long lastMillisTemp = 0;
+float lastReadTemp = 0.0 / 0.0;
+
 void hal_identify(void) {
     unsigned int val = 0;
     FILE *file;
@@ -315,4 +318,37 @@ void hal_identify(void) {
     isp_thread = v4_image_thread;
     vid_thread = v4_video_thread;
 #endif
+}
+
+float hal_temperature_read(void) {
+    if (lastReadTemp != (0.0 / 0.0) && (millis() - lastMillisTemp < 5000))
+        return lastReadTemp;
+
+    lastMillisTemp = millis();
+
+    switch (plat) {
+#if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I6:
+        case HAL_PLATFORM_I6C:
+        case HAL_PLATFORM_M6:
+        {
+            FILE* file;
+            char line[20] = {0};
+            if (file = fopen("/sys/class/mstar/msys/TEMP_R", "r")) {
+                fgets(line, 20, file);
+                char *remain, *parsed = strstr(line, "Temperature ");
+                lastReadTemp = strtof(parsed + 12, &remain);
+                fclose(file);
+            }
+            break;
+        }
+#elif defined(__ARM_PCS)
+        case HAL_PLATFORM_V2: lastReadTemp = v2_system_readtemp(); break;
+        case HAL_PLATFORM_V3: lastReadTemp = v3_system_readtemp(); break;
+        case HAL_PLATFORM_V4: lastReadTemp = v4_system_readtemp(); break;
+#endif
+        default: lastMillisTemp = UINT64_MAX; break;
+    }
+
+    return lastReadTemp;
 }
