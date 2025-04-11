@@ -49,7 +49,7 @@ static void format_sei_nalu_h265(uint8_t *sei_nalu, sei_message_t *sei, size_t *
 }
 
 
-#define RTP_PACKET_SIZE 1500
+#define RTP_PACKET_SIZE 1203
 
 
 
@@ -88,7 +88,7 @@ static inline int __transfer_nal_h26x_rtp(unsigned char *nalptr, size_t nalsize,
 
     if (nalsize < 4) return SUCCESS;
 
-    if (nalsize <= __RTP_MAXPAYLOADSIZE) {
+    if (nalsize <= RTP_PACKET_SIZE) {
         /* single packet */
         /* SPS, PPS, SEI is not marked */
         if ((isH265 && pt < H265_NAL_TYPE_VPS) ||
@@ -123,15 +123,15 @@ static inline int __transfer_nal_h26x_rtp(unsigned char *nalptr, size_t nalsize,
         payload[head - 1] |= 1 << 7;
 
         /* send fragmented nal */
-        while (nalsize > __RTP_MAXPAYLOADSIZE - head) {
+        while (nalsize > RTP_PACKET_SIZE - head) {
             p_header->m = 0;
 
-            memcpy(&(payload[head]), nalptr, __RTP_MAXPAYLOADSIZE - head);
+            memcpy(&(payload[head]), nalptr, RTP_PACKET_SIZE - head);
 
-            rtp.rtpsize = sizeof(rtp_hdr_t) + __RTP_MAXPAYLOADSIZE;
+            rtp.rtpsize = sizeof(rtp_hdr_t) + RTP_PACKET_SIZE;
 
-            nalptr += __RTP_MAXPAYLOADSIZE - head;
-            nalsize -= __RTP_MAXPAYLOADSIZE - head;
+            nalptr += RTP_PACKET_SIZE - head;
+            nalsize -= RTP_PACKET_SIZE - head;
 
             ASSERT(__rtp_send__(&rtp) == SUCCESS, return FAILURE);
 
