@@ -16,6 +16,8 @@ IMPORT_STR(.rodata, "../res/onvif/stream.xml", streamxml);
 extern const char streamxml[];
 IMPORT_STR(.rodata, "../res/onvif/systemtime.xml", systemtimexml);
 extern const char systemtimexml[];
+IMPORT_STR(.rodata, "../res/onvif/videosources.xml", videosourcesxml);
+extern const char videosourcesxml[];
 
 const char onvifgood[] = "HTTP/1.1 200 OK\r\n" \
                          "Content-Type: application/soap+xml; charset=utf-8\r\n" \
@@ -373,4 +375,24 @@ void onvif_respond_systemtime(char *response, int *respLen) {
         systemtimexml,
         tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec,
         tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday);
+}
+
+void onvif_respond_videosources(char *response, int *respLen) {
+    if (!response || !respLen) return;
+
+    int width = app_config.mp4_enable ?
+        app_config.mp4_width : app_config.mjpeg_width;
+    int height = app_config.mp4_enable ?
+        app_config.mp4_height : app_config.mjpeg_height;
+    int framerate = app_config.mp4_enable ?
+        app_config.mp4_fps : app_config.mjpeg_fps;
+
+    int maxLen = *respLen;
+    int headerLen = strlen(onvifgood);
+    memcpy(response, onvifgood, headerLen);
+    *respLen = headerLen;
+
+    *respLen += snprintf(response + headerLen, maxLen - headerLen,
+        videosourcesxml,
+        framerate, width, height);
 }

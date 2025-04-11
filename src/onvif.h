@@ -22,3 +22,4 @@ void onvif_respond_mediaprofiles(char *response, int *respLen);
 void onvif_respond_snapshot(char *response, int *respLen);
 void onvif_respond_stream(char *response, int *respLen);
 void onvif_respond_systemtime(char *response, int *respLen);
+void onvif_respond_videosources(char *response, int *respLen);
