@@ -47,7 +47,9 @@ void __ctype_tolower(void) {}
 void _MI_PRINT_GetDebugLevel(void) {}
 void __pthread_register_cancel(void) {}
 void __pthread_unregister_cancel(void) {}
+#ifndef __UCLIBC__
 void _stdlib_mb_cur_max(void) {}
+#endif
 
 float __expf_finite(float x) { return expf(x); }
 int __fgetc_unlocked(FILE *stream) { return fgetc(stream); }

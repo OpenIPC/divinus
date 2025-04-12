@@ -1,18 +1,19 @@
 #include "tools.h"
 #include "types.h"
 
-#if defined(__arm__)
-#include "plus/ak_hal.h"
-#include "plus/gm_hal.h"
-#include "plus/rk_hal.h"
-#include "hisi/v1_hal.h"
-#include "hisi/v2_hal.h"
-#include "hisi/v3_hal.h"
-#include "hisi/v4_hal.h"
+#if defined(__ARM_PCS_VFP)
 #include "star/i3_hal.h"
 #include "star/i6_hal.h"
 #include "star/i6c_hal.h"
 #include "star/m6_hal.h"
+#include "plus/rk_hal.h"
+#elif defined(__ARM_PCS)
+#include "plus/ak_hal.h"
+#include "plus/gm_hal.h"
+#include "hisi/v1_hal.h"
+#include "hisi/v2_hal.h"
+#include "hisi/v3_hal.h"
+#include "hisi/v4_hal.h"
 #elif defined(__mips__)
 #include "inge/t31_hal.h"
 #elif defined(__riscv) || defined(__riscv__)
