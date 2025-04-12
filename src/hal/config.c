@@ -92,7 +92,7 @@ enum ConfigError parse_param_value(
         res -= 2;
     }
 
-    while (res > 0 && isspace(param_value[res - 1])) {
+    while (res > 0 && alt_isspace(param_value[res - 1])) {
         param_value[--res] = '\0';
     }
 

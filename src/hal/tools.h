@@ -30,6 +30,11 @@ typedef struct {
 
 void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off);
 
+static inline int alt_isspace(int c) {
+    return (c == ' ' || c == '\f' || c == '\n' || 
+            c == '\r' || c == '\t' || c == '\v');
+}
+
 int base64_decode(char *decoded, const char *string, int maxLen);
 
 int base64_encode_length(int len);
