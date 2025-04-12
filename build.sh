@@ -51,6 +51,12 @@ elif [ "$1" = "armhf-glibc" ] || [ "$1" = "star6e" ]; then
 	toolchain toolchain.sigmastar-infinity6e arm -lm
 elif [ "$1" = "armhf-musl" ] || [ "$1" = "star6" ]; then
 	toolchain toolchain.sigmastar-infinity6 arm
+elif [ "$1" = "armhf-uclibc" ] || [ "$1" = "rv11xx" ]; then
+	if [ ! -e toolchain/toolchain.rockchip-rv11xx ]; then
+		git clone https://github.com/deerpi/arm-rockchip830-linux-uclibcgnueabihf toolchain/toolchain.rockchip-rv11xx
+	fi
+	PRE="rockchip830-linux-uclibcgnueabihf"
+	toolchain toolchain.rockchip-rv11xx arm
 elif [ "$1" = "mips-musl" ] || [ "$1" = "inge-t31" ]; then
 	toolchain toolchain.ingenic-t31 mipsel
 elif [ "$1" = "riscv64-musl" ] || [ "$1" = "cvitek" ]; then
@@ -59,8 +65,8 @@ elif [ "$1" = "riscv64-musl" ] || [ "$1" = "cvitek" ]; then
 	toolchain riscv64-lp64d--musl--stable-2024.05-1 riscv64
 else
 	echo "Usage: $0 [arm-glibc|arm-musl3|arm-musl4|arm9-glibc|arm9-musl3|arm9-musl4|arm9-uclibc|"
-        echo "           armhf-glibc|armhf-musl|mips-musl|riscv64-musl|ak39xx|cvitek|gm813x|"
-        echo "           hisi-v1|hisi-v2|hisi-v2a|hisi-v3|hisi-v3a|hisi-v4|hisi-v4a|inge-t31|"
+        echo "           armhf-glibc|armhf-musl|armhf-uclibc|mips-musl|riscv64-musl|ak39xx|cvitek|gm813x|"
+        echo "           hisi-v1|hisi-v2|hisi-v2a|hisi-v3|hisi-v3a|hisi-v4|hisi-v4a|inge-t31|rv11xx|"
         echo "           star6|star6e] (debug)"
 	rm -f .previous
 fi
