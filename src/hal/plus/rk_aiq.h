@@ -37,7 +37,10 @@ typedef struct {
     void *handle;
 
     rk_aiq_ctx *(*fnInit)(const char *sensor, const char *iqDir, void *errCb, void *metaCb);
+    int (*fnPreInitBuf)(const char *sensor, const char *device, int count);
+    int (*fnPreInitScene)(const char *sensor, const char *main, const char *sub);
     int (*fnDeinit)(rk_aiq_ctx *context);
+    const char*(*fnGetSensorFromV4l2)(const char *device);
     int (*fnPrepare)(rk_aiq_ctx *context, int width, int height, rk_aiq_work work);
     int (*fnStart)(rk_aiq_ctx *context);
     int (*fnStop)(rk_aiq_ctx *context);
@@ -73,8 +76,20 @@ static int rk_aiq_load(rk_aiq_impl *aiq_lib) {
         hal_symbol_load("rk_aiq", aiq_lib->handle, "rk_aiq_uapi2_sysctl_init")))
         return EXIT_FAILURE;
 
+    if (!(aiq_lib->fnPreInitBuf = (int(*)(const char*, const char*, int))
+        hal_symbol_load("rk_aiq", aiq_lib->handle, "rk_aiq_uapi2_sysctl_preInit_devBufCnt")))
+        return EXIT_FAILURE;
+
+    if (!(aiq_lib->fnPreInitScene = (int(*)(const char*, const char*, const char*))
+        hal_symbol_load("rk_aiq", aiq_lib->handle, "rk_aiq_uapi2_sysctl_preInit_scene")))
+        return EXIT_FAILURE;
+
     if (!(aiq_lib->fnDeinit = (int(*)(rk_aiq_ctx*))
         hal_symbol_load("rk_aiq", aiq_lib->handle, "rk_aiq_uapi2_sysctl_deinit")))
+        return EXIT_FAILURE;
+
+    if (!(aiq_lib->fnGetSensorFromV4l2 = (const char*(*)(const char*))
+        hal_symbol_load("rk_aiq", aiq_lib->handle, "rk_aiq_uapi2_sysctl_getBindedSnsEntNmByVd")))
         return EXIT_FAILURE;
 
     if (!(aiq_lib->fnPrepare = (int(*)(rk_aiq_ctx*, int, int, rk_aiq_work))

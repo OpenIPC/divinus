@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rk_common.h"
+#include "rk_aiq.h"
 #include "rk_aud.h"
 #include "rk_rgn.h"
 #include "rk_sys.h"
@@ -43,10 +44,7 @@ int rk_region_create(char handle, hal_rect rect, short opacity);
 void rk_region_destroy(char handle);
 int rk_region_setbitmap(int handle, hal_bitmap *bitmap);
 
-void rk_sensor_deconfig(void);
-int rk_sensor_config(void);
-void rk_sensor_deinit(void);
-int rk_sensor_init(char *name, char *obj);
+int rk_sensor_find_v4l2_endpoint(void);
 
 int rk_video_create(char index, hal_vidconfig *config);
 int rk_video_destroy(char index);

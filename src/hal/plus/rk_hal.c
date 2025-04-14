@@ -2,6 +2,7 @@
 
 #include "rk_hal.h"
 
+rk_aiq_impl     rk_aiq;
 rk_aud_impl     rk_aud;
 rk_rgn_impl     rk_rgn;
 rk_sys_impl     rk_sys;
@@ -13,6 +14,7 @@ hal_chnstate rk_state[RK_VENC_CHN_NUM] = {0};
 int (*rk_aud_cb)(hal_audframe*);
 int (*rk_vid_cb)(char, hal_vidstream*);
 
+void *_rk_aiq_ctx = NULL;
 char _rk_aud_chn = 0;
 char _rk_aud_dev = 0;
 char _rk_isp_chn = 0;
@@ -31,6 +33,7 @@ void rk_hal_deinit(void)
     rk_venc_unload(&rk_venc);
     rk_rgn_unload(&rk_rgn);
     rk_aud_unload(&rk_aud);
+    rk_aiq_unload(&rk_aiq);
     rk_sys_unload(&rk_sys);
 }
 
@@ -39,6 +42,8 @@ int rk_hal_init(void)
     int ret;
 
     if (ret = rk_sys_load(&rk_sys))
+        return ret;
+    if (ret = rk_aiq_load(&rk_aiq))
         return ret;
     if (ret = rk_aud_load(&rk_aud))
         return ret;
@@ -206,7 +211,32 @@ int rk_channel_unbind(char index)
 
 int rk_pipeline_create(short width, short height)
 {
-    int ret;
+    int fd, ret, v4l2dev = rk_sensor_find_v4l2_endpoint();
+    char endpoint[32];
+
+    if (v4l2dev < 0)
+        HAL_ERROR("rk_hal", "Failed to find sensor endpoint!\n");
+
+    snprintf(endpoint, sizeof(endpoint), "/dev/video%d", v4l2dev);
+
+    const char *snrEnt = rk_aiq.fnGetSensorFromV4l2(endpoint);
+    if (!snrEnt)
+        HAL_ERROR("rk_aiq", "Failed to get the sensor entity name!\n");
+
+    if (ret = rk_aiq.fnPreInitBuf(snrEnt, "rkraw_rx", 2))
+        HAL_ERROR("rk_aiq", "Failed to pre-initialize buffer!\n");
+
+    if (ret = rk_aiq.fnPreInitScene(snrEnt, "normal", "day"))
+        HAL_ERROR("rk_aiq", "Failed to pre-initialize scene!\n");
+
+    if (!(_rk_aiq_ctx = rk_aiq.fnInit(snrEnt, "/oem/usr/share/iqfiles", NULL, NULL)))
+        HAL_ERROR("rk_aiq", "Failed to initialize!\n");
+
+    if (ret = rk_aiq.fnPrepare(_rk_aiq_ctx, width, height, RK_AIQ_WORK_NORMAL))
+        HAL_ERROR("rk_aiq", "Failed to prepare device!\n");
+
+    if (ret = rk_aiq.fnStart(_rk_aiq_ctx))
+        HAL_ERROR("rk_aiq", "Failed to start device!\n");
 
     {
         rk_vi_dev device;
@@ -312,6 +342,10 @@ void rk_pipeline_destroy(void)
     rk_vi.fnDestroyPipe(_rk_vi_pipe);
 
     rk_vi.fnDisableDevice(_rk_vi_dev);
+
+    rk_aiq.fnStop(_rk_aiq_ctx);
+
+    rk_aiq.fnDeinit(_rk_aiq_ctx);
 }
 
 int rk_region_create(char handle, hal_rect rect, short opacity)
@@ -381,6 +415,37 @@ int rk_region_setbitmap(int handle, hal_bitmap *bitmap)
         .size.height = bitmap->dim.height, .size.width = bitmap->dim.width };
 
     return rk_rgn.fnSetBitmap(handle, &nativeBmp);
+}
+
+int rk_sensor_find_v4l2_endpoint(void)
+{
+    int index = -1;
+
+    for (int i = 0; i < 64; i++)
+    {
+        char path[256];
+        sprintf(path, "/sys/class/video4linux/video%d/name", i);
+
+        FILE* fp = fopen(path, "rb");
+        if (!fp)
+            continue;
+
+        char line[32];
+        fgets(line, 32, fp);
+
+        fclose(fp);
+
+        if (!strncmp(line, "rkisp_mainpath", 14))
+        {
+            index = i;
+            break;
+        }
+    }
+
+    if (index == -1)
+        HAL_ERROR("rk_hal", "Cannot find the corresponding V4L2 ISP device!\n");
+
+    return index;
 }
 
 int rk_video_create(char index, hal_vidconfig *config)
