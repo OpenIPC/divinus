@@ -60,9 +60,11 @@ void *mmap(void *start, size_t len, int prot, int flags, int fd, uint32_t off) {
     return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, off >> 12);
 }
 
+#if !defined(__ARM_PCS_VFP) && !defined(__UCLIBC__)
 void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off) {
     return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, off >> 12);
 }
+#endif
 #else
 void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off) {
     return (void*)syscall(SYS_mmap, start, len, prot, flags, fd, off);
