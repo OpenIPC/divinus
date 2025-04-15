@@ -342,6 +342,17 @@ float hal_temperature_read(void) {
             }
             break;
         }
+        case HAL_PLATFORM_RK:
+        {
+            FILE* file;
+            char line[10] = {0};
+            if (file = fopen("/sys/class/thermal/thermal_zone0/temp", "r")) {
+                fgets(line, 10, file);
+                lastReadTemp = strtof(line, NULL) / 1000.0;
+                fclose(file);
+            }
+            break;
+        }
 #elif defined(__ARM_PCS)
         case HAL_PLATFORM_V2: lastReadTemp = v2_system_readtemp(); break;
         case HAL_PLATFORM_V3: lastReadTemp = v3_system_readtemp(); break;
