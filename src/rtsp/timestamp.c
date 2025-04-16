@@ -112,18 +112,18 @@ static int load_sstarts(void) {
 
 #define TIMEOUT_US 500          // Timeout en microsecondes
 
-static int sockfd = -1;
+static int rcv_sockfd = -1;
 static struct sockaddr_in ground_addr;
 static bool timestamp_enabled = false;
 
-int timestamp_init(char* ip, unsigned int port_rx, unsigned int port_tx)
+int timestamp_init(char* ip, unsigned int port_tx, unsigned int port_rx)
 {
     HAL_INFO("TS", "Initialize timestamp, ip %s , port_rx %i, port_tx %i\n", ip, port_rx, port_tx);
-
+    
     load_sstarts();
 
     // Créer un socket UDP
-    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    if ((rcv_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("Failed to create socket");
         return 1;
     }
@@ -132,20 +132,11 @@ int timestamp_init(char* ip, unsigned int port_rx, unsigned int port_tx)
     memset(&air_addr, 0, sizeof(air_addr));
     air_addr.sin_family = AF_INET;
     air_addr.sin_addr.s_addr = INADDR_ANY;
-    air_addr.sin_port = htons(port_tx);
+    air_addr.sin_port = htons(port_rx);
 
-    if (bind(sockfd, (struct sockaddr *)&air_addr, sizeof(air_addr)) < 0) {
+    if (bind(rcv_sockfd, (struct sockaddr *)&air_addr, sizeof(air_addr)) < 0) {
         perror("Failed to bind socket");
-        close(sockfd);
-        return 1;
-    }
-
-    memset(&ground_addr, 0, sizeof(ground_addr));
-    ground_addr.sin_family = AF_INET;
-    ground_addr.sin_port = htons(port_rx);
-    if (inet_pton(AF_INET, ip, &ground_addr.sin_addr) <= 0) {
-        perror("Invalid address/Address not supported");
-        close(sockfd);
+        close(rcv_sockfd);
         return 1;
     }
 
@@ -233,11 +224,32 @@ void timestamp_venc_finished(void) {
 
 // Helper function to send air_packet_t
 static int send_air_packet(air_packet_t *packet, size_t packet_size) {
-    if (sendto(sockfd, packet, packet_size, 0, (struct sockaddr *)&ground_addr, sizeof(ground_addr)) < 0) {
-        perror("Failed to send packet");
-        return -1;
+    int sockfd;
+    struct sockaddr_in dest_addr;
+    const char *message = "Votre message";
+
+    // Créer un socket UDP
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("Failed to create socket");
+        return 1;
     }
+
+    // Configurer l'adresse de destination
+    memset(&dest_addr, 0, sizeof(dest_addr));
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(12345);
+    inet_pton(AF_INET, "127.0.0.1", &dest_addr.sin_addr);
+
+    // Envoyer le message
+    if (sendto(sockfd, packet, packet_size, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) < 0) {
+        perror("Failed to send message");
+        close(sockfd);
+        return 1;
+    }
+
+    close(sockfd);
     return 0;
+
 }
 
 void timestamp_send_finished(unsigned long frameNb)
@@ -264,9 +276,9 @@ void timestamp_send_finished(unsigned long frameNb)
 
         // Receive response from ground system with timeout
         struct timeval timeout = { .tv_sec = 0, .tv_usec = TIMEOUT_US };
-        setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+        setsockopt(rcv_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-        if (recvfrom(sockfd, &ground_time_ns, sizeof(ground_time_ns), 0, (struct sockaddr *)&ground_addr, &addr_len) < 0) {
+        if (recvfrom(rcv_sockfd, &ground_time_ns, sizeof(ground_time_ns), 0, (struct sockaddr *)&ground_addr, &addr_len) < 0) {
             if (errno == EWOULDBLOCK || errno == EAGAIN) {
                 printf("Receive timeout, setting ground_time_ns to 0\n");
                 ground_time_ns = 0;
@@ -322,7 +334,7 @@ void timestamp_deinit(void)
     if (proc_fd >= 0) {
         close(proc_fd);
     }
-    if (sockfd >= 0) {
-        close(sockfd);
+    if (rcv_sockfd >= 0) {
+        close(rcv_sockfd);
     }
 }

@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
         {
             HAL_ERROR("ts", "TS IP address is not set!\n");
         } 
-        timestamp_init(app_config.ts_ip, app_config.ts_port_rx, app_config.ts_port_tx);
+        timestamp_init(app_config.ts_ip, app_config.ts_port_tx, app_config.ts_port_rx);
         HAL_INFO("ts", "Started timestamping...\n");
     }
     else
