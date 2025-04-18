@@ -279,7 +279,7 @@ void *ts_thread_func(void *arg) {
 
             if (recvfrom(rcv_sockfd, &ground_time_ns, sizeof(ground_time_ns), 0, (struct sockaddr *)&ground_addr, &addr_len) < 0) {
                 if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                    printf("Receive timeout, setting ground_time_ns to 0\n");
+                    //printf("Receive timeout, setting ground_time_ns to 0\n");
                     ground_time_ns = 0;
                 } else {
                     perror("Failed to receive data");
