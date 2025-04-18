@@ -1,6 +1,6 @@
 system:
-  sensor_config: /etc/sensors/imx415.bin
-  server_enable: true
+  sensor_config: /etc/sensors/02gregWDR.bin
+  server_enable: false
   web_port: 80
   web_enable_auth: false
   web_auth_user: admin
@@ -12,18 +12,18 @@ system:
   watchdog: 30
 
 isp:
-  mirror: false
-  flip: false
-  antiflicker: 60
+  mirror: true
+  flip: true
+  antiflicker: 0
 
 osd:
-  enable: true
+  enable: false
 
 mdns:
   enable: false
 
 rtsp:
-  enable: true
+  enable: false
   enable_auth: false
   auth_user: admin
   auth_pass: 12345
@@ -87,7 +87,7 @@ audio:
 
 mp4:
   enable: true
-  codec: H264
+  codec: H265
   mode: CBR
   width: 1920
   height: 1080
@@ -103,7 +103,7 @@ jpeg:
   qfactor: 70
 
 mjpeg:
-  enable: true
+  enable: false
   mode: CBR
   width: 3840
   height: 2160
