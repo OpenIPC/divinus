@@ -192,6 +192,7 @@ void rtp_deinit(void)
 
 void rtp_send_frame_h26x(unsigned long nbNal, NALUnit_t* nals, bool isH265)
 {
+    #if 0
     // Create sei message and send to ground
     static unsigned long frameNb = 0;
     sei_message_t sei;
@@ -213,6 +214,13 @@ void rtp_send_frame_h26x(unsigned long nbNal, NALUnit_t* nals, bool isH265)
     // send timestamps to ground
     timestamp_send_finished(frameNb);
     frameNb++;
+    #else
+    for (size_t i = 0; i < nbNal; i++) {
+        
+        /* do not set NAL header */
+        __transfer_nal_h26x_rtp(nals[i].data + 4, nals[i].size - 4, isH265);
+    }
+    #endif
 }
 
 
