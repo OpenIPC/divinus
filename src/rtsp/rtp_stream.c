@@ -120,7 +120,7 @@ static inline int __transfer_nal_h26x_rtp(unsigned char *nalptr, size_t nalsize,
             payload[0] |= nri;
             payload[1] = pt;
         }
-        payload[head - 1] |= 1 << 7;
+        payload[head - 1] |= 1 << 7; // start bit
 
         /* send fragmented nal */
         while (nalsize > RTP_PACKET_SIZE - head) {
@@ -136,19 +136,18 @@ static inline int __transfer_nal_h26x_rtp(unsigned char *nalptr, size_t nalsize,
             ASSERT(__rtp_send__(&rtp) == SUCCESS, return FAILURE);
 
             /* intended xor. blame vim :( */
-            payload[head - 1] &= 0xFF ^ (1<<7); 
+            payload[head - 1] &= 0xFF ^ (1<<7); // Clear Start bit
         }
 
         /* send trailing nal */
         p_header->m = 1;
 
-        payload[head - 1] |= 1 << 6;
+        payload[head - 1] |= 1 << 6; // end bit
 
         /* intended xor. blame vim :( */
-        payload[head - 1] &= 0xFF ^ (1<<7);
+        payload[head - 1] &= 0xFF ^ (1<<7); // Clear Start bit
 
-        rtp.rtpsize = nalsize + sizeof(rtp_hdr_t);
-
+        rtp.rtpsize = nalsize + sizeof(rtp_hdr_t) + head;
         memcpy(&(payload[head]), nalptr, nalsize);
 
         ASSERT(__rtp_send__(&rtp) == SUCCESS, return FAILURE);
