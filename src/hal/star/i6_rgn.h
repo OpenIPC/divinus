@@ -104,10 +104,35 @@ typedef struct {
     int (*fnSetBitmap)(unsigned int handle, i6_rgn_bmp *bitmap);
 } i6_rgn_impl;
 
+int MI_RGN_DeInit(void);
+int MI_RGN_Init(i6_rgn_pal *palette);
+int MI_RGN_Create(unsigned int handle, i6_rgn_cnf *config);
+int MI_RGN_Destroy(unsigned int handle);
+int MI_RGN_GetAttr(unsigned int handle, i6_rgn_cnf *config);
+int MI_RGN_AttachToChn(unsigned int handle, i6_sys_bind *dest, i6_rgn_chn *config);
+int MI_RGN_DetachFromChn(unsigned int handle, i6_sys_bind *dest);
+int MI_RGN_GetDisplayAttr(unsigned int handle, i6_sys_bind *dest, i6_rgn_chn *config);
+int MI_RGN_SetDisplayAttr(unsigned int handle, i6_sys_bind *dest, i6_rgn_chn *config);
+int MI_RGN_SetBitMap(unsigned int handle, i6_rgn_bmp *bitmap);
+
+
 static int i6_rgn_load(i6_rgn_impl *rgn_lib) {
     if (!(rgn_lib->handle = dlopen("libmi_rgn.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("i6_rgn", "Failed to load library!\nError: %s\n", dlerror());
 
+    rgn_lib->fnDeinit = MI_RGN_DeInit;
+    rgn_lib->fnInit = MI_RGN_Init;
+    rgn_lib->fnCreateRegion = MI_RGN_Create;
+    rgn_lib->fnDestroyRegion = MI_RGN_Destroy;
+    rgn_lib->fnGetRegionConfig = MI_RGN_GetAttr;
+    rgn_lib->fnAttachChannel = MI_RGN_AttachToChn;
+    rgn_lib->fnDetachChannel = MI_RGN_DetachFromChn;
+    rgn_lib->fnGetChannelConfig = MI_RGN_GetDisplayAttr;
+    rgn_lib->fnSetChannelConfig = MI_RGN_SetDisplayAttr;
+    rgn_lib->fnSetBitmap = MI_RGN_SetBitMap;
+
+
+    /*
     if (!(rgn_lib->fnDeinit = (int(*)(void))
         hal_symbol_load("i6_rgn", rgn_lib->handle, "MI_RGN_DeInit")))
         return EXIT_FAILURE;
@@ -147,7 +172,7 @@ static int i6_rgn_load(i6_rgn_impl *rgn_lib) {
     if (!(rgn_lib->fnSetBitmap = (int(*)(unsigned int handle, i6_rgn_bmp *bitmap))
         hal_symbol_load("i6_rgn", rgn_lib->handle, "MI_RGN_SetBitMap")))
         return EXIT_FAILURE;
-
+    */
     return EXIT_SUCCESS;
 }
 

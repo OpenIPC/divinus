@@ -90,10 +90,37 @@ typedef struct {
     int (*fnSetOrien)(unsigned int sensor, unsigned char mirror, unsigned char flip);
 } i6_snr_impl;
 
+int MI_SNR_Disable(unsigned int sensor);
+int MI_SNR_Enable(unsigned int sensor);
+int MI_SNR_SetFps(unsigned int sensor, unsigned int framerate);
+int MI_SNR_GetPadInfo(unsigned int sensor, i6_snr_pad *info);
+int MI_SNR_GetPlaneInfo(unsigned int sensor, unsigned int index, i6_snr_plane *info);
+int MI_SNR_SetPlaneMode(unsigned int sensor, unsigned char active);
+int MI_SNR_GetCurRes(unsigned int sensor, unsigned char *index, i6_snr_res *resolution);
+int MI_SNR_GetRes(unsigned int sensor, unsigned char index, i6_snr_res *resolution);
+int MI_SNR_QueryResCount(unsigned int sensor, unsigned int *count);
+int MI_SNR_SetRes(unsigned int sensor, unsigned char index);
+int MI_SNR_SetOrien(unsigned int sensor, unsigned char mirror, unsigned char flip);
+
+
 static int i6_snr_load(i6_snr_impl *snr_lib) {
     if (!(snr_lib->handle = dlopen("libmi_sensor.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("i6_snr", "Failed to load library!\nError: %s\n", dlerror());
+    
+    snr_lib->fnDisable = MI_SNR_Disable;
+    snr_lib->fnEnable = MI_SNR_Enable;
+    snr_lib->fnSetFramerate = MI_SNR_SetFps;
+    snr_lib->fnGetPadInfo = MI_SNR_GetPadInfo;
+    snr_lib->fnGetPlaneInfo = MI_SNR_GetPlaneInfo;
+    snr_lib->fnSetPlaneMode = MI_SNR_SetPlaneMode;
+    snr_lib->fnCurrentResolution = MI_SNR_GetCurRes;
+    snr_lib->fnGetResolution = MI_SNR_GetRes;
+    snr_lib->fnGetResolutionCount = MI_SNR_QueryResCount;
+    snr_lib->fnSetResolution = MI_SNR_SetRes;
+    snr_lib->fnSetOrien = MI_SNR_SetOrien;
 
+    
+    /*
     if (!(snr_lib->fnDisable = (int(*)(unsigned int sensor))
         hal_symbol_load("i6_snr", snr_lib->handle, "MI_SNR_Disable")))
         return EXIT_FAILURE;
@@ -137,7 +164,7 @@ static int i6_snr_load(i6_snr_impl *snr_lib) {
     if (!(snr_lib->fnSetOrien = (int(*)(unsigned int sensor, unsigned char mirror, unsigned char flip))
         hal_symbol_load("i6_snr", snr_lib->handle, "MI_SNR_SetOrien")))
         return EXIT_FAILURE;
-        
+    */       
 
     return EXIT_SUCCESS;
 }

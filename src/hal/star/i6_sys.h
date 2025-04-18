@@ -83,9 +83,29 @@ typedef struct {
     int (*fnUnbind)(i6_sys_bind *source, i6_sys_bind *dest);
 } i6_sys_impl;
 
+int MI_SYS_Exit(void);
+int MI_SYS_GetVersion(i6_sys_ver *version);
+int MI_SYS_Init(void);
+int MI_SYS_BindChnPort(i6_sys_bind *source, i6_sys_bind *dest,
+    unsigned int srcFps, unsigned int dstFps);
+int MI_SYS_BindChnPort2(i6_sys_bind *source, i6_sys_bind *dest, unsigned int srcFps,
+    unsigned int dstFps, i6_sys_link link, unsigned int linkParam);
+int MI_SYS_SetChnOutputPortDepth(i6_sys_bind *bind, unsigned int usrDepth, unsigned int bufDepth);
+int MI_SYS_UnBindChnPort(i6_sys_bind *source, i6_sys_bind *dest);
+
 static int i6_sys_load(i6_sys_impl *sys_lib) {
     sys_lib->handleCamOsWrapper = dlopen("libcam_os_wrapper.so", RTLD_LAZY | RTLD_GLOBAL);
-
+  
+    
+    sys_lib->fnExit = MI_SYS_Exit;
+    sys_lib->fnGetVersion = MI_SYS_GetVersion;
+    sys_lib->fnInit = MI_SYS_Init;
+    sys_lib->fnBind = MI_SYS_BindChnPort;
+    sys_lib->fnBindExt = MI_SYS_BindChnPort2;
+    sys_lib->fnSetOutputDepth = MI_SYS_SetChnOutputPortDepth;
+    sys_lib->fnUnbind = MI_SYS_UnBindChnPort;
+    
+    /*
     if (!(sys_lib->handle = dlopen("libmi_sys.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("i6_sys", "Failed to load library!\nError: %s\n", dlerror());
 
@@ -118,7 +138,7 @@ static int i6_sys_load(i6_sys_impl *sys_lib) {
     if (!(sys_lib->fnUnbind = (int(*)(i6_sys_bind *source, i6_sys_bind *dest))
         hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_UnBindChnPort")))
         return EXIT_FAILURE;
-
+*/
     return EXIT_SUCCESS;
 }
 
