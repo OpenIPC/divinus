@@ -48,6 +48,7 @@ typedef struct {
     int (*fnDestroyGroup)(int group);
     int (*fnResetGroup)(int group);
     int (*fnSetGroupConfig)(int channel, rk_vpss_grp *config);
+    int (*fnSetGroupDevice)(int group, int gpuOrRga);
     int (*fnStartGroup)(int group);
     int (*fnStopGroup)(int group);
 
@@ -76,6 +77,10 @@ static int rk_vpss_load(rk_vpss_impl *vpss_lib) {
         hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_SetGrpAttr")))
         return EXIT_FAILURE;
 
+    if (!(vpss_lib->fnSetGroupDevice = (int(*)(int group, int gpuOrRga))
+        hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_SetVProcDev")))
+        return EXIT_FAILURE;
+
     if (!(vpss_lib->fnStartGroup = (int(*)(int group))
         hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_StartGrp")))
         return EXIT_FAILURE;
@@ -95,7 +100,6 @@ static int rk_vpss_load(rk_vpss_impl *vpss_lib) {
     if (!(vpss_lib->fnSetChannelConfig = (int(*)(int group, int channel, rk_vpss_chn *config))
         hal_symbol_load("rk_vpss", vpss_lib->handle, "RK_MPI_VPSS_SetChnAttr")))
         return EXIT_FAILURE;
-
 
     return EXIT_SUCCESS;
 }

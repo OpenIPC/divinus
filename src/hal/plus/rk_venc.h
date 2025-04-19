@@ -222,7 +222,7 @@ typedef struct {
 } rk_venc_packinfo;
 
 typedef struct {
-    unsigned char __attribute__((aligned (4)))*data;
+    void* __attribute__((aligned (4)))mbBlk;
     unsigned int __attribute__((aligned (4)))length;
     unsigned long long timestamp;
     int endFrame;
@@ -354,6 +354,7 @@ typedef struct {
     int (*fnGetChannelParam)(int channel, rk_venc_para *config);
     int (*fnDestroyChannel)(int channel);
     int (*fnResetChannel)(int channel);
+    int (*fnSetChannelBufferShare)(int channel, int *enable);
     int (*fnSetChannelBufferWrap)(int channel, rk_venc_buf *config);
     int (*fnSetChannelConfig)(int channel, rk_venc_chn *config);
     int (*fnSetChannelParam)(int channel, rk_venc_para *config);
@@ -397,6 +398,10 @@ static int rk_venc_load(rk_venc_impl *venc_lib) {
 
     if (!(venc_lib->fnResetChannel = (int(*)(int channel))
         hal_symbol_load("rk_venc", venc_lib->handle, "RK_MPI_VENC_ResetChn")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnSetChannelBufferShare = (int(*)(int channel, int *enable))
+        hal_symbol_load("rk_venc", venc_lib->handle, "RK_MPI_VENC_SetChnRefBufShareAttr")))
         return EXIT_FAILURE;
 
     if (!(venc_lib->fnSetChannelBufferWrap = (int(*)(int channel, rk_venc_buf *config))

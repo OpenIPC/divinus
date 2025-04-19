@@ -3,6 +3,7 @@
 #include "rk_common.h"
 #include "rk_aiq.h"
 #include "rk_aud.h"
+#include "rk_mb.h"
 #include "rk_rgn.h"
 #include "rk_sys.h"
 #include "rk_venc.h"
@@ -31,11 +32,9 @@ int rk_audio_init(int samplerate);
 void *rk_audio_thread(void);
 
 int rk_channel_bind(char index);
-int rk_channel_create(char index, short width, short height, char mirror, char flip, char framerate);
+int rk_channel_create(char index, short width, short height, char mirror, char flip);
 int rk_channel_grayscale(char enable);
 int rk_channel_unbind(char index);
-
-void *rk_image_thread(void);
 
 int rk_pipeline_create(short width, short height);
 void rk_pipeline_destroy(void);

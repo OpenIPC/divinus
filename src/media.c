@@ -218,6 +218,7 @@ void request_idr(void) {
         case HAL_PLATFORM_I6:  i6_video_request_idr(index); break;
         case HAL_PLATFORM_I6C: i6c_video_request_idr(index); break;
         case HAL_PLATFORM_M6:  m6_video_request_idr(index); break;
+        case HAL_PLATFORM_RK:  rk_video_request_idr(index); break;
 #elif defined(__ARM_PCS)
         case HAL_PLATFORM_AK:  ak_video_request_idr(index); break;
         case HAL_PLATFORM_GM:  gm_video_request_idr(index); break;
@@ -241,6 +242,7 @@ void set_grayscale(bool active) {
         case HAL_PLATFORM_I6:  i6_channel_grayscale(active); break;
         case HAL_PLATFORM_I6C: i6c_channel_grayscale(active); break;
         case HAL_PLATFORM_M6:  m6_channel_grayscale(active); break;
+        case HAL_PLATFORM_RK:  rk_channel_grayscale(active); break;
 #elif defined(__ARM_PCS)
         case HAL_PLATFORM_AK:  ak_channel_grayscale(active); break;
         case HAL_PLATFORM_V1:  v1_channel_grayscale(active); break;
@@ -279,7 +281,7 @@ int create_channel(char index, short width, short height, char framerate, char j
         case HAL_PLATFORM_M6:  return m6_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_RK:  return rk_channel_create(index, width, height,
-            app_config.mirror, app_config.flip, framerate);
+            app_config.mirror, app_config.flip);
 #elif defined(__ARM_PCS)
         case HAL_PLATFORM_AK:  return EXIT_SUCCESS;
         case HAL_PLATFORM_GM:  return EXIT_SUCCESS;

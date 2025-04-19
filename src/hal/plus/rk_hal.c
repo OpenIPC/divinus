@@ -4,6 +4,7 @@
 
 rk_aiq_impl     rk_aiq;
 rk_aud_impl     rk_aud;
+rk_mb_impl      rk_mb;
 rk_rgn_impl     rk_rgn;
 rk_sys_impl     rk_sys;
 rk_venc_impl    rk_venc;
@@ -32,6 +33,7 @@ void rk_hal_deinit(void)
     rk_vi_unload(&rk_vi);
     rk_venc_unload(&rk_venc);
     rk_rgn_unload(&rk_rgn);
+    rk_mb_unload(&rk_mb);
     rk_aud_unload(&rk_aud);
     rk_aiq_unload(&rk_aiq);
     rk_sys_unload(&rk_sys);
@@ -46,6 +48,8 @@ int rk_hal_init(void)
     if (ret = rk_aiq_load(&rk_aiq))
         return ret;
     if (ret = rk_aud_load(&rk_aud))
+        return ret;
+    if (ret = rk_mb_load(&rk_mb))
         return ret;
     if (ret = rk_rgn_load(&rk_rgn))
         return ret;
@@ -115,7 +119,7 @@ void *rk_audio_thread(void)
         if (rk_aud_cb) {
             hal_audframe outFrame;
             outFrame.channelCnt = 1;
-            outFrame.data[0] = (char*)frame.mbBlk;
+            outFrame.data[0] = rk_mb.fnGetData(frame.mbBlk);
             outFrame.length[0] = frame.length;
             outFrame.seq = frame.sequence;
             outFrame.timestamp = frame.timestamp;
@@ -150,22 +154,24 @@ int rk_channel_bind(char index)
     return EXIT_SUCCESS;
 }
 
-int rk_channel_create(char index, short width, short height, char mirror, char flip, char framerate)
+int rk_channel_create(char index, short width, short height, char mirror, char flip)
 {
     int ret;
 
     {
         rk_vpss_chn channel;
         memset(&channel, 0, sizeof(channel));
+        channel.chnMode = RK_VPSS_CMODE_AUTO;
         channel.dest.width = width;
         channel.dest.height = height;
         channel.pixFmt = RK_PIXFMT_YUV420SP;
         channel.hdr = RK_HDR_SDR8;
-        channel.srcFps = framerate;
-        channel.dstFps = framerate;
+        channel.srcFps = -1;
+        channel.dstFps = -1;
         channel.mirror = mirror;
         channel.flip = flip;
         channel.depth = 0;
+        channel.privFrmBufCnt = 1;
         if (ret = rk_vpss.fnSetChannelConfig(_rk_vpss_grp, index, &channel))
             return ret;
     }
@@ -211,7 +217,7 @@ int rk_channel_unbind(char index)
 
 int rk_pipeline_create(short width, short height)
 {
-    int fd, ret, v4l2dev = rk_sensor_find_v4l2_endpoint();
+    int ret, v4l2dev = rk_sensor_find_v4l2_endpoint();
     char endpoint[32];
 
     if (v4l2dev < 0)
@@ -238,32 +244,14 @@ int rk_pipeline_create(short width, short height)
     if (ret = rk_aiq.fnStart(_rk_aiq_ctx))
         HAL_ERROR("rk_aiq", "Failed to start device!\n");
 
-    {
-        rk_vi_dev device;
-        memset(&device, 0, sizeof(device));
-
-        if (rk_vi.fnGetDeviceConfig(_rk_vi_dev, &device) == 0xa0088007)
-            if (ret = rk_vi.fnSetDeviceConfig(_rk_vi_dev, &device))
-                return ret;
-    }
     if (ret = rk_vi.fnEnableDevice(_rk_vi_dev))
         return ret;
-
-    {
-        rk_vi_pipe pipe;
-        memset(&pipe, 0, sizeof(pipe));
-        if (ret = rk_vi.fnCreatePipe(_rk_vi_pipe, &pipe))
-            return ret;
-        if (ret = rk_vi.fnStartPipe(_rk_vi_pipe))
-            return ret;
-    }
 
     {
         rk_vi_bind bind;
         memset(&bind, 0, sizeof(bind));
         bind.num = 1;
         bind.pipeId[0] = _rk_vi_pipe;
-        bind.userStarted[0] = 1;
         if (ret = rk_vi.fnBindPipe(_rk_vi_dev, &bind))
             return ret;
     }
@@ -278,11 +266,10 @@ int rk_pipeline_create(short width, short height)
         channel.depth = 0;
         channel.srcFps = -1;
         channel.dstFps = -1;
-        channel.ispOpts.bufCount = 1;
+        channel.ispOpts.bufCount = 2;
         channel.ispOpts.bufSize = width * height * 3 / 2;
         channel.ispOpts.vidCap = RK_VI_VCAP_VIDEO_MPLANE;
         channel.ispOpts.vidMem = RK_VI_VMEM_DMABUF;
-        channel.bufType = RK_VI_BUF_INTERNAL;
         strcpy(channel.ispOpts.entityName, "rkisp_mainpath");
         if (ret = rk_vi.fnSetChannelConfig(_rk_vi_pipe, _rk_vi_chn, &channel))
             return ret;
@@ -300,6 +287,8 @@ int rk_pipeline_create(short width, short height)
         group.dstFps = -1;
         group.compress = RK_COMPR_NONE;
         if (ret = rk_vpss.fnCreateGroup(_rk_vpss_grp, &group))
+            return ret;
+        if (ret = rk_vpss.fnSetGroupDevice(_rk_vpss_grp, 1))
             return ret;
     }
     if (ret = rk_vpss.fnStartGroup(_rk_vpss_grp))
@@ -337,9 +326,6 @@ void rk_pipeline_destroy(void)
     }
     
     rk_vi.fnDisableChannel(_rk_vi_pipe, _rk_vi_chn);
-
-    rk_vi.fnStopPipe(_rk_vi_pipe);
-    rk_vi.fnDestroyPipe(_rk_vi_pipe);
 
     rk_vi.fnDisableDevice(_rk_vi_dev);
 
@@ -427,12 +413,10 @@ int rk_sensor_find_v4l2_endpoint(void)
         sprintf(path, "/sys/class/video4linux/video%d/name", i);
 
         FILE* fp = fopen(path, "rb");
-        if (!fp)
-            continue;
+        if (!fp) continue;
 
         char line[32];
         fgets(line, 32, fp);
-
         fclose(fp);
 
         if (!strncmp(line, "rkisp_mainpath", 14))
@@ -551,20 +535,24 @@ int rk_video_create(char index, hal_vidconfig *config)
                 HAL_ERROR("rk_venc", "H.264 encoder does not support this mode!");
         }
     } else HAL_ERROR("rk_venc", "This codec is not supported by the hardware!");
-    channel.attrib.maxPic.width = ALIGN_UP(config->width, 64);
-    channel.attrib.maxPic.height = ALIGN_UP(config->height, 64);
+
     channel.attrib.pixFmt = RK_PIXFMT_YUV420SP;
-    channel.attrib.mirror = RK_MIRR_NONE;
-    channel.attrib.bufSize = ALIGN_UP(config->height * config->width * 3 / 2, 64);
+    channel.attrib.bufSize = config->height * config->width * 3 / 2;
     channel.attrib.byFrame = 1;
     channel.attrib.pic.width = config->width;
     channel.attrib.pic.height = config->height;
-    channel.attrib.vir.width = (config->width + 15) & ~15;
-    channel.attrib.vir.height = (config->height + 15) & ~15;
+    channel.attrib.vir.width = config->width;
+    channel.attrib.vir.height = config->height;
     channel.attrib.strmBufCnt = 2;
 
     if (ret = rk_venc.fnCreateChannel(index, &channel))
         return ret;
+
+    {
+        int enable = 1;
+        if (ret = rk_venc.fnSetChannelBufferShare(index, &enable))
+        return ret;
+    }
 
     {
         int count = -1;
@@ -676,7 +664,7 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         }
         strm.count = stat.curPacks;
 
-        if (ret = rk_venc.fnGetStream(index, &strm, stat.curPacks)) {
+        if (ret = rk_venc.fnGetStream(index, &strm, 40)) {
             HAL_DANGER("rk_venc", "Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
             free(strm.packet);
@@ -689,7 +677,7 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
             for (unsigned int i = 0; i < strm.count; i++) {
                 rk_venc_pack *pack = &strm.packet[i];
                 unsigned int packLen = pack->length - pack->offset;
-                unsigned char *packData = pack->data + pack->offset;
+                unsigned char *packData = rk_mb.fnGetData(pack->mbBlk) + pack->offset;
 
                 unsigned int newLen = jpeg->jpegSize + packLen;
                 if (newLen > jpeg->length) {
@@ -763,7 +751,7 @@ void *rk_video_thread(void)
                 if (FD_ISSET(rk_state[i].fileDesc, &readFds)) {
                     memset(&stream, 0, sizeof(stream));
                     
-                    if (ret = rk_venc.fnQuery(i, &stat)) {
+                    /*if (ret = rk_venc.fnQuery(i, &stat)) {
                         HAL_DANGER("rk_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
                         break;
@@ -772,7 +760,7 @@ void *rk_video_thread(void)
                     if (!stat.curPacks) {
                         HAL_INFO("rk_venc", "Current frame is empty, skipping it!\n");
                         continue;
-                    }
+                    }*/stat.curPacks = 1;
 
                     stream.packet = (rk_venc_pack*)malloc(
                         sizeof(rk_venc_pack) * stat.curPacks);
@@ -785,7 +773,7 @@ void *rk_video_thread(void)
                     if (ret = rk_venc.fnGetStream(i, &stream, 40)) {
                         HAL_DANGER("rk_venc", "Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
-                        break;
+                        goto free;
                     }
 
                     if (rk_vid_cb) {
@@ -795,20 +783,35 @@ void *rk_video_thread(void)
                         outStrm.seq = stream.sequence;
                         for (int j = 0; j < stream.count; j++) {
                             rk_venc_pack *pack = &stream.packet[j];
-                            outPack[j].data = pack->data;
+                            outPack[j].data = rk_mb.fnGetData(pack->mbBlk);
                             outPack[j].length = pack->length;
-                            outPack[j].naluCnt = 1;
+                            outPack[j].naluCnt = 0;
                             outPack[j].nalu[0].length = pack->length;
-                            outPack[j].nalu[0].offset = pack->offset;
+                            outPack[j].nalu[0].offset = 0;
                             switch (rk_state[i].payload) {
                                 case HAL_VIDCODEC_H264:
-                                    outPack[j].nalu[0].type = pack->naluType.h264Nalu;
+                                    if (pack->naluType.h264Nalu != RK_VENC_NALU_H264_IDRSLICE) {
+                                        signed char n = 0;
+                                        for (unsigned int p = 0; p < outPack[j].length - 4; p++) {
+                                            if (outPack[j].data[p] || outPack[j].data[p + 1] ||
+                                                outPack[j].data[p + 2] || outPack[j].data[p + 3] != 1) continue;
+                                            outPack[0].nalu[n].type = outPack[j].data[p + 4] & 0x1F;
+                                            outPack[0].nalu[n++].offset = p;
+                                        }
+                                        outPack[0].naluCnt = n;
+                                        outPack[0].nalu[n].offset = pack->length;
+                                        for (n = 0; n < outPack[0].naluCnt; n++)
+                                            outPack[0].nalu[n].length = 
+                                                outPack[0].nalu[n + 1].offset -
+                                                outPack[0].nalu[n].offset;
+                                    }
+                                    else outPack[j].nalu[++outPack[j].naluCnt].type = pack->naluType.h264Nalu;
                                     break;
                                 case HAL_VIDCODEC_H265:
-                                    outPack[j].nalu[0].type = pack->naluType.h265Nalu;
+                                    outPack[j].nalu[++outPack[j].naluCnt].type = pack->naluType.h265Nalu;
                                     break;
                             }
-                            outPack[j].offset = pack->offset;
+                            outPack[j].offset = 0;
                             outPack[j].timestamp = pack->timestamp;
                         }
                         outStrm.pack = outPack;
@@ -819,6 +822,7 @@ void *rk_video_thread(void)
                         HAL_DANGER("rk_venc", "Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
+free:
                     free(stream.packet);
                     stream.packet = NULL;
                 }
