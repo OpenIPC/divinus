@@ -1194,11 +1194,14 @@ void respond_request(http_request_t *req) {
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
                 if (EQUALS(key, "img"))
-                    strcpy(osds[id].img, value);
+                    strncpy(osds[id].img, value,
+                        sizeof(osds[id].img) - 1);
                 else if (EQUALS(key, "font"))
-                    strcpy(osds[id].font, !EMPTY(value) ? value : DEF_FONT);
+                    strncpy(osds[id].font, !EMPTY(value) ? value : DEF_FONT,
+                        sizeof(osds[id].font) - 1);
                 else if (EQUALS(key, "text"))
-                    strcpy(osds[id].text, value);
+                    strncpy(osds[id].text, value,
+                        sizeof(osds[id].text) - 1);
                 else if (EQUALS(key, "size")) {
                     double result = strtod(value, &remain);
                     if (remain == value) continue;

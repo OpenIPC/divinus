@@ -491,7 +491,7 @@ int cvi_sensor_init(char *name, char *obj)
 {
     char path[128];
     char* dirs[] = {"%s", "./%s", "/usr/lib/sensors/%s", "/usr/lib/%s",
-        "/mnt/system/lib/%s", "/mnt/system/lib/libsns_full.so"};
+        "/mnt/system/lib/%s", "/mnt/system/lib/libsns_full.so", NULL};
     char **dir = dirs;
 
     while (*dir) {

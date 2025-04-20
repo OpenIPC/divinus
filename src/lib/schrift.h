@@ -77,7 +77,7 @@ struct SFT_Image
 	int   height;
 };
 
-extern void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off);
+extern void *__mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off);
 
 const char *sft_version(void);
 

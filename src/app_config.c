@@ -283,7 +283,7 @@ enum ConfigError parse_app_config(void) {
         goto RET_ERR;
     parse_param_value(&ini, "system", "time_format", timefmt);
     if (EMPTY(timefmt))
-        strcpy(timefmt, DEF_TIMEFMT);
+        strncpy(timefmt, DEF_TIMEFMT, sizeof(timefmt) - 1);
     parse_int(&ini, "system", "watchdog", 0, INT_MAX, &app_config.watchdog);
 
     err =

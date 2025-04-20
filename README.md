@@ -33,7 +33,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | Hi3519V100[^10]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3519AV100             | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3559AV100             | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| RV11xx[^11]             | ↻            | ↻            | ✔️          | ✔️          | ↻                 |
+| RV11xx[^11]             | ↻            | ✔️           | ✔️          | ✔️          | ↻                 |
 | T31 series              | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | infinity3[^12]          | ↻            | ↻            | ↻           | ↻           | ↻                 |
 | infinity6[^13]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |

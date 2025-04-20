@@ -419,7 +419,7 @@ int rk_sensor_find_v4l2_endpoint(void)
         fgets(line, 32, fp);
         fclose(fp);
 
-        if (!strncmp(line, "rkisp_mainpath", 14))
+        if (EQUALS(line, "rkisp_mainpath"))
         {
             index = i;
             break;

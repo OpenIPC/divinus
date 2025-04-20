@@ -333,7 +333,7 @@ void *region_thread(void) {
         osds[id].posx = DEF_POSX;
         osds[id].posy = DEF_POSY + (DEF_SIZE * 3 / 2) * id;
         osds[id].updt = 0;
-        strcpy(osds[id].font, DEF_FONT);
+        strncpy(osds[id].font, DEF_FONT, sizeof(osds[id].font) - 1);
         osds[id].text[0] = '\0';
         osds[id].img[0] = '\0';
     }
@@ -343,7 +343,7 @@ void *region_thread(void) {
             if (!EMPTY(osds[id].text))
             {
                 char out[80];
-                strcpy(out, osds[id].text);
+                strncpy(out, osds[id].text, sizeof(out) - 1);
                 if (strstr(out, "$"))
                 {
                     region_fill_formatted(out);
@@ -352,17 +352,18 @@ void *region_thread(void) {
 
                 if (osds[id].updt) {
                     char font[256];
-                    char* dirs[] = {
+                    char *dirs[] = {
+                        "/usr/local/share/fonts",
                         "/usr/share/fonts/truetype",
                         "/usr/share/fonts",
-                        "/usr/local/share/fonts"};
+                        ".",
+                        NULL};
                     char **dir = dirs;
                     while (*dir) {
                         sprintf(font, "%s/%s.ttf", *dir, osds[id].font);
                         if (!access(font, F_OK)) goto found_font;
-                        sprintf(font, "%s/%s2.ttf", *dir, osds[id].font);
+                        sprintf(font, "%s/%s2.ttf", *dir++, osds[id].font);
                         if (!access(font, F_OK)) goto found_font;
-                        *dir++;
                     }
                     HAL_DANGER("region", "Font \"%s\" not found!\n", osds[id].font);
                     continue;
@@ -424,7 +425,7 @@ found_font:;
                 char img[64];
                 if (EMPTY(osds[id].img))
                     sprintf(img, "/tmp/osd%d.bmp", id);
-                else strcpy(img, osds[id].img);
+                else strncpy(img, osds[id].img, sizeof(osds[id].img) - 1);
                 if (!access(img, F_OK))
                 {
                     hal_bitmap bitmap;

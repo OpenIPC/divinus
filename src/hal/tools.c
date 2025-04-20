@@ -486,11 +486,11 @@ void unescape_uri(char *uri) {
     char *src = uri;
     char *dst = uri;
 
-    while (*src && !isspace((int)(*src)) && (*src != '%'))
+    while (*src && !alt_isspace((int)(*src)) && (*src != '%'))
         src++;
 
     dst = src;
-    while (*src && !isspace((int)(*src)))
+    while (*src && !alt_isspace((int)(*src)))
     {
         *dst++ = (*src == '+') ? ' ' :
                  ((*src == '%') && src[1] && src[2]) ?

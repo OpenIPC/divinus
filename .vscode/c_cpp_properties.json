@@ -49,16 +49,16 @@
         "compilerPath": "toolchain/toolchain.sigmastar-infinity6e/bin/arm-openipc-linux-gnueabihf-gcc",
         "cStandard": "c11"
       },{
-        "name": "armhf-uclibc",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS_VFP"],
-        "compilerPath": "toolchain/toolchain.rockchip-rv11xx/bin/arm-rockchip830-linux-uclibcgnueabihf-gcc",
-        "cStandard": "c11"
-      },{
         "name": "armhf-musl",
         "includePath": ["${workspaceFolder}/**"],
         "defines": ["__arm__", "__ARM_PCS_VFP"],
         "compilerPath": "toolchain/toolchain.sigmastar-infinity6/bin/arm-openipc-linux-musleabihf-gcc",
+        "cStandard": "c11"
+      },{
+        "name": "armhf-uclibc",
+        "includePath": ["${workspaceFolder}/**"],
+        "defines": ["__arm__", "__ARM_PCS_VFP"],
+        "compilerPath": "toolchain/toolchain.rockchip-rv11xx/bin/arm-rockchip830-linux-uclibcgnueabihf-gcc",
         "cStandard": "c11"
       },{
         "name": "mips-musl",
