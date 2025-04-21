@@ -28,6 +28,7 @@ typedef struct {
     unsigned long long ispframedone_timestamp;
     unsigned long long vencdone_timestamp;
     unsigned long long one_way_delay_ns;
+    unsigned long long air_time_ns;
 } air_timestamp_buffer_t;
 static air_timestamp_buffer_t timestamps;
 
@@ -321,6 +322,10 @@ void *ts_thread_func(void *arg) {
             timestamp_packet.data.air_timestamps.ispframedone_timestamp = htonll(timestamps.ispframedone_timestamp);
             timestamp_packet.data.air_timestamps.vencdone_timestamp = htonll(timestamps.vencdone_timestamp);
             timestamp_packet.data.air_timestamps.one_way_delay_ns = htonll(timestamps.one_way_delay_ns);
+
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            air_time_ns = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+            timestamp_packet.data.air_timestamps.air_time_ns = htonll(air_time_ns);
 
             send_air_packet(&timestamp_packet, sizeof(timestamp_packet));
         }
