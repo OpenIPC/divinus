@@ -116,7 +116,7 @@ static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned c
         /* intended xor. blame vim :( */
         payload[head - 1] &= 0xFF ^ (1<<7);
 
-        rtp.rtpsize = nalsize + sizeof(rtp_hdr_t);
+        rtp.rtpsize = nalsize + sizeof(rtp_hdr_t) + head;
 
         memcpy(&(payload[head]), nalptr, nalsize);
 

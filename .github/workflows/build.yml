@@ -17,7 +17,7 @@ jobs:
 
       - name: Build
         run: |
-          list="arm-glibc arm-musl3 arm-musl4 arm9-musl3 arm9-musl4 arm9-uclibc armhf-glibc armhf-musl mips-musl"
+          list="arm-glibc arm-musl3 arm-musl4 arm9-musl3 arm9-musl4 arm9-uclibc armhf-glibc armhf-musl armhf-uclibc mips-musl"
           for lib in $list; do
             sh build.sh $lib
             zip $lib divinus*

@@ -614,15 +614,15 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 {
     int ret;
 
-    if (ret = rk_channel_bind(index)) {
-        HAL_DANGER("rk_venc", "Binding the encoder channel "
+    unsigned int count = 1;
+    if (rk_venc.fnStartReceivingEx(index, &count)) {
+        HAL_DANGER("rk_venc", "Requesting one frame "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
-    unsigned int count = 1;
-    if (rk_venc.fnStartReceivingEx(index, &count)) {
-        HAL_DANGER("rk_venc", "Requesting one frame "
+    if (ret = rk_channel_bind(index)) {
+        HAL_DANGER("rk_venc", "Binding the encoder channel "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
@@ -644,7 +644,7 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
     if (FD_ISSET(fd, &readFds)) {
         rk_venc_stat stat;
-        if (rk_venc.fnQuery(index, &stat)) {
+        /*if (rk_venc.fnQuery(index, &stat)) {
             HAL_DANGER("rk_venc", "Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
@@ -653,7 +653,7 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         if (!stat.curPacks) {
             HAL_DANGER("rk_venc", "Current frame is empty, skipping it!\n");
             goto abort;
-        }
+        }*/stat.curPacks = 1;
 
         rk_venc_strm strm;
         memset(&strm, 0, sizeof(strm));
@@ -667,8 +667,6 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         if (ret = rk_venc.fnGetStream(index, &strm, 40)) {
             HAL_DANGER("rk_venc", "Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
-            free(strm.packet);
-            strm.packet = NULL;
             goto abort;
         }
 
@@ -689,15 +687,19 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
             }
         }
 
-abort:
         rk_venc.fnFreeStream(index, &strm);
+    abort:
+        if (strm.packet) {
+            free(strm.packet);
+            strm.packet = NULL;
+        }
     }
 
     rk_venc.fnFreeDescriptor(index);
 
-    rk_venc.fnStopReceiving(index);
-
     rk_channel_unbind(index);
+
+    rk_venc.fnStopReceiving(index);
 
     return ret;
 }
@@ -823,8 +825,10 @@ void *rk_video_thread(void)
                             "channel %d failed with %#x!\n", i, ret);
                     }
 free:
-                    free(stream.packet);
-                    stream.packet = NULL;
+                    if (stream.packet) {
+                        free(stream.packet);
+                        stream.packet = NULL;
+                    }
                 }
             }
         }
