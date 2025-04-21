@@ -353,10 +353,11 @@ void *region_thread(void) {
                 if (osds[id].updt) {
                     char font[256];
                     char *dirs[] = {
+                        ".",
+                        "/oem/usr/share",
                         "/usr/local/share/fonts",
                         "/usr/share/fonts/truetype",
                         "/usr/share/fonts",
-                        ".",
                         NULL};
                     char **dir = dirs;
                     while (*dir) {

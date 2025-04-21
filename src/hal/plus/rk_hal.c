@@ -348,7 +348,6 @@ int rk_region_create(char handle, hal_rect rect, short opacity)
     region.overlay.pixFmt = RK_PIXFMT_ARGB1555;
     region.overlay.size.width = rect.width;
     region.overlay.size.height = rect.height;
-    region.overlay.canvas = handle + 1;
 
     if (rk_rgn.fnGetRegionConfig(handle, &regionCurr)) {
         HAL_INFO("rk_rgn", "Creating region %d...\n", handle);
@@ -398,7 +397,8 @@ void rk_region_destroy(char handle)
 int rk_region_setbitmap(int handle, hal_bitmap *bitmap)
 {
     rk_rgn_bmp nativeBmp = { .data = bitmap->data, .pixFmt = RK_PIXFMT_ARGB1555,
-        .size.height = bitmap->dim.height, .size.width = bitmap->dim.width };
+        .size.height = bitmap->dim.height,
+        .size.width = bitmap->dim.width };
 
     return rk_rgn.fnSetBitmap(handle, &nativeBmp);
 }
