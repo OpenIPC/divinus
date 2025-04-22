@@ -218,7 +218,7 @@ int rk_channel_unbind(char index)
 int rk_pipeline_create(short width, short height)
 {
     int ret, v4l2dev = rk_sensor_find_v4l2_endpoint();
-    char endpoint[32];
+    char endpoint[32], *snrStart, *snrEnd;
 
     if (v4l2dev < 0)
         HAL_ERROR("rk_hal", "Failed to find sensor endpoint!\n");
@@ -228,6 +228,9 @@ int rk_pipeline_create(short width, short height)
     const char *snrEnt = rk_aiq.fnGetSensorFromV4l2(endpoint);
     if (!snrEnt)
         HAL_ERROR("rk_aiq", "Failed to get the sensor entity name!\n");
+    else if ((snrStart = strrchr(snrEnt, '_')) &&
+        (snrEnd = strchr(snrStart, ' ')) && snrEnd > ++snrStart)
+        snprintf(sensor, snrEnd - snrStart + 1, "%s", snrStart);
 
     if (ret = rk_aiq.fnPreInitBuf(snrEnt, "rkraw_rx", 2))
         HAL_ERROR("rk_aiq", "Failed to pre-initialize buffer!\n");
@@ -419,7 +422,7 @@ int rk_sensor_find_v4l2_endpoint(void)
         fgets(line, 32, fp);
         fclose(fp);
 
-        if (EQUALS(line, "rkisp_mainpath"))
+        if (CONTAINS(line, "rkisp_mainpath"))
         {
             index = i;
             break;
@@ -807,10 +810,10 @@ void *rk_video_thread(void)
                                                 outPack[0].nalu[n + 1].offset -
                                                 outPack[0].nalu[n].offset;
                                     }
-                                    else outPack[j].nalu[++outPack[j].naluCnt].type = pack->naluType.h264Nalu;
+                                    else outPack[j].nalu[outPack[j].naluCnt++].type = pack->naluType.h264Nalu;
                                     break;
                                 case HAL_VIDCODEC_H265:
-                                    outPack[j].nalu[++outPack[j].naluCnt].type = pack->naluType.h265Nalu;
+                                    outPack[j].nalu[outPack[j].naluCnt++].type = pack->naluType.h265Nalu;
                                     break;
                             }
                             outPack[j].offset = 0;
