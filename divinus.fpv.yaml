@@ -1,6 +1,6 @@
 system:
-  sensor_config: /etc/sensors/imx415.bin
-  server_enable: true
+  sensor_config: /etc/sensors/imx335_spike5.bin
+  server_enable: false
   web_port: 80
   web_enable_auth: false
   web_auth_user: admin
@@ -12,18 +12,18 @@ system:
   watchdog: 30
 
 isp:
-  mirror: false
-  flip: false
-  antiflicker: 60
+  mirror: true
+  flip: true
+  antiflicker: 0
 
 osd:
-  enable: true
+  enable: false
 
 mdns:
   enable: false
 
 rtsp:
-  enable: true
+  enable: false
   enable_auth: false
   auth_user: admin
   auth_pass: 12345
@@ -36,26 +36,26 @@ stream:
     - udp://239.255.255.0:5600
 
 fpv:
-  enable: false
+  enable: true
   port: 5600
   ip: 127.0.0.1
   noiselevel: 0
-  intraQp: true
-  intraLine: 16
+  intraQp: false
+  #intraLine: 16
   cus3A: true
   maxQp: 48
   minQp: 12
-  IPQPDelta: 0
-  maxIQp: 48
+  IPQPDelta: -4
+  maxIQp: 48 
   minIQp: 12
   maxIPProp: 5
   maxISize: 0
   maxPSize: 0
 
 ts:
-  enable: false
-  ts_port_rx: 5850
-  ts_port_tx: 5851
+  enable: true
+  ts_port_rx: 12346
+  ts_port_tx: 12345
   ip: 127.0.0.1
   
 night_mode:
@@ -87,14 +87,14 @@ audio:
 
 mp4:
   enable: true
-  codec: H264
+  codec: H265
   mode: CBR
-  width: 3840
-  height: 2160
-  fps: 20
-  gop: 40
-  bitrate: 1024
-  profile: 2
+  width: 1920
+  height: 1080
+  fps: 120
+  gop: 180 
+  bitrate: 8192
+  profile: 1
 
 jpeg:
   enable: false
@@ -103,7 +103,7 @@ jpeg:
   qfactor: 70
 
 mjpeg:
-  enable: true
+  enable: false
   mode: CBR
   width: 3840
   height: 2160
