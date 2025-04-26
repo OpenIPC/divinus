@@ -1233,6 +1233,15 @@ void respond_request(http_request_t *req) {
                         osds[id].posy = y;
                     }
                 }
+                else if (EQUALS(key, "outl")) {
+                    int result = color_parse(value);
+                    osds[id].outl = result;
+                }
+                else if (EQUALS(key, "thick")) {
+                    double result = strtod(value, &remain);
+                    if (remain == value) continue;
+                        osds[id].thick = result;
+                }
             }
             osds[id].updt = 1;
         }
@@ -1245,9 +1254,11 @@ void respond_request(http_request_t *req) {
             "Connection: close\r\n"
             "\r\n"
             "{\"id\":%d,\"color\":\"#%x\",\"opal\":%d,\"pos\":[%d,%d],"
-            "\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\",\"img\":\"%s\"}",
+            "\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\",\"img\":\"%s\","
+            "\"outl\":\"#%x\",\"thick\":%.1f}",
             id, color, osds[id].opal, osds[id].posx, osds[id].posy,
-            osds[id].font, osds[id].size, osds[id].text, osds[id].img);
+            osds[id].font, osds[id].size, osds[id].text, osds[id].img,
+            osds[id].outl, osds[id].thick);
         send_and_close(req->clntFd, response, respLen);
         return;
     }

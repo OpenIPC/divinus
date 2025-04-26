@@ -74,6 +74,28 @@ char *errstr(int error) {
                     error |= (module << 16); break;
             }
             break;
+        case HAL_PLATFORM_RK:
+            level = (error >> 13) & 0x7;
+            error = error & 0xFF001FFF | (level > 0 ? (4 << 13) : 0);
+            switch (module) {
+                case RK_SYS_MOD_SYS:
+                    error |= (V4_SYS_MOD_SYS << 16); break;
+                case RK_SYS_MOD_ISP:
+                    error |= (V4_SYS_MOD_ISP << 16); break;
+                case RK_SYS_MOD_VI:
+                    error |= (V4_SYS_MOD_VIU << 16); break;
+                case RK_SYS_MOD_VPSS:
+                    error |= (V4_SYS_MOD_VPSS << 16); break;
+                case RK_SYS_MOD_VENC:
+                    error |= (V4_SYS_MOD_VENC << 16); break;
+                case RK_SYS_MOD_RGN:
+                    error |= (V4_SYS_MOD_RGN << 16); break;
+                case RK_SYS_MOD_AI:
+                    error |= (V4_SYS_MOD_AI << 16); break;
+                default:
+                    error |= (module << 16); break;
+            }
+            break;
 #endif
     }
 

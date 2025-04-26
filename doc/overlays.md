@@ -14,6 +14,12 @@ Supported fonts (sourced from /usr/share/fonts/truetype/) can render Unicode cha
 curl http://192.168.1.17/api/osd/0?text=Entrée
 ```
 
+The text color is configurable (using a hexadecimal RGB555 representation) and can be made easier to read by applying an outline this way:
+```
+curl http://192.168.1.17/api/osd/1?color=%23FFFF&outl=%238000&thick=1.0
+```
+N.B. Hashtags have to be espaced with %23 in curl URL syntaxes
+
 Empty strings are used to clear the regions:
 ```
 curl http://192.168.1.17/api/osd/1?text=

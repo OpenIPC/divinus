@@ -212,28 +212,33 @@ Configures the night mode parameters.
 
 Configures text or image overlays by their ID (0-9 at the moment).
 
-| Method | Parameters | Description                                    |
-|--------|------------|------------------------------------------------|
-| GET    | `text`     | Text to display (special specifiers supported) |
-| GET    | `font`     | Font name to be used                           |
-| GET    | `size`     | Font size (decimal in pt)                      |
-| GET    | `color`    | Color (hex format, 5-bit color precision)      |
-| GET    | `opal`     | Opacity level (0-255)                          |
-| GET    | `pos`      | Position on main stream \[x,y\]                |
-| GET    | `posx`     | X coordinate (write-only)                      |
-| GET    | `posy`     | Y coordinate (write-only)                      |
-| POST   | file       | Bitmap or PNG image to upload (replaces text)  |
+| Method | Parameters | Description                                        |
+|--------|------------|----------------------------------------------------|
+| GET    | `text`     | Text to display (special specifiers supported)     |
+| GET    | `img`      | Local image path to display (`text` must be empty) |
+| GET    | `font`     | Font name to be used                               |
+| GET    | `size`     | Font size (decimal in pt)                          |
+| GET    | `color`    | Font color (hex format, RGB555 format)             |
+| GET    | `opal`     | Opacity level (0-255)                              |
+| GET    | `pos`      | Position on main stream \[x,y\]                    |
+| GET    | `posx`     | X coordinate (write-only)                          |
+| GET    | `posy`     | Y coordinate (write-only)                          |
+| GET    | `outl`     | Outline color (hex format, RGB555 format)          |
+| GET    | `thick`    | Outline thickness (0 to disable)                   |
+| POST   | file       | Bitmap or PNG image to upload (replaces text)      |
 
 **Response**
 ```json
 {
   "id": 0,
-  "color": "#ff0000",
+  "color": "#ffff",
   "opal": 255,
   "pos": [16, 64],
   "font": "UbuntuMono-Regular",
   "size": 15.0,
-  "text": "Backyard (%T)"
+  "text": "Backyard (%T)",
+  "outl": "#8000",
+  "thick": 0.0
 }
 ```
 

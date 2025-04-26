@@ -138,6 +138,8 @@ int save_app_config(void) {
         fprintf(file, "    reg%d_posy: %d\n", i, osds[i].posy);
         fprintf(file, "    reg%d_size: %.1f\n", i, osds[i].size);
         fprintf(file, "    reg%d_color: %#04x\n", i, osds[i].color);
+        fprintf(file, "    reg%d_outl: %#04x\n", i, osds[i].outl);
+        fprintf(file, "    reg%d_thick: %.1f\n", i, osds[i].thick);
     }
 
     fprintf(file, "jpeg:\n");
@@ -349,6 +351,10 @@ enum ConfigError parse_app_config(void) {
             parse_double(&ini, "osd", param, 0, INT_MAX, &osds[i].size);
             sprintf(param, "reg%d_color", i);
             parse_int(&ini, "osd", param, 0, USHRT_MAX, &osds[i].color);
+            sprintf(param, "reg%d_outl", i);
+            parse_int(&ini, "osd", param, 0, USHRT_MAX, &osds[i].outl);
+            sprintf(param, "reg%d_thick", i);
+            parse_double(&ini, "osd", param, 0, UCHAR_MAX, &osds[i].thick);
             osds[i].updt = 1;
         }
     }

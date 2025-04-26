@@ -336,6 +336,8 @@ void *region_thread(void) {
         strncpy(osds[id].font, DEF_FONT, sizeof(osds[id].font) - 1);
         osds[id].text[0] = '\0';
         osds[id].img[0] = '\0';
+        osds[id].outl = DEF_OUTL;
+        osds[id].thick = DEF_THICK;
     }
 
     while (keepRunning) {
@@ -369,7 +371,8 @@ void *region_thread(void) {
                     HAL_DANGER("region", "Font \"%s\" not found!\n", osds[id].font);
                     continue;
 found_font:;
-                    hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color);
+                    hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color,
+                        osds[id].outl, osds[id].thick);
                     hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
                         .x = osds[id].posx, .y = osds[id].posy };
                     switch (plat) {
