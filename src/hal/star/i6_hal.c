@@ -188,10 +188,10 @@ int i6_channel_create(char index, short width, short height, char mirror, char f
     port.compress = I6_COMPR_NONE;
     port.pixFmt = jpeg ? I6_PIXFMT_YUV422_YUYV : I6_PIXFMT_YUV420SP;
 
-    HAL_DEBUG("HAL",  "output.width: %u\n", port.output.width);
-    HAL_DEBUG("HAL",  "output.height: %u\n", port.output.height);
-    HAL_DEBUG("HAL",  "mirror: %d\n", port.mirror);
-    HAL_DEBUG("HAL",  "flip: %d\n", port.flip);
+    HAL_INFO("HAL",  "output.width: %u\n", port.output.width);
+    HAL_INFO("HAL",  "output.height: %u\n", port.output.height);
+    HAL_INFO("HAL",  "mirror: %d\n", port.mirror);
+    HAL_INFO("HAL",  "flip: %d\n", port.flip);
     HAL_DEBUG("HAL",  "pixFmt: %d\n", port.pixFmt);
     HAL_DEBUG("HAL",  "compress: %d\n", port.compress);
 
@@ -277,7 +277,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
         for (char i = 0; i < count; i++) {
             if (ret = i6_snr.fnGetResolution(_i6_snr_index, i, &resolution))
                 return ret;
-                HAL_DEBUG("HAL",  "Profile %d: %dx%d @ %d fps\n", i, resolution.crop.width,
+                HAL_INFO("HAL",  "Profile %d: %dx%d @ %d fps\n", i, resolution.crop.width,
                 resolution.crop.height, resolution.maxFps);
         }
 
@@ -290,7 +290,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
                 framerate > resolution.maxFps)
                 continue;
             
-            HAL_DEBUG("HAL",  "Set profile %i, fps %i\n", i, framerate);
+            HAL_INFO("HAL",  "Set profile %i, fps %i\n", i, framerate);
 
             _i6_snr_profile = i;
             if (ret = i6_snr.fnSetResolution(_i6_snr_index, _i6_snr_profile))
