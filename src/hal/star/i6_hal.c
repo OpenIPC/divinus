@@ -258,29 +258,45 @@ void i6_sensor_config(char framerate)
 
 unsigned int g_noiselevel = 0;
 
-int i6_pipeline_create(char sensor, short width, short height, char framerate, char mirror, char flip, unsigned int noiselevel)
+int i6_pipeline_create(char sensor, short width, short height, char framerate, char mirror, char flip, unsigned int noiselevel, int force_sensor_index)
 {
     int ret;
 
     _i6_snr_index = sensor;
     _i6_snr_profile = -1;
+    i6_snr_res resolution;
+    unsigned int count;
 
+    if (ret = i6_snr.fnSetPlaneMode(_i6_snr_index, 0))
+        return ret;
+
+    if (ret = i6_snr.fnGetResolutionCount(_i6_snr_index, &count))
+        return ret;
+
+    for (char i = 0; i < count; i++) {
+        if (ret = i6_snr.fnGetResolution(_i6_snr_index, i, &resolution))
+            return ret;
+        HAL_INFO("HAL",  "Profile %d: %dx%d @ %d fps\n", i, resolution.crop.width,
+                 resolution.crop.height, resolution.maxFps);
+    }
+
+    if (force_sensor_index >= 0)
     {
-        unsigned int count;
-        i6_snr_res resolution;
-        if (ret = i6_snr.fnSetPlaneMode(_i6_snr_index, 0))
+        if (ret = i6_snr.fnGetResolution(_i6_snr_index, force_sensor_index, &resolution))
             return ret;
 
-        if (ret = i6_snr.fnGetResolutionCount(_i6_snr_index, &count))
+        if (framerate > resolution.maxFps)
+            framerate = resolution.maxFps;
+
+        HAL_INFO("HAL",  "Force Sensor index: set profile %i, fps %i\n", force_sensor_index, framerate);
+
+        if (ret = i6_snr.fnSetResolution(_i6_snr_index, force_sensor_index))
             return ret;
-
-        for (char i = 0; i < count; i++) {
-            if (ret = i6_snr.fnGetResolution(_i6_snr_index, i, &resolution))
-                return ret;
-                HAL_INFO("HAL",  "Profile %d: %dx%d @ %d fps\n", i, resolution.crop.width,
-                resolution.crop.height, resolution.maxFps);
-        }
-
+        if (ret = i6_snr.fnSetFramerate(_i6_snr_index, framerate))
+            return ret;
+    }
+    else
+    {
         for (char i = 0; i < count; i++) {
             if (ret = i6_snr.fnGetResolution(_i6_snr_index, i, &resolution))
                 return ret;
@@ -303,16 +319,7 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
         if (_i6_snr_profile < 0)
             return EXIT_FAILURE;
     }
-/*
-    HAL_DEBUG("HAL",  "PATCH: Set profile %i, fps %i\n", 3, framerate);
 
-    _i6_snr_profile = 3;
-    if (ret = i6_snr.fnSetResolution(_i6_snr_index, _i6_snr_profile))
-        return ret;
-    _i6_snr_framerate = framerate;
-    if (ret = i6_snr.fnSetFramerate(_i6_snr_index, _i6_snr_framerate))
-        return ret;
-*/
     if (ret = i6_snr.fnSetOrien(_i6_snr_index, mirror, flip))
         return ret;
 

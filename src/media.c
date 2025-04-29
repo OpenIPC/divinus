@@ -754,7 +754,7 @@ int start_sdk(void) {
         case HAL_PLATFORM_GM:  ret = gm_pipeline_create(app_config.mirror,
             app_config.flip);   break;
         case HAL_PLATFORM_I6:  ret = i6_pipeline_create(0, width,
-            height, framerate, app_config.mirror, app_config.flip, app_config.noiselevel); break;
+            height, framerate, app_config.mirror, app_config.flip, app_config.noiselevel, app_config.force_sensor_index); break;
         case HAL_PLATFORM_I6C: ret = i6c_pipeline_create(0, width,
             height, framerate); break;
         case HAL_PLATFORM_M6:  ret = m6_pipeline_create(0, width,

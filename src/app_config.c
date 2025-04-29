@@ -196,6 +196,7 @@ enum ConfigError parse_app_config(void) {
     app_config.rtp_port = 0;
     app_config.rtp_ip[0] = 0;
     app_config.noiselevel = 0;
+    app_config.force_sensor_index = -1;
     app_config.intraQp = false;
     app_config.intraLine = 1;
     app_config.cus3A = false;
@@ -396,6 +397,8 @@ enum ConfigError parse_app_config(void) {
             &ini, "fpv", "ip", app_config.rtp_ip);
         parse_int(
                 &ini, "fpv", "noiselevel", 0, 2, &app_config.noiselevel);
+        parse_int(
+            &ini, "fpv", "force_sensor_index", 0, 3, &app_config.force_sensor_index);
         parse_bool(&ini, "fpv", "intraQp", &app_config.intraQp);
         parse_int(
             &ini, "fpv", "intraLine", 1, 32, &app_config.intraLine);

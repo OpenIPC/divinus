@@ -61,6 +61,7 @@ struct AppConfig {
     unsigned int rtp_port;
     char rtp_ip[128];
     unsigned int noiselevel;
+    int force_sensor_index;
     bool intraQp;
     unsigned int intraLine;
     bool cus3A;
