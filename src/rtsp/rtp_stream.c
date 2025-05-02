@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include "list.h"
 #include "rtp.h"
@@ -157,35 +159,60 @@ static inline int __transfer_nal_h26x_rtp(unsigned char *nalptr, size_t nalsize,
 }
 
 static int g_sockfd;
-struct sockaddr_in g_servaddr;
+struct sockaddr_un g_servaddr;
+size_t g_addr_len;
 
 void send_pkt(void* buffer, size_t size)
 {
-    if (sendto(g_sockfd, buffer, size, 0, (const struct sockaddr *)&g_servaddr, sizeof(g_servaddr)) < 0) {
+    if (sendto(g_sockfd, buffer, size, 0, (struct sockaddr *)&g_servaddr, g_addr_len) < 0) {
         perror("sendto failed");
     }
 }
 
 
-void rtp_init(const char *rtp_ip, unsigned int rtp_port)
+void rtp_init(const char *socket_path)
 {
-
-    if ((g_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    // Créer le socket Unix
+    if ((g_sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
         perror("socket creation failed");
-        pthread_exit(NULL);
+        exit(EXIT_FAILURE);
     }
 
     memset(&g_servaddr, 0, sizeof(g_servaddr));
 
-    // Fill server information
-    g_servaddr.sin_family = AF_INET;
-    g_servaddr.sin_port = htons(rtp_port);
-    g_servaddr.sin_addr.s_addr = inet_addr(rtp_ip);
+    // Configurer l'adresse du socket Unix
+    g_servaddr.sun_family = AF_UNIX;
+    g_servaddr.sun_path[0] = '\0'; // Socket abstrait
+    strncpy(g_servaddr.sun_path + 1, socket_path, sizeof(g_servaddr.sun_path) - 2);
+
+    // Créer le socket Unix
+    if ((g_sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
+        perror("socket creation failed");
+        pthread_exit(NULL);
+    }
+
+    g_addr_len = sizeof(sa_family_t) + strlen(socket_path) + 1;
+
+    HAL_INFO("RTP", "Connected to Unix socket: %s\n", socket_path);
 }
 
 void rtp_deinit(void)
 {
-    close(g_sockfd);
+    HAL_INFO("RTP", "Deinitializing RTP socket\n");
+    shutdown(g_sockfd, SHUT_RDWR);
+    if (close(g_sockfd) < 0) {
+        perror("close failed");
+    }
+
+    // Vérifiez si le socket est abstrait avant d'appeler unlink
+    if (g_servaddr.sun_path[0] != '@') {
+        HAL_INFO("RTP", "Unlinking socket file: %s\n", g_servaddr.sun_path);
+        if (unlink(g_servaddr.sun_path) < 0) {
+            perror("unlink failed");
+        }
+    } else {
+        HAL_INFO("RTP", "Socket is abstract, no unlink needed\n");
+    }
 }
 
 

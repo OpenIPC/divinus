@@ -37,8 +37,6 @@ stream:
 
 fpv:
   enable: false
-  port: 5600
-  ip: 127.0.0.1
   noiselevel: 0
   force_sensor_index: -1
   intraQp: true

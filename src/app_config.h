@@ -58,8 +58,6 @@ struct AppConfig {
 
     // [fpv]
     bool fpv_enable;
-    unsigned int rtp_port;
-    char rtp_ip[128];
     unsigned int noiselevel;
     int force_sensor_index;
     bool intraQp;

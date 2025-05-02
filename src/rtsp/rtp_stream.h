@@ -35,7 +35,7 @@ extern "C" {
  ******************************************************************************/
 
 
-void rtp_init(const char *rtp_ip, unsigned int rtp_port);
+void rtp_init(const char *socket_path);
 void rtp_deinit(void);
 
 // Structure pour représenter une unité NAL

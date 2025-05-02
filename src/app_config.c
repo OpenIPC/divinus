@@ -193,8 +193,6 @@ enum ConfigError parse_app_config(void) {
     *app_config.stream_dests[0] = '\0';
 
     app_config.fpv_enable = false;
-    app_config.rtp_port = 0;
-    app_config.rtp_ip[0] = 0;
     app_config.noiselevel = 0;
     app_config.force_sensor_index = -1;
     app_config.intraQp = false;
@@ -391,10 +389,6 @@ enum ConfigError parse_app_config(void) {
     parse_bool(&ini, "fpv", "enable", &app_config.fpv_enable);
     if (app_config.fpv_enable) {
         fprintf (stderr, "FPV is enabled\n");
-        parse_int(
-            &ini, "fpv", "port", 1, 65536, &app_config.rtp_port);
-        parse_param_value(
-            &ini, "fpv", "ip", app_config.rtp_ip);
         parse_int(
                 &ini, "fpv", "noiselevel", 0, 2, &app_config.noiselevel);
         parse_int(

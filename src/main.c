@@ -81,12 +81,9 @@ int main(int argc, char *argv[]) {
     }
 
     if (app_config.fpv_enable) {
-        if (!app_config.rtp_ip)
-        {
-            HAL_ERROR("fpv", "RTP IP address is not set!\n");
-        } 
-        HAL_INFO("fpv", "Started sending RTP stream to %s:%i...\n", app_config.rtp_ip, app_config.rtp_port);
-        rtp_init(app_config.rtp_ip, app_config.rtp_port);
+        const char *socket_path = "rtp_local";
+        HAL_INFO("fpv", "Started sending RTP stream to %s...\n", socket_path);
+        rtp_init(socket_path);
     }
 
     if (app_config.stream_enable)
