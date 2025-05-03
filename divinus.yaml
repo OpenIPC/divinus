@@ -37,6 +37,7 @@ stream:
 
 fpv:
   enable: false
+  naluSize: 1200
   noiselevel: 0
   force_sensor_index: -1
   intraQp: true

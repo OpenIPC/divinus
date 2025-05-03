@@ -82,8 +82,8 @@ int main(int argc, char *argv[]) {
 
     if (app_config.fpv_enable) {
         const char *socket_path = "rtp_local";
-        HAL_INFO("fpv", "Started sending RTP stream to %s...\n", socket_path);
-        rtp_init(socket_path);
+        HAL_INFO("fpv", "Started sending RTP stream to %s, naluSize: %i ...\n", socket_path, app_config.naluSize);
+        rtp_init(socket_path, app_config.naluSize);
     }
 
     if (app_config.stream_enable)

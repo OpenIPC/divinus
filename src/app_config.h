@@ -59,6 +59,7 @@ struct AppConfig {
     // [fpv]
     bool fpv_enable;
     unsigned int noiselevel;
+    unsigned int naluSize;
     int force_sensor_index;
     bool intraQp;
     unsigned int intraLine;

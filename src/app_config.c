@@ -194,6 +194,7 @@ enum ConfigError parse_app_config(void) {
 
     app_config.fpv_enable = false;
     app_config.noiselevel = 0;
+    app_config.naluSize = 1200;
     app_config.force_sensor_index = -1;
     app_config.intraQp = false;
     app_config.intraLine = 1;
@@ -391,6 +392,8 @@ enum ConfigError parse_app_config(void) {
         fprintf (stderr, "FPV is enabled\n");
         parse_int(
                 &ini, "fpv", "noiselevel", 0, 2, &app_config.noiselevel);
+        parse_int(
+                &ini, "fpv", "naluSize", 100, 3900, &app_config.naluSize);
         parse_int(
             &ini, "fpv", "force_sensor_index", 0, 3, &app_config.force_sensor_index);
         parse_bool(&ini, "fpv", "intraQp", &app_config.intraQp);

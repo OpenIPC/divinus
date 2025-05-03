@@ -51,8 +51,7 @@ static void format_sei_nalu_h265(uint8_t *sei_nalu, sei_message_t *sei, size_t *
 }
 
 
-#define RTP_PACKET_SIZE 1203
-
+unsigned int g_naluSize;
 
 
 void send_pkt(void* buffer, size_t size);
@@ -90,7 +89,8 @@ static inline int __transfer_nal_h26x_rtp(unsigned char *nalptr, size_t nalsize,
 
     if (nalsize < 4) return SUCCESS;
 
-    if (nalsize <= RTP_PACKET_SIZE) {
+    if (nalsize <= g_naluSize) {
+        
         /* single packet */
         /* SPS, PPS, SEI is not marked */
         if ((isH265 && pt < H265_NAL_TYPE_VPS) ||
@@ -109,6 +109,7 @@ static inline int __transfer_nal_h26x_rtp(unsigned char *nalptr, size_t nalsize,
 
         ASSERT(__rtp_send__(&rtp) == SUCCESS, return FAILURE);
     } else {
+
         nalptr += isH265 ? 2 : 1;
         nalsize -= isH265 ? 2 : 1;
 
@@ -125,16 +126,14 @@ static inline int __transfer_nal_h26x_rtp(unsigned char *nalptr, size_t nalsize,
         payload[head - 1] |= 1 << 7; // start bit
 
         /* send fragmented nal */
-        while (nalsize > RTP_PACKET_SIZE - head) {
+        while (nalsize > g_naluSize - head) {
             p_header->m = 0;
 
-            memcpy(&(payload[head]), nalptr, RTP_PACKET_SIZE - head);
+            memcpy(&(payload[head]), nalptr, g_naluSize - head);
 
-            rtp.rtpsize = sizeof(rtp_hdr_t) + RTP_PACKET_SIZE;
-
-            nalptr += RTP_PACKET_SIZE - head;
-            nalsize -= RTP_PACKET_SIZE - head;
-
+            rtp.rtpsize = sizeof(rtp_hdr_t) + g_naluSize;
+            nalptr += g_naluSize - head;
+            nalsize -= g_naluSize - head;
             ASSERT(__rtp_send__(&rtp) == SUCCESS, return FAILURE);
 
             /* intended xor. blame vim :( */
@@ -170,8 +169,10 @@ void send_pkt(void* buffer, size_t size)
 }
 
 
-void rtp_init(const char *socket_path)
+void rtp_init(const char *socket_path, unsigned int naluSize)
 {
+    g_naluSize = naluSize;
+
     // Créer le socket Unix
     if ((g_sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
         perror("socket creation failed");
@@ -194,6 +195,11 @@ void rtp_init(const char *socket_path)
     g_addr_len = sizeof(sa_family_t) + strlen(socket_path) + 1;
 
     HAL_INFO("RTP", "Connected to Unix socket: %s\n", socket_path);
+
+    int buf_size = 1024 * 1024; // 1 MB
+    if (setsockopt(g_sockfd, SOL_SOCKET, SO_SNDBUF, &buf_size, sizeof(buf_size)) < 0) {
+        perror("setsockopt SO_SNDBUF failed");
+    }
 }
 
 void rtp_deinit(void)

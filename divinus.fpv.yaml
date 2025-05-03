@@ -37,8 +37,7 @@ stream:
 
 fpv:
   enable: true
-  port: 5600
-  ip: 127.0.0.1
+  naluSize: 1200
   noiselevel: 0
   force_sensor_index: -1
   intraQp: false
