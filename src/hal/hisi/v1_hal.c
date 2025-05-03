@@ -1,4 +1,4 @@
-#if defined(__ARM_PCS)
+#if defined(__arm__) && !defined(__ARM_PCS_VFP)
 
 #include "v1_hal.h"
 

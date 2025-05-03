@@ -41,6 +41,8 @@ typedef struct {
     int (*fnDisableChannel)(int group, int channel);
     int (*fnEnableChannel)(int group, int channel);
     int (*fnSetChannelConfig)(int group, int channel, cvi_vpss_chn *config);
+    int (*fnAttachChannelPool)(int group, int channel, int pool);
+    int (*fnDetachChannelPool)(int group, int channel);
 } cvi_vpss_impl;
 
 static int cvi_vpss_load(cvi_vpss_impl *vpss_lib) {
@@ -81,6 +83,14 @@ static int cvi_vpss_load(cvi_vpss_impl *vpss_lib) {
 
     if (!(vpss_lib->fnSetChannelConfig = (int(*)(int group, int channel, cvi_vpss_chn *config))
         hal_symbol_load("cvi_vpss", vpss_lib->handle, "CVI_VPSS_SetChnAttr")))
+        return EXIT_FAILURE;
+
+    if (!(vpss_lib->fnAttachChannelPool = (int(*)(int group, int channel, int pool))
+        hal_symbol_load("cvi_vpss", vpss_lib->handle, "CVI_VPSS_AttachVbPool")))
+        return EXIT_FAILURE;
+
+    if (!(vpss_lib->fnDetachChannelPool = (int(*)(int group, int channel))
+        hal_symbol_load("cvi_vpss", vpss_lib->handle, "CVI_VPSS_DetachVbPool")))
         return EXIT_FAILURE;
     
     return EXIT_SUCCESS;

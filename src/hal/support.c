@@ -138,7 +138,7 @@ void hal_identify(void) {
     }
 #endif
     
-#if defined(__ARM_PCS)
+#if defined(__arm__) && !defined(__ARM_PCS_VFP)
     if (!access("/dev/vpd", F_OK)) {
         plat = HAL_PLATFORM_GM;
         strcpy(chip, "GM813x");
@@ -217,7 +217,7 @@ void hal_identify(void) {
     }
 #endif
 
-#if defined(__ARM_PCS)
+#if defined(__arm__) && !defined(__ARM_PCS_VFP)
     if (file = fopen("/proc/iomem", "r")) {
         while (fgets(line, 200, file))
             if (strstr(line, "uart")) {
@@ -342,7 +342,7 @@ float hal_temperature_read(void) {
             }
             break;
         }
-#elif defined(__ARM_PCS)
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_V2: lastReadTemp = v2_system_readtemp(); break;
         case HAL_PLATFORM_V3: lastReadTemp = v3_system_readtemp(); break;
         case HAL_PLATFORM_V4: lastReadTemp = v4_system_readtemp(); break;

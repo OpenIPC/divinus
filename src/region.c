@@ -393,7 +393,7 @@ found_font:;
                             rk_region_create(id, rect, osds[id].opal);
                             rk_region_setbitmap(id, &bitmap);
                             break;
-#elif defined(__ARM_PCS)
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
                         case HAL_PLATFORM_GM:
                             gm_region_setbitmap(id, &bitmap);
                             gm_region_create(id, rect, osds[id].opal);
@@ -460,7 +460,7 @@ found_font:;
                                 rk_region_create(id, rect, osds[id].opal);
                                 rk_region_setbitmap(id, &bitmap);
                                 break;
-#elif defined(__ARM_PCS)
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
                             case HAL_PLATFORM_GM:
                                 gm_region_create(id, rect, osds[id].opal);
                                 gm_region_setbitmap(id, &bitmap);
@@ -498,7 +498,7 @@ found_font:;
                         case HAL_PLATFORM_I6C: i6c_region_destroy(id); break;
                         case HAL_PLATFORM_M6:  m6_region_destroy(id); break;
                         case HAL_PLATFORM_RK:  rk_region_destroy(id); break;
-#elif defined(__ARM_PCS)
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
                         case HAL_PLATFORM_GM:  gm_region_destroy(id); break;
                         case HAL_PLATFORM_V1:  v1_region_destroy(id); break;
                         case HAL_PLATFORM_V2:  v2_region_destroy(id); break;

@@ -7,7 +7,7 @@
 #include "star/i6c_hal.h"
 #include "star/m6_hal.h"
 #include "plus/rk_hal.h"
-#elif defined(__ARM_PCS)
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
 #include "plus/ak_hal.h"
 #include "plus/gm_hal.h"
 #include "hisi/v1_hal.h"
