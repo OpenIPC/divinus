@@ -677,8 +677,8 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
             jpeg->jpegSize = 0;
             for (unsigned int i = 0; i < strm.count; i++) {
                 rk_venc_pack *pack = &strm.packet[i];
-                unsigned int packLen = pack->length - pack->offset;
-                unsigned char *packData = rk_mb.fnGetData(pack->mbBlk) + pack->offset;
+                unsigned int packLen = pack->length;
+                unsigned char *packData = rk_mb.fnGetData(pack->mbBlk);
 
                 unsigned int newLen = jpeg->jpegSize + packLen;
                 if (newLen > jpeg->length) {
