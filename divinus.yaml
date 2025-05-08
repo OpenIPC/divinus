@@ -35,6 +35,12 @@ rtsp:
   auth_pass: 12345
   port: 554
 
+record:
+  enable: false
+  path: /mnt/sdcard/recordings
+  #filename: "output.mp4"
+  #segment_size: 52428800
+
 stream:
   enable: false
   udp_srcport: 5600

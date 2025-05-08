@@ -1263,6 +1263,50 @@ void respond_request(http_request_t *req) {
         return;
     }
 
+    if (EQUALS(req->uri, "/api/record")) {
+        if (!EMPTY(req->query)) {
+            char *remain;
+            while (req->query) {
+                char *value = split(&req->query, "&");
+                if (!value || !*value) continue;
+                unescape_uri(value);
+                char *key = split(&value, "=");
+                if (!key || !*key || !value || !*value) continue;
+                if (EQUALS(key, "enable")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.record_enable = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.record_enable = 0;
+                }
+                else if (EQUALS(key, "path"))
+                    strncpy(app_config.record_path, value, sizeof(app_config.record_path) - 1);
+                else if (EQUALS(key, "filename"))
+                    strncpy(app_config.record_filename, value, sizeof(app_config.record_filename) - 1);
+                else if (EQUALS(key, "segment_size")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.record_segment_size = result;
+                }
+
+                if (!app_config.record_enable) continue;
+                if (EQUALS(key, "start"))
+                    record_start();
+                else if (EQUALS(key, "stop"))
+                    record_stop();
+            }
+        }
+        respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json;charset=UTF-8\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "{\"recording\":%s,\"path\":\"%s\",\"filename\":\"%s\",\"segment_size\":%d}",
+                recordOn ? "true" : "false", app_config.record_path,
+                app_config.record_filename, app_config.record_segment_size);
+        send_and_close(req->clntFd, response, respLen);
+        return;
+    }
+
     if (EQUALS(req->uri, "/api/status")) {
         struct sysinfo si;
         sysinfo(&si);

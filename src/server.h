@@ -22,10 +22,11 @@
 #include "media.h"
 #include "network.h"
 #include "night.h"
+#include "record.h"
 #include "region.h"
 #include "watchdog.h"
 
-extern char graceful, keepRunning;
+extern char graceful, keepRunning, recordOn;
 
 int start_server();
 int stop_server();

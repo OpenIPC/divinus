@@ -77,7 +77,7 @@ _* At the moment, text, RGB or bitfield bitmaps and PNG overlays are handled, mo
 - [ ] ONVIF write support, enhanced compatiblity
 - [ ] Motors and PTZ control
 - [ ] Lens correction profiles
-- [ ] Local recordings with motion detection
+- [ ] Motion detection
 - [ ] Alternative audio codecs
 
 

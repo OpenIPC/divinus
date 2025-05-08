@@ -18,7 +18,7 @@
 #include "server.h"
 #include "stream.h"
 
-extern char audioOn, udpOn;
+extern char audioOn, recordOn, udpOn;
 extern rtsp_handle rtspHandle;
 
 int start_sdk(void);
