@@ -27,6 +27,7 @@
 #include "watchdog.h"
 
 extern char graceful, keepRunning, recordOn;
+extern time_t recordStartTime;
 
 int start_server();
 int stop_server();

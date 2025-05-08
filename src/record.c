@@ -3,6 +3,7 @@
 static FILE *recordFile;
 static struct Mp4State recordState;
 static int recordSize;
+time_t recordStartTime = 0;
 char recordOn = 0, recordPath[256];
 
 static void record_check_segment_size(int upcoming) {
@@ -22,6 +23,7 @@ void record_start(void) {
 
     recordSize = 0;
     recordState.header_sent = false;
+    recordStartTime = time(NULL);
 
     if (EMPTY(app_config.record_path)) {
         HAL_DANGER("record", "Destination path is not set!\n");
@@ -37,8 +39,7 @@ void record_start(void) {
         recordPath[sizeof(recordPath) - 1] = '\0';
     } else {
         char tempName[160];
-        time_t now = time(NULL);
-        struct tm *tm_info = localtime(&now);
+        struct tm *tm_info = localtime(&recordStartTime);
         sprintf(tempName, "recording_%s.mp4", timefmt);
         strftime(recordPath, sizeof(recordPath), tempName, tm_info);
     }
@@ -63,6 +64,7 @@ void record_stop(void) {
     recordFile = NULL;
 
     recordOn = 0;
+    recordStartTime = 0;
 }
 
 void send_mp4_to_record(hal_vidstream *stream, char isH265) {

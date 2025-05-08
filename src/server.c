@@ -1295,14 +1295,19 @@ void respond_request(http_request_t *req) {
                     record_stop();
             }
         }
+        struct tm *start = localtime(&recordStartTime);
+        char start_time[64];
+        strftime(start_time, sizeof(start_time), "%Y-%m-%dT%H:%M:%SZ", start);
+
         respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"recording\":%s,\"path\":\"%s\",\"filename\":\"%s\",\"segment_size\":%d}",
-                recordOn ? "true" : "false", app_config.record_path,
-                app_config.record_filename, app_config.record_segment_size);
+            "{\"recording\":%s,\"start_time\":\"%s\",\"path\":\"%s\","
+            "\"filename\":\"%s\",\"segment_size\":%d}",
+                recordOn ? "true" : "false", recordStartTime,
+                app_config.record_path, app_config.record_filename, app_config.record_segment_size);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
@@ -1349,11 +1354,11 @@ void respond_request(http_request_t *req) {
                     short result = strtol(value, &remain, 10);
                     if (remain == value) continue;
                     t.tv_sec = result;
-                    clock_settime(0, &t);
+                    clock_settime(CLOCK_REALTIME, &t);
                 }
             }
         }
-        clock_gettime(0, &t);
+        clock_gettime(CLOCK_REALTIME, &t);
         int respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
