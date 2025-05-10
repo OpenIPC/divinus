@@ -37,8 +37,10 @@ rtsp:
 
 record:
   enable: false
+  continuous: false
   path: /mnt/sdcard/recordings
   #filename: "output.mp4"
+  #segment_duration: 0
   #segment_size: 52428800
 
 stream:

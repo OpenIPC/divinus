@@ -96,8 +96,10 @@ int save_app_config(void) {
 
     fprintf(file, "record:\n");
     fprintf(file, "  enable: %s\n", app_config.record_enable ? "true" : "false");
+    fprintf(file, "  continuous: %s\n", app_config.record_continuous ? "true" : "false");
     fprintf(file, "  path: %s\n", app_config.record_path);
     fprintf(file, "  filename: %s\n", app_config.record_filename);
+    fprintf(file, "  segment_duration: %d\n", app_config.record_segment_duration);
     fprintf(file, "  segment_size: %d\n", app_config.record_segment_size);
 
     fprintf(file, "stream:\n");
@@ -205,8 +207,10 @@ enum ConfigError parse_app_config(void) {
     app_config.rtsp_auth_pass[0] = '\0';
 
     app_config.record_enable = false;
+    app_config.record_continuous = false;
     app_config.record_filename[0] = '\0';
     strcpy(app_config.record_path, "/mnt/sdcard/recordings");
+    app_config.record_segment_duration = 0;
     app_config.record_segment_size = 0;
 
     app_config.stream_enable = false;
@@ -380,10 +384,13 @@ enum ConfigError parse_app_config(void) {
     }
 
     parse_bool(&ini, "record", "enable", &app_config.record_enable);
+    parse_bool(&ini, "record", "continuous", &app_config.record_continuous);
     parse_param_value(
         &ini, "record", "path", app_config.record_path);
     parse_param_value(
         &ini, "record", "filename", app_config.record_filename);
+    parse_int(&ini, "record", "segment_duration", 0, INT_MAX,
+        &app_config.record_segment_duration);
     parse_int(&ini, "record", "segment_size", 0, INT_MAX,
         &app_config.record_segment_size);
 

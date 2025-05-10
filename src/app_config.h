@@ -61,8 +61,10 @@ struct AppConfig {
 
     // [record]
     bool record_enable;
+    bool record_continuous;
     char record_filename[128];
     char record_path[128];
+    int record_segment_duration;
     int record_segment_size;
 
     // [stream]

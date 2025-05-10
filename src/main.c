@@ -92,10 +92,16 @@ int main(int argc, char *argv[]) {
     if (app_config.osd_enable)
         start_region_handler();
 
+    if (app_config.record_enable && app_config.record_continuous)
+        record_start();
+
     while (keepRunning) {
         watchdog_reset();
         sleep(1);
     }
+
+    if (app_config.record_enable && app_config.record_continuous)
+        record_stop();
 
     if (app_config.rtsp_enable) {
         rtsp_finish(rtspHandle);

@@ -7,7 +7,20 @@ time_t recordStartTime = 0;
 char recordOn = 0, recordPath[256];
 
 static void record_check_segment_size(int upcoming) {
+    if (app_config.record_segment_size <= 0) return;
     if (recordSize + upcoming >= app_config.record_segment_size) {
+        record_stop();
+        record_start();
+    }
+}
+
+static void record_check_segment_duration() {
+    if (app_config.record_segment_duration <= 0) return;
+
+    time_t currentTime = time(NULL);
+    if (currentTime == (time_t)-1 || recordStartTime == (time_t)-1) return;
+
+    if (currentTime - recordStartTime >= app_config.record_segment_duration) {
         record_stop();
         record_start();
     }
@@ -113,8 +126,7 @@ void send_mp4_to_record(hal_vidstream *stream, char isH265) {
                 default_sample_size;
         }
 
-        err = mp4_set_state(&recordState);
-        chk_err_continue
+        err = mp4_set_state(&recordState); chk_err_continue
         {
             struct BitBuf moof_buf;
             err = mp4_get_moof(&moof_buf); chk_err_continue
@@ -131,4 +143,6 @@ void send_mp4_to_record(hal_vidstream *stream, char isH265) {
             
         }
     }
+
+    record_check_segment_duration();
 }

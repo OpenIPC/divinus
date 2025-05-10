@@ -1278,10 +1278,21 @@ void respond_request(http_request_t *req) {
                     else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
                         app_config.record_enable = 0;
                 }
+                else if (EQUALS(key, "continuous")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.record_continuous = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.record_continuous = 0;
+                }
                 else if (EQUALS(key, "path"))
                     strncpy(app_config.record_path, value, sizeof(app_config.record_path) - 1);
                 else if (EQUALS(key, "filename"))
                     strncpy(app_config.record_filename, value, sizeof(app_config.record_filename) - 1);
+                else if (EQUALS(key, "segment_duration")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.record_segment_duration = result;
+                }
                 else if (EQUALS(key, "segment_size")) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
@@ -1289,6 +1300,7 @@ void respond_request(http_request_t *req) {
                 }
 
                 if (!app_config.record_enable) continue;
+                if (app_config.record_continuous) continue;
                 if (EQUALS(key, "start"))
                     record_start();
                 else if (EQUALS(key, "stop"))
@@ -1304,10 +1316,11 @@ void respond_request(http_request_t *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"recording\":%s,\"start_time\":\"%s\",\"path\":\"%s\","
-            "\"filename\":\"%s\",\"segment_size\":%d}",
-                recordOn ? "true" : "false", recordStartTime,
-                app_config.record_path, app_config.record_filename, app_config.record_segment_size);
+            "{\"recording\":%s,\"start_time\":\"%s\",\"continuous\":\"%s\",\"path\":\"%s\","
+            "\"filename\":\"%s\",\"segment_duration\":%d,\"segment_size\":%d}",
+                recordOn ? "true" : "false", recordStartTime, app_config.record_continuous ? "true" : "false",
+                app_config.record_path, app_config.record_filename, 
+                app_config.record_segment_duration, app_config.record_segment_size);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
