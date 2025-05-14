@@ -33,7 +33,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | Hi3519V100[^10]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3519AV100             | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3559AV100             | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| RV11xx[^11]             | ↻            | ↻            | ↻           | ↻           | ↻                 |
+| RV11xx[^11]             | ↻            | ✔️           | ✔️          | ✔️          | ↻                 |
 | T31 series              | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | infinity3[^12]          | ↻            | ↻            | ↻           | ↻           | ↻                 |
 | infinity6[^13]          | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
@@ -56,7 +56,7 @@ _* At the moment, text, RGB or bitfield bitmaps and PNG overlays are handled, mo
 [^8]: Hi3516DV200, Hi3516EV200/300 and Hi3518EV300
 [^9]: GK7202V300, GK7205V200/300 and GK7605V100
 [^10]: Hi3516AV200 and Hi3519V101
-[^11]: RV110\[3/7/8/9\] and RV1106\(G2/G3\)
+[^11]: RV110\[3/7/8/9\], RV1106\(G2/G3\) and RV1126
 [^12]: MSC313E, MSC316\[DC/Q\] and MSC318
 [^13]: SSC323, SSC325\(D/DE\) and SSC327\(D/DE/Q\)
 [^14]: SSC33\[3/5/7\]\(DE\)
@@ -74,9 +74,8 @@ _* At the moment, text, RGB or bitfield bitmaps and PNG overlays are handled, mo
 ### Roadmap
 
 - [ ] Audio source, input gain and output volume
+- [ ] ONVIF write support, enhanced compatiblity
 - [ ] Motors and PTZ control
-- [ ] ONVIF services
-- [ ] Additional WebUI functionalities
 - [ ] Lens correction profiles
 - [ ] Local recordings with motion detection
 - [ ] Alternative audio codecs

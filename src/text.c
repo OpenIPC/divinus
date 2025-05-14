@@ -73,6 +73,7 @@ void text_copy_rendered(SFT_Image *dest, const SFT_Image *source, int x0, int y0
 
     for (int y = 0; y < source->height; y++) {
         for (int x = 0; x < source->width; x++) {
+            if (s[x] == 0) continue;
             double t = s[x] * inv255;
             unsigned short r = (1.0 - t) * ((d[x] & 0x7C00) >> 10) + t * maskr;
             unsigned short g = (1.0 - t) * ((d[x] & 0x3E0) >> 5) + t * maskg;
@@ -152,7 +153,8 @@ void text_dim_rendered(double *margin, double *height, double *width, const char
     *width = MAX(*width, lwidth) + 2 * *margin;
 }
 
-hal_bitmap text_create_rendered(const char *font, double size, const char *text, int color)
+hal_bitmap text_create_rendered(const char *font, double size, const char *text, 
+    int color, int outline, double thick)
 {
     text_load_font(&sft, font, size, &lmtx);
 
@@ -185,6 +187,19 @@ hal_bitmap text_create_rendered(const char *font, double size, const char *text,
         text_new_rendered(&image, mtx.minWidth, mtx.minHeight, 0);
         sft_render(&sft, gid, image);
         sft_kerning(&sft, ogid, gid, &kerning);
+
+        if (thick <= 0) goto noOutline;
+
+        for (int dx = -thick; dx <= thick; dx++) {
+            for (int dy = -thick; dy <= thick; dy++) {
+                if (!dx && !dy) continue;
+                text_copy_rendered(&canvas, &image,
+                    x + mtx.leftSideBearing + dx,
+                    y + mtx.yOffset + dy, outline);
+            }
+        }
+
+noOutline:;
         x += kerning.xShift;
         text_copy_rendered(&canvas, &image, x + mtx.leftSideBearing,
             y + mtx.yOffset, color);

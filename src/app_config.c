@@ -46,7 +46,7 @@ int save_app_config(void) {
     fprintf(file, "  sensor_config: %s\n", app_config.sensor_config);
     fprintf(file, "  server_enable: %s\n", app_config.server_enable ? "true" : "false");
     fprintf(file, "  web_port: %d\n", app_config.web_port);
-    if (app_config.web_whitelist) {
+    if (!EMPTY(*app_config.web_whitelist)) {
         fprintf(file, "  web_whitelist: ");
         for (int i = 0; app_config.web_whitelist[i] && *app_config.web_whitelist[i]; i++) {
             fprintf(file, "    - %s\n", app_config.web_whitelist[i]);
@@ -59,6 +59,8 @@ int save_app_config(void) {
     fprintf(file, "  isp_thread_stack_size: %d\n", app_config.isp_thread_stack_size);
     fprintf(file, "  venc_stream_thread_stack_size: %d\n", app_config.venc_stream_thread_stack_size);
     fprintf(file, "  web_server_thread_stack_size: %d\n", app_config.web_server_thread_stack_size);
+    if (!EMPTY(timefmt) || EQUALS(timefmt, DEF_TIMEFMT))
+        fprintf(file, "  time_format: %s\n", timefmt);
     fprintf(file, "  watchdog: %d\n", app_config.watchdog);
 
     fprintf(file, "night_mode:\n");
@@ -77,17 +79,10 @@ int save_app_config(void) {
     fprintf(file, "  flip: %s\n", app_config.flip ? "true" : "false");
     fprintf(file, "  antiflicker: %d\n", app_config.antiflicker);
 
-    fprintf(file, "rtsp:\n");
-    fprintf(file, "  enable: %s\n", app_config.rtsp_enable ? "true" : "false");
-    fprintf(file, "  port: %d\n", app_config.rtsp_port);
-    fprintf(file, "  enable_auth: %s\n", app_config.rtsp_enable_auth ? "true" : "false");
-    fprintf(file, "  auth_user: %s\n", app_config.rtsp_auth_user);
-    fprintf(file, "  auth_pass: %s\n", app_config.rtsp_auth_pass);
-
     fprintf(file, "stream:\n");
     fprintf(file, "  enable: %s\n", app_config.stream_enable ? "true" : "false");
     fprintf(file, "  udp_srcport: %d\n", app_config.stream_udp_srcport);
-    if (app_config.stream_dests) {
+    if (!EMPTY(*app_config.stream_dests)) {
         fprintf(file, "  dests: ");
         for (int i = 0; app_config.stream_dests[i] && *app_config.stream_dests[i]; i++) {
             fprintf(file, "    - %s\n", app_config.stream_dests[i]);
@@ -99,6 +94,19 @@ int save_app_config(void) {
 
     fprintf(file, "mdns:\n");
     fprintf(file, "  enable: %s\n", app_config.mdns_enable ? "true" : "false");
+
+    fprintf(file, "onvif:\n");
+    fprintf(file, "  enable: %s\n", app_config.onvif_enable ? "true" : "false");
+    fprintf(file, "  enable_auth: %s\n", app_config.onvif_enable_auth ? "true" : "false");
+    fprintf(file, "  auth_user: %s\n", app_config.onvif_auth_user);
+    fprintf(file, "  auth_pass: %s\n", app_config.onvif_auth_pass);
+
+    fprintf(file, "rtsp:\n");
+    fprintf(file, "  enable: %s\n", app_config.rtsp_enable ? "true" : "false");
+    fprintf(file, "  port: %d\n", app_config.rtsp_port);
+    fprintf(file, "  enable_auth: %s\n", app_config.rtsp_enable_auth ? "true" : "false");
+    fprintf(file, "  auth_user: %s\n", app_config.rtsp_auth_user);
+    fprintf(file, "  auth_pass: %s\n", app_config.rtsp_auth_pass);
 
     fprintf(file, "audio:\n");
     fprintf(file, "  enable: %s\n", app_config.audio_enable ? "true" : "false");
@@ -125,16 +133,17 @@ int save_app_config(void) {
         if (imgEmpty && textEmpty) continue;
     
         if (!imgEmpty)
-            fprintf(file, "  reg_%dimg: %s\n", i, osds[i].img);
-        if (textEmpty)
-            continue;
-        fprintf(file, "    reg%d_text: %s\n", i, osds[i].text);
+            fprintf(file, "    reg_%dimg: %s\n", i, osds[i].img);
+        if (!textEmpty)
+            fprintf(file, "    reg%d_text: %s\n", i, osds[i].text);
         fprintf(file, "    reg%d_font: %s\n", i, osds[i].font);
         fprintf(file, "    reg%d_opal: %d\n", i, osds[i].opal);
         fprintf(file, "    reg%d_posx: %d\n", i, osds[i].posx);
         fprintf(file, "    reg%d_posy: %d\n", i, osds[i].posy);
         fprintf(file, "    reg%d_size: %.1f\n", i, osds[i].size);
         fprintf(file, "    reg%d_color: %#04x\n", i, osds[i].color);
+        fprintf(file, "    reg%d_outl: %#04x\n", i, osds[i].outl);
+        fprintf(file, "    reg%d_thick: %.1f\n", i, osds[i].thick);
     }
 
     fprintf(file, "jpeg:\n");
@@ -182,6 +191,12 @@ enum ConfigError parse_app_config(void) {
     app_config.mdns_enable = false;
 
     app_config.osd_enable = false;
+
+    app_config.onvif_enable = false;
+    app_config.onvif_enable_auth = false;
+    app_config.onvif_auth_user[0] = '\0';
+    app_config.onvif_auth_pass[0] = '\0';
+
     app_config.rtsp_enable = false;
     app_config.rtsp_port = 554;
     app_config.rtsp_enable_auth = false;
@@ -295,6 +310,9 @@ enum ConfigError parse_app_config(void) {
         &app_config.web_server_thread_stack_size);
     if (err != CONFIG_OK)
         goto RET_ERR;
+    parse_param_value(&ini, "system", "time_format", timefmt);
+    if (EMPTY(timefmt))
+        strncpy(timefmt, DEF_TIMEFMT, sizeof(timefmt) - 1);
     parse_int(&ini, "system", "watchdog", 0, INT_MAX, &app_config.watchdog);
 
     err =
@@ -360,8 +378,21 @@ enum ConfigError parse_app_config(void) {
             parse_double(&ini, "osd", param, 0, INT_MAX, &osds[i].size);
             sprintf(param, "reg%d_color", i);
             parse_int(&ini, "osd", param, 0, USHRT_MAX, &osds[i].color);
+            sprintf(param, "reg%d_outl", i);
+            parse_int(&ini, "osd", param, 0, USHRT_MAX, &osds[i].outl);
+            sprintf(param, "reg%d_thick", i);
+            parse_double(&ini, "osd", param, 0, UCHAR_MAX, &osds[i].thick);
             osds[i].updt = 1;
         }
+    }
+
+    parse_bool(&ini, "onvif", "enable", &app_config.onvif_enable);
+    if (app_config.onvif_enable) {
+        parse_bool(&ini, "onvif", "enable_auth", &app_config.onvif_enable_auth);
+        parse_param_value(
+            &ini, "onvif", "auth_user", app_config.onvif_auth_user);
+        parse_param_value(
+            &ini, "onvif", "auth_pass", app_config.onvif_auth_pass);
     }
 
     parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);

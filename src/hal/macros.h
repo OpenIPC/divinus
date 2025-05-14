@@ -5,6 +5,28 @@
 
 //#define DEBUG
 
+#define IMPORT_BIN(sect, file, sym) asm (\
+    ".section " #sect "\n"                  /* Change section */\
+    ".global " #sym "\n"                    /* Export the object address */\
+    ".balign 4\n"                           /* Word alignment */\
+    #sym ":\n"                              /* Define the object label */\
+    ".incbin \"" file "\"\n"                /* Import the file */\
+    ".global " #sym "_size\n"               /* Export the object size */\
+    ".balign 8\n"                           /* Word alignment */\
+    #sym "_size:\n"                         /* Define the object size label */\
+    ".long " #sym "_size - " #sym "\n"      /* Define the object size */\
+    ".section \".text\"\n")                 /* Restore section */
+
+#define IMPORT_STR(sect, file, sym) asm (\
+    ".section " #sect "\n"                  /* Change section */\
+    ".balign 4\n"                           /* Word alignment */\
+    ".global " #sym "\n"                    /* Export the object address */\
+    #sym ":\n"                              /* Define the object label */\
+    ".incbin \"" file "\"\n"                /* Import the file */\
+    ".byte 0\n"                             /* Null-terminate the string */\
+    ".balign 4\n"                           /* Word alignment */\
+    ".section \".text\"\n")                 /* Restore section */
+
 #define HAL_DANGER(mod, x, ...) \
     do { \
         fprintf(stderr, "[%s] \033[31m", (mod)); \
@@ -53,10 +75,8 @@
 
 #define CONTAINS(a, b) strstr(a, b)
 #define EMPTY(x) (x[0] == '\0')
+#define ENDS_WITH(a, b) \
+    ((strlen(a) > strlen(b)) && !strcmp(a + strlen(a) - strlen(b), b))
 #define EQUALS(a, b) !strcmp(a, b)
 #define EQUALS_CASE(a, b) !strcasecmp(a, b)
-#define ENDS_WITH(a, b)      \
-    size_t alen = strlen(a); \
-    size_t blen = strlen(b); \
-    return (alen > blen) && strcmp(a + alen - blen, b);
 #define STARTS_WITH(a, b) !strncmp(a, b, strlen(b))

@@ -214,12 +214,14 @@ void request_idr(void) {
         break;
     }
     if (index != -1) switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  ak_video_request_idr(index); break;
-        case HAL_PLATFORM_GM:  gm_video_request_idr(index); break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_video_request_idr(index); break;
         case HAL_PLATFORM_I6C: i6c_video_request_idr(index); break;
         case HAL_PLATFORM_M6:  m6_video_request_idr(index); break;
+        case HAL_PLATFORM_RK:  rk_video_request_idr(index); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ak_video_request_idr(index); break;
+        case HAL_PLATFORM_GM:  gm_video_request_idr(index); break;
         case HAL_PLATFORM_V1:  v1_video_request_idr(index); break;
         case HAL_PLATFORM_V2:  v2_video_request_idr(index); break;
         case HAL_PLATFORM_V3:  v3_video_request_idr(index); break;
@@ -236,11 +238,13 @@ void request_idr(void) {
 void set_grayscale(bool active) {
     pthread_mutex_lock(&chnMtx);
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  ak_channel_grayscale(active); break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_channel_grayscale(active); break;
         case HAL_PLATFORM_I6C: i6c_channel_grayscale(active); break;
         case HAL_PLATFORM_M6:  m6_channel_grayscale(active); break;
+        case HAL_PLATFORM_RK:  rk_channel_grayscale(active); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ak_channel_grayscale(active); break;
         case HAL_PLATFORM_V1:  v1_channel_grayscale(active); break;
         case HAL_PLATFORM_V2:  v2_channel_grayscale(active); break;
         case HAL_PLATFORM_V3:  v3_channel_grayscale(active); break;
@@ -269,9 +273,7 @@ int take_next_free_channel(bool mainLoop) {
 
 int create_channel(char index, short width, short height, char framerate, char jpeg) {
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  return EXIT_SUCCESS;
-        case HAL_PLATFORM_GM:  return EXIT_SUCCESS;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_I6C: return i6c_channel_create(index, width, height,
@@ -279,7 +281,10 @@ int create_channel(char index, short width, short height, char framerate, char j
         case HAL_PLATFORM_M6:  return m6_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_RK:  return rk_channel_create(index, width, height,
-            app_config.mirror, app_config.flip, framerate);
+            app_config.mirror, app_config.flip);
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  return EXIT_SUCCESS;
+        case HAL_PLATFORM_GM:  return EXIT_SUCCESS;
         case HAL_PLATFORM_V1:  return v1_channel_create(index, width, height,
             app_config.mirror, app_config.flip, framerate);
         case HAL_PLATFORM_V2:  return v2_channel_create(index, width, height,
@@ -300,13 +305,14 @@ int create_channel(char index, short width, short height, char framerate, char j
 
 int bind_channel(char index, char framerate, char jpeg) {
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  return ak_channel_bind(index);
-        case HAL_PLATFORM_GM:  return gm_channel_bind(index);
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_channel_bind(index, framerate);
         case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate);
         case HAL_PLATFORM_M6:  return m6_channel_bind(index, framerate);
         case HAL_PLATFORM_RK:  return rk_channel_bind(index);
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  return ak_channel_bind(index);
+        case HAL_PLATFORM_GM:  return gm_channel_bind(index);
         case HAL_PLATFORM_V1:  return v1_channel_bind(index);
         case HAL_PLATFORM_V2:  return v2_channel_bind(index);
         case HAL_PLATFORM_V3:  return v3_channel_bind(index);
@@ -321,13 +327,14 @@ int bind_channel(char index, char framerate, char jpeg) {
 
 int unbind_channel(char index, char jpeg) {
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  return ak_channel_unbind(index);
-        case HAL_PLATFORM_GM:  return gm_channel_unbind(index);
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_channel_unbind(index);
         case HAL_PLATFORM_I6C: return i6c_channel_unbind(index);
         case HAL_PLATFORM_M6:  return m6_channel_unbind(index);
         case HAL_PLATFORM_RK:  return rk_channel_unbind(index);
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  return ak_channel_unbind(index);
+        case HAL_PLATFORM_GM:  return gm_channel_unbind(index);
         case HAL_PLATFORM_V1:  return v1_channel_unbind(index);
         case HAL_PLATFORM_V2:  return v2_channel_unbind(index);
         case HAL_PLATFORM_V3:  return v3_channel_unbind(index);
@@ -342,13 +349,14 @@ int unbind_channel(char index, char jpeg) {
 
 int disable_video(char index, char jpeg) {
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  return ak_video_destroy(index);
-        case HAL_PLATFORM_GM:  return gm_video_destroy(index);
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_video_destroy(index);
         case HAL_PLATFORM_I6C: return i6c_video_destroy(index);
         case HAL_PLATFORM_M6:  return m6_video_destroy(index);
         case HAL_PLATFORM_RK:  return rk_video_destroy(index);
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  return ak_video_destroy(index);
+        case HAL_PLATFORM_GM:  return gm_video_destroy(index);
         case HAL_PLATFORM_V1:  return v1_video_destroy(index);
         case HAL_PLATFORM_V2:  return v2_video_destroy(index);
         case HAL_PLATFORM_V3:  return v3_video_destroy(index);
@@ -372,12 +380,13 @@ void disable_audio(void) {
     shine_close(mp3Enc);
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_GM:  gm_audio_deinit(); break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_audio_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_audio_deinit(); break;
         case HAL_PLATFORM_M6:  m6_audio_deinit(); break;
         case HAL_PLATFORM_RK:  rk_audio_deinit(); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_GM:  gm_audio_deinit(); break;
         case HAL_PLATFORM_V1:  v1_audio_deinit(); break;
         case HAL_PLATFORM_V2:  v2_audio_deinit(); break;
         case HAL_PLATFORM_V3:  v3_audio_deinit(); break;
@@ -396,12 +405,13 @@ int enable_audio(void) {
     if (audioOn) return ret;
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_GM:  ret = gm_audio_init(app_config.audio_srate); break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  ret = i6_audio_init(app_config.audio_srate, app_config.audio_gain); break;
         case HAL_PLATFORM_I6C: ret = i6c_audio_init(app_config.audio_srate, app_config.audio_gain); break;
         case HAL_PLATFORM_M6:  ret = m6_audio_init(app_config.audio_srate, app_config.audio_gain); break;
         case HAL_PLATFORM_RK:  ret = rk_audio_init(app_config.audio_srate); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_GM:  ret = gm_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V1:  ret = v1_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V2:  ret = v2_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V3:  ret = v3_audio_init(app_config.audio_srate); break;
@@ -509,13 +519,14 @@ int enable_mjpeg(void) {
         config.maxBitrate = app_config.mjpeg_bitrate * 5 / 4;
 
         switch (plat) {
-#if defined(__arm__)
-            case HAL_PLATFORM_AK:  ret = ak_video_create(index, &config); break;
-            case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
+#if defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
             case HAL_PLATFORM_M6:  ret = m6_video_create(index, &config); break;
             case HAL_PLATFORM_RK:  ret = rk_video_create(index, &config); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+            case HAL_PLATFORM_AK:  ret = ak_video_create(index, &config); break;
+            case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
             case HAL_PLATFORM_V1:  ret = v1_video_create(index, &config); break;
             case HAL_PLATFORM_V2:  ret = v2_video_create(index, &config); break;
             case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
@@ -594,13 +605,14 @@ int enable_mp4(void) {
         config.maxPSize = app_config.maxPSize;
 
         switch (plat) {
-#if defined(__arm__)
-            case HAL_PLATFORM_AK:  ret = ak_video_create(index, &config); break;
-            case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
+#if defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
             case HAL_PLATFORM_M6:  ret = m6_video_create(index, &config); break;
             case HAL_PLATFORM_RK:  ret = rk_video_create(index, &config); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+            case HAL_PLATFORM_AK:  ret = ak_video_create(index, &config); break;
+            case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
             case HAL_PLATFORM_V1:  ret = v1_video_create(index, &config); break;
             case HAL_PLATFORM_V2:  ret = v2_video_create(index, &config); break;
             case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
@@ -632,14 +644,15 @@ int start_sdk(void) {
     int ret;
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  ret = ak_hal_init(); break;
-        case HAL_PLATFORM_GM:  ret = gm_hal_init(); break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I3:  ret = i3_hal_init(); break;
         case HAL_PLATFORM_I6:  ret = i6_hal_init(); break;
         case HAL_PLATFORM_I6C: ret = i6c_hal_init(); break;
         case HAL_PLATFORM_M6:  ret = m6_hal_init(); break;
         case HAL_PLATFORM_RK:  ret = rk_hal_init(); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ret = ak_hal_init(); break;
+        case HAL_PLATFORM_GM:  ret = gm_hal_init(); break;
         case HAL_PLATFORM_V1:  ret = v1_hal_init(); break;
         case HAL_PLATFORM_V2:  ret = v2_hal_init(); break;
         case HAL_PLATFORM_V3:  ret = v3_hal_init(); break;
@@ -655,11 +668,7 @@ int start_sdk(void) {
             ret, errstr(ret));
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_GM:
-            gm_aud_cb = save_audio_stream;
-            gm_vid_cb = save_video_stream;
-            break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:
             i6_aud_cb = save_audio_stream;
             i6_vid_cb = save_video_stream;
@@ -683,6 +692,11 @@ int start_sdk(void) {
         case HAL_PLATFORM_RK:
             rk_aud_cb = save_audio_stream;
             rk_vid_cb = save_video_stream;
+            break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_GM:
+            gm_aud_cb = save_audio_stream;
+            gm_vid_cb = save_video_stream;
             break;
         case HAL_PLATFORM_V1:
             v1_aud_cb = save_audio_stream;
@@ -714,14 +728,15 @@ int start_sdk(void) {
     }
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  ret = ak_system_init(app_config.sensor_config); break;
-        case HAL_PLATFORM_GM:  ret = gm_system_init(); break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I3:  ret = i3_system_init(); break;
         case HAL_PLATFORM_I6:  ret = i6_system_init(); break;
         case HAL_PLATFORM_I6C: ret = i6c_system_init(); break;
         case HAL_PLATFORM_M6:  ret = m6_system_init(); break;
         case HAL_PLATFORM_RK:  ret = rk_system_init(0); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ret = ak_system_init(app_config.sensor_config); break;
+        case HAL_PLATFORM_GM:  ret = gm_system_init(); break;
         case HAL_PLATFORM_V1:  ret = v1_system_init(app_config.sensor_config); break;
         case HAL_PLATFORM_V2:  ret = v2_system_init(app_config.sensor_config); break;
         case HAL_PLATFORM_V3:  ret = v3_system_init(app_config.sensor_config); break;
@@ -748,11 +763,7 @@ int start_sdk(void) {
     short framerate = MAX(app_config.mp4_fps, app_config.mjpeg_fps);
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  ret = ak_pipeline_create(app_config.mirror,
-            app_config.flip); break;
-        case HAL_PLATFORM_GM:  ret = gm_pipeline_create(app_config.mirror,
-            app_config.flip);   break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  ret = i6_pipeline_create(0, width,
             height, framerate, app_config.mirror, app_config.flip, app_config.noiselevel, app_config.force_sensor_index); break;
         case HAL_PLATFORM_I6C: ret = i6c_pipeline_create(0, width,
@@ -760,6 +771,11 @@ int start_sdk(void) {
         case HAL_PLATFORM_M6:  ret = m6_pipeline_create(0, width,
             height, framerate); break;
         case HAL_PLATFORM_RK:  ret = rk_pipeline_create(width, height); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ret = ak_pipeline_create(app_config.mirror,
+            app_config.flip); break;
+        case HAL_PLATFORM_GM:  ret = gm_pipeline_create(app_config.mirror,
+            app_config.flip); break;
         case HAL_PLATFORM_V1:  ret = v1_pipeline_create(); break;
         case HAL_PLATFORM_V2:  ret = v2_pipeline_create(); break;
         case HAL_PLATFORM_V3:  ret = v3_pipeline_create(); break;
@@ -818,7 +834,7 @@ int start_sdk(void) {
 
     if (!access(app_config.sensor_config, F_OK) && !sleep(1))
         switch (plat) {
-#if defined(__arm__)
+#if defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_I3:  i3_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_I6:  i6_config_load(app_config.sensor_config); i6_sensor_config(framerate); break;
             case HAL_PLATFORM_I6C: i6c_config_load(app_config.sensor_config); break;
@@ -840,13 +856,14 @@ int stop_sdk(void) {
         jpeg_deinit();
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  ak_video_destroy_all(); break;
-        case HAL_PLATFORM_GM:  gm_video_destroy_all(); break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_video_destroy_all(); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy_all(); break;
         case HAL_PLATFORM_M6:  m6_video_destroy_all(); break;
         case HAL_PLATFORM_RK:  rk_video_destroy_all(); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ak_video_destroy_all(); break;
+        case HAL_PLATFORM_GM:  gm_video_destroy_all(); break;
         case HAL_PLATFORM_V1:  v1_video_destroy_all(); break;
         case HAL_PLATFORM_V2:  v2_video_destroy_all(); break;
         case HAL_PLATFORM_V3:  v3_video_destroy_all(); break;
@@ -859,13 +876,14 @@ int stop_sdk(void) {
     }
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  ak_pipeline_destroy(); break;
-        case HAL_PLATFORM_GM:  gm_pipeline_destroy(); break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_pipeline_destroy(); break;
         case HAL_PLATFORM_I6C: i6c_pipeline_destroy(); break;
         case HAL_PLATFORM_M6:  m6_pipeline_destroy(); break;
         case HAL_PLATFORM_RK:  rk_pipeline_destroy(); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ak_pipeline_destroy(); break;
+        case HAL_PLATFORM_GM:  gm_pipeline_destroy(); break;
         case HAL_PLATFORM_V1:  v1_pipeline_destroy(); break;
         case HAL_PLATFORM_V2:  v2_pipeline_destroy(); break;
         case HAL_PLATFORM_V3:  v3_pipeline_destroy(); break;
@@ -884,14 +902,15 @@ int stop_sdk(void) {
         pthread_join(ispPid, NULL);
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  ak_system_deinit(); break;
-        case HAL_PLATFORM_GM:  gm_system_deinit(); break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I3:  i3_system_deinit(); break;
         case HAL_PLATFORM_I6:  i6_system_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_system_deinit(); break;
         case HAL_PLATFORM_M6:  m6_system_deinit(); break;
         case HAL_PLATFORM_RK:  rk_system_deinit(); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ak_system_deinit(); break;
+        case HAL_PLATFORM_GM:  gm_system_deinit(); break;
         case HAL_PLATFORM_V1:  v1_system_deinit(); break;
         case HAL_PLATFORM_V2:  v2_system_deinit(); break;
         case HAL_PLATFORM_V3:  v3_system_deinit(); break;
@@ -904,7 +923,7 @@ int stop_sdk(void) {
     }
 
     switch (plat) {
-#if defined(__arm__)
+#if defined(__arm__) && !defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_V1: v1_sensor_deinit(); break;
         case HAL_PLATFORM_V2: v2_sensor_deinit(); break;
         case HAL_PLATFORM_V3: v3_sensor_deinit(); break;
@@ -913,14 +932,15 @@ int stop_sdk(void) {
     }
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_AK:  ak_hal_deinit(); break;
-        case HAL_PLATFORM_GM:  gm_hal_deinit(); break;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I3:  i3_hal_deinit(); break;
         case HAL_PLATFORM_I6:  i6_hal_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_hal_deinit(); break;
         case HAL_PLATFORM_M6:  m6_hal_deinit(); break;
         case HAL_PLATFORM_RK:  rk_hal_deinit(); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ak_hal_deinit(); break;
+        case HAL_PLATFORM_GM:  gm_hal_deinit(); break;
         case HAL_PLATFORM_V1:  v1_hal_deinit(); break;
         case HAL_PLATFORM_V2:  v2_hal_deinit(); break;
         case HAL_PLATFORM_V3:  v3_hal_deinit(); break;

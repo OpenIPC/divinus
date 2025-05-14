@@ -510,7 +510,7 @@ map_file(SFT_Font *font, const char *filename)
 		return -1;
 	}
 	/* FIXME do some basic validation on info.st_size maybe - it is signed for example, so it *could* be negative .. */
-	font->memory = mmap64(NULL, (size_t) info.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	font->memory = __mmap64(NULL, (size_t) info.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	font->size   = (uint_fast32_t) info.st_size;
 	close(fd);
 	return font->memory == MAP_FAILED ? -1 : 0;

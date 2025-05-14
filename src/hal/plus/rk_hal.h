@@ -1,7 +1,9 @@
 #pragma once
 
 #include "rk_common.h"
+#include "rk_aiq.h"
 #include "rk_aud.h"
+#include "rk_mb.h"
 #include "rk_rgn.h"
 #include "rk_sys.h"
 #include "rk_venc.h"
@@ -30,11 +32,9 @@ int rk_audio_init(int samplerate);
 void *rk_audio_thread(void);
 
 int rk_channel_bind(char index);
-int rk_channel_create(char index, short width, short height, char mirror, char flip, char framerate);
+int rk_channel_create(char index, short width, short height, char mirror, char flip);
 int rk_channel_grayscale(char enable);
 int rk_channel_unbind(char index);
-
-void *rk_image_thread(void);
 
 int rk_pipeline_create(short width, short height);
 void rk_pipeline_destroy(void);
@@ -43,10 +43,7 @@ int rk_region_create(char handle, hal_rect rect, short opacity);
 void rk_region_destroy(char handle);
 int rk_region_setbitmap(int handle, hal_bitmap *bitmap);
 
-void rk_sensor_deconfig(void);
-int rk_sensor_config(void);
-void rk_sensor_deinit(void);
-int rk_sensor_init(char *name, char *obj);
+int rk_sensor_find_v4l2_endpoint(void);
 
 int rk_video_create(char index, hal_vidconfig *config);
 int rk_video_destroy(char index);

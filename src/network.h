@@ -5,12 +5,21 @@
 #include <stdio.h>
 #include <sys/utsname.h>
 
-#ifdef __UCLIBC__
-extern int asprintf(char **restrict strp, const char *restrict fmt, ...);
-#endif
-
+#include "app_config.h"
 #include "hal/support.h"
 #include "lib/tinysvcmdns.h"
+#include "onvif.h"
 
-int start_mdns();
-void stop_mdns();
+typedef struct {
+    char intf[3][16];
+    char ipaddr[3][INET_ADDRSTRLEN];
+    char count;
+    char host[65];
+} NetInfo;
+
+void init_network(void);
+int start_network(void);
+void stop_network(void);
+
+int start_mdns(void);
+void stop_mdns(void);

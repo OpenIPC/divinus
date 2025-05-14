@@ -13,12 +13,15 @@ hal_platform plat = HAL_PLATFORM_UNK;
 char sensor[16] = "unidentified";
 int series = 0;
 
+unsigned long long lastMillisTemp = 0;
+float lastReadTemp = 0.0 / 0.0;
+
 void hal_identify(void) {
     unsigned int val = 0;
     FILE *file;
     char *endMark, line[200] = {0};
 
-#ifdef __arm__
+#if defined(__ARM_PCS_VFP)
     if (!access("/proc/mi_modules", F_OK) && 
         hal_registry(0x1F003C00, &series, OP_READ)) {
         char package[4] = {0};
@@ -122,7 +125,20 @@ void hal_identify(void) {
         //vid_thread = i3_video_thread;
         return;
     }
+
+    if (!access("/proc/rk_cma", F_OK)) {
+        plat = HAL_PLATFORM_RK;
+        strcpy(chip, "rv11xx");
+        strcpy(family, "rockchip");
+        chnCount = RK_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)rk_state;
+        aud_thread = rk_audio_thread;
+        vid_thread = rk_video_thread;
+        return;
+    }
+#endif
     
+#if defined(__arm__) && !defined(__ARM_PCS_VFP)
     if (!access("/dev/vpd", F_OK)) {
         plat = HAL_PLATFORM_GM;
         strcpy(chip, "GM813x");
@@ -154,17 +170,6 @@ void hal_identify(void) {
         chnState = (hal_chnstate*)ak_state;
         //aud_thread = ak_audio_thread;
         vid_thread = ak_video_thread;
-        return;
-    }
-
-    if (!access("/proc/rk_cma", F_OK)) {
-        plat = HAL_PLATFORM_RK;
-        strcpy(chip, "rv11xx");
-        strcpy(family, "rockchip");
-        chnCount = RK_VENC_CHN_NUM;
-        chnState = (hal_chnstate*)rk_state;
-        aud_thread = rk_audio_thread;
-        vid_thread = rk_video_thread;
         return;
     }
 #endif
@@ -199,7 +204,20 @@ void hal_identify(void) {
     }
 #endif
 
-#ifdef __arm__
+#if defined(__riscv) || defined(__riscv__)
+    if (!access("/proc/cvi", F_OK)) {
+        plat = HAL_PLATFORM_CVI;
+        strcpy(family, "CV181x");
+        chnCount = CVI_VENC_CHN_NUM;
+        chnState = (hal_chnstate*)cvi_state;
+        aud_thread = cvi_audio_thread;
+        isp_thread = cvi_image_thread;
+        vid_thread = cvi_video_thread;
+        return;
+    }
+#endif
+
+#if defined(__arm__) && !defined(__ARM_PCS_VFP)
     if (file = fopen("/proc/iomem", "r")) {
         while (fgets(line, 200, file))
             if (strstr(line, "uart")) {
@@ -300,16 +318,47 @@ void hal_identify(void) {
     isp_thread = v4_image_thread;
     vid_thread = v4_video_thread;
 #endif
+}
 
-#if defined(__riscv) || defined(__riscv__)
-    if (!access("/proc/cvi", F_OK)) {
-        plat = HAL_PLATFORM_CVI;
-        strcpy(family, "CV181x");
-        chnCount = CVI_VENC_CHN_NUM;
-        chnState = (hal_chnstate*)cvi_state;
-        aud_thread = cvi_audio_thread;
-        isp_thread = cvi_image_thread;
-        vid_thread = cvi_video_thread;
-    }
+float hal_temperature_read(void) {
+    if (lastReadTemp != (0.0 / 0.0) && (millis() - lastMillisTemp < 5000))
+        return lastReadTemp;
+
+    lastMillisTemp = millis();
+
+    switch (plat) {
+#if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I6:
+        case HAL_PLATFORM_I6C:
+        case HAL_PLATFORM_M6:
+        {
+            FILE* file;
+            char line[20] = {0};
+            if (file = fopen("/sys/class/mstar/msys/TEMP_R", "r")) {
+                fgets(line, 20, file);
+                char *remain, *parsed = strstr(line, "Temperature ");
+                lastReadTemp = strtof(parsed + 12, &remain);
+                fclose(file);
+            }
+            break;
+        }
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_V2: lastReadTemp = v2_system_readtemp(); break;
+        case HAL_PLATFORM_V3: lastReadTemp = v3_system_readtemp(); break;
+        case HAL_PLATFORM_V4: lastReadTemp = v4_system_readtemp(); break;
 #endif
+        default:
+            if (!access("/sys/class/thermal/thermal_zone0/temp", F_OK)) {
+                FILE* file;
+                char line[10] = {0};
+                if (file = fopen("/sys/class/thermal/thermal_zone0/temp", "r")) {
+                    fgets(line, 10, file);
+                    lastReadTemp = strtof(line, NULL) / 1000.0;
+                    fclose(file);
+                }
+            } else lastMillisTemp = UINT64_MAX;
+            break;
+    }
+
+    return lastReadTemp;
 }

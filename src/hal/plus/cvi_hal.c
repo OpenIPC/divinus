@@ -143,6 +143,9 @@ int cvi_channel_bind(char index)
     if (ret = cvi_vpss.fnEnableChannel(_cvi_vpss_grp, index))
         return ret;
 
+    if (ret = cvi_vpss.fnAttachChannelPool(_cvi_vpss_grp, index, index))
+        return ret;
+
     {
         cvi_sys_bind source = { .module = CVI_SYS_MOD_VPSS, 
             .device = _cvi_vpss_grp, .channel = index };
@@ -169,7 +172,8 @@ int cvi_channel_create(char index, short width, short height, char mirror, char 
         channel.dstFps = -1;
         channel.mirror = mirror;
         channel.flip = flip;
-        channel.depth = 0;
+        channel.depth = 1;
+        channel.aspectRatio = 1;
         if (ret = cvi_vpss.fnSetChannelConfig(_cvi_vpss_grp, index, &channel))
             return ret;
     }
@@ -198,6 +202,8 @@ int cvi_channel_unbind(char index)
 {
     int ret;
 
+    cvi_vpss.fnDetachChannelPool(_cvi_vpss_grp, index);
+    
     if (ret = cvi_vpss.fnDisableChannel(_cvi_vpss_grp, index))
         return ret;
 
@@ -231,7 +237,7 @@ int cvi_pipeline_create(void)
     {
         cvi_sys_vimd mode[4];
         cvi_sys.fnGetViVpssMode((cvi_sys_vimd**)&mode);
-        mode[0] = CVI_SYS_VIMD_VION_VPSSON;
+        mode[0] = CVI_SYS_VIMD_VIOFF_VPSSON;
         if (ret = cvi_sys.fnSetViVpssMode((cvi_sys_vimd**)&mode))
             return ret;
     }
@@ -241,9 +247,12 @@ int cvi_pipeline_create(void)
     if (ret = cvi_vi.fnEnableDevice(_cvi_vi_dev))
         return ret;
 
+    if (ret = cvi_snr_drv.obj->pfnRegisterCallback(_cvi_vi_pipe, &cvi_ae_lib, &cvi_awb_lib))
+        return ret;
+
     {
         cvi_vi_bind bind;
-        bind.num = 1;
+        bind.num = 0;
         bind.pipeId[0] = _cvi_vi_pipe;
         if (ret = cvi_vi.fnBindPipe(_cvi_vi_dev, &bind))
             return ret;
@@ -259,7 +268,7 @@ int cvi_pipeline_create(void)
         pipe.pixFmt = CVI_PIXFMT_RGB_BAYER_8BPP + cvi_config.mipi.prec;
         pipe.compress = CVI_COMPR_NONE;
         pipe.prec = cvi_config.mipi.prec;
-        pipe.nRedOn = 0;
+        pipe.nRedOn = 1;
         pipe.sharpenOn = 0;
         pipe.srcFps = -1;
         pipe.dstFps = -1;
@@ -267,6 +276,20 @@ int cvi_pipeline_create(void)
             return ret;
     }
     if (ret = cvi_vi.fnStartPipe(_cvi_vi_pipe))
+        return ret;
+    
+    if (ret = cvi_isp.fnRegisterAE(_cvi_vi_pipe, &cvi_ae_lib))
+        return ret;
+    if (ret = cvi_isp.fnRegisterAWB(_cvi_vi_pipe, &cvi_awb_lib))
+        return ret;
+    if (ret = cvi_isp.fnMemInit(_cvi_vi_pipe))
+        return ret;
+
+    cvi_config.isp.capt.x = 0;
+    cvi_config.isp.capt.y = 0;
+    if (ret = cvi_isp.fnSetDeviceConfig(_cvi_vi_pipe, &cvi_config.isp))
+        return ret;
+    if (ret = cvi_isp.fnInit(_cvi_vi_pipe))
         return ret;
 
     {
@@ -287,28 +310,11 @@ int cvi_pipeline_create(void)
     if (ret = cvi_vi.fnEnableChannel(_cvi_vi_pipe, _cvi_vi_chn))
         return ret;
 
-    if (ret = cvi_snr_drv.obj->pfnRegisterCallback(_cvi_vi_pipe, &cvi_ae_lib, &cvi_awb_lib))
-        return ret;
-    
-    if (ret = cvi_isp.fnRegisterAE(_cvi_vi_pipe, &cvi_ae_lib))
-        return ret;
-    if (ret = cvi_isp.fnRegisterAWB(_cvi_vi_pipe, &cvi_awb_lib))
-        return ret;
-    if (ret = cvi_isp.fnMemInit(_cvi_vi_pipe))
-        return ret;
-
-    cvi_config.isp.capt.x = 0;
-    cvi_config.isp.capt.y = 0;
-    if (ret = cvi_isp.fnSetDeviceConfig(_cvi_vi_pipe, &cvi_config.isp))
-        return ret;
-    if (ret = cvi_isp.fnInit(_cvi_vi_pipe))
-        return ret;
-
     {
         cvi_sys_vpcf config = {
-            .mode = CVI_SYS_VPSS_SINGLE,
-            .inputIsIsp = {1, 0},
-            .pipeId = {_cvi_vi_pipe, 0}
+            .mode = CVI_SYS_VPSS_DUAL,
+            .inputIsIsp = {0, 1},
+            .pipeId = {0, _cvi_vi_pipe}
         };
         if (ret = cvi_sys.fnSetVpssMode(&config))
             return ret;
@@ -491,7 +497,7 @@ int cvi_sensor_init(char *name, char *obj)
 {
     char path[128];
     char* dirs[] = {"%s", "./%s", "/usr/lib/sensors/%s", "/usr/lib/%s",
-        "/mnt/system/lib/%s", "/mnt/system/lib/libsns_full.so"};
+        "/mnt/system/lib/%s", "/mnt/system/lib/libsns_full.so", NULL};
     char **dir = dirs;
 
     while (*dir) {
@@ -589,7 +595,7 @@ int cvi_video_create(char index, hal_vidconfig *config)
     } else HAL_ERROR("cvi_venc", "This codec is not supported by the hardware!");
     channel.attrib.maxPic.width = config->width;
     channel.attrib.maxPic.height = config->height;
-    channel.attrib.bufSize = ALIGN_UP(config->height * config->width * 3 / 4, 64);
+    channel.attrib.bufSize = ALIGN_UP(config->height, 64) * ALIGN_UP(config->width, 64) * 3 / 2;
     if (channel.attrib.codec == CVI_VENC_CODEC_H264)
         channel.attrib.profile = MAX(config->profile, 2);
     channel.attrib.byFrame = 1;
@@ -881,26 +887,26 @@ int cvi_system_init(char *snrConfig)
         puts(version.version);
     }
 
+    cvi_sys.fnExit();
+    cvi_vb.fnExit();
+
     if (cvi_parse_sensor_config(snrConfig, &cvi_config) != CONFIG_OK)
         HAL_ERROR("cvi_sys", "Can't load sensor config\n");
 
     if (ret = cvi_sensor_init(cvi_config.dll_file, cvi_config.sensor_type))
         return ret;
 
-    cvi_sys.fnExit();
-    cvi_vb.fnExit();
-
     {
         cvi_vb_pool pool;
         memset(&pool, 0, sizeof(pool));
 
         pool.count = 2;
-        pool.comm[0].blockSize = cvi_config.videv.size.width *
-            cvi_config.videv.size.height * 3 / 2;
+        pool.comm[0].blockSize = ALIGN_UP(cvi_config.videv.size.width, 64) *
+            ALIGN_UP(cvi_config.videv.size.height, 64) * 3 / 2;
         pool.comm[0].blockCnt = 3;
         pool.comm[0].rempVirt = 2;
-        pool.comm[1].blockSize = cvi_config.videv.size.width *
-            cvi_config.videv.size.height * 3 / 2;
+        pool.comm[1].blockSize = ALIGN_UP(cvi_config.videv.size.width, 64) *
+            ALIGN_UP(cvi_config.videv.size.height, 64) * 3 / 2;
         pool.comm[1].blockCnt = 3;
         pool.comm[1].rempVirt = 2;
 

@@ -13,7 +13,6 @@ typedef enum {
 
 typedef enum {
     RK_RGN_TYPE_OVERLAY,
-    RK_RGN_TYPE_OVERLAYEX,
     RK_RGN_TYPE_COVER,
     RK_RGN_TYPE_MOSAIC,
     RK_RGN_TYPE_LINE,
@@ -34,19 +33,14 @@ typedef struct {
     unsigned int layer;
     int qpProtOn;
     int absQualOn;
-    int forceIpmbOn;
+    int forceIntraOn;
     int quality;
-    unsigned short colorLut[2];
+    unsigned int colorLut[2];
+    rk_common_dim invColorArea;
+    unsigned int lumThresh;
+    int lumThreshHighOn;
+    int invColorOn;
 } rk_rgn_ovlc;
-
-typedef struct {
-    rk_common_pnt point;
-    unsigned int fgAlpha;
-    unsigned int bgAlpha;
-    // Accepts values from 0-15
-    unsigned int layer;
-    unsigned short colorLut[2];
-} rk_rgn_ovlxc;
 
 typedef struct {
     rk_common_rect rect;
@@ -63,12 +57,20 @@ typedef struct {
 } rk_rgn_mosc;
 
 typedef struct {
+    unsigned int thick;
+    unsigned int color;
+    rk_common_pnt start;
+    rk_common_pnt end;
+} rk_rgn_linc;
+
+typedef struct {
     int show;
     rk_rgn_type type;
     union {
         rk_rgn_ovlc overlay;
         rk_rgn_covc cover;
         rk_rgn_mosc mosaic;
+        rk_rgn_linc line;
     };
 } rk_rgn_chn;
 
@@ -77,6 +79,7 @@ typedef struct {
     rk_common_dim size;
     unsigned int canvas;
     unsigned int colorLutNum;
+    // Only supported with BGRA8888
     unsigned int colorLut[256];
 } rk_rgn_ovl;
 

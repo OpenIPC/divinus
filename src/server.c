@@ -5,6 +5,8 @@
 
 IMPORT_STR(.rodata, "../res/index.html", indexhtml);
 extern const char indexhtml[];
+IMPORT_STR(.rodata, "../res/onvif/badauth.xml", badauthxml);
+extern const char badauthxml[];
 
 enum StreamType {
     STREAM_H26X,
@@ -15,98 +17,111 @@ enum StreamType {
     STREAM_PCM
 };
 
-struct Request {
+typedef struct {
     int clntFd;
     char *input, *method, *payload, *prot, *query, *uri;
     int paysize, total;
-};
+} http_request_t;
 
-struct Client {
-    int socket_fd;
+struct {
+    int sockFd;
     enum StreamType type;
     struct Mp4State mp4;
     unsigned int nalCnt;
 } client_fds[MAX_CLIENTS];
 
-struct Header {
+typedef struct {
     char *name, *value;
-} reqhdr[17] = {{"\0", "\0"}};
+} http_header_t;
+
+typedef struct {
+    int code;
+    const char *msg, *desc;
+} http_error_t;
+
+const http_error_t http_errors[] = {
+    {400, "Bad Request", "The server has no handler to the request."},
+    {401, "Unauthorized", "You are not authorized to access this resource."},
+    {403, "Forbidden", "You have been denied access to this resource."},
+    {404, "Not Found", "The requested resource was not found."},
+    {405, "Method Not Allowed", "This method is not handled on this endpoint."},
+    {500, "Internal Server Error", "An invalid operation was caught on this request."},
+    {501, "Not Implemented", "The server does not support the functionality."}
+};
+http_header_t http_headers[17] = {{"\0", "\0"}};
 
 int server_fd = -1;
 pthread_t server_thread_id;
 pthread_mutex_t client_fds_mutex;
 
-const char error400[] = "HTTP/1.1 400 Bad Request\r\n" \
-                        "Content-Type: text/plain\r\n" \
-                        "Connection: close\r\n" \
-                        "\r\n" \
-                        "The server has no handler to the request.\r\n";
-const char error403[] = "HTTP/1.1 403 Forbidden\r\n" \
-                        "Content-Type: text/plain\r\n" \
-                        "Connection: close\r\n" \
-                        "\r\n" \
-                        "You have been denied access to this resource.\r\n";
-const char error404[] = "HTTP/1.1 404 Not Found\r\n" \
-                        "Content-Type: text/plain\r\n" \
-                        "Connection: close\r\n" \
-                        "\r\n" \
-                        "The requested resource was not found.\r\n";
-const char error405[] = "HTTP/1.1 405 Method Not Allowed\r\n" \
-                        "Content-Type: text/plain\r\n" \
-                        "Connection: close\r\n" \
-                        "\r\n" \
-                        "This method is not handled by this server.\r\n";
-const char error500[] = "HTTP/1.1 500 Internal Server Error\r\n" \
-                        "Content-Type: text/plain\r\n" \
-                        "Connection: close\r\n" \
-                        "\r\n" \
-                        "An invalid operation was caught on this request.\r\n";
-
-void close_socket_fd(int socket_fd) {
-    shutdown(socket_fd, SHUT_RDWR);
-    close(socket_fd);
+static void close_socket_fd(int sockFd) {
+    shutdown(sockFd, SHUT_RDWR);
+    close(sockFd);
 }
 
 void free_client(int i) {
-    if (client_fds[i].socket_fd < 0) return;
+    if (client_fds[i].sockFd < 0) return;
 
-    close_socket_fd(client_fds[i].socket_fd);
-    client_fds[i].socket_fd = -1;
+    close_socket_fd(client_fds[i].sockFd);
+    client_fds[i].sockFd = -1;
 }
 
-int send_to_fd(int client_fd, char *buf, ssize_t size) {
+int send_to_fd(int fd, char *buf, ssize_t size) {
     ssize_t sent = 0, len = 0;
-    if (client_fd < 0) return -1;
+    if (fd < 0) return -1;
 
     while (sent < size) {
-        len = send(client_fd, buf + sent, size - sent, MSG_NOSIGNAL);
+        len = send(fd, buf + sent, size - sent, MSG_NOSIGNAL);
         if (len < 0) return -1;
         sent += len;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-int send_to_fd_nonblock(int client_fd, char *buf, ssize_t size) {
-    if (client_fd < 0) return -1;
+int send_to_fd_nonblock(int fd, char *buf, ssize_t size) {
+    if (fd < 0) return -1;
 
-    send(client_fd, buf, size, MSG_DONTWAIT | MSG_NOSIGNAL);
+    send(fd, buf, size, MSG_DONTWAIT | MSG_NOSIGNAL);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int send_to_client(int i, char *buf, ssize_t size) {
-    if (send_to_fd(client_fds[i].socket_fd, buf, size) < 0) {
+    if (send_to_fd(client_fds[i].sockFd, buf, size) < 0) {
         free_client(i);
-        return -1;
+        return EXIT_FAILURE;
     }
     
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 static void send_and_close(int client_fd, char *buf, ssize_t size) {
     send_to_fd(client_fd, buf, size);
     close_socket_fd(client_fd);
+}
+
+void send_http_error(int fd, int code) {
+    const char *desc = "\0", *msg = "Unspecified";
+    char buffer[256];
+    int len;
+    
+    for (int i = 0; i < sizeof(http_errors) / sizeof(*http_errors); i++) {
+        if (http_errors[i].code == code) {
+            desc = http_errors[i].desc;
+            msg = http_errors[i].msg;
+            break;
+        }
+    }
+    
+    len = snprintf(buffer, sizeof(buffer),
+        "HTTP/1.1 %d %s\r\n"
+        "Content-Type: text/plain\r\n"
+        "Connection: close\r\n"
+        "\r\n%s\r\n",
+        code, msg, desc);
+    
+    send_and_close(fd, buffer, len);
 }
 
 void send_h26x_to_client(char index, hal_vidstream *stream) {
@@ -117,7 +132,7 @@ void send_h26x_to_client(char index, hal_vidstream *stream) {
 
         pthread_mutex_lock(&client_fds_mutex);
         for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-            if (client_fds[i].socket_fd < 0) continue;
+            if (client_fds[i].sockFd < 0) continue;
             if (client_fds[i].type != STREAM_H26X) continue;
 
             for (char j = 0; j < pack->naluCnt; j++) {
@@ -182,7 +197,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
         static char len_buf[50];
         pthread_mutex_lock(&client_fds_mutex);
         for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-            if (client_fds[i].socket_fd < 0) continue;
+            if (client_fds[i].sockFd < 0) continue;
             if (client_fds[i].type != STREAM_MP4) continue;
 
             if (!client_fds[i].mp4.header_sent) {
@@ -239,7 +254,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
 void send_mp3_to_client(char *buf, ssize_t size) {
     pthread_mutex_lock(&client_fds_mutex);
     for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-        if (client_fds[i].socket_fd < 0) continue;
+        if (client_fds[i].sockFd < 0) continue;
         if (client_fds[i].type != STREAM_MP3) continue;
 
         static char len_buf[50];
@@ -257,7 +272,7 @@ void send_mp3_to_client(char *buf, ssize_t size) {
 void send_pcm_to_client(hal_audframe *frame) {
     pthread_mutex_lock(&client_fds_mutex);
     for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-        if (client_fds[i].socket_fd < 0) continue;
+        if (client_fds[i].sockFd < 0) continue;
         if (client_fds[i].type != STREAM_PCM) continue;
 
         static char len_buf[50];
@@ -283,7 +298,7 @@ void send_mjpeg_to_client(char index, char *buf, ssize_t size) {
 
     pthread_mutex_lock(&client_fds_mutex);
     for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-        if (client_fds[i].socket_fd < 0) continue;
+        if (client_fds[i].sockFd < 0) continue;
         if (client_fds[i].type != STREAM_MJPEG) continue;
 
         if (send_to_client(i, prefix_buf, prefix_size) < 0)
@@ -298,15 +313,16 @@ void send_jpeg_to_client(char index, char *buf, ssize_t size) {
     static char prefix_buf[128];
     ssize_t prefix_size = sprintf(
         prefix_buf,
-        "HTTP/1.1 200 OK\r\nContent-Type: image/jpeg\r\nContent-Length: "
-        "%lu\r\nConnection: close\r\n\r\n",
-        size);
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: image/jpeg\r\n"
+        "Content-Length: %lu\r\n"
+        "Connection: close\r\n\r\n", size);
     buf[size++] = '\r';
     buf[size++] = '\n';
 
     pthread_mutex_lock(&client_fds_mutex);
     for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
-        if (client_fds[i].socket_fd < 0) continue;
+        if (client_fds[i].sockFd < 0) continue;
         if (client_fds[i].type != STREAM_JPEG) continue;
 
         if (send_to_client(i, prefix_buf, prefix_size) < 0)
@@ -325,6 +341,7 @@ struct jpegtask {
     uint8_t qfactor;
     uint8_t color2Gray;
 };
+
 void *send_jpeg_thread(void *vargp) {
     struct jpegtask task = *((struct jpegtask *)vargp);
     hal_jpegdata jpeg = {0};
@@ -391,25 +408,26 @@ int send_file(const int client_fd, const char *path) {
         close_socket_fd(client_fd);
         return EXIT_FAILURE;
     }
-    send_and_close(client_fd, (char*)error404, strlen(error404));
+
+    send_http_error(client_fd, 404);
     return EXIT_FAILURE;
 }
 
-void send_binary(const int client_fd, const char *data, const long size) {
+void send_binary(const int fd, const char *data, const long size) {
     char *buf;
     int buf_len = asprintf(&buf,
         "HTTP/1.1 200 OK\r\n" \
         "Content-Type: application/octet-stream\r\n" \
         "Content-Length: %zu\r\n" \
         "Connection: close\r\n\r\n", size);
-    send_to_fd(client_fd, buf, buf_len);
-    send_to_fd(client_fd, (char*)data, size);
-    send_to_fd(client_fd, "\r\n", 2);
-    close_socket_fd(client_fd);
+    send_to_fd(fd, buf, buf_len);
+    send_to_fd(fd, (char*)data, size);
+    send_to_fd(fd, "\r\n", 2);
+    close_socket_fd(fd);
     free(buf);
 }
 
-void send_html(const int client_fd, const char *data) {
+void send_html(const int fd, const char *data) {
     char *buf;
     int buf_len = asprintf(&buf,
         "HTTP/1.1 200 OK\r\n" \
@@ -418,22 +436,21 @@ void send_html(const int client_fd, const char *data) {
         "Connection: close\r\n" \
         "\r\n%s", strlen(data), data);
     buf[buf_len++] = 0;
-    send_and_close(client_fd, buf, buf_len);
+    send_and_close(fd, buf, buf_len);
     free(buf);
 }
 
-char *request_header(const char *name)
-{
-    struct Header *h = reqhdr;
+char *request_header(const char *name) {
+    http_header_t *h = http_headers;
     for (; h->name; h++)
         if (!strcasecmp(h->name, name))
             return h->value;
     return NULL;
 }
 
-struct Header *request_headers(void) { return reqhdr; }
+http_header_t *request_headers(void) { return http_headers; }
 
-void parse_request(struct Request *req) {
+void parse_request(http_request_t *req) {
     struct sockaddr_in client_sock;
     socklen_t client_sock_len = sizeof(client_sock);
     memset(&client_sock, 0, client_sock_len);
@@ -476,10 +493,9 @@ grant_access:
     else
         req->query = req->uri - 1;
 
-    struct Header *h = reqhdr;
+    http_header_t *h = http_headers;
     char *l;
-    while (h < reqhdr + 16)
-    {
+    while (h < http_headers + 16) {
         char *k, *v, *e;
         if (!(k = strtok_r(NULL, "\r\n: \t", &state)))
             break;
@@ -513,13 +529,78 @@ grant_access:
     req->payload = strtok_r(NULL, "\r\n", &state);
 }
 
-void respond_request(struct Request *req) {
-    char response[256];
+void respond_request(http_request_t *req) {
+    char response[8192] = {0};
+    int respLen = 0;
 
     if (req->clntFd < 0) return;
 
     if (!EQUALS(req->method, "GET") && !EQUALS(req->method, "POST")) {
-        send_and_close(req->clntFd, (char*)error405, strlen(error405));
+        send_http_error(req->clntFd, 405);
+        return;
+    }
+
+    if (app_config.onvif_enable && STARTS_WITH(req->uri, "/onvif")) {
+        char *path = req->uri + 6;
+        if (*path == '/') path++;
+
+        if (!EQUALS(req->method, "POST")) {
+            send_http_error(req->clntFd, 405);
+            return;
+        }
+
+        char *action = onvif_extract_soap_action(req->payload);
+        HAL_INFO("onvif", "\x1b[32mAction: %s\x1b[0m\n", action);
+        respLen = sizeof(response);
+
+        if (app_config.onvif_enable_auth && !onvif_validate_soap_auth(req->payload)) {
+            respLen = sprintf(response,
+                "HTTP/1.1 401 Unauthorized\r\n"
+                "Content-Type: text/plain\r\n"
+                "WWW-Authenticate: Digest realm=\"Access the camera services\"\r\n"
+                "Connection: close\r\n\r\n%s",
+                badauthxml);
+            send_and_close(req->clntFd, response, respLen);
+            return;
+        }
+
+        if (EQUALS(path, "device_service")) {
+            if (EQUALS(action, "GetCapabilities")) {
+                onvif_respond_capabilities((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetDeviceInformation")) {
+                onvif_respond_deviceinfo((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetSystemDateAndTime")) {
+                onvif_respond_systemtime((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            }
+        } else if (EQUALS(path, "media_service")) {
+            if (EQUALS(action, "GetProfiles")) {
+                onvif_respond_mediaprofiles((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetSnapshotUri")) {
+                onvif_respond_snapshot((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetStreamUri")) {
+                onvif_respond_stream((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetVideoSources")) {
+                onvif_respond_videosources((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            }
+        }
+
+        if (!EMPTY(action))
+            HAL_WARNING("server", "Unknown ONVIF request: %s->%s\n", path, action);
+        send_http_error(req->clntFd, 501);
         return;
     }
 
@@ -534,7 +615,7 @@ void respond_request(struct Request *req) {
         base64_encode(valid + 6, cred, strlen(cred));
 
         if (!auth || !EQUALS(auth, valid)) {
-            int respLen = sprintf(response,
+            respLen = sprintf(response,
                 "HTTP/1.1 401 Unauthorized\r\n"
                 "Content-Type: text/plain\r\n"
                 "WWW-Authenticate: Basic realm=\"Access the camera services\"\r\n"
@@ -545,7 +626,7 @@ void respond_request(struct Request *req) {
     }
 
     if (EQUALS(req->uri, "/exit")) {
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Connection: close\r\n\r\n"
             "Closing...");
@@ -561,15 +642,16 @@ void respond_request(struct Request *req) {
     }
 
     if (app_config.audio_enable && EQUALS(req->uri, "/audio.mp3")) {
-        int respLen = sprintf(
-            response, "HTTP/1.1 200 OK\r\nContent-Type: "
-                    "audio/mpeg\r\nTransfer-Encoding: "
-                    "chunked\r\nConnection: keep-alive\r\n\r\n");
+        respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: audio/mpeg\r\n"
+            "Transfer-Encoding: chunked\r\n"
+            "Connection: keep-alive\r\n\r\n");
         send_to_fd(req->clntFd, response, respLen);
         pthread_mutex_lock(&client_fds_mutex);
         for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
-            if (client_fds[i].socket_fd < 0) {
-                client_fds[i].socket_fd = req->clntFd;
+            if (client_fds[i].sockFd < 0) {
+                client_fds[i].sockFd = req->clntFd;
                 client_fds[i].type = STREAM_MP3;
                 break;
             }
@@ -578,15 +660,16 @@ void respond_request(struct Request *req) {
     }
 
     if (app_config.audio_enable && EQUALS(req->uri, "/audio.pcm")) {
-        int respLen = sprintf(
-            response, "HTTP/1.1 200 OK\r\nContent-Type: "
-                    "audio/pcm\r\nTransfer-Encoding: "
-                    "chunked\r\nConnection: keep-alive\r\n\r\n");
+        int respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: audio/pcm\r\n"
+            "Transfer-Encoding: chunked\r\n"
+            "Connection: keep-alive\r\n\r\n");
         send_to_fd(req->clntFd, response, respLen);
         pthread_mutex_lock(&client_fds_mutex);
         for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
-            if (client_fds[i].socket_fd < 0) {
-                client_fds[i].socket_fd = req->clntFd;
+            if (client_fds[i].sockFd < 0) {
+                client_fds[i].sockFd = req->clntFd;
                 client_fds[i].type = STREAM_PCM;
                 break;
             }
@@ -597,15 +680,16 @@ void respond_request(struct Request *req) {
     if ((!app_config.mp4_codecH265 && EQUALS(req->uri, "/video.264")) ||
         (app_config.mp4_codecH265 && EQUALS(req->uri, "/video.265"))) {
         request_idr();
-        int respLen = sprintf(
-            response, "HTTP/1.1 200 OK\r\nContent-Type: "
-                    "application/octet-stream\r\nTransfer-Encoding: "
-                    "chunked\r\nConnection: keep-alive\r\n\r\n");
+        int respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/octet-stream\r\n"
+            "Transfer-Encoding: chunked\r\n"
+            "Connection: keep-alive\r\n\r\n");
         send_to_fd(req->clntFd, response, respLen);
         pthread_mutex_lock(&client_fds_mutex);
         for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
-            if (client_fds[i].socket_fd < 0) {
-                client_fds[i].socket_fd = req->clntFd;
+            if (client_fds[i].sockFd < 0) {
+                client_fds[i].sockFd = req->clntFd;
                 client_fds[i].type = STREAM_H26X;
                 client_fds[i].nalCnt = 0;
                 break;
@@ -616,15 +700,16 @@ void respond_request(struct Request *req) {
 
     if (app_config.mp4_enable && EQUALS(req->uri, "/video.mp4")) {
         request_idr();
-        int respLen = sprintf(
-            response, "HTTP/1.1 200 OK\r\nContent-Type: "
-                    "video/mp4\r\nTransfer-Encoding: chunked\r\n"
-                    "Connection: keep-alive\r\n\r\n");
+        int respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: video/mp4\r\n"
+            "Transfer-Encoding: chunked\r\n"
+            "Connection: keep-alive\r\n\r\n");
         send_to_fd(req->clntFd, response, respLen);
         pthread_mutex_lock(&client_fds_mutex);
         for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
-            if (client_fds[i].socket_fd < 0) {
-                client_fds[i].socket_fd = req->clntFd;
+            if (client_fds[i].sockFd < 0) {
+                client_fds[i].sockFd = req->clntFd;
                 client_fds[i].type = STREAM_MP4;
                 client_fds[i].mp4.header_sent = false;
                 break;
@@ -634,16 +719,17 @@ void respond_request(struct Request *req) {
     }
 
     if (app_config.mjpeg_enable && EQUALS(req->uri, "/mjpeg")) {
-        int respLen = sprintf(
-            response, "HTTP/1.0 200 OK\r\nCache-Control: no-cache\r\n"
-                    "Pragma: no-cache\r\nConnection: close\r\n"
-                    "Content-Type: multipart/x-mixed-replace; "
-                    "boundary=boundarydonotcross\r\n\r\n");
+        int respLen = sprintf(response,
+            "HTTP/1.0 200 OK\r\n"
+            "Cache-Control: no-cache\r\n"
+            "Pragma: no-cache\r\n"
+            "Connection: close\r\n"
+            "Content-Type: multipart/x-mixed-replace; boundary=boundarydonotcross\r\n\r\n");
         send_to_fd(req->clntFd, response, respLen);
         pthread_mutex_lock(&client_fds_mutex);
         for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
-            if (client_fds[i].socket_fd < 0) {
-                client_fds[i].socket_fd = req->clntFd;
+            if (client_fds[i].sockFd < 0) {
+                client_fds[i].sockFd = req->clntFd;
                 client_fds[i].type = STREAM_MJPEG;
                 break;
             }
@@ -1057,14 +1143,7 @@ void respond_request(struct Request *req) {
         int respLen;
         short id = strtol(req->uri + 9, &remain, 10);
         if (remain == req->uri + 9 || id < 0 || id >= MAX_OSD) {
-            respLen = sprintf(response,
-                "HTTP/1.1 404 Not Found\r\n"
-                "Content-Type: text/plain\r\n"
-                "Connection: close\r\n"
-                "\r\n"
-                "The requested OSD ID was not found.\r\n"
-            );
-            send_and_close(req->clntFd, response, respLen);
+            send_http_error(req->clntFd, 404);
             return;
         }
         if (EQUALS(req->method, "POST")) {
@@ -1081,88 +1160,15 @@ void respond_request(struct Request *req) {
                 if (payloade) payloade -= 4;
 
                 char path[32];
-                sprintf(path, "/tmp/osd%d.bmp", id);
 
-                if (!memcmp(payloadb, "\x89\x50\x4E\x47\xD\xA\x1A\xA", 8)) {
-                    spng_ctx *ctx = spng_ctx_new(0);
-                    if (!ctx) {
-                        HAL_DANGER("server", "Constructing the PNG decoder context failed!\n");
-                        goto png_error;
-                    }
+                if (!memcmp(payloadb, "\x89\x50\x4E\x47\xD\xA\x1A\xA", 8)) 
+                    sprintf(path, "/tmp/osd%d.png", id);
+                else
+                    sprintf(path, "/tmp/osd%d.bmp", id);
 
-                    spng_set_crc_action(ctx, SPNG_CRC_USE, SPNG_CRC_USE);
-                    spng_set_chunk_limits(ctx,
-                        app_config.web_server_thread_stack_size,
-                        app_config.web_server_thread_stack_size);
-                    spng_set_png_buffer(ctx, payloadb, payloade - payloadb);
-
-                    struct spng_ihdr ihdr;
-                    int err = spng_get_ihdr(ctx, &ihdr);
-                    if (err) {
-                        HAL_DANGER("server", "Parsing the PNG IHDR chunk failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-#ifdef DEBUG_IMAGE
-    printf("[image] (PNG) width: %u, height: %u, depth: %u, color type: %u -> %s\n",
-        ihdr.width, ihdr.height, ihdr.bit_depth, ihdr.color_type, color_type_str(ihdr.color_type));
-    printf("        compress: %u, filter: %u, interl: %u\n",
-        ihdr.compression_method, ihdr.filter_method, ihdr.interlace_method);
-#endif
-
-                    struct spng_plte plte = {0};
-                    err = spng_get_plte(ctx, &plte);
-                    if (err && err != SPNG_ECHUNKAVAIL) {
-                        HAL_DANGER("server", "Parsing the PNG PLTE chunk failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-#ifdef DEBUG_IMAGE
-    printf("        palette: %u\n", plte.n_entries);
-#endif
-
-                    size_t bitmapsize;
-                    err = spng_decoded_image_size(ctx, SPNG_FMT_RGBA8, &bitmapsize);
-                    if (err) {
-                        HAL_DANGER("server", "Recovering the resulting image size failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-
-                    unsigned char *bitmap = malloc(bitmapsize);
-                    if (!bitmap) {
-                        HAL_DANGER("server", "Allocating the PNG bitmap output buffer for size %u failed!\n", bitmapsize);
-                        goto png_error;
-                    }
-
-                    err = spng_decode_image(ctx, bitmap, bitmapsize, SPNG_FMT_RGBA8, 0);
-                    if (!bitmap) {
-                        HAL_DANGER("server", "Decoding the PNG image failed!\nError: %s\n", spng_strerror(err));
-                        goto png_error;
-                    }
-
-                    int headersize = 2 + sizeof(bitmapfile) + sizeof(bitmapinfo) + sizeof(bitmapfields);
-                    bitmapfile headerfile = {.size = bitmapsize + headersize, .offBits = headersize};
-                    bitmapinfo headerinfo = {.size = sizeof(bitmapinfo), 
-                                             .width = ihdr.width, .height = -ihdr.height, .planes = 1, .bitCount = 32,
-                                             .compression = 3, .sizeImage = bitmapsize, .xPerMeter = 2835, .yPerMeter = 2835};
-                    bitmapfields headerfields = {.redMask = 0xFF << 0, .greenMask = 0xFF << 8, .blueMask = 0xFF << 16, .alphaMask = 0xFF << 24,
-                                                 .clrSpace = {'W', 'i', 'n', ' '}};
-
-                    FILE *img = fopen(path, "wb");
-                    fwrite("BM", sizeof(char), 2, img);
-                    fwrite(&headerfile, sizeof(bitmapfile), 1, img);
-                    fwrite(&headerinfo, sizeof(bitmapinfo), 1, img);
-                    fwrite(&headerfields, sizeof(bitmapfields), 1, img);
-                    fwrite(bitmap, sizeof(char), bitmapsize, img);
-                    fclose(img);
-
-png_error:
-                    spng_ctx_free(ctx);
-                    free(bitmap);
-                    send_and_close(req->clntFd, (char*)error500, strlen(error500));
-                } else {
-                    FILE *img = fopen(path, "wb");
-                    fwrite(payloadb, sizeof(char), payloade - payloadb, img);
-                    fclose(img);
-                }
+                FILE *img = fopen(path, "wb");
+                fwrite(payloadb, sizeof(char), payloade - payloadb, img);
+                fclose(img);
 
                 strcpy(osds[id].text, "");
                 osds[id].updt = 1;
@@ -1188,11 +1194,14 @@ png_error:
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
                 if (EQUALS(key, "img"))
-                    strcpy(osds[id].img, value);
+                    strncpy(osds[id].img, value,
+                        sizeof(osds[id].img) - 1);
                 else if (EQUALS(key, "font"))
-                    strcpy(osds[id].font, !EMPTY(value) ? value : DEF_FONT);
+                    strncpy(osds[id].font, !EMPTY(value) ? value : DEF_FONT,
+                        sizeof(osds[id].font) - 1);
                 else if (EQUALS(key, "text"))
-                    strcpy(osds[id].text, value);
+                    strncpy(osds[id].text, value,
+                        sizeof(osds[id].text) - 1);
                 else if (EQUALS(key, "size")) {
                     double result = strtod(value, &remain);
                     if (remain == value) continue;
@@ -1224,6 +1233,15 @@ png_error:
                         osds[id].posy = y;
                     }
                 }
+                else if (EQUALS(key, "outl")) {
+                    int result = color_parse(value);
+                    osds[id].outl = result;
+                }
+                else if (EQUALS(key, "thick")) {
+                    double result = strtod(value, &remain);
+                    if (remain == value) continue;
+                        osds[id].thick = result;
+                }
             }
             osds[id].updt = 1;
         }
@@ -1236,9 +1254,11 @@ png_error:
             "Connection: close\r\n"
             "\r\n"
             "{\"id\":%d,\"color\":\"#%x\",\"opal\":%d,\"pos\":[%d,%d],"
-            "\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\",\"img\":\"%s\"}",
+            "\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\",\"img\":\"%s\","
+            "\"outl\":\"#%x\",\"thick\":%.1f}",
             id, color, osds[id].opal, osds[id].posx, osds[id].posy,
-            osds[id].font, osds[id].size, osds[id].text, osds[id].img);
+            osds[id].font, osds[id].size, osds[id].text, osds[id].img,
+            osds[id].outl, osds[id].thick);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
@@ -1261,8 +1281,10 @@ png_error:
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"chip\":\"%s\",\"loadavg\":[%.2f,%.2f,%.2f],\"memory\":\"%s\",\"sensor\":\"%s\",\"uptime\":\"%s\"}",
-            chip, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0, memory, sensor, uptime);
+            "{\"chip\":\"%s\",\"loadavg\":[%.2f,%.2f,%.2f],\"memory\":\"%s\","
+            "\"sensor\":\"%s\",\"temp\":\"%.1f\u00B0C\",\"uptime\":\"%s\"}",
+            chip, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0, 
+            memory, sensor, hal_temperature_read(), uptime);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
@@ -1301,11 +1323,11 @@ png_error:
     if (app_config.web_enable_static && send_file(req->clntFd, req->uri))
         return;
 
-    send_and_close(req->clntFd, (char*)error400, strlen(error400));
+    send_http_error(req->clntFd, 400);
 }
 
 void *server_thread(void *vargp) {
-    struct Request req = {0};
+    http_request_t req = {0};
     int ret, server_fd = *((int *)vargp);
     int enable = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
@@ -1346,7 +1368,7 @@ void *server_thread(void *vargp) {
 
 int start_server() {
     for (unsigned int i = 0; i < MAX_CLIENTS; i++) {
-        client_fds[i].socket_fd = -1;
+        client_fds[i].sockFd = -1;
         client_fds[i].type = -1;
     }
     pthread_mutex_init(&client_fds_mutex, NULL);

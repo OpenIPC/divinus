@@ -41,8 +41,17 @@ struct AppConfig {
     bool flip;
     int antiflicker;
 
+    // [osd]
     bool osd_enable;
+
+    // [mdns]
     bool mdns_enable;
+
+    // [onvif]
+    bool onvif_enable;
+    bool onvif_enable_auth;
+    char onvif_auth_user[32];
+    char onvif_auth_pass[32];
 
     // [rtsp]
     bool rtsp_enable;

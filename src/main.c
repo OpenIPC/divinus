@@ -61,8 +61,7 @@ int main(int argc, char *argv[]) {
     if (app_config.watchdog)
         watchdog_start(app_config.watchdog);
 
-    if (app_config.mdns_enable)
-        start_mdns();
+    start_network();
 
     if (app_config.server_enable)
         start_server();
@@ -143,8 +142,7 @@ int main(int argc, char *argv[]) {
     if (app_config.server_enable)
         stop_server();
 
-    if (app_config.mdns_enable)
-        stop_mdns();
+    stop_network();
 
     if (app_config.watchdog)
         watchdog_stop();

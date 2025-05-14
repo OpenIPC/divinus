@@ -43,7 +43,7 @@ enum ConfigError section_pos(
         if (ini->sections[i].pos > 0 &&
             strcasecmp(ini->sections[i].name, section) == 0) {
             *start_pos = ini->sections[i].pos;
-            if (i + 1 < MAX_SECTIONS && ini->sections[i + i].pos > 0)
+            if (i + 1 < MAX_SECTIONS && ini->sections[i + 1].pos > 0)
                 *end_pos = ini->sections[i + 1].pos;
             else {
                 *end_pos = -1;
@@ -85,6 +85,16 @@ enum ConfigError parse_param_value(
     int res = sprintf(param_value, "%.*s", (int)(m[1].rm_eo - m[1].rm_so),
         ini->str + start_pos + m[1].rm_so);
     param_value[res] = 0;
+
+    if (res >= 2 && param_value[0] == '"' && param_value[res - 1] == '"') {
+        memmove(param_value, param_value + 1, res - 2);
+        param_value[res - 2] = '\0';
+        res -= 2;
+    }
+
+    while (res > 0 && alt_isspace(param_value[res - 1]))
+        param_value[--res] = '\0';
+
     return CONFIG_OK;
 }
 

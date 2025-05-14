@@ -32,6 +32,7 @@
 	<script>
 		var ua = window.navigator.userAgent;
 		var isIe = ua.indexOf('MSIE ') > -1 || ua.indexOf('Trident/') > -1;
+		window.XMLHttpRequest = window.XMLHttpRequest || new ActiveXObject("Msxml2.XMLHTTP") || new ActiveXObject("Microsoft.XMLHTTP");
 
 		function apiApply(endp) {
 			var dest = "/api/" + endp + "?", req = new XMLHttpRequest();
@@ -370,7 +371,7 @@
 		</div>
 		<div class="c cont">
 			<h2 class="unl">OSD</h2>
-			<div class="row scrollx">
+			<div class="scrollx">
 				<table class="tc w-100">
 					<tr>
 						<th>ID</th>
@@ -379,6 +380,8 @@
 						<th>Position</th>
 						<th>Font family</th>
 						<th>Size</th>
+						<th>Outline</th>
+						<th>Thickness</th>
 						<th>Text</th>
 						<th>Local file</th>
 						<th></th>
@@ -398,6 +401,9 @@
 						<td><input type="text" id="osd_pos" size="5"></td>
 						<td><input type="text" id="osd_font"></td>
 						<td><input type="number" id="osd_size" step="0.1" size="3"
+							style="width:5em"></td>
+						<td><input type="color" id="osd_outl"></td>
+						<td><input type="number" id="osd_thick" step="0.1" size="3"
 							style="width:5em"></td>
 						<td><input type="text" id="osd_text"></td>
 						<td><input type="text" id="osd_img" placeholder="Leave empty for file uploads"></td>
@@ -521,6 +527,7 @@
 			<b>Load charge:</b> <span id="status_loadavg"></span><br>
 			<b>Memory usage:</b> <span id="status_memory"></span><br>
 			<b>Sensor:</b> <span id="status_sensor"></span><br>
+			<b>Temperature:</b> <span id="status_temp"></span><br>
 			<b>Uptime:</b> <span id="status_uptime"></span><br>
 		</p>
 	</div>

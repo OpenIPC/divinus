@@ -1,4 +1,4 @@
-#ifdef __arm__
+#if defined(__arm__) && !defined(__ARM_PCS_VFP)
 
 #include "gm_hal.h"
 

@@ -2,10 +2,10 @@
 
 osd osds[MAX_OSD];
 pthread_t regionPid = 0;
-char timefmt[32] = DEF_TIMEFMT;
+char timefmt[64];
+unsigned int rxb_l, txb_l, cpu_l[6];
 
 void region_fill_formatted(char* str) {
-    unsigned int rxb_l, txb_l, cpu_l[6];
     char out[80] = "";
     char param = 0;
     int ipos = 0, opos = 0;
@@ -77,28 +77,7 @@ void region_fill_formatted(char* str) {
         {
             ipos++;
             char s[8];
-            float t = 0.0 / 0.0;
-            switch (plat) {
-#if defined(__arm__)
-            case HAL_PLATFORM_I6:
-            case HAL_PLATFORM_I6C:
-            case HAL_PLATFORM_M6:
-            {
-                FILE* file;
-                char line[20] = {0};
-                if (file = fopen("/sys/class/mstar/msys/TEMP_R", "r")) {
-                    fgets(line, 20, file);
-                    char *remain, *parsed = strstr(line, "Temperature ");
-                    t = strtof(parsed + 12, &remain);
-                    fclose(file);
-                }
-                break;
-            }
-            case HAL_PLATFORM_V2:  t = v2_system_readtemp(); break;
-            case HAL_PLATFORM_V3:  t = v3_system_readtemp(); break;
-            case HAL_PLATFORM_V4:  t = v4_system_readtemp(); break;
-#endif
-            }
+            float t = hal_temperature_read();
             sprintf(s, "%.1f", t);
             strcat(out, s);
             opos += strlen(s);
@@ -108,7 +87,11 @@ void region_fill_formatted(char* str) {
             ipos++;
             char s[64];
             time_t t = time(NULL);
-            struct tm *tm = gmtime(&t);
+            struct tm *tm;
+            if (str[ipos + 1] == 'u') {
+                ipos++;
+                tm = gmtime(&t);
+            } else tm = localtime(&t);
             strftime(s, 64, timefmt, tm);
             strcat(out, s);
             opos += strlen(s);
@@ -149,6 +132,101 @@ int region_parse_bitmap(FILE **file, bitmapfile *bmpFile, bitmapinfo *bmpInfo) {
         HAL_ERROR("region", "Compressed modes are not supported!\n");
 
     return EXIT_SUCCESS;
+}
+
+int region_prepare_image(char *path, hal_bitmap *bitmap) {
+    FILE *file;
+    unsigned char *bitmapdata, *bitmapout;
+    unsigned short *dest;
+
+    if (!path)
+        HAL_ERROR("region", "Filename is empty!\n");
+    if (!(file = fopen(path, "rb")))
+        HAL_ERROR("region", "Opening the bitmap failed!\n");
+
+    spng_ctx *ctx = spng_ctx_new(0);
+    if (!ctx) {
+        HAL_DANGER("server", "Constructing the PNG decoder context failed!\n");
+        goto png_error;
+    }
+
+    spng_set_crc_action(ctx, SPNG_CRC_USE, SPNG_CRC_USE);
+    spng_set_chunk_limits(ctx,
+        app_config.web_server_thread_stack_size,
+        app_config.web_server_thread_stack_size);
+    spng_set_png_file(ctx, file);
+
+    struct spng_ihdr ihdr;
+    int err = spng_get_ihdr(ctx, &ihdr);
+    if (err) {
+        HAL_DANGER("server", "Parsing the PNG IHDR chunk failed!\nError: %s\n", spng_strerror(err));
+        goto png_error;
+    }
+#ifdef DEBUG_IMAGE
+    printf("[image] (PNG) width: %u, height: %u, depth: %u, color type: %u -> %s\n",
+        ihdr.width, ihdr.height, ihdr.bit_depth, ihdr.color_type, color_type_str(ihdr.color_type));
+    printf("        compress: %u, filter: %u, interl: %u\n",
+        ihdr.compression_method, ihdr.filter_method, ihdr.interlace_method);
+#endif
+
+    struct spng_plte plte = {0};
+    err = spng_get_plte(ctx, &plte);
+    if (err && err != SPNG_ECHUNKAVAIL) {
+        HAL_DANGER("server", "Parsing the PNG PLTE chunk failed!\nError: %s\n", spng_strerror(err));
+        goto png_error;
+    }
+#ifdef DEBUG_IMAGE
+    printf("        palette: %u\n", plte.n_entries);
+#endif
+
+    size_t bitmapsize;
+    err = spng_decoded_image_size(ctx, SPNG_FMT_RGBA8, &bitmapsize);
+    if (err) {
+        HAL_DANGER("server", "Recovering the resulting image size failed!\nError: %s\n", spng_strerror(err));
+        goto png_error;
+    }
+
+    bitmapdata = malloc(bitmapsize);
+    if (!bitmapdata) {
+        HAL_DANGER("server", "Allocating the PNG bitmap input buffer for size %u failed!\n", bitmapsize);
+        goto png_error;
+    }
+
+    bitmapout = malloc(bitmapsize / 2);
+    if (!bitmapout) {
+        HAL_DANGER("server", "Allocating the PNG bitmap output buffer for size %u failed!\n", bitmapsize / 2);
+        goto png_error;
+    }
+
+    err = spng_decode_image(ctx, bitmapdata, bitmapsize, SPNG_FMT_RGBA8, 0);
+    if (!bitmapdata) {
+        HAL_DANGER("server", "Decoding the PNG image failed!\nError: %s\n", spng_strerror(err));
+        goto png_error;
+    }
+
+    dest = (unsigned short*)bitmapout;
+    for (int i = 0; i < bitmapsize; i += 4) {
+        *dest = ((bitmapdata[i + 3] & 0x80) << 8) | ((bitmapdata[i + 0] & 0xF8) << 7) |
+            ((bitmapdata[i + 1] & 0xF8) << 2) | ((bitmapdata[i + 2] & 0xF8) >> 3);
+        dest++;
+    }
+    free(bitmapdata);
+
+    fclose(file);
+
+    bitmap->data = bitmapout;
+    bitmap->dim.width = ihdr.width;
+    bitmap->dim.height = abs(ihdr.height);
+
+    return EXIT_SUCCESS;
+
+png_error:
+    fclose(file);
+    spng_ctx_free(ctx);
+    free(bitmapdata);
+    free(bitmapout);
+
+    return EXIT_FAILURE;
 }
 
 int region_prepare_bitmap(char *path, hal_bitmap *bitmap) {
@@ -238,7 +316,7 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap) {
 
 void *region_thread(void) {
     switch (plat) {
-#if defined(__arm__)
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_region_init(); break;
         case HAL_PLATFORM_I6C: i6c_region_init(); break;
         case HAL_PLATFORM_M6:  m6_region_init(); break;
@@ -255,9 +333,11 @@ void *region_thread(void) {
         osds[id].posx = DEF_POSX;
         osds[id].posy = DEF_POSY + (DEF_SIZE * 3 / 2) * id;
         osds[id].updt = 0;
-        strcpy(osds[id].font, DEF_FONT);
+        strncpy(osds[id].font, DEF_FONT, sizeof(osds[id].font) - 1);
         osds[id].text[0] = '\0';
         osds[id].img[0] = '\0';
+        osds[id].outl = DEF_OUTL;
+        osds[id].thick = DEF_THICK;
     }
 
     while (keepRunning) {
@@ -265,7 +345,7 @@ void *region_thread(void) {
             if (!EMPTY(osds[id].text))
             {
                 char out[80];
-                strcpy(out, osds[id].text);
+                strncpy(out, osds[id].text, sizeof(out) - 1);
                 if (strstr(out, "$"))
                 {
                     region_fill_formatted(out);
@@ -274,30 +354,29 @@ void *region_thread(void) {
 
                 if (osds[id].updt) {
                     char font[256];
-                    char* dirs[] = {
+                    char *dirs[] = {
+                        ".",
+                        "/oem/usr/share",
+                        "/usr/local/share/fonts",
                         "/usr/share/fonts/truetype",
                         "/usr/share/fonts",
-                        "/usr/local/share/fonts"};
+                        NULL};
                     char **dir = dirs;
                     while (*dir) {
                         sprintf(font, "%s/%s.ttf", *dir, osds[id].font);
                         if (!access(font, F_OK)) goto found_font;
-                        sprintf(font, "%s/%s2.ttf", *dir, osds[id].font);
+                        sprintf(font, "%s/%s2.ttf", *dir++, osds[id].font);
                         if (!access(font, F_OK)) goto found_font;
-                        *dir++;
                     }
                     HAL_DANGER("region", "Font \"%s\" not found!\n", osds[id].font);
                     continue;
 found_font:;
-                    hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color);
+                    hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color,
+                        osds[id].outl, osds[id].thick);
                     hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
                         .x = osds[id].posx, .y = osds[id].posy };
                     switch (plat) {
-#if defined(__arm__)
-                        case HAL_PLATFORM_GM:
-                            gm_region_setbitmap(id, &bitmap);
-                            gm_region_create(id, rect, osds[id].opal);
-                            break;
+#if defined(__ARM_PCS_VFP)
                         case HAL_PLATFORM_I6:
                             i6_region_create(id, rect, osds[id].opal);
                             i6_region_setbitmap(id, &bitmap);
@@ -309,6 +388,15 @@ found_font:;
                         case HAL_PLATFORM_M6:
                             m6_region_create(id, rect, osds[id].opal);
                             m6_region_setbitmap(id, &bitmap);
+                            break;
+                        case HAL_PLATFORM_RK:
+                            rk_region_create(id, rect, osds[id].opal);
+                            rk_region_setbitmap(id, &bitmap);
+                            break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+                        case HAL_PLATFORM_GM:
+                            gm_region_setbitmap(id, &bitmap);
+                            gm_region_create(id, rect, osds[id].opal);
                             break;
                         case HAL_PLATFORM_V1:
                             v1_region_create(id, rect, osds[id].opal);
@@ -341,20 +429,21 @@ found_font:;
                 char img[64];
                 if (EMPTY(osds[id].img))
                     sprintf(img, "/tmp/osd%d.bmp", id);
-                else strcpy(img, osds[id].img);
+                else strncpy(img, osds[id].img, sizeof(osds[id].img) - 1);
                 if (!access(img, F_OK))
                 {
                     hal_bitmap bitmap;
-                    if (!(region_prepare_bitmap(img, &bitmap)))
+                    int ret;
+                    if (ENDS_WITH(img, ".png"))
+                        ret = region_prepare_image(img, &bitmap);
+                    else
+                        ret = region_prepare_bitmap(img, &bitmap);
+                    if (!ret)
                     {
                         hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
                             .x = osds[id].posx, .y = osds[id].posy };
                         switch (plat) {
-#if defined(__arm__)
-                            case HAL_PLATFORM_GM:
-                                gm_region_create(id, rect, osds[id].opal);
-                                gm_region_setbitmap(id, &bitmap);
-                                break;
+#if defined(__ARM_PCS_VFP)
                             case HAL_PLATFORM_I6:
                                 i6_region_create(id, rect, osds[id].opal);
                                 i6_region_setbitmap(id, &bitmap);
@@ -366,6 +455,15 @@ found_font:;
                             case HAL_PLATFORM_M6:
                                 m6_region_create(id, rect, osds[id].opal);
                                 m6_region_setbitmap(id, &bitmap);
+                                break;
+                            case HAL_PLATFORM_RK:
+                                rk_region_create(id, rect, osds[id].opal);
+                                rk_region_setbitmap(id, &bitmap);
+                                break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+                            case HAL_PLATFORM_GM:
+                                gm_region_create(id, rect, osds[id].opal);
+                                gm_region_setbitmap(id, &bitmap);
                                 break;
                             case HAL_PLATFORM_V1:
                                 v1_region_create(id, rect, osds[id].opal);
@@ -395,11 +493,13 @@ found_font:;
                 }
                 else
                     switch (plat) {
-#if defined(__arm__)
-                        case HAL_PLATFORM_GM:  gm_region_destroy(id); break;
+#if defined(__ARM_PCS_VFP)
                         case HAL_PLATFORM_I6:  i6_region_destroy(id); break;
                         case HAL_PLATFORM_I6C: i6c_region_destroy(id); break;
                         case HAL_PLATFORM_M6:  m6_region_destroy(id); break;
+                        case HAL_PLATFORM_RK:  rk_region_destroy(id); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+                        case HAL_PLATFORM_GM:  gm_region_destroy(id); break;
                         case HAL_PLATFORM_V1:  v1_region_destroy(id); break;
                         case HAL_PLATFORM_V2:  v2_region_destroy(id); break;
                         case HAL_PLATFORM_V3:  v3_region_destroy(id); break;
@@ -415,7 +515,7 @@ found_font:;
     }
 
     switch (plat) {
-#if defined(__arm__)
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_region_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_region_deinit(); break;
         case HAL_PLATFORM_M6:  m6_region_deinit(); break;

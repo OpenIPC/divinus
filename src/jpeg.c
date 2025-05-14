@@ -11,7 +11,7 @@ int jpeg_init() {
     pthread_mutex_lock(&jpeg_mutex);
 
     switch (plat) {
-#if defined(__arm__)
+#if defined(__arm__) && !defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_GM: goto active;
 #elif defined(__mips__)
         case HAL_PLATFORM_T31:
@@ -37,10 +37,12 @@ int jpeg_init() {
         config.minQual = config.maxQual = app_config.jpeg_qfactor;
 
         switch (plat) {
-#if defined(__arm__)
+#if defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_I6:  ret = i6_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_M6:  ret = m6_video_create(jpeg_index, &config); break;
+            case HAL_PLATFORM_RK:  ret = rk_video_create(jpeg_index, &config); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_V1:  ret = v1_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_V2:  ret = v2_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_V3:  ret = v3_video_create(jpeg_index, &config); break;
@@ -74,11 +76,13 @@ void jpeg_deinit() {
     pthread_mutex_lock(&jpeg_mutex);
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_GM:  goto active;
+#if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_M6:  m6_video_destroy(jpeg_index); break;
+        case HAL_PLATFORM_RK:  rk_video_destroy(jpeg_index); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_GM:  goto active;
         case HAL_PLATFORM_V1:  v1_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_V2:  v2_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_V3:  v3_video_destroy(jpeg_index); break;
@@ -112,11 +116,13 @@ int jpeg_get(short width, short height, char quality, char grayscale,
     int ret;
 
     switch (plat) {
-#if defined(__arm__)
-        case HAL_PLATFORM_GM:  ret = gm_video_snapshot_grab(width, height, quality, jpeg); break;
+ #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  ret = i6_video_snapshot_grab(jpeg_index, quality, jpeg); break;
         case HAL_PLATFORM_I6C: ret = i6c_video_snapshot_grab(jpeg_index, quality, jpeg); break;
         case HAL_PLATFORM_M6:  ret = m6_video_snapshot_grab(jpeg_index, quality, jpeg); break;
+        case HAL_PLATFORM_RK:  ret = rk_video_snapshot_grab(jpeg_index, jpeg); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_GM:  ret = gm_video_snapshot_grab(width, height, quality, jpeg); break;
         case HAL_PLATFORM_V1:  ret = v1_video_snapshot_grab(jpeg_index, jpeg); break;
         case HAL_PLATFORM_V2:  ret = v2_video_snapshot_grab(jpeg_index, jpeg); break;
         case HAL_PLATFORM_V3:  ret = v3_video_snapshot_grab(jpeg_index, jpeg); break;
@@ -128,9 +134,8 @@ int jpeg_get(short width, short height, char quality, char grayscale,
         case HAL_PLATFORM_CVI: ret = cvi_video_snapshot_grab(jpeg_index, jpeg); break;
 #endif
     }
-    if (ret) {
-        if (jpeg->data)
-            free(jpeg->data);
+    if (ret && jpeg->data) { 
+        free(jpeg->data);
         jpeg->data = NULL;
     }
 

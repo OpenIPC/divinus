@@ -1,4 +1,4 @@
-#ifdef __arm__
+#if defined(__arm__) && !defined(__ARM_PCS_VFP)
 
 #include "v4_hal.h"
 
@@ -581,7 +581,7 @@ void v4_sensor_deinit(void)
 int v4_sensor_init(char *name, char *obj)
 {
     char path[128];
-    char* dirs[] = {"%s", "./%s", "/usr/lib/sensors/%s"};
+    char* dirs[] = {"%s", "./%s", "/usr/lib/sensors/%s", NULL};
     char **dir = dirs;
 
     while (*dir) {

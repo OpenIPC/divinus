@@ -166,6 +166,14 @@ typedef struct {
     cvi_common_dim dest;
 } cvi_snr_dev;
 
+typedef struct {
+    unsigned int mipiDev;
+    short laneId[CVI_SNR_MIPI_LANE_NUM + 1];
+    signed char pnSwap[CVI_SNR_MIPI_LANE_NUM + 1];
+    unsigned char mclk;
+    char mclkOn;
+} cvi_snr_rx;
+
 typedef union {
     signed char i2c;
     struct {
@@ -203,7 +211,7 @@ typedef struct {
     int  (*pfnWriteReg)(int pipe, int addr, int data);
     int  (*pfnReadReg)(int pipe, int addr);
     int  (*pfnSetInit)(int pipe, cvi_snr_init *config);
-    int  (*pfnPatchRxAttr)(cvi_snr_init *config);
+    int  (*pfnPatchRxAttr)(cvi_snr_rx *config);
     void (*pfnPatchI2cAddr)(int addr);
 	int  (*pfnGetRxAttr)(int pipe, cvi_snr_dev *device);
 	int  (*pfnExpSensorCb)(void *config);

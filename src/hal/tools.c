@@ -1,7 +1,47 @@
 #include "tools.h"
 
-static const char basis_64[] =
+static const char base64_table[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+int base64_decode(char *decoded, const char *string, int maxLen) {
+    char buf[3];
+    int buflen = 0, i = 0, v;
+
+    while (*string && *string != '=' && i < maxLen) {
+        const char *p = strchr(base64_table, *string++);
+        if (!p) continue;
+        
+        v = p - base64_table;
+        switch (buflen) {
+            case 0:
+                buf[buflen++] = v << 2;
+                break;
+            case 1:
+                buf[buflen - 1] |= v >> 4;
+                buf[buflen++] = (v & 0xF) << 4;
+                break;
+            case 2:
+                buf[buflen - 1] |= v >> 2;
+                buf[buflen++] = (v & 0x3) << 6;
+                break;
+            case 3:
+                buf[buflen - 1] |= v;
+                if (i + 3 <= maxLen) {
+                    memcpy(decoded + i, buf, 3);
+                    i += 3;
+                }
+                buflen = 0;
+                break;
+        }
+    }
+
+    if (buflen > 0 && i + buflen <= maxLen) {
+        memcpy(decoded + i, buf, buflen);
+        i += buflen;
+    }
+
+    return i;
+}
 
 int base64_encode_length(int len) { return ((len + 2) / 3 * 4) + 1; }
 
@@ -11,22 +51,22 @@ int base64_encode(char *encoded, const char *string, int len) {
 
     p = encoded;
     for (i = 0; i < len - 2; i += 3) {
-        *p++ = basis_64[(string[i] >> 2) & 0x3F];
-        *p++ = basis_64
+        *p++ = base64_table[(string[i] >> 2) & 0x3F];
+        *p++ = base64_table
             [((string[i] & 0x3) << 4) | ((int)(string[i + 1] & 0xF0) >> 4)];
-        *p++ = basis_64
+        *p++ = base64_table
             [((string[i + 1] & 0xF) << 2) | ((int)(string[i + 2] & 0xC0) >> 6)];
-        *p++ = basis_64[string[i + 2] & 0x3F];
+        *p++ = base64_table[string[i + 2] & 0x3F];
     }
     if (i < len) {
-        *p++ = basis_64[(string[i] >> 2) & 0x3F];
+        *p++ = base64_table[(string[i] >> 2) & 0x3F];
         if (i == (len - 1)) {
-            *p++ = basis_64[((string[i] & 0x3) << 4)];
+            *p++ = base64_table[((string[i] & 0x3) << 4)];
             *p++ = '=';
         } else {
-            *p++ = basis_64
+            *p++ = base64_table
                 [((string[i] & 0x3) << 4) | ((int)(string[i + 1] & 0xF0) >> 4)];
-            *p++ = basis_64[((string[i + 1] & 0xF) << 2)];
+            *p++ = base64_table[((string[i + 1] & 0xF) << 2)];
         }
         *p++ = '=';
     }
@@ -97,6 +137,52 @@ int compile_regex(regex_t *r, const char *regex_text) {
         return -1;
     }
     return 1;
+}
+
+
+int escape_url(char *dst, const char *src, size_t maxlen) {
+    static const char hex[] = "0123456789ABCDEF";
+    int len = 0;
+    
+    if (!dst || !src || !maxlen)
+        return 0;
+        
+    while (*src && len < maxlen - 1) {
+        unsigned char c = *src;
+
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            *dst++ = c;
+            len++;
+        } else {
+            if (len + 3 > maxlen - 1)
+                break;
+                
+            *dst++ = '%';
+            *dst++ = hex[c >> 4];
+            *dst++ = hex[c & 0xF];
+            len += 3;
+        }
+        
+        src++;
+    }
+    
+    *dst = '\0';
+    return len;
+}
+
+
+void generate_nonce(char *nonce, size_t len) {
+    static const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    if (len < 2) return;
+
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    unsigned int seed = ts.tv_nsec;
+
+    for (size_t i = 0; i < len - 1; i++)
+        nonce[i] = charset[rand_r(&seed) % (sizeof(charset) - 1)];
+
+    nonce[len - 1] = '\0';
 }
 
 
@@ -267,6 +353,129 @@ void reverse(void *arr, size_t width) {
 	}
 }
 
+
+void sha1_init(sha1_context *context) {
+    context->state[0] = 0x67452301;
+    context->state[1] = 0xEFCDAB89;
+    context->state[2] = 0x98BADCFE;
+    context->state[3] = 0x10325476;
+    context->state[4] = 0xC3D2E1F0;
+    context->count[0] = 0;
+    context->count[1] = 0;
+}
+
+static void sha1_transform(unsigned int state[5], const unsigned char buffer[64]) {
+    unsigned int a, b, c, d, e;
+    unsigned int w[80];
+    int i;
+
+    // Break chunk into 16 words (big-endian)
+    for (i = 0; i < 16; i++) {
+        w[i]  = ((unsigned int)buffer[i * 4 + 0] << 24);
+        w[i] |= ((unsigned int)buffer[i * 4 + 1] << 16);
+        w[i] |= ((unsigned int)buffer[i * 4 + 2] <<  8);
+        w[i] |= ((unsigned int)buffer[i * 4 + 3]);
+    }
+
+    // Extend the 16 words into 80
+    for (i = 16; i < 80; i++) {
+        w[i] = (w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16]);
+        w[i] = (w[i] << 1) | (w[i] >> 31);
+    }
+
+    a = state[0];
+    b = state[1];
+    c = state[2];
+    d = state[3];
+    e = state[4];
+
+    for (i = 0; i < 20; i++) {
+        unsigned int temp = ((a << 5) | (a >> 27)) + 
+            ((b & c) | ((~b) & d)) + e + w[i] + 0x5A827999;
+        e = d;
+        d = c;
+        c = ((b << 30) | (b >> 2));
+        b = a;
+        a = temp;
+    }
+    for (; i < 40; i++) {
+        unsigned int temp = ((a << 5) | (a >> 27)) +
+            (b ^ c ^ d) + e + w[i] + 0x6ED9EBA1;
+        e = d;
+        d = c;
+        c = ((b << 30) | (b >> 2));
+        b = a;
+        a = temp;
+    }
+    for (; i < 60; i++) {
+        unsigned int temp = ((a << 5) | (a >> 27)) +
+            ((b & c) | (b & d) | (c & d)) + e + w[i] + 0x8F1BBCDC;
+        e = d;
+        d = c;
+        c = ((b << 30) | (b >> 2));
+        b = a;
+        a = temp;
+    }
+    for (; i < 80; i++) {
+        unsigned int temp = ((a << 5) | (a >> 27)) +
+            (b ^ c ^ d) + e + w[i] + 0xCA62C1D6;
+        e = d;
+        d = c;
+        c = ((b << 30) | (b >> 2));
+        b = a;
+        a = temp;
+    }
+
+    state[0] += a;
+    state[1] += b;
+    state[2] += c;
+    state[3] += d;
+    state[4] += e;
+}
+
+void sha1_update(sha1_context *context, const unsigned char *data, unsigned int len) {
+    unsigned int i, j;
+    j = (context->count[0] >> 3) & 63;
+    context->count[0] += (len << 3);
+    if (context->count[0] < (len << 3)) context->count[1]++;
+    context->count[1] += (len >> 29);
+
+    if ((j + len) > 63) {
+        memcpy(&context->buffer[j], data, (i = 64 - j));
+        sha1_transform(context->state, context->buffer);
+        for (; i + 63 < len; i += 64)
+            sha1_transform(context->state, &data[i]);
+        j = 0;
+    } else i = 0;
+
+    memcpy(&context->buffer[j], &data[i], (len - i));
+}
+
+void sha1_final(unsigned char digest[20], sha1_context *context) {
+    unsigned char finalcount[8];
+    unsigned int i;
+
+    // Store bit count
+    for (i = 0; i < 8; i++)
+        finalcount[i] = (unsigned char)(
+            (context->count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 0xFF);
+
+    // Pad with a "1" bit, then zero bits
+    sha1_update(context, (unsigned char *)"\x80", 1);
+    // Pad until message length in bits ≡ 448 (mod 512)
+    while ((context->count[0] & 504) != 448)
+        sha1_update(context, (unsigned char *)"\0", 1);
+
+    // Append length in bits
+    sha1_update(context, finalcount, 8);
+
+    // Output final hash
+    for (i = 0; i < 20; i++)
+        digest[i] = (unsigned char)(
+            (context->state[i >> 2] >> ((3 - (i & 3)) * 8)) & 0xFF);
+}
+
+
 char *split(char **input, char *sep) {
     char *curr = (char *)"";
     while (curr && !curr[0] && *input) curr = strsep(input, sep);
@@ -277,11 +486,11 @@ void unescape_uri(char *uri) {
     char *src = uri;
     char *dst = uri;
 
-    while (*src && !isspace((int)(*src)) && (*src != '%'))
+    while (*src && !alt_isspace((int)(*src)) && (*src != '%'))
         src++;
 
     dst = src;
-    while (*src && !isspace((int)(*src)))
+    while (*src && !alt_isspace((int)(*src)))
     {
         *dst++ = (*src == '+') ? ' ' :
                  ((*src == '%') && src[1] && src[2]) ?
@@ -290,4 +499,18 @@ void unescape_uri(char *uri) {
         src++;
     }
     *dst = '\0';
+}
+
+void uuid_generate(char *uuid) {
+    const char *chars = "0123456789abcdef";
+
+    int i, j = 0;
+    for (i = 0; i < 36; i++) {
+        if (i == 8 || i == 13 || i == 18 || i == 23) {
+            uuid[i] = '-';
+        } else {
+            uuid[i] = chars[rand() % 16];
+        }
+    }
+    uuid[36] = '\0';
 }
