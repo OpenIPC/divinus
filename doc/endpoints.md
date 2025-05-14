@@ -242,6 +242,36 @@ Configures text or image overlays by their ID (0-9 at the moment).
 }
 ```
 
+### Recordings
+
+#### `/api/record`
+
+Manages video recording operations.
+
+| Method | Parameters         | Description                                        |
+|--------|--------------------|----------------------------------------------------|
+| GET    | `continuous`       | Adjusts the operation mode to be uninterruptible   |
+| GET    | `path`             | Specifies the location of the resulting files      |
+| GET    | `filename`         | Adjusts the output name (extension needed)         |
+| GET    | `segment_duration` | Sets the maximum segment duration (seconds)        |
+| GET    | `segment_size`     | Sets the maximum segment size (bytes)              |
+| GET    | `start`            | Starts a new recording session                     |
+| GET    | `stop`             | Stops the current recording session                |
+
+**Response**
+```json
+{
+  "recording": true,
+  "start_time": "2025-05-08T14:30:00Z",
+  "continuous": true,
+  "path": "/mnt/sdcard/recordings",
+  "filename": "Entrance.mp4",
+  "segment_duration": 0,
+  "segment_size": 10485760
+}
+```
+
+
 ## Content Streaming
 
 ### `/image.jpg`

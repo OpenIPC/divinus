@@ -79,16 +79,6 @@ int save_app_config(void) {
     fprintf(file, "  flip: %s\n", app_config.flip ? "true" : "false");
     fprintf(file, "  antiflicker: %d\n", app_config.antiflicker);
 
-    fprintf(file, "stream:\n");
-    fprintf(file, "  enable: %s\n", app_config.stream_enable ? "true" : "false");
-    fprintf(file, "  udp_srcport: %d\n", app_config.stream_udp_srcport);
-    if (!EMPTY(*app_config.stream_dests)) {
-        fprintf(file, "  dests: ");
-        for (int i = 0; app_config.stream_dests[i] && *app_config.stream_dests[i]; i++) {
-            fprintf(file, "    - %s\n", app_config.stream_dests[i]);
-        }
-    }
-
     fprintf(file, "fpv:\n");
     fprintf(file, "  enable: %s\n", app_config.fpv_enable ? "true" : "false");
 
@@ -107,6 +97,24 @@ int save_app_config(void) {
     fprintf(file, "  enable_auth: %s\n", app_config.rtsp_enable_auth ? "true" : "false");
     fprintf(file, "  auth_user: %s\n", app_config.rtsp_auth_user);
     fprintf(file, "  auth_pass: %s\n", app_config.rtsp_auth_pass);
+
+    fprintf(file, "record:\n");
+    fprintf(file, "  enable: %s\n", app_config.record_enable ? "true" : "false");
+    fprintf(file, "  continuous: %s\n", app_config.record_continuous ? "true" : "false");
+    fprintf(file, "  path: %s\n", app_config.record_path);
+    fprintf(file, "  filename: %s\n", app_config.record_filename);
+    fprintf(file, "  segment_duration: %d\n", app_config.record_segment_duration);
+    fprintf(file, "  segment_size: %d\n", app_config.record_segment_size);
+
+    fprintf(file, "stream:\n");
+    fprintf(file, "  enable: %s\n", app_config.stream_enable ? "true" : "false");
+    fprintf(file, "  udp_srcport: %d\n", app_config.stream_udp_srcport);
+    if (!EMPTY(*app_config.stream_dests)) {
+        fprintf(file, "  dests: ");
+        for (int i = 0; app_config.stream_dests[i] && *app_config.stream_dests[i]; i++) {
+            fprintf(file, "    - %s\n", app_config.stream_dests[i]);
+        }
+    }
 
     fprintf(file, "audio:\n");
     fprintf(file, "  enable: %s\n", app_config.audio_enable ? "true" : "false");
@@ -202,6 +210,13 @@ enum ConfigError parse_app_config(void) {
     app_config.rtsp_enable_auth = false;
     app_config.rtsp_auth_user[0] = '\0';
     app_config.rtsp_auth_pass[0] = '\0';
+
+    app_config.record_enable = false;
+    app_config.record_continuous = false;
+    app_config.record_filename[0] = '\0';
+    strcpy(app_config.record_path, "/mnt/sdcard/recordings");
+    app_config.record_segment_duration = 0;
+    app_config.record_segment_size = 0;
 
     app_config.stream_enable = false;
     app_config.stream_udp_srcport = 0;
@@ -394,6 +409,17 @@ enum ConfigError parse_app_config(void) {
         parse_param_value(
             &ini, "onvif", "auth_pass", app_config.onvif_auth_pass);
     }
+
+    parse_bool(&ini, "record", "enable", &app_config.record_enable);
+    parse_bool(&ini, "record", "continuous", &app_config.record_continuous);
+    parse_param_value(
+        &ini, "record", "path", app_config.record_path);
+    parse_param_value(
+        &ini, "record", "filename", app_config.record_filename);
+    parse_int(&ini, "record", "segment_duration", 0, INT_MAX,
+        &app_config.record_segment_duration);
+    parse_int(&ini, "record", "segment_size", 0, INT_MAX,
+        &app_config.record_segment_size);
 
     parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
     parse_int(&ini, "rtsp", "port", 0, USHRT_MAX, &app_config.rtsp_port);

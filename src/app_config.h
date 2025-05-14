@@ -60,6 +60,14 @@ struct AppConfig {
     char rtsp_auth_pass[32];
     int rtsp_port;
 
+    // [record]
+    bool record_enable;
+    bool record_continuous;
+    char record_filename[128];
+    char record_path[128];
+    int record_segment_duration;
+    int record_segment_size;
+
     // [stream]
     bool stream_enable;
     unsigned short stream_udp_srcport;

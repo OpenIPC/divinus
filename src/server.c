@@ -1263,6 +1263,68 @@ void respond_request(http_request_t *req) {
         return;
     }
 
+    if (EQUALS(req->uri, "/api/record")) {
+        if (!EMPTY(req->query)) {
+            char *remain;
+            while (req->query) {
+                char *value = split(&req->query, "&");
+                if (!value || !*value) continue;
+                unescape_uri(value);
+                char *key = split(&value, "=");
+                if (!key || !*key || !value || !*value) continue;
+                if (EQUALS(key, "enable")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.record_enable = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.record_enable = 0;
+                }
+                else if (EQUALS(key, "continuous")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.record_continuous = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.record_continuous = 0;
+                }
+                else if (EQUALS(key, "path"))
+                    strncpy(app_config.record_path, value, sizeof(app_config.record_path) - 1);
+                else if (EQUALS(key, "filename"))
+                    strncpy(app_config.record_filename, value, sizeof(app_config.record_filename) - 1);
+                else if (EQUALS(key, "segment_duration")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.record_segment_duration = result;
+                }
+                else if (EQUALS(key, "segment_size")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.record_segment_size = result;
+                }
+
+                if (!app_config.record_enable) continue;
+                if (app_config.record_continuous) continue;
+                if (EQUALS(key, "start"))
+                    record_start();
+                else if (EQUALS(key, "stop"))
+                    record_stop();
+            }
+        }
+        struct tm *start = localtime(&recordStartTime);
+        char start_time[64];
+        strftime(start_time, sizeof(start_time), "%Y-%m-%dT%H:%M:%SZ", start);
+
+        respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json;charset=UTF-8\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "{\"recording\":%s,\"start_time\":\"%s\",\"continuous\":\"%s\",\"path\":\"%s\","
+            "\"filename\":\"%s\",\"segment_duration\":%d,\"segment_size\":%d}",
+                recordOn ? "true" : "false", recordStartTime, app_config.record_continuous ? "true" : "false",
+                app_config.record_path, app_config.record_filename, 
+                app_config.record_segment_duration, app_config.record_segment_size);
+        send_and_close(req->clntFd, response, respLen);
+        return;
+    }
+
     if (EQUALS(req->uri, "/api/status")) {
         struct sysinfo si;
         sysinfo(&si);
@@ -1305,11 +1367,11 @@ void respond_request(http_request_t *req) {
                     short result = strtol(value, &remain, 10);
                     if (remain == value) continue;
                     t.tv_sec = result;
-                    clock_settime(0, &t);
+                    clock_settime(CLOCK_REALTIME, &t);
                 }
             }
         }
-        clock_gettime(0, &t);
+        clock_gettime(CLOCK_REALTIME, &t);
         int respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
