@@ -152,6 +152,9 @@ int i6_channel_bind(char index, char framerate)
 {
     int ret;
 
+    HAL_DEBUG("HAL",  "fnEnablePort %d, %d\n", _i6_vpe_chn, index);
+    if (ret = i6_vpe.fnEnablePort(_i6_vpe_chn, index))
+        return ret;
 
     {
         unsigned int device;
@@ -178,7 +181,6 @@ int i6_channel_bind(char index, char framerate)
 
 int i6_channel_create(char index, short width, short height, char mirror, char flip, char jpeg)
 {
-    int ret;
     i6_vpe_port port;
     port.output.width = width;
     port.output.height = height;
@@ -195,11 +197,7 @@ int i6_channel_create(char index, short width, short height, char mirror, char f
     HAL_DEBUG("HAL",  "pixFmt: %d\n", port.pixFmt);
     HAL_DEBUG("HAL",  "compress: %d\n", port.compress);
 
-    if (ret = i6_vpe.fnSetPortConfig(_i6_vpe_chn, index, &port))
-        return ret;
-
-    HAL_DEBUG("HAL",  "fnEnablePort %d, %d\n", _i6_vpe_chn, index);
-    return i6_vpe.fnEnablePort(_i6_vpe_chn, index);
+    return i6_vpe.fnSetPortConfig(_i6_vpe_chn, index, &port);
 }
 
 int i6_channel_grayscale(char enable)
@@ -250,13 +248,9 @@ void i6_sensor_config(char framerate)
 {
     i6_channel_grayscale(0);
     unsigned int timeus = 1000000 / framerate;
-    // add some margin to avoid exposure time to be too close to frame time
-    timeus -= 1000;
     HAL_DEBUG("HAL",  "Set sensor exposure to: %u us, framerate %i\n", timeus, framerate); 
     i6_channel_sensorexposure(timeus);
 }
-
-unsigned int g_noiselevel = 0;
 
 int i6_pipeline_create(char sensor, short width, short height, char framerate, char mirror, char flip, unsigned int noiselevel, int force_sensor_index)
 {
@@ -319,7 +313,6 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
         if (_i6_snr_profile < 0)
             return EXIT_FAILURE;
     }
-
     if (ret = i6_snr.fnSetOrien(_i6_snr_index, mirror, flip))
         return ret;
 
@@ -408,8 +401,22 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
         if (ret = i6_vpe.fnCreateChannel(_i6_vpe_chn, (i6_vpe_chn*)&channel))
             return ret;
 
-        g_noiselevel = noiselevel;
+        i6e_vpe_para param;
+        memset(&param, 0, sizeof(param));
+        param.hdr = I6_HDR_OFF;
+        param.level3DNR = noiselevel;
+        param.mirror = 0;
+        param.flip = 0;
+        param.lensAdjOn = 0;
 
+        HAL_DEBUG("HAL",  "hdr: %d\n", param.hdr);
+        HAL_DEBUG("HAL",  "level3DNR: %d\n", param.level3DNR);
+        HAL_DEBUG("HAL",  "mirror: %d\n", param.mirror);
+        HAL_DEBUG("HAL",  "flip: %d\n", param.flip);
+        HAL_DEBUG("HAL",  "lensAdjOn: %d\n", param.lensAdjOn);
+
+        if (ret = i6_vpe.fnSetChannelParam(_i6_vpe_chn, (i6_vpe_para*)&param))
+            return ret;
     } else {
         i6_vpe_chn channel;
         memset(&channel, 0, sizeof(channel));
@@ -430,13 +437,19 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
         param.mirror = 0;
         param.flip = 0;
         param.lensAdjOn = 0;
+
+        HAL_DEBUG("HAL",  "hdr: %d\n", param.hdr);
+        HAL_DEBUG("HAL",  "level3DNR: %d\n", param.level3DNR);
+        HAL_DEBUG("HAL",  "mirror: %d\n", param.mirror);
+        HAL_DEBUG("HAL",  "flip: %d\n", param.flip);
+        HAL_DEBUG("HAL",  "lensAdjOn: %d\n", param.lensAdjOn);
+
         if (ret = i6_vpe.fnSetChannelParam(_i6_vpe_chn, &param))
             return ret;
     }
     if (ret = i6_vpe.fnStartChannel(_i6_vpe_chn))
         return ret;
 
-        
     {
         i6_sys_bind source = { .module = I6_SYS_MOD_VIF, 
             .device = _i6_vif_dev, .channel = _i6_vif_chn, .port = _i6_vif_port };
@@ -447,7 +460,6 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate, c
         HAL_DEBUG("HAL",  "Source Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", source.module, source.device, source.channel, source.port, framerate);
         HAL_DEBUG("HAL",  "Dest   Channel Port: Module=%d, DevId=%d, ChnId=%d, PortId=%d, fps=%d\n", dest.module, dest.device, dest.channel, dest.port, framerate);
         HAL_DEBUG("HAL",  "Link: %d, LinkParam: %d\n", I6_SYS_LINK_REALTIME, 0);
-
         return i6_sys.fnBindExt(&source, &dest, _i6_snr_framerate, _i6_snr_framerate,
             I6_SYS_LINK_REALTIME, 0);
     }
@@ -702,7 +714,6 @@ int i6_video_create(char index, hal_vidconfig *config)
     attrib->bufSize = 0; // Set as majestic
     attrib->profile = MIN((series == 0xEF || config->codec == HAL_VIDCODEC_H265) ? 1 : 2,
         config->profile);
-    attrib->profile = 1; // Set as majestic
     attrib->byFrame = 1;
     attrib->height = config->height;
     attrib->width = config->width;
@@ -799,26 +810,6 @@ attach:
     else
     {
         HAL_DEBUG("HAL",  "Keep default 3A\n");
-    }
-
-
-    {
-        i6e_vpe_para param;
-        memset(&param, 0, sizeof(param));
-        param.hdr = I6_HDR_OFF;
-        param.level3DNR = g_noiselevel;
-        param.mirror = 0;
-        param.flip = 0;
-        param.lensAdjOn = 0;
-
-        HAL_DEBUG("HAL",  "hdr: %d\n", param.hdr);
-        HAL_DEBUG("HAL",  "level3DNR: %d\n", param.level3DNR);
-        HAL_DEBUG("HAL",  "mirror: %d\n", param.mirror);
-        HAL_DEBUG("HAL",  "flip: %d\n", param.flip);
-        HAL_DEBUG("HAL",  "lensAdjOn: %d\n", param.lensAdjOn);
-
-        if (ret = i6_vpe.fnSetChannelParam(_i6_vpe_chn, (i6_vpe_para*)&param))
-            return ret;
     }
 
 
@@ -1070,7 +1061,7 @@ void *i6_video_thread(void)
                     }
                     stream.count = stat.curPacks;
 
-                    if (ret = i6_venc.fnGetStream(i, &stream, stat.curPacks)) {
+                    if (ret = i6_venc.fnGetStream(i, &stream, 40)) {
                         HAL_DANGER("i6_venc", "Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                         break;
