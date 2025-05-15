@@ -288,27 +288,11 @@ typedef struct {
 } i6_isp_impl;
 
 
-int MI_ISP_API_CmdLoadBinFile(int channel, char *path, unsigned int key);
-int MI_ISP_IQ_SetColorToGray(int channel, char *enable);
-int MI_ISP_DisableUserspace3A(int channel);
-int MI_ISP_CUS3A_Enable(int channel, cus3AEnable_t *data);
-int MI_ISP_AE_GetExposureLimit(int channel, MI_ISP_AE_EXPO_LIMIT_TYPE_t *data);
-int MI_ISP_AE_SetExposureLimit(int channel, MI_ISP_AE_EXPO_LIMIT_TYPE_t *data);
-
-
 static int i6_isp_load(i6_isp_impl *isp_lib) {
     isp_lib->handleIspAlgo = dlopen("libispalgo.so", RTLD_LAZY | RTLD_GLOBAL);
 
     isp_lib->handleCus3a = dlopen("libcus3a.so", RTLD_LAZY | RTLD_GLOBAL);
 
-    isp_lib->fnLoadChannelConfig = MI_ISP_API_CmdLoadBinFile;
-    isp_lib->fnSetColorToGray = MI_ISP_IQ_SetColorToGray;
-    isp_lib->fnDisableUserspace3A = MI_ISP_DisableUserspace3A;
-    isp_lib->fnCUS3AEnable = MI_ISP_CUS3A_Enable;
-    isp_lib->getExposureLimit = MI_ISP_AE_GetExposureLimit;
-    isp_lib->setExposureLimit = MI_ISP_AE_SetExposureLimit;
-
-    /*
     if (!(isp_lib->handle = dlopen("libmi_isp.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("i6_isp", "Failed to load library!\nError: %s\n", dlerror());
 
@@ -335,7 +319,7 @@ static int i6_isp_load(i6_isp_impl *isp_lib) {
     if (!(isp_lib->setExposureLimit = (int(*)(int channel, MI_ISP_AE_EXPO_LIMIT_TYPE_t *data))
         hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_AE_SetExposureLimit")))
         return EXIT_FAILURE;
-    */
+
 
     return EXIT_SUCCESS;
 }

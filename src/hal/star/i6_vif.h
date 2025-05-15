@@ -100,20 +100,7 @@ typedef struct {
     int (*fnUnsetCB)(int u32VifChn, MI_VIF_CallBackParam_t *config);
 } i6_vif_impl;
 
-int MI_VIF_DisableDev(int device);
-int MI_VIF_EnableDev(int device);
-int MI_VIF_SetDevAttr(int device, i6_vif_dev *config);
-int MI_VIF_DisableChnPort(int channel, int port);
-int MI_VIF_EnableChnPort(int channel, int port);
-int MI_VIF_SetChnPortAttr(int channel, int port, i6_vif_port *config);
-int MI_VIF_CallBackTask_Register(int u32VifChn, MI_VIF_CallBackParam_t *config);
-int MI_VIF_CallBackTask_UnRegister(int u32VifChn, MI_VIF_CallBackParam_t *config);
-
-
 static int i6_vif_load(i6_vif_impl *vif_lib) {
-    
-    vif_lib->fnDisableDevice = MI_VIF_DisableDev;
-    /*
     if (!(vif_lib->handle = dlopen("libmi_vif.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("i6_vif", "Failed to load library!\nError: %s\n", dlerror());
 
@@ -148,16 +135,6 @@ static int i6_vif_load(i6_vif_impl *vif_lib) {
     if (!(vif_lib->fnUnsetCB = (int(*)(int channel, MI_VIF_CallBackParam_t *config))
         hal_symbol_load("i6_vif", vif_lib->handle, "MI_VIF_CallBackTask_UnRegister")))
         return EXIT_FAILURE;
-        */
-
-    vif_lib->fnDisableDevice = MI_VIF_DisableDev;
-    vif_lib->fnEnableDevice = MI_VIF_EnableDev;
-    vif_lib->fnSetDeviceConfig = MI_VIF_SetDevAttr;
-    vif_lib->fnDisablePort = MI_VIF_DisableChnPort;
-    vif_lib->fnEnablePort = MI_VIF_EnableChnPort;
-    vif_lib->fnSetPortConfig = MI_VIF_SetChnPortAttr;
-    vif_lib->fnSetCB = MI_VIF_CallBackTask_Register;
-    vif_lib->fnUnsetCB = MI_VIF_CallBackTask_UnRegister;    
 
     return EXIT_SUCCESS;
 }

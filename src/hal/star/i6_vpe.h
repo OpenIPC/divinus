@@ -154,30 +154,7 @@ typedef struct {
     int (*fnSetPortConfig)(int channel, int port, i6_vpe_port *config);
 } i6_vpe_impl;
 
-int MI_VPE_CreateChannel(int channel, i6_vpe_chn *config);
-int MI_VPE_DestroyChannel(int channel);
-int MI_VPE_SetChannelAttr(int channel, i6_vpe_chn *config);
-int MI_VPE_SetChannelParam(int channel, i6_vpe_para *config);
-int MI_VPE_StartChannel(int channel);
-int MI_VPE_StopChannel(int channel);
-int MI_VPE_DisablePort(int channel, int port);
-int MI_VPE_EnablePort(int channel, int port);
-int MI_VPE_SetPortMode(int channel, int port, i6_vpe_port *config);
-
-
 static int i6_vpe_load(i6_vpe_impl *vpe_lib) {
-    
-    vpe_lib->fnCreateChannel = MI_VPE_CreateChannel;
-    vpe_lib->fnDestroyChannel = MI_VPE_DestroyChannel;
-    vpe_lib->fnSetChannelConfig = MI_VPE_SetChannelAttr;
-    vpe_lib->fnSetChannelParam = MI_VPE_SetChannelParam;
-    vpe_lib->fnStartChannel = MI_VPE_StartChannel;
-    vpe_lib->fnStopChannel = MI_VPE_StopChannel;
-    vpe_lib->fnDisablePort = MI_VPE_DisablePort;
-    vpe_lib->fnEnablePort = MI_VPE_EnablePort;
-    vpe_lib->fnSetPortConfig = MI_VPE_SetPortMode;
-
-    /*
     if (!(vpe_lib->handle = dlopen("libmi_vpe.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("i6_vpe", "Failed to load library!\nError: %s\n", dlerror());
 
@@ -216,7 +193,7 @@ static int i6_vpe_load(i6_vpe_impl *vpe_lib) {
     if (!(vpe_lib->fnSetPortConfig = (int(*)(int channel, int port, i6_vpe_port *config))
         hal_symbol_load("i6_vpe", vpe_lib->handle, "MI_VPE_SetPortMode")))
         return EXIT_FAILURE;
-    */
+
     return EXIT_SUCCESS;
 }
 
