@@ -78,6 +78,7 @@ typedef struct {
     int (*fnEnable)(unsigned int sensor);
 
     int (*fnSetFramerate)(unsigned int sensor, unsigned int framerate);
+    int (*fnSetOrientation)(unsigned int sensor, unsigned char mirror, unsigned char flip);
 
     int (*fnGetPadInfo)(unsigned int sensor, i6_snr_pad *info);
     int (*fnGetPlaneInfo)(unsigned int sensor, unsigned int index, i6_snr_plane *info);
@@ -103,6 +104,10 @@ static int i6_snr_load(i6_snr_impl *snr_lib) {
 
     if (!(snr_lib->fnSetFramerate = (int(*)(unsigned int sensor, unsigned int framerate))
         hal_symbol_load("i6_snr", snr_lib->handle, "MI_SNR_SetFps")))
+        return EXIT_FAILURE;
+
+    if (!(snr_lib->fnSetOrientation = (int(*)(unsigned int sensor, unsigned char mirror, unsigned char flip))
+        hal_symbol_load("i6_snr", snr_lib->handle, "MI_SNR_SetOrien")))
         return EXIT_FAILURE;
 
     if (!(snr_lib->fnGetPadInfo = (int(*)(unsigned int sensor, i6_snr_pad *info))

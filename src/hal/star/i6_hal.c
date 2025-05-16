@@ -170,13 +170,13 @@ int i6_channel_bind(char index, char framerate)
     return EXIT_SUCCESS;
 }
 
-int i6_channel_create(char index, short width, short height, char mirror, char flip, char jpeg)
+int i6_channel_create(char index, short width, short height, char jpeg)
 {
     i6_vpe_port port;
     port.output.width = width;
     port.output.height = height;
-    port.mirror = mirror;
-    port.flip = flip;
+    port.mirror = 0;
+    port.flip = 0;
     port.compress = I6_COMPR_NONE;
     port.pixFmt = jpeg ? I6_PIXFMT_YUV422_YUYV : I6_PIXFMT_YUV420SP;
 
@@ -215,7 +215,7 @@ int i6_config_load(char *path)
     return i6_isp.fnLoadChannelConfig(_i6_isp_chn, path, 1234);
 }
 
-int i6_pipeline_create(char sensor, short width, short height, char framerate)
+int i6_pipeline_create(char sensor, short width, short height, char mirror, char flip, char framerate)
 {
     int ret;
 
@@ -250,6 +250,9 @@ int i6_pipeline_create(char sensor, short width, short height, char framerate)
         if (_i6_snr_profile < 0)
             return EXIT_FAILURE;
     }
+
+    if (ret = i6_snr.fnSetOrientation(_i6_snr_index, mirror, flip))
+        return ret;
 
     if (ret = i6_snr.fnGetPadInfo(_i6_snr_index, &_i6_snr_pad))
         return ret;
@@ -471,6 +474,23 @@ int i6_region_setbitmap(int handle, hal_bitmap *bitmap)
         .size.height = bitmap->dim.height, .size.width = bitmap->dim.width };
 
     return i6_rgn.fnSetBitmap(handle, &nativeBmp);
+}
+
+int i6_sensor_exposure(unsigned int micros)
+{
+    int ret;
+
+    {
+        i6_isp_exp config;
+        if (ret = i6_isp.fnGetExposureLimit(0, &config))
+            return ret;
+
+        config.maxShutterUs = micros;
+        if (ret = i6_isp.fnSetExposureLimit(0, &config))
+            return ret;
+    }
+
+    return ret;
 }
 
 int i6_video_create(char index, hal_vidconfig *config)

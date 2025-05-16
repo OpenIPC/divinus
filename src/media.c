@@ -275,8 +275,7 @@ int take_next_free_channel(bool mainLoop) {
 int create_channel(char index, short width, short height, char framerate, char jpeg) {
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
-        case HAL_PLATFORM_I6:  return i6_channel_create(index, width, height,
-            app_config.mirror, app_config.flip, jpeg);
+        case HAL_PLATFORM_I6:  return i6_channel_create(index, width, height, jpeg);
         case HAL_PLATFORM_I6C: return i6c_channel_create(index, width, height,
             app_config.mirror, app_config.flip, jpeg);
         case HAL_PLATFORM_M6:  return m6_channel_create(index, width, height,
@@ -747,7 +746,7 @@ int start_sdk(void) {
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  ret = i6_pipeline_create(0, width,
-            height, framerate); break;
+            height, app_config.mirror, app_config.flip, framerate); break;
         case HAL_PLATFORM_I6C: ret = i6c_pipeline_create(0, width,
             height, framerate); break;
         case HAL_PLATFORM_M6:  ret = m6_pipeline_create(0, width,

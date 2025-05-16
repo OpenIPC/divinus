@@ -30,13 +30,13 @@ int i6_audio_init(int samplerate, int gain);
 void *i6_audio_thread(void);
 
 int i6_channel_bind(char index, char framerate);
-int i6_channel_create(char index, short width, short height, char mirror, char flip, char jpeg);
+int i6_channel_create(char index, short width, short height, char jpeg);
 int i6_channel_grayscale(char enable);
 int i6_channel_unbind(char index);
 
 int i6_config_load(char *path);
 
-int i6_pipeline_create(char sensor, short width, short height, char framerate);
+int i6_pipeline_create(char sensor, short width, short height, char mirror, char flip, char framerate);
 void i6_pipeline_destroy(void);
 
 int i6_region_create(char handle, hal_rect rect, short opacity);
@@ -44,6 +44,8 @@ void i6_region_deinit(void);
 void i6_region_destroy(char handle);
 void i6_region_init(void);
 int i6_region_setbitmap(int handle, hal_bitmap *bitmap);
+
+int i6_sensor_exposure(unsigned int micros);
 
 int i6_video_create(char index, hal_vidconfig *config);
 int i6_video_destroy(char index);
