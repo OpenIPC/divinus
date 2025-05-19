@@ -26,13 +26,13 @@ int m6_audio_init(int samplerate, int gain);
 void *m6_audio_thread(void);
 
 int m6_channel_bind(char index, char framerate);
-int m6_channel_create(char index, short width, short height, char mirror, char flip, char jpeg);
+int m6_channel_create(char index, short width, short height, char jpeg);
 int m6_channel_grayscale(char enable);
 int m6_channel_unbind(char index);
 
 int m6_config_load(char *path);
 
-int m6_pipeline_create(char sensor, short width, short height, char framerate);
+int m6_pipeline_create(char sensor, short width, short height, char mirror, char flip, char framerate);
 void m6_pipeline_destroy(void);
 
 int m6_region_create(char handle, hal_rect rect, short opacity);

@@ -87,6 +87,7 @@ typedef struct {
     int (*fnEnable)(unsigned int sensor);
 
     int (*fnSetFramerate)(unsigned int sensor, unsigned int framerate);
+    int (*fnSetOrientation)(unsigned int sensor, unsigned char mirror, unsigned char flip);
 
     int (*fnGetPadInfo)(unsigned int sensor, i6c_snr_pad *info);
     int (*fnGetPlaneInfo)(unsigned int sensor, unsigned int index, i6c_snr_plane *info);
@@ -96,6 +97,8 @@ typedef struct {
     int (*fnGetResolution)(unsigned int sensor, unsigned char index, i6c_snr_res *resolution);
     int (*fnGetResolutionCount)(unsigned int sensor, unsigned int *count);
     int (*fnSetResolution)(unsigned int sensor, unsigned char index);
+
+    int (*fnCustomFunction)(unsigned int sensor, unsigned int command, unsigned int size, void *data, int drvOrUsr);
 } i6c_snr_impl;
 
 static int i6c_snr_load(i6c_snr_impl *snr_lib) {
@@ -112,6 +115,10 @@ static int i6c_snr_load(i6c_snr_impl *snr_lib) {
 
     if (!(snr_lib->fnSetFramerate = (int(*)(unsigned int sensor, unsigned int framerate))
         hal_symbol_load("i6c_snr", snr_lib->handle, "MI_SNR_SetFps")))
+        return EXIT_FAILURE;
+
+    if (!(snr_lib->fnSetOrientation = (int(*)(unsigned int sensor, unsigned char mirror, unsigned char flip))
+        hal_symbol_load("i6c_snr", snr_lib->handle, "MI_SNR_SetOrien")))
         return EXIT_FAILURE;
 
     if (!(snr_lib->fnGetPadInfo = (int(*)(unsigned int sensor, i6c_snr_pad *info))
@@ -140,6 +147,10 @@ static int i6c_snr_load(i6c_snr_impl *snr_lib) {
 
     if (!(snr_lib->fnSetResolution = (int(*)(unsigned int sensor, unsigned char index))
         hal_symbol_load("i6c_snr", snr_lib->handle, "MI_SNR_SetRes")))
+        return EXIT_FAILURE;
+
+   if (!(snr_lib->fnCustomFunction = (int(*)(unsigned int sensor, unsigned int command, unsigned int size, void *data, int drvOrUsr))
+        hal_symbol_load("i6c_snr", snr_lib->handle, "MI_SNR_CustFunction")))
         return EXIT_FAILURE;
 
     return EXIT_SUCCESS;

@@ -179,7 +179,7 @@ int i6c_channel_bind(char index, char framerate)
     return EXIT_SUCCESS;
 }
 
-int i6c_channel_create(char index, short width, short height, char mirror, char flip, char jpeg)
+int i6c_channel_create(char index, short width, short height, char jpeg)
 {
     i6c_scl_port port;
     port.crop.x = 0;
@@ -188,8 +188,8 @@ int i6c_channel_create(char index, short width, short height, char mirror, char 
     port.crop.height = 0;
     port.output.width = width;
     port.output.height = height;
-    port.mirror = mirror;
-    port.flip = flip;
+    port.mirror = 0;
+    port.flip = 0;
     port.compress = jpeg ? I6C_COMPR_NONE : I6C_COMPR_IFC;
     port.pixFmt = jpeg ? I6C_PIXFMT_YUV422_YUYV : I6C_PIXFMT_YUV420SP;
 
@@ -225,7 +225,7 @@ int i6c_config_load(char *path)
     return i6c_isp.fnLoadChannelConfig(_i6c_isp_dev, _i6c_isp_chn, path, 1234);
 }
 
-int i6c_pipeline_create(char sensor, short width, short height, char framerate)
+int i6c_pipeline_create(char sensor, short width, short height, char mirror, char flip, char framerate)
 {
     int ret;
 
@@ -260,6 +260,9 @@ int i6c_pipeline_create(char sensor, short width, short height, char framerate)
         if (_i6c_snr_profile < 0)
             return EXIT_FAILURE;
     }
+
+    if (ret = i6c_snr.fnSetOrientation(_i6c_snr_index, mirror, flip))
+        return ret;
 
     if (ret = i6c_snr.fnGetPadInfo(_i6c_snr_index, &_i6c_snr_pad))
         return ret;

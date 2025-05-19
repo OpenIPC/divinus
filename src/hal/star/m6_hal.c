@@ -172,7 +172,7 @@ int m6_channel_bind(char index, char framerate)
     return EXIT_SUCCESS;
 }
 
-int m6_channel_create(char index, short width, short height, char mirror, char flip, char jpeg)
+int m6_channel_create(char index, short width, short height, char jpeg)
 {
     m6_scl_port port;
     port.crop.x = 0;
@@ -181,8 +181,8 @@ int m6_channel_create(char index, short width, short height, char mirror, char f
     port.crop.height = 0;
     port.output.width = width;
     port.output.height = height;
-    port.mirror = mirror;
-    port.flip = flip;
+    port.mirror = 0;
+    port.flip = 0;
     port.compress = M6_COMPR_NONE;
     port.pixFmt = jpeg ? M6_PIXFMT_YUV422_YUYV : M6_PIXFMT_YUV420SP;
 
@@ -218,7 +218,7 @@ int m6_config_load(char *path)
     return m6_isp.fnLoadChannelConfig(_m6_isp_dev, _m6_isp_chn, path, 1234);
 }
 
-int m6_pipeline_create(char sensor, short width, short height, char framerate)
+int m6_pipeline_create(char sensor, short width, short height, char mirror, char flip, char framerate)
 {
     int ret;
 
@@ -253,6 +253,9 @@ int m6_pipeline_create(char sensor, short width, short height, char framerate)
         if (_m6_snr_profile < 0)
             return EXIT_FAILURE;
     }
+
+    if (ret = m6_snr.fnSetOrientation(_m6_snr_index, mirror, flip))
+        return ret;
 
     if (ret = m6_snr.fnGetPadInfo(_m6_snr_index, &_m6_snr_pad))
         return ret;
