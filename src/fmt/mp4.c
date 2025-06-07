@@ -4,9 +4,8 @@ uint32_t default_sample_size = 40000;
 
 unsigned int aud_samplerate = 0, aud_framesize = 0;
 unsigned short aud_bitrate = 0;
-char aud_channels = 0;
+char aud_channels = 0, aud_codec = 0, vid_framerate = 30;
 short vid_width = 1920, vid_height = 1080;
-char aud_codec = 0, vid_framerate = 30;
 
 char buf_pps[128];
 uint16_t buf_pps_len = 0;

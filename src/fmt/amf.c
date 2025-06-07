@@ -2,18 +2,15 @@
 
 static double s_double = 1.0; // 3ff0 0000 0000 0000
 
-static enum BufError AMFWriteInt16(struct BitBuf* buf, uint16_t value)
-{
+static enum BufError AMFWriteInt16(struct BitBuf* buf, uint16_t value) {
     return put_u16_be(buf, value);
 }
 
-static enum BufError AMFWriteInt32(struct BitBuf* buf, uint32_t value)
-{
+static enum BufError AMFWriteInt32(struct BitBuf* buf, uint32_t value) {
     return put_u32_be(buf, value);
 }
 
-static enum BufError AMFWriteString16(struct BitBuf* buf, const char* string, size_t length)
-{
+static enum BufError AMFWriteString16(struct BitBuf* buf, const char* string, size_t length) {
     enum BufError err;
     err = put_u16_be(buf, (uint16_t)length);
     chk_err;
@@ -21,8 +18,7 @@ static enum BufError AMFWriteString16(struct BitBuf* buf, const char* string, si
     return put(buf, string, length);
 }
 
-static enum BufError AMFWriteString32(struct BitBuf* buf, const char* string, size_t length)
-{
+static enum BufError AMFWriteString32(struct BitBuf* buf, const char* string, size_t length) {
     enum BufError err;
     err = put_u32_be(buf, (uint32_t)length);
     chk_err;
@@ -30,23 +26,19 @@ static enum BufError AMFWriteString32(struct BitBuf* buf, const char* string, si
     return put(buf, string, length);
 }
 
-enum BufError AMFWriteNull(struct BitBuf* buf)
-{
+enum BufError AMFWriteNull(struct BitBuf* buf) {
     return put_u8(buf, AMF_NULL);
 }
 
-enum BufError AMFWriteUndefined(struct BitBuf* buf)
-{
+enum BufError AMFWriteUndefined(struct BitBuf* buf) {
     return put_u8(buf, AMF_UNDEFINED);
 }
 
-enum BufError AMFWriteObject(struct BitBuf* buf)
-{
+enum BufError AMFWriteObject(struct BitBuf* buf) {
     return put_u8(buf, AMF_OBJECT);
 }
 
-enum BufError AMFWriteObjectEnd(struct BitBuf* buf)
-{
+enum BufError AMFWriteObjectEnd(struct BitBuf* buf) {
     enum BufError err;
     err = put_u8(buf, 0);
     chk_err;
@@ -57,13 +49,11 @@ enum BufError AMFWriteObjectEnd(struct BitBuf* buf)
     return put_u8(buf, AMF_OBJECT_END);
 }
 
-enum BufError AMFWriteTypedObject(struct BitBuf* buf)
-{
+enum BufError AMFWriteTypedObject(struct BitBuf* buf) {
     return put_u8(buf, AMF_TYPED_OBJECT);
 }
 
-enum BufError AMFWriteECMAArray(struct BitBuf* buf)
-{
+enum BufError AMFWriteECMAArray(struct BitBuf* buf) {
     enum BufError err;
     err = put_u8(buf, AMF_ECMA_ARRAY);
     chk_err;
@@ -71,8 +61,7 @@ enum BufError AMFWriteECMAArray(struct BitBuf* buf)
     return put_u32_be(buf, 0); // U32 associative-count
 }
 
-enum BufError AMFWriteBoolean(struct BitBuf* buf, uint8_t value)
-{
+enum BufError AMFWriteBoolean(struct BitBuf* buf, uint8_t value) {
     enum BufError err;
     err = put_u8(buf, AMF_BOOLEAN);
     chk_err;
@@ -80,8 +69,7 @@ enum BufError AMFWriteBoolean(struct BitBuf* buf, uint8_t value)
     return put_u8(buf, value ? 1 : 0);
 }
 
-enum BufError AMFWriteDouble(struct BitBuf* buf, double value)
-{
+enum BufError AMFWriteDouble(struct BitBuf* buf, double value) {
     enum BufError err;
     uint8_t bytes[8];
 
@@ -100,8 +88,7 @@ enum BufError AMFWriteDouble(struct BitBuf* buf, double value)
     return put(buf, (const char*)bytes, 8);
 }
 
-enum BufError AMFWriteString(struct BitBuf* buf, const char* string, size_t length)
-{
+enum BufError AMFWriteString(struct BitBuf* buf, const char* string, size_t length) {
     enum BufError err;
 
     if (length < 65536) {
@@ -119,8 +106,7 @@ enum BufError AMFWriteString(struct BitBuf* buf, const char* string, size_t leng
     return err;
 }
 
-enum BufError AMFWriteDate(struct BitBuf *buf, double milliseconds, int16_t timezone)
-{
+enum BufError AMFWriteDate(struct BitBuf *buf, double milliseconds, int16_t timezone) {
     enum BufError err;
     uint8_t bytes[8];
 
@@ -142,13 +128,11 @@ enum BufError AMFWriteDate(struct BitBuf *buf, double milliseconds, int16_t time
     return put_u16_be(buf, (uint16_t)timezone);
 }
 
-enum BufError AMFWriteNamed(struct BitBuf *buf, const char* name, size_t length)
-{
+enum BufError AMFWriteNamed(struct BitBuf *buf, const char* name, size_t length) {
     return AMFWriteString16(buf, name, length);
 }
 
-enum BufError AMFWriteNamedBoolean(struct BitBuf *buf, const char* name, size_t length, uint8_t value)
-{
+enum BufError AMFWriteNamedBoolean(struct BitBuf *buf, const char* name, size_t length, uint8_t value) {
     enum BufError err;
     err = AMFWriteString16(buf, name, length);
     chk_err;
@@ -156,8 +140,7 @@ enum BufError AMFWriteNamedBoolean(struct BitBuf *buf, const char* name, size_t 
     return AMFWriteBoolean(buf, value);
 }
 
-enum BufError AMFWriteNamedDouble(struct BitBuf *buf, const char* name, size_t length, double value)
-{
+enum BufError AMFWriteNamedDouble(struct BitBuf *buf, const char* name, size_t length, double value) {
     enum BufError err;
     err = AMFWriteString16(buf, name, length);
     chk_err;
@@ -165,8 +148,7 @@ enum BufError AMFWriteNamedDouble(struct BitBuf *buf, const char* name, size_t l
     return AMFWriteDouble(buf, value);
 }
 
-enum BufError AMFWriteNamedString(struct BitBuf *buf, const char* name, size_t length, const char* value, size_t length2)
-{
+enum BufError AMFWriteNamedString(struct BitBuf *buf, const char* name, size_t length, const char* value, size_t length2) {
     enum BufError err;
     err = AMFWriteString16(buf, name, length);
     chk_err;
@@ -174,8 +156,7 @@ enum BufError AMFWriteNamedString(struct BitBuf *buf, const char* name, size_t l
     return AMFWriteString(buf, value, length2);
 }
 
-static enum BufError AMFReadInt16(struct BitBuf* buf, uint32_t* value)
-{
+static enum BufError AMFReadInt16(struct BitBuf* buf, uint32_t* value) {
     if (!buf || buf->offset + 2 > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
@@ -186,8 +167,7 @@ static enum BufError AMFReadInt16(struct BitBuf* buf, uint32_t* value)
     return BUF_OK;
 }
 
-static enum BufError AMFReadInt32(struct BitBuf* buf, uint32_t* value)
-{
+static enum BufError AMFReadInt32(struct BitBuf* buf, uint32_t* value) {
     if (!buf || buf->offset + 4 > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
@@ -201,8 +181,7 @@ static enum BufError AMFReadInt32(struct BitBuf* buf, uint32_t* value)
     return BUF_OK;
 }
 
-enum BufError AMFReadNull(struct BitBuf *buf)
-{
+enum BufError AMFReadNull(struct BitBuf *buf) {
     if (!buf || buf->offset > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
@@ -210,8 +189,7 @@ enum BufError AMFReadNull(struct BitBuf *buf)
     return BUF_OK;
 }
 
-enum BufError AMFReadUndefined(struct BitBuf *buf)
-{
+enum BufError AMFReadUndefined(struct BitBuf *buf) {
     if (!buf || buf->offset > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
@@ -219,8 +197,7 @@ enum BufError AMFReadUndefined(struct BitBuf *buf)
     return BUF_OK;
 }
 
-enum BufError AMFReadBoolean(struct BitBuf *buf, uint8_t* value)
-{
+enum BufError AMFReadBoolean(struct BitBuf *buf, uint8_t* value) {
     if (!buf || buf->offset + 1 > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
@@ -231,8 +208,7 @@ enum BufError AMFReadBoolean(struct BitBuf *buf, uint8_t* value)
     return BUF_OK;
 }
 
-enum BufError AMFReadDouble(struct BitBuf *buf, double* value)
-{
+enum BufError AMFReadDouble(struct BitBuf *buf, double* value) {
     if (!buf || buf->offset + 8 > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
@@ -251,8 +227,7 @@ enum BufError AMFReadDouble(struct BitBuf *buf, double* value)
     return BUF_OK;
 }
 
-enum BufError AMFReadString(struct BitBuf *buf, int isLongString, char* string, size_t length)
-{ 
+enum BufError AMFReadString(struct BitBuf *buf, int isLongString, char* string, size_t length) { 
     uint32_t len = 0;
     enum BufError err;
 
@@ -262,8 +237,7 @@ enum BufError AMFReadString(struct BitBuf *buf, int isLongString, char* string, 
         err = AMFReadInt16(buf, &len);
     chk_err;
 
-    if (string && length > len)
-    {
+    if (string && length > len) {
         memcpy(string, buf->buf + buf->offset, len);
         string[len] = 0;
     }
@@ -272,8 +246,7 @@ enum BufError AMFReadString(struct BitBuf *buf, int isLongString, char* string, 
     return BUF_OK;
 }
 
-enum BufError AMFReadDate(struct BitBuf *buf, double *milliseconds, int16_t *timezone)
-{
+enum BufError AMFReadDate(struct BitBuf *buf, double *milliseconds, int16_t *timezone) {
     enum BufError err;
     uint32_t v = 0;
 
@@ -289,8 +262,7 @@ enum BufError AMFReadDate(struct BitBuf *buf, double *milliseconds, int16_t *tim
     return BUF_OK;
 }
 
-enum BufError AMF3ReadNull(struct BitBuf *buf)
-{
+enum BufError AMF3ReadNull(struct BitBuf *buf) {
     if (!buf || buf->offset > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
@@ -298,8 +270,7 @@ enum BufError AMF3ReadNull(struct BitBuf *buf)
     return BUF_OK;
 }
 
-enum BufError AMF3ReadBoolean(struct BitBuf *buf, uint8_t *value)
-{
+enum BufError AMF3ReadBoolean(struct BitBuf *buf, uint8_t *value) {
     if (!buf || buf->offset + 1 > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
@@ -310,8 +281,7 @@ enum BufError AMF3ReadBoolean(struct BitBuf *buf, uint8_t *value)
     return BUF_OK;
 }
 
-enum BufError AMF3ReadInteger(struct BitBuf *buf, int32_t* value)
-{
+enum BufError AMF3ReadInteger(struct BitBuf *buf, int32_t* value) {
     uint8_t b;
     int i;
     int32_t v = 0;
@@ -322,8 +292,7 @@ enum BufError AMF3ReadInteger(struct BitBuf *buf, int32_t* value)
 
         b = buf->buf[buf->offset++];
         v <<= 7;
-        if (!(b & 0x80))
-        {
+        if (!(b & 0x80)) {
             v |= b;
             if (value) *value = v;
             return BUF_OK;
@@ -344,8 +313,7 @@ enum BufError AMF3ReadInteger(struct BitBuf *buf, int32_t* value)
     return BUF_OK;
 }
 
-enum BufError AMF3ReadDouble(struct BitBuf *buf, double* value)
-{
+enum BufError AMF3ReadDouble(struct BitBuf *buf, double* value) {
     if (!buf || buf->offset + 8 > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
@@ -364,8 +332,7 @@ enum BufError AMF3ReadDouble(struct BitBuf *buf, double* value)
     return BUF_OK;
 }
 
-enum BufError AMF3ReadString(struct BitBuf *buf, char* string, uint32_t* length)
-{
+enum BufError AMF3ReadString(struct BitBuf *buf, char* string, uint32_t* length) {
     enum BufError err;
     int32_t v = 0;
 
@@ -398,53 +365,39 @@ static enum BufError amf_read_object(struct BitBuf* buf, struct amf_object_item_
 static enum BufError amf_read_ecma_array(struct BitBuf* buf, struct amf_object_item_t* items, size_t n);
 static enum BufError amf_read_strict_array(struct BitBuf* buf, struct amf_object_item_t* items, size_t n);
 
-static enum BufError amf_read_item(struct BitBuf* buf, enum AMFDataType type, struct amf_object_item_t* item)
-{
-    switch (type)
-    {
-    case AMF_BOOLEAN:
-        return AMFReadBoolean(buf, (uint8_t*)(item ? item->value : NULL));
-
-    case AMF_NUMBER:
-        return AMFReadDouble(buf, (double*)(item ? item->value : NULL));
-
-    case AMF_STRING:
-        return AMFReadString(buf, 0, (char*)(item ? item->value : NULL), item ? item->size : 0);
-
-    case AMF_LONG_STRING:
-        return AMFReadString(buf, 1, (char*)(item ? item->value : NULL), item ? item->size : 0);
-
-    case AMF_DATE:
-        return AMFReadDate(buf, (double*)(item ? item->value : NULL), (int16_t*)(item ? (char*)item->value + 8 : NULL));
-
-    case AMF_OBJECT:
-        return amf_read_object(buf, (struct amf_object_item_t*)(item ? item->value : NULL), item ? item->size : 0);
-
-    case AMF_NULL:
-        return AMFReadNull(buf);
-
-    case AMF_UNDEFINED:
-        return AMFReadUndefined(buf);
-
-    case AMF_ECMA_ARRAY:
-        return amf_read_ecma_array(buf, (struct amf_object_item_t*)(item ? item->value : NULL), item ? item->size : 0);
-
-    case AMF_STRICT_ARRAY:
-        return amf_read_strict_array(buf, (struct amf_object_item_t*)(item ? item->value : NULL), item ? item->size : 0);
-
-    default:
-        return BUF_INCORRECT;
+static enum BufError amf_read_item(struct BitBuf* buf, enum AMFDataType type, struct amf_object_item_t* item) {
+    switch (type) {
+		case AMF_BOOLEAN:
+			return AMFReadBoolean(buf, (uint8_t*)(item ? item->value : NULL));
+		case AMF_NUMBER:
+			return AMFReadDouble(buf, (double*)(item ? item->value : NULL));
+		case AMF_STRING:
+			return AMFReadString(buf, 0, (char*)(item ? item->value : NULL), item ? item->size : 0);
+		case AMF_LONG_STRING:
+			return AMFReadString(buf, 1, (char*)(item ? item->value : NULL), item ? item->size : 0);
+		case AMF_DATE:
+			return AMFReadDate(buf, (double*)(item ? item->value : NULL), (int16_t*)(item ? (char*)item->value + 8 : NULL));
+		case AMF_OBJECT:
+			return amf_read_object(buf, (struct amf_object_item_t*)(item ? item->value : NULL), item ? item->size : 0);
+		case AMF_NULL:
+			return AMFReadNull(buf);
+		case AMF_UNDEFINED:
+			return AMFReadUndefined(buf);
+		case AMF_ECMA_ARRAY:
+			return amf_read_ecma_array(buf, (struct amf_object_item_t*)(item ? item->value : NULL), item ? item->size : 0);
+		case AMF_STRICT_ARRAY:
+			return amf_read_strict_array(buf, (struct amf_object_item_t*)(item ? item->value : NULL), item ? item->size : 0);
+		default:
+			return BUF_INCORRECT;
     }
 }
 
-static inline int amf_read_item_type_check(uint8_t type0, uint8_t itemtype)
-{
+static inline int amf_read_item_type_check(uint8_t type0, uint8_t itemtype) {
     // decode AMF_ECMA_ARRAY as AMF_OBJECT
     return (type0 == itemtype || (AMF_OBJECT == itemtype && (AMF_ECMA_ARRAY == type0 || AMF_NULL == type0))) ? 1 : 0;
 }
 
-static enum BufError amf_read_strict_array(struct BitBuf* buf, struct amf_object_item_t* items, size_t n)
-{
+static enum BufError amf_read_strict_array(struct BitBuf* buf, struct amf_object_item_t* items, size_t n) {
     enum BufError err;
     uint32_t count, i;
 
@@ -463,8 +416,7 @@ static enum BufError amf_read_strict_array(struct BitBuf* buf, struct amf_object
     return BUF_OK;
 }
 
-static enum BufError amf_read_ecma_array(struct BitBuf* buf, struct amf_object_item_t* items, size_t n)
-{
+static enum BufError amf_read_ecma_array(struct BitBuf* buf, struct amf_object_item_t* items, size_t n) {
     if (!buf || buf->offset + 4 > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
@@ -472,8 +424,7 @@ static enum BufError amf_read_ecma_array(struct BitBuf* buf, struct amf_object_i
     return amf_read_object(buf, items, n);
 }
 
-static enum BufError amf_read_object(struct BitBuf* buf, struct amf_object_item_t* items, size_t n)
-{
+static enum BufError amf_read_object(struct BitBuf* buf, struct amf_object_item_t* items, size_t n) {
     enum BufError err;
     uint32_t len;
     size_t i;
@@ -501,8 +452,7 @@ static enum BufError amf_read_object(struct BitBuf* buf, struct amf_object_item_
         chk_err;
     }
 
-    if (buf && buf->offset < buf->size && AMF_OBJECT_END == buf->buf[buf->offset])
-    {
+    if (buf && buf->offset < buf->size && AMF_OBJECT_END == buf->buf[buf->offset]) {
         buf->offset += 1;
         return BUF_OK;
     }
@@ -510,8 +460,7 @@ static enum BufError amf_read_object(struct BitBuf* buf, struct amf_object_item_
     return BUF_ENDOFBUF_ERROR; // invalid object
 }
 
-enum BufError amf_read_items(struct BitBuf* buf, struct amf_object_item_t* items, size_t count)
-{
+enum BufError amf_read_items(struct BitBuf* buf, struct amf_object_item_t* items, size_t count) {
     enum BufError err;
     size_t i;
 
