@@ -16,10 +16,10 @@ typedef struct {
 } cvi_isp_alg;
 
 typedef struct {
-	int sensorId;
-	cvi_isp_alg aeLib;
-	cvi_isp_alg afLib;
-	cvi_isp_alg awbLib;
+    int sensorId;
+    cvi_isp_alg aeLib;
+    cvi_isp_alg afLib;
+    cvi_isp_alg awbLib;
 } cvi_isp_bind;
 
 typedef struct {

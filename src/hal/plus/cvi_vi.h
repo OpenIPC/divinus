@@ -3,18 +3,18 @@
 #include "cvi_common.h"
 
 typedef enum {
-	CVI_VI_INTF_BT656,
-	CVI_VI_INTF_BT601,
-	CVI_VI_INTF_DIGITAL_CAMERA,
-	CVI_VI_INTF_BT1120_STANDARD,
-	CVI_VI_INTF_BT1120_INTERLEAVED,
-	CVI_VI_INTF_MIPI,
-	CVI_VI_INTF_MIPI_YUV420_NORMAL,
-	CVI_VI_INTF_MIPI_YUV420_LEGACY,
-	CVI_VI_INTF_MIPI_YUV422,
-	CVI_VI_INTF_LVDS,
-	CVI_VI_INTF_HISPI,
-	CVI_VI_INTF_SLVS,
+    CVI_VI_INTF_BT656,
+    CVI_VI_INTF_BT601,
+    CVI_VI_INTF_DIGITAL_CAMERA,
+    CVI_VI_INTF_BT1120_STANDARD,
+    CVI_VI_INTF_BT1120_INTERLEAVED,
+    CVI_VI_INTF_MIPI,
+    CVI_VI_INTF_MIPI_YUV420_NORMAL,
+    CVI_VI_INTF_MIPI_YUV420_LEGACY,
+    CVI_VI_INTF_MIPI_YUV422,
+    CVI_VI_INTF_LVDS,
+    CVI_VI_INTF_HISPI,
+    CVI_VI_INTF_SLVS,
     CVI_VI_INTF_END
 } cvi_vi_intf;
 
@@ -36,8 +36,8 @@ typedef enum {
 } cvi_vi_work;
 
 typedef struct {
-	unsigned int num;
-	int pipeId[CVI_VI_PIPE_NUM];
+    unsigned int num;
+    int pipeId[CVI_VI_PIPE_NUM];
 } cvi_vi_bind;
 
 typedef struct {
@@ -106,8 +106,8 @@ typedef struct {
     int rgbMode;
     cvi_common_dim size;
     cvi_common_wdr wdrMode;
-	unsigned int wdrCacheLine;
-	char wdrSynthOn;
+    unsigned int wdrCacheLine;
+    char wdrSynthOn;
     cvi_common_bayer bayerMode;
     unsigned int chnNum;
     unsigned int snrFps;
@@ -125,10 +125,13 @@ typedef struct {
     int (*fnDisableDevice)(int device);
     int (*fnEnableDevice)(int device);
     int (*fnSetDeviceConfig)(int device, cvi_vi_dev *config);
+    int (*fnSetDeviceNumber)(int number);
 
     int (*fnDisableChannel)(int pipe, int channel);
     int (*fnEnableChannel)(int pipe, int channel);
     int (*fnSetChannelConfig)(int pipe, int channel, cvi_vi_chn *config);
+    int (*fnAttachChannelPool)(int pipe, int channel, unsigned int pool);
+    int (*fnDetachChannelPool)(int pipe, int channel);
 
     int (*fnBindPipe)(int device, cvi_vi_bind *config);
     int (*fnCreatePipe)(int pipe, cvi_vi_pipe *config);
@@ -153,6 +156,10 @@ static int cvi_vi_load(cvi_vi_impl *vi_lib) {
         hal_symbol_load("cvi_vi", vi_lib->handle, "CVI_VI_SetDevAttr")))
         return EXIT_FAILURE;
 
+    if (!(vi_lib->fnSetDeviceNumber = (int(*)(int number))
+        hal_symbol_load("cvi_vi", vi_lib->handle, "CVI_VI_SetDevNum")))
+        return EXIT_FAILURE;
+
     if (!(vi_lib->fnDisableChannel = (int(*)(int pipe, int channel))
         hal_symbol_load("cvi_vi", vi_lib->handle, "CVI_VI_DisableChn")))
         return EXIT_FAILURE;
@@ -163,6 +170,14 @@ static int cvi_vi_load(cvi_vi_impl *vi_lib) {
 
     if (!(vi_lib->fnSetChannelConfig = (int(*)(int pipe, int channel, cvi_vi_chn *config))
         hal_symbol_load("cvi_vi", vi_lib->handle, "CVI_VI_SetChnAttr")))
+        return EXIT_FAILURE;
+
+    if (!(vi_lib->fnAttachChannelPool = (int(*)(int pipe, int channel, unsigned int pool))
+        hal_symbol_load("cvi_vi", vi_lib->handle, "CVI_VI_AttachVbPool")))
+        return EXIT_FAILURE;
+
+    if (!(vi_lib->fnDetachChannelPool = (int(*)(int pipe, int channel))
+        hal_symbol_load("cvi_vi", vi_lib->handle, "CVI_VI_DetachVbPool")))
         return EXIT_FAILURE;
 
     if (!(vi_lib->fnBindPipe = (int(*)(int device, cvi_vi_bind *config))

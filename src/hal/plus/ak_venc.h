@@ -44,14 +44,14 @@ typedef struct {
     int subChnOn;
     ak_venc_out output;
     int vbrModeOn;
-	ak_venc_codec codec;
+    ak_venc_codec codec;
 } ak_venc_cnf;
 
 typedef struct {
-	unsigned char *data;
-	unsigned int length;
-	unsigned long long timestamp;
-	unsigned long sequence;
+    unsigned char *data;
+    unsigned int length;
+    unsigned long long timestamp;
+    unsigned long sequence;
     ak_venc_nalu naluType;
 } ak_venc_strm;
 

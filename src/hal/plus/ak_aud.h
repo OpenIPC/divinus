@@ -3,16 +3,16 @@
 #include "ak_common.h"
 
 typedef struct {
-	unsigned int rate;
-	unsigned int bit;
-	unsigned int chnNum;   
+    unsigned int rate;
+    unsigned int bit;
+    unsigned int chnNum;   
 } ak_aud_cnf;
 
 typedef struct {
-	unsigned char *data;
-	unsigned int length;
-	unsigned long long timestamp;
-	unsigned long sequence;
+    unsigned char *data;
+    unsigned int length;
+    unsigned long long timestamp;
+    unsigned long sequence;
 } ak_aud_frm;
 
 typedef struct {

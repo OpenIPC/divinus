@@ -330,9 +330,9 @@ char ip_in_cidr(const char *ip, const char *cidr) {
 }
 
 char *memstr(char *haystack, char *needle, int size, char needlesize) {
-	for (char *p = haystack; p <= (haystack - needlesize + size); p++)
-		if (!memcmp(p, needle, needlesize)) return p;
-	return NULL;
+    for (char *p = haystack; p <= (haystack - needlesize + size); p++)
+        if (!memcmp(p, needle, needlesize)) return p;
+    return NULL;
 }
 
 unsigned int millis() {
@@ -342,15 +342,15 @@ unsigned int millis() {
 }
 
 void reverse(void *arr, size_t width) {
-	char *val = (char*)arr;
-	char tmp;
-	size_t i;
+    char *val = (char*)arr;
+    char tmp;
+    size_t i;
 
-	for (i = 0; i < width / 2; i++) {
-		tmp = val[i];
-		val[i] = val[width - i - 1];
-		val[width - i - 1] = tmp;
-	}
+    for (i = 0; i < width / 2; i++) {
+        tmp = val[i];
+        val[i] = val[width - i - 1];
+        val[width - i - 1] = tmp;
+    }
 }
 
 

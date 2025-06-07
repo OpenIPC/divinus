@@ -37,10 +37,10 @@ typedef enum {
 } cvi_snr_brmux;
 
 typedef enum {
-	CVI_SNR_GAIN_SHARE,
-	CVI_SNR_GAIN_WDR_2F,
-	CVI_SNR_GAIN_WDR_3F,
-	CVI_SNR_GAIN_ONLY_LEF
+    CVI_SNR_GAIN_SHARE,
+    CVI_SNR_GAIN_WDR_2F,
+    CVI_SNR_GAIN_WDR_3F,
+    CVI_SNR_GAIN_ONLY_LEF
 } cvi_snr_gain;
 
 typedef enum {
@@ -81,12 +81,12 @@ typedef enum {
 } cvi_snr_lwdr;
 
 typedef enum {
-	CVI_SNR_MACCK_200M,
-	CVI_SNR_MACCK_300M,
-	CVI_SNR_MACCK_400M,
-	CVI_SNR_MACCK_500M,
-	CVI_SNR_MACCK_600M,
-	CVI_SNR_MACCK_END
+    CVI_SNR_MACCK_200M,
+    CVI_SNR_MACCK_300M,
+    CVI_SNR_MACCK_400M,
+    CVI_SNR_MACCK_500M,
+    CVI_SNR_MACCK_600M,
+    CVI_SNR_MACCK_END
 } cvi_snr_macck;
 
 typedef enum {
@@ -99,13 +99,13 @@ typedef enum {
 } cvi_snr_mwdr;
 
 typedef enum {
-	CVI_SNR_PLLFR_NONE,
-	CVI_SNR_PLLFR_37P125M,
-	CVI_SNR_PLLFR_25M,
-	CVI_SNR_PLLFR_27M,
-	CVI_SNR_PLLFR_24M,
-	CVI_SNR_PLLFR_26M,
-	CVI_SNR_PLLFR_END
+    CVI_SNR_PLLFR_NONE,
+    CVI_SNR_PLLFR_37P125M,
+    CVI_SNR_PLLFR_25M,
+    CVI_SNR_PLLFR_27M,
+    CVI_SNR_PLLFR_24M,
+    CVI_SNR_PLLFR_26M,
+    CVI_SNR_PLLFR_END
 } cvi_snr_pllfr;
 
 typedef struct {
@@ -150,8 +150,8 @@ typedef struct {
 } cvi_snr_mipi;
 
 typedef struct {
-	unsigned int cam;
-	cvi_snr_pllfr freq;
+    unsigned int cam;
+    cvi_snr_pllfr freq;
 } cvi_snr_pllck;
 
 typedef struct {
@@ -213,9 +213,9 @@ typedef struct {
     int  (*pfnSetInit)(int pipe, cvi_snr_init *config);
     int  (*pfnPatchRxAttr)(cvi_snr_rx *config);
     void (*pfnPatchI2cAddr)(int addr);
-	int  (*pfnGetRxAttr)(int pipe, cvi_snr_dev *device);
-	int  (*pfnExpSensorCb)(void *config);
-	int  (*pfnExpAeCb)(void *config);
+    int  (*pfnGetRxAttr)(int pipe, cvi_snr_dev *device);
+    int  (*pfnExpSensorCb)(void *config);
+    int  (*pfnExpAeCb)(void *config);
     int  (*pfnSnsProbe)(int pipe);
 } cvi_snr_obj;
 

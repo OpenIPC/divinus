@@ -3,17 +3,17 @@
 #include "t31_common.h"
 
 typedef struct {
-	int enable;
-	int left;
-	int top;
-	int width;
-	int height;
+    int enable;
+    int left;
+    int top;
+    int width;
+    int height;
 } t31_fs_crop;
 
 typedef struct {
-	int enable;
-	int width;
-	int height;
+    int enable;
+    int width;
+    int height;
 } t31_fs_scale;
 
 typedef struct {

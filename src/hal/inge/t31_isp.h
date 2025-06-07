@@ -25,15 +25,15 @@ typedef struct {
 } t31_isp_spi;
 
 typedef struct {
-	char name[32];
-	t31_isp_comm mode;
-	union {
-		t31_isp_i2c i2c;
-		t31_isp_spi spi;
-	};
-	unsigned short rstPin;
-	unsigned short powDownPin;
-	unsigned short powUpPin;
+    char name[32];
+    t31_isp_comm mode;
+    union {
+        t31_isp_i2c i2c;
+        t31_isp_spi spi;
+    };
+    unsigned short rstPin;
+    unsigned short powDownPin;
+    unsigned short powUpPin;
 } t31_isp_snr;
 
 static t31_common_dim t31_dims[] = {

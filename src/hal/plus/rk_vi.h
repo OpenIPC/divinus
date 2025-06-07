@@ -9,19 +9,19 @@ typedef enum {
 } rk_vi_buf;
 
 typedef enum {
-	RK_VI_INTF_BT656,
-	RK_VI_INTF_BT656_PACKED_YUV,
-	RK_VI_INTF_BT601,
-	RK_VI_INTF_DIGITAL_CAMERA,
-	RK_VI_INTF_BT1120_STANDARD,
-	RK_VI_INTF_BT1120_INTERLEAVED,
-	RK_VI_INTF_MIPI,
-	RK_VI_INTF_MIPI_YURK20_NORMAL,
-	RK_VI_INTF_MIPI_YURK20_LEGACY,
-	RK_VI_INTF_MIPI_YURK22,
-	RK_VI_INTF_LVDS,
-	RK_VI_INTF_HISPI,
-	RK_VI_INTF_SLVS,
+    RK_VI_INTF_BT656,
+    RK_VI_INTF_BT656_PACKED_YUV,
+    RK_VI_INTF_BT601,
+    RK_VI_INTF_DIGITAL_CAMERA,
+    RK_VI_INTF_BT1120_STANDARD,
+    RK_VI_INTF_BT1120_INTERLEAVED,
+    RK_VI_INTF_MIPI,
+    RK_VI_INTF_MIPI_YURK20_NORMAL,
+    RK_VI_INTF_MIPI_YURK20_LEGACY,
+    RK_VI_INTF_MIPI_YURK22,
+    RK_VI_INTF_LVDS,
+    RK_VI_INTF_HISPI,
+    RK_VI_INTF_SLVS,
     RK_VI_INTF_END
 } rk_vi_intf;
 
@@ -72,8 +72,8 @@ typedef enum {
 } rk_vi_work;
 
 typedef struct {
-	unsigned int num;
-	int pipeId[16];
+    unsigned int num;
+    int pipeId[16];
     int offlineOn;
     int userStarted[16];
 } rk_vi_bind;

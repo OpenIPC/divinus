@@ -9,46 +9,46 @@
 
 enum AMFDataType
 {
-	AMF_NUMBER = 0x00,
-	AMF_BOOLEAN,
-	AMF_STRING,
-	AMF_OBJECT,
-	AMF_MOVIECLIP,
-	AMF_NULL,
-	AMF_UNDEFINED,
-	AMF_REFERENCE,
-	AMF_ECMA_ARRAY,
-	AMF_OBJECT_END,
-	AMF_STRICT_ARRAY,
-	AMF_DATE,
-	AMF_LONG_STRING,
-	AMF_UNSUPPORTED,
-	AMF_RECORDSET,
-	AMF_XML_DOCUMENT,
-	AMF_TYPED_OBJECT,
-	AMF_AVMPLUS_OBJECT,
+    AMF_NUMBER = 0x00,
+    AMF_BOOLEAN,
+    AMF_STRING,
+    AMF_OBJECT,
+    AMF_MOVIECLIP,
+    AMF_NULL,
+    AMF_UNDEFINED,
+    AMF_REFERENCE,
+    AMF_ECMA_ARRAY,
+    AMF_OBJECT_END,
+    AMF_STRICT_ARRAY,
+    AMF_DATE,
+    AMF_LONG_STRING,
+    AMF_UNSUPPORTED,
+    AMF_RECORDSET,
+    AMF_XML_DOCUMENT,
+    AMF_TYPED_OBJECT,
+    AMF_AVMPLUS_OBJECT,
 };
 
 enum AMF3DataType
 {
-	AMF3_UNDEFINED = 0x00,
-	AMF3_NULL,
-	AMF3_FALSE,
-	AMF3_TRUE,
-	AMF3_INTEGER,
-	AMF3_DOUBLE,
-	AMF3_STRING,
-	AMF3_XML_DOCUMENT,
-	AMF3_DATE,
-	AMF3_ARRAY,
-	AMF3_OBJECT,
-	AMF3_XML,
-	AMF3_BYTE_ARRAY,
-	AMF3_VECTOR_INT,
-	AMF3_VECTOR_UINT,
-	AMF3_VECTOR_DOUBLE,
-	AMF3_VECTOR_OBJECT,
-	AMF3_DICTIONARY,
+    AMF3_UNDEFINED = 0x00,
+    AMF3_NULL,
+    AMF3_FALSE,
+    AMF3_TRUE,
+    AMF3_INTEGER,
+    AMF3_DOUBLE,
+    AMF3_STRING,
+    AMF3_XML_DOCUMENT,
+    AMF3_DATE,
+    AMF3_ARRAY,
+    AMF3_OBJECT,
+    AMF3_XML,
+    AMF3_BYTE_ARRAY,
+    AMF3_VECTOR_INT,
+    AMF3_VECTOR_UINT,
+    AMF3_VECTOR_DOUBLE,
+    AMF3_VECTOR_OBJECT,
+    AMF3_DICTIONARY,
 };
 
 enum BufError AMFWriteNull(struct BitBuf* buf);
@@ -83,9 +83,9 @@ enum BufError AMF3ReadString(struct BitBuf *buf, char* string, uint32_t* length)
 
 struct amf_object_item_t
 {
-	enum AMFDataType type;
-	const char* name;
-	void* value;
-	size_t size;
+    enum AMFDataType type;
+    const char* name;
+    void* value;
+    size_t size;
 };
 static enum BufError amf_read_item(struct BitBuf* buf, enum AMFDataType type, struct amf_object_item_t* item);

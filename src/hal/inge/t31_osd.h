@@ -30,10 +30,10 @@ typedef union {
 } t31_osd_attr;
 
 typedef struct {
-	t31_osd_type	type;
-	t31_common_rect rect;
-	t31_common_pixfmt pixFmt;
-	t31_osd_attr data;
+    t31_osd_type    type;
+    t31_common_rect rect;
+    t31_common_pixfmt pixFmt;
+    t31_osd_attr data;
 } t31_osd_rgn;
 
 typedef struct {

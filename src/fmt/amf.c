@@ -15,7 +15,7 @@ static enum BufError AMFWriteInt32(struct BitBuf* buf, uint32_t value)
 static enum BufError AMFWriteString16(struct BitBuf* buf, const char* string, size_t length)
 {
     enum BufError err;
-	err = put_u16_be(buf, (uint16_t)length);
+    err = put_u16_be(buf, (uint16_t)length);
     chk_err;
 
     return put(buf, string, length);
@@ -24,7 +24,7 @@ static enum BufError AMFWriteString16(struct BitBuf* buf, const char* string, si
 static enum BufError AMFWriteString32(struct BitBuf* buf, const char* string, size_t length)
 {
     enum BufError err;
-	err = put_u32_be(buf, (uint32_t)length);
+    err = put_u32_be(buf, (uint32_t)length);
     chk_err;
 
     return put(buf, string, length);
@@ -48,11 +48,11 @@ enum BufError AMFWriteObject(struct BitBuf* buf)
 enum BufError AMFWriteObjectEnd(struct BitBuf* buf)
 {
     enum BufError err;
-	err = put_u8(buf, 0);
+    err = put_u8(buf, 0);
     chk_err;
 
     err = put_u8(buf, 0);
-	chk_err;
+    chk_err;
 
     return put_u8(buf, AMF_OBJECT_END);
 }
@@ -65,7 +65,7 @@ enum BufError AMFWriteTypedObject(struct BitBuf* buf)
 enum BufError AMFWriteECMAArray(struct BitBuf* buf)
 {
     enum BufError err;
-	err = put_u8(buf, AMF_ECMA_ARRAY);
+    err = put_u8(buf, AMF_ECMA_ARRAY);
     chk_err;
 
     return put_u32_be(buf, 0); // U32 associative-count
@@ -82,22 +82,22 @@ enum BufError AMFWriteBoolean(struct BitBuf* buf, uint8_t value)
 
 enum BufError AMFWriteDouble(struct BitBuf* buf, double value)
 {
-	enum BufError err;
-	uint8_t bytes[8];
+    enum BufError err;
+    uint8_t bytes[8];
 
     err = put_u8(buf, AMF_NUMBER);
     chk_err;
 
-	// Little-Endian
-	if (0x00 == *(char*)&s_double) {
+    // Little-Endian
+    if (0x00 == *(char*)&s_double) {
         uint8_t* v = (uint8_t*)&value;
         for (int i = 0; i < 8; ++i)
             bytes[i] = v[7 - i];
-	} else {
-		memcpy(bytes, &value, 8);
-	}
+    } else {
+        memcpy(bytes, &value, 8);
+    }
 
-	return put(buf, (const char*)bytes, 8);
+    return put(buf, (const char*)bytes, 8);
 }
 
 enum BufError AMFWriteString(struct BitBuf* buf, const char* string, size_t length)
@@ -121,57 +121,57 @@ enum BufError AMFWriteString(struct BitBuf* buf, const char* string, size_t leng
 
 enum BufError AMFWriteDate(struct BitBuf *buf, double milliseconds, int16_t timezone)
 {
-	enum BufError err;
-	uint8_t bytes[8];
+    enum BufError err;
+    uint8_t bytes[8];
 
-	err = put_u8(buf, AMF_DATE);
+    err = put_u8(buf, AMF_DATE);
     chk_err;
 
-	// Little-Endian
-	if (0x00 == *(char*)&s_double) {
+    // Little-Endian
+    if (0x00 == *(char*)&s_double) {
         uint8_t* v = (uint8_t*)&milliseconds;
         for (int i = 0; i < 8; ++i)
             bytes[i] = v[7 - i];
-	} else {
-		memcpy(bytes, &milliseconds, 8);
-	}
+    } else {
+        memcpy(bytes, &milliseconds, 8);
+    }
 
-	err = put(buf, (const char*)bytes, 8);
-	chk_err;
+    err = put(buf, (const char*)bytes, 8);
+    chk_err;
 
-	return put_u16_be(buf, (uint16_t)timezone);
+    return put_u16_be(buf, (uint16_t)timezone);
 }
 
 enum BufError AMFWriteNamed(struct BitBuf *buf, const char* name, size_t length)
 {
-	return AMFWriteString16(buf, name, length);
+    return AMFWriteString16(buf, name, length);
 }
 
 enum BufError AMFWriteNamedBoolean(struct BitBuf *buf, const char* name, size_t length, uint8_t value)
 {
-	enum BufError err;
-	err = AMFWriteString16(buf, name, length);
-	chk_err;
+    enum BufError err;
+    err = AMFWriteString16(buf, name, length);
+    chk_err;
 
-	return AMFWriteBoolean(buf, value);
+    return AMFWriteBoolean(buf, value);
 }
 
 enum BufError AMFWriteNamedDouble(struct BitBuf *buf, const char* name, size_t length, double value)
 {
-	enum BufError err;
-	err = AMFWriteString16(buf, name, length);
-	chk_err;
+    enum BufError err;
+    err = AMFWriteString16(buf, name, length);
+    chk_err;
 
-	return AMFWriteDouble(buf, value);
+    return AMFWriteDouble(buf, value);
 }
 
 enum BufError AMFWriteNamedString(struct BitBuf *buf, const char* name, size_t length, const char* value, size_t length2)
 {
-	enum BufError err;
-	err = AMFWriteString16(buf, name, length);
-	chk_err;
+    enum BufError err;
+    err = AMFWriteString16(buf, name, length);
+    chk_err;
 
-	return AMFWriteString(buf, value, length2);
+    return AMFWriteString(buf, value, length2);
 }
 
 static enum BufError AMFReadInt16(struct BitBuf* buf, uint32_t* value)
@@ -236,31 +236,31 @@ enum BufError AMFReadDouble(struct BitBuf *buf, double* value)
     if (!buf || buf->offset + 8 > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
-	if (value) {
-		if (0x00 == *(char*)&s_double) {
-			// Little-Endian
+    if (value) {
+        if (0x00 == *(char*)&s_double) {
+            // Little-Endian
             uint8_t* p = (uint8_t*)value;
             for (int i = 0; i < 8; ++i)
                 p[i] = buf->buf[buf->offset + 7 - i];
-		} else {
+        } else {
             memcpy(value, buf->buf + buf->offset, 8);
-		}
-	}
+        }
+    }
 
-	buf->offset += 8;
-	return BUF_OK;
+    buf->offset += 8;
+    return BUF_OK;
 }
 
 enum BufError AMFReadString(struct BitBuf *buf, int isLongString, char* string, size_t length)
 { 
-	uint32_t len = 0;
+    uint32_t len = 0;
     enum BufError err;
 
     if (isLongString)
         err = AMFReadInt32(buf, &len);
     else
         err = AMFReadInt16(buf, &len);
-	chk_err;
+    chk_err;
 
     if (string && length > len)
     {
@@ -312,11 +312,11 @@ enum BufError AMF3ReadBoolean(struct BitBuf *buf, uint8_t *value)
 
 enum BufError AMF3ReadInteger(struct BitBuf *buf, int32_t* value)
 {
-	uint8_t b;
-	int i;
-	int32_t v = 0;
+    uint8_t b;
+    int i;
+    int32_t v = 0;
 
-	for (i = 0; i < 3; i++) {
+    for (i = 0; i < 3; i++) {
         if (buf->offset >= buf->size)
             return BUF_ENDOFBUF_ERROR;
 
@@ -329,7 +329,7 @@ enum BufError AMF3ReadInteger(struct BitBuf *buf, int32_t* value)
             return BUF_OK;
         }
         v |= (b & 0x7F);
-	}
+    }
 
     if (buf->offset >= buf->size)
         return BUF_ENDOFBUF_ERROR;
@@ -349,18 +349,18 @@ enum BufError AMF3ReadDouble(struct BitBuf *buf, double* value)
     if (!buf || buf->offset + 8 > buf->size)
         return BUF_ENDOFBUF_ERROR;
 
-	if (value) {
-		if (0x00 == *(char*)&s_double) {
-			// Little-Endian
+    if (value) {
+        if (0x00 == *(char*)&s_double) {
+            // Little-Endian
             uint8_t* p = (uint8_t*)value;
             for (int i = 0; i < 8; ++i)
                 p[i] = buf->buf[buf->offset + 7 - i];
-		} else {
+        } else {
             memcpy(value, buf->buf + buf->offset, 8);
-		}
-	}
+        }
+    }
 
-	buf->offset += 8;
+    buf->offset += 8;
     return BUF_OK;
 }
 
@@ -369,15 +369,15 @@ enum BufError AMF3ReadString(struct BitBuf *buf, char* string, uint32_t* length)
     enum BufError err;
     int32_t v = 0;
 
-	err = AMF3ReadInteger(buf, (int32_t*)&v);
+    err = AMF3ReadInteger(buf, (int32_t*)&v);
     chk_err;
 
-	if (v & 0x01) {
-		// reference
+    if (v & 0x01) {
+        // reference
         if (length) *length = 0;
         if (string) string[0] = 0;
         return BUF_OK;
-	} else {
+    } else {
         uint32_t len = (uint32_t)(v >> 1);
 
         if (length) *length = len;
@@ -391,7 +391,7 @@ enum BufError AMF3ReadString(struct BitBuf *buf, char* string, uint32_t* length)
 
         buf->offset += len;
         return BUF_OK;
-	}
+    }
 }
 
 static enum BufError amf_read_object(struct BitBuf* buf, struct amf_object_item_t* items, size_t n);
@@ -454,7 +454,7 @@ static enum BufError amf_read_strict_array(struct BitBuf* buf, struct amf_object
     for (i = 0; i < count && buf && buf->offset < buf->size; i++) {
         if (buf->offset >= buf->size)
             return BUF_ENDOFBUF_ERROR;
-	
+    
         uint8_t type = buf->buf[buf->offset++];
         err = amf_read_item(buf, type, (i < n && amf_read_item_type_check(type, items[i].type)) ? &items[i] : NULL);
         chk_err;

@@ -100,9 +100,9 @@ typedef struct {
     unsigned int profile;
     char byFrame;
     cvi_common_dim pic;
-	char singleCoreOn;
-	char esBufQueueOn;
-	char isolateFrmOn;
+    char singleCoreOn;
+    char esBufQueueOn;
+    char isolateFrmOn;
     union {
         cvi_venc_attr_h264 h264;
         cvi_venc_attr_h265 h265;

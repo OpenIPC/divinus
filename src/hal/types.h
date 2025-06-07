@@ -130,7 +130,7 @@ typedef struct {
 } hal_vidpack;
 
 typedef struct {
-	hal_vidpack *pack;
-	unsigned int count;
-	unsigned int seq;
+    hal_vidpack *pack;
+    unsigned int count;
+    unsigned int seq;
 } hal_vidstream;
