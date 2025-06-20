@@ -52,7 +52,7 @@ void record_start(void) {
         recordPath[sizeof(recordPath) - 1] = '\0';
     } else {
         char tempName[160];
-        struct tm *tm_info = localtime(&recordStartTime);
+        struct tm tm_buf, *tm_info = localtime_r(&recordStartTime, &tm_buf);
         sprintf(tempName, "recording_%s.mp4", timefmt);
         strftime(recordPath, sizeof(recordPath), tempName, tm_info);
     }

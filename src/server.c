@@ -1307,9 +1307,9 @@ void respond_request(http_request_t *req) {
                     record_stop();
             }
         }
-        struct tm *start = localtime(&recordStartTime);
+        struct tm tm_buf, *tm_info = localtime_r(&recordStartTime, &tm_buf);
         char start_time[64];
-        strftime(start_time, sizeof(start_time), "%Y-%m-%dT%H:%M:%SZ", start);
+        strftime(start_time, sizeof(start_time), "%Y-%m-%dT%H:%M:%SZ", tm_info);
 
         respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
@@ -1318,7 +1318,7 @@ void respond_request(http_request_t *req) {
             "\r\n"
             "{\"recording\":%s,\"start_time\":\"%s\",\"continuous\":\"%s\",\"path\":\"%s\","
             "\"filename\":\"%s\",\"segment_duration\":%d,\"segment_size\":%d}",
-                recordOn ? "true" : "false", recordStartTime, app_config.record_continuous ? "true" : "false",
+                recordOn ? "true" : "false", start_time, app_config.record_continuous ? "true" : "false",
                 app_config.record_path, app_config.record_filename, 
                 app_config.record_segment_duration, app_config.record_segment_size);
         send_and_close(req->clntFd, response, respLen);

@@ -21,7 +21,7 @@ int http_post_send(hal_jpegdata *jpeg) {
         {
             time_t timer;
             time(&timer);
-            struct tm *tm_info = localtime(&timer);
+            struct tm tm_buf, *tm_info = localtime_r(&timer, &tm_buf);
             size_t time_len = strftime(
                 time_url, sizeof(time_url), app_config.http_post_url, tm_info);
             time_url[time_len++] = 0;

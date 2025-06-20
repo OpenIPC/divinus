@@ -87,12 +87,12 @@ void region_fill_formatted(char* str) {
             ipos++;
             char s[64];
             time_t t = time(NULL);
-            struct tm *tm;
+            struct tm tm_buf, *tm_info;
             if (str[ipos + 1] == 'u') {
                 ipos++;
-                tm = gmtime(&t);
-            } else tm = localtime(&t);
-            strftime(s, 64, timefmt, tm);
+                tm_info = gmtime(&t);
+            } else tm_info = localtime_r(&t, &tm_buf);
+            strftime(s, 64, timefmt, tm_info);
             strcat(out, s);
             opos += strlen(s);
         }
