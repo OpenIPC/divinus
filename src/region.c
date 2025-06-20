@@ -19,13 +19,25 @@ void region_fill_formatted(char* str) {
         }
         else if (str[ipos + 1] == 'B')
         {
-            ipos++;
+            char ifname[16] = {0};
             struct ifaddrs *ifaddr, *ifa;
+
+            ipos++;
+
+            if (str[ipos + 1] == ':') {
+                int j = 0;
+                ipos++;
+                while (str[ipos + 1] && str[ipos + 1] != '$' && str[ipos + 1] != ' ' && j < (sizeof(ifname) - 1))
+                    ifname[j++] = str[++ipos];
+                ifname[j] = '\0';
+            }
+
             if (getifaddrs(&ifaddr) == -1) continue;
 
             for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
             { 
                 if (EQUALS(ifa->ifa_name, "lo")) continue;
+                if (ifname[0] && !EQUALS(ifa->ifa_name, ifname)) continue;
                 if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_PACKET) continue;
                 if (!ifa->ifa_data) continue;
 

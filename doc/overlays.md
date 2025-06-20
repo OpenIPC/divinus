@@ -29,7 +29,7 @@ Specifiers starting with a dollar sign are used to represent real-time statistic
 ```
 curl http://192.168.1.17/api/osd/1?text=$B%20C:$C%20M:$M
 ```
-N.B. Spaces have to be escaped with %20 in curl URL syntaxes
+N.B. Spaces have to be escaped with %20 in curl URL syntaxes, $B can take an optional interface name preceded by a colon
 
 Showing the time and customizing the time format is done this way:
 ```
