@@ -225,7 +225,7 @@ Configures text or image overlays by their ID (0-9 at the moment).
 | GET    | `posy`     | Y coordinate (write-only)                          |
 | GET    | `outl`     | Outline color (hex format, RGB555 format)          |
 | GET    | `thick`    | Outline thickness (0 to disable)                   |
-| POST   | file       | Bitmap or PNG image to upload (replaces text)      |
+| POST   | `file`     | Bitmap or PNG image to upload (replaces text)      |
 
 **Response**
 ```json

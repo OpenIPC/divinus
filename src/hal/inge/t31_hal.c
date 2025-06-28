@@ -157,6 +157,13 @@ int t31_channel_create(char index, short width, short height, char framerate, ch
 {
     int ret;
 
+    if (width > _t31_snr_dim.width || height > _t31_snr_dim.height) {
+        HAL_WARNING("t31_hal", "Channel %d: requested %dx%d too large, using sensor %dx%d\n",
+            index, width, height, _t31_snr_dim.width, _t31_snr_dim.height);
+        width = _t31_snr_dim.width;
+        height = _t31_snr_dim.height;
+    }
+
     {
         t31_fs_chn channel = {
             .dest = { .width = _t31_snr_dim.width, .height = _t31_snr_dim.height }, .pixFmt = T31_PIXFMT_NV12,
@@ -400,6 +407,10 @@ int t31_video_create(char index, hal_vidconfig *config)
     }
 
     memset(&channel, 0, sizeof(channel));
+    if (config->width > _t31_snr_dim.width || config->height > _t31_snr_dim.height) {
+        config->width = _t31_snr_dim.width;
+        config->height = _t31_snr_dim.height;
+    }
     t31_venc.fnSetDefaults(&channel, profile, ratemode, config->width, config->height, 
         config->framerate, 1, config->gop, config->gop / config->framerate, -1, 0);
 
