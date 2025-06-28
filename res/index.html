@@ -138,7 +138,7 @@
 		}
 
 		function setSource(id, src) {
-			var frame = document.getElementById(id), ext = ".mp4";
+			var frame = document.getElementById(id), ext = '.mp4';
 			if (frame.firstChild) frame.firstChild.src = "#";
 			if (src.indexOf(ext, src.length - ext.length) > -1)
 				frame.innerHTML = '<video id="player" width="100%" autoplay controls> \
@@ -149,6 +149,33 @@
 				frame.innerHTML = '<img src="' + src + '" width="100%">';
 			else
 				while (frame.firstChild) frame.removeChild(frame.firstChild);
+		}
+
+		function toggleRecord(btn) {
+			if (!btn) return;
+
+			var req = new XMLHttpRequest(), act = '';
+			req.onreadystatechange = function() {
+				if (this.readyState != 4 || this.status != 200) return;
+				var dec = JSON.parse(req.responseText);
+				for (var key in dec) {
+					if (!dec.hasOwnProperty(key)) continue;
+					if (key != 'recording') continue;
+					if (dec[key] == true) {
+						btn.innerHTML = 'Stop';
+						btn.className = 'btn error';
+					} else {
+						btn.innerHTML = 'Start';
+						btn.className = 'btn primary';
+					}
+				}
+			}
+			switch (btn.innerHTML) {
+				case 'Start': act = '?start'; break;
+				case 'Stop':  act = '?stop';  break;
+			}
+			req.open('GET', '/api/record' + act);
+			req.send();
 		}
 
 		function every5Sec() {
@@ -162,6 +189,7 @@
 			apiRead('mjpeg');
 			apiRead('night');
 			apiRead('record');
+			toggleRecord(document.getElementById('record_state'));
 			apiRead('time');
 
 			duplicateRows('osd', 10);
@@ -245,6 +273,7 @@
 								<td><input type="number" id="record_segment_size"></td>
 							</tr>
 						</table>
+						<button id="record_state" class="btn" onclick="toggleRecord(this)"></button>
 						<a href="javascript:apiApply('record')" class="btn right">Apply</a>
 					</fieldset>
 				</div>

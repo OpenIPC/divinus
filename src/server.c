@@ -1316,7 +1316,7 @@ void respond_request(http_request_t *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"recording\":%s,\"start_time\":\"%s\",\"continuous\":\"%s\",\"path\":\"%s\","
+            "{\"recording\":%s,\"start_time\":\"%s\",\"continuous\":%s,\"path\":\"%s\","
             "\"filename\":\"%s\",\"segment_duration\":%d,\"segment_size\":%d}",
                 recordOn ? "true" : "false", start_time, app_config.record_continuous ? "true" : "false",
                 app_config.record_path, app_config.record_filename, 
