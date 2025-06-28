@@ -202,6 +202,19 @@
 	</script>
 </head>
 <body class="m0" onload="onLoad()">
+	<svg id="backdrop" width="100%" height="100%" viewBox="0 0 1920 1080" aria-hidden="true"
+     style="position:fixed;top:0;left:0;z-index:-1;pointer-events:none">
+		<defs>
+			<linearGradient id="winggrad" x1="0" y1="0" x2="1" y2="1">
+				<stop offset="0%" stop-color="#555" stop-opacity="0.10"/>
+				<stop offset="100%" stop-color="#fff" stop-opacity="0.03"/>
+			</linearGradient>
+  		</defs>
+		<g>
+			<path d="M200,900 Q600,400 1200,300 Q1700,250 1800,900 Q1200,700 800,1000 Q400,1200 200,900 Z" fill="url(#winggrad)" />
+    		<path d="M400,950 Q700,500 1300,400 Q1600,350 1700,850 Q1200,750 900,1050 Q600,1200 400,950 Z" fill="url(#winggrad)" opacity="0.5"/>
+		</g>
+	</svg>
 	<noscript>
 		<div class="tc vh-100 bg-info">
 			<div class="vc c white">
@@ -213,7 +226,7 @@
 	<input type="checkbox" id="live-modal">
 	<div class="c modal vh-100 w-100 scrolly">
 		<div class="c bg-black menu pv2 row" tabindex="0">
-			<b><label for="live-modal" class="lbl-modal ph2 white">Divinus</label></b>
+			<b><label for="live-modal" class="lbl-modal ph2 gray">Divinus</label></b>
 			<div class="col">
 				<a href="javascript:setSource('preview', 'video.mp4')" class="ph2">MP4</a>
 				<a href="javascript:setSource('preview', 'mjpeg')" class="ph2">MJPEG</a>
@@ -229,7 +242,7 @@
 	<input type="checkbox" id="media-modal">
 	<div class="c modal vh-100 w-100 scrolly">
 		<div class="c bg-black menu pv2 row" tabindex="0">
-			<b><label for="media-modal" class="lbl-modal ph2 white">Divinus</label></b>
+			<b><label for="media-modal" class="lbl-modal ph2 gray">Divinus</label></b>
 			<div class="col">
 				<a href="javascript:saveConfig()" class="ph2">Save</a>
 				<label for="media-modal" class="btn primary close">Close</label>
@@ -432,7 +445,7 @@
 	<input type="checkbox" id="osd-modal">
 	<div class="c modal vh-100 w-100 scrolly">
 		<div class="c bg-black menu pv2 row" tabindex="0">
-			<b><label for="osd-modal" class="lbl-modal ph2 white">Divinus</label></b>
+			<b><label for="osd-modal" class="lbl-modal ph2 gray">Divinus</label></b>
 			<div class="col">
 				<a href="javascript:saveOsds()" class="ph2">Apply all</a>
 				<a href="javascript:saveConfig()" class="ph2">Save</a>
@@ -486,7 +499,7 @@
 	<input type="checkbox" id="system-modal">
 	<div class="c modal vh-100 w-100 scrolly">
 		<div class="c bg-black menu pv2 row" tabindex="0">
-			<b><label for="system-modal" class="lbl-modal ph2 white">Divinus</label></b>
+			<b><label for="system-modal" class="lbl-modal ph2 gray">Divinus</label></b>
 			<div class="col">
 				<label for="system-modal" class="btn primary close">Close</label>
 			</div>
@@ -581,7 +594,7 @@
 		</div>
 	</div>
 	<div class="c bg-black menu pv2 row" tabindex="0">
-		<b><a href="./" class="ph2 white">Divinus</a></b>
+		<b><a href="./" class="ph2 gray">Divinus</a></b>
 		<div class="col">
 			<label for="live-modal" class="lbl-modal ph2 white">Live</label>
 			<label for="media-modal" class="lbl-modal ph2 white">Media</label>
