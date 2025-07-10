@@ -4,17 +4,35 @@ const char *appconf_paths[] = {"./divinus.yaml", "/etc/divinus.yaml"};
 
 struct AppConfig app_config;
 
-static inline void *open_app_config(FILE **file, const char *flags) {
+static inline void open_app_config(FILE **file, const char *flags) {
     const char **path = appconf_paths;
+    char conf_path[PATH_MAX], exe_path[PATH_MAX];
     *file = NULL;
+
+    ssize_t exe_len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+    if (exe_len != -1) {
+        char *dir = dirname(exe_path);
+        exe_path[exe_len] = '\0';
+        snprintf(conf_path, sizeof(conf_path), "%s/divinus.yaml", dir);
+        if (!access(conf_path, F_OK)) {
+            if (*flags == 'w') {
+                char bak_path[PATH_MAX];
+                sprintf(bak_path, "%s.bak", conf_path);
+                remove(bak_path);
+                rename(conf_path, bak_path);
+            }
+            *file = fopen(conf_path, flags);
+            return;
+        }
+    }
 
     while (*path) {
         if (access(*path++, F_OK)) continue;
         if (*flags == 'w') {
-            char bkPath[32];
-            sprintf(bkPath, "%s.bak", *(path - 1));
-            remove(bkPath);
-            rename(*(path - 1), bkPath);
+            char bak_path[PATH_MAX];
+            sprintf(bak_path, "%s.bak", *(path - 1));
+            remove(bak_path);
+            rename(*(path - 1), bak_path);
         }
         *file = fopen(*(path - 1), flags);
         break;
@@ -22,14 +40,28 @@ static inline void *open_app_config(FILE **file, const char *flags) {
 }
 
 void restore_app_config(void) {
-    const char **path = appconf_paths;
+    char conf_path[PATH_MAX], exe_path[PATH_MAX];
 
+    ssize_t exe_len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+    if (exe_len != -1) {
+        char bak_path[PATH_MAX], *dir = dirname(exe_path);
+        exe_path[exe_len] = '\0';
+        snprintf(conf_path, sizeof(conf_path), "%s/divinus.yaml", dir);
+        sprintf(bak_path, "%s.bak", conf_path);
+        if (!access(bak_path, F_OK)) {
+            remove(conf_path);
+            rename(bak_path, conf_path);
+            return;
+        }
+    }
+
+    const char **path = appconf_paths;
     while (*path) {
-        char bkPath[32];
-        sprintf(bkPath, "%s.bak", *path);
-        if (!access(bkPath, F_OK)) {
+        char bak_path[PATH_MAX];
+        sprintf(bak_path, "%s.bak", *path);
+        if (!access(bak_path, F_OK)) {
             remove(*path);
-            rename(bkPath, *path);
+            rename(bak_path, *path);
         }
         path++;
     }
