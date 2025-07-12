@@ -169,7 +169,7 @@ int save_app_config(void) {
         if (imgEmpty && textEmpty) continue;
     
         if (!imgEmpty)
-            fprintf(file, "    reg_%dimg: %s\n", i, osds[i].img);
+            fprintf(file, "    reg%d_img: %s\n", i, osds[i].img);
         if (!textEmpty)
             fprintf(file, "    reg%d_text: %s\n", i, osds[i].text);
         fprintf(file, "    reg%d_font: %s\n", i, osds[i].font);
