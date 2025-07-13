@@ -78,7 +78,7 @@ This document describes the fields that can be found within a configuration file
 
 ## MP4 section
 
-- **enable**: Boolean to activate or deactivate MP4 encoding.
+- **enable**: Boolean to activate MP4 output (required by live streams and RTSP).
 - **codec**: Codec used for encoding (H.264 or H.265).
 - **mode**: Encoding mode.
 - **width**: Video width in pixels.
@@ -104,14 +104,14 @@ This document describes the fields that can be found within a configuration file
 
 ## JPEG section
 
-- **enable**: Boolean to activate or deactivate JPEG encoding.
+- **enable**: Boolean to activate JPEG output.
 - **width**: Image width in pixels.
 - **height**: Image height in pixels.
 - **qfactor**: JPEG compression quality factor.
 
 ## MJPEG section
 
-- **enable**: Boolean to activate or deactivate MJPEG encoding.
+- **enable**: Boolean to activate MJPEG output.
 - **mode**: Encoding mode.
 - **width**: Video width in pixels.
 - **height**: Video height in pixels.
@@ -120,8 +120,8 @@ This document describes the fields that can be found within a configuration file
 
 ## HTTP POST section
 
-- **enable**: Boolean to activate or deactivate HTTP POST requests.
-- **host**: Host for HTTP POST requests.
+- **enable**: Boolean to activate HTTP POST snapshots.
+- **host**: Hostname for HTTP POST requests.
 - **url**: URL for HTTP POST requests.
 - **login**: Login for HTTP POST authentication.
 - **password**: Password for HTTP POST authentication.
