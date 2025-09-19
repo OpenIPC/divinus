@@ -12,6 +12,8 @@ typedef struct {
 typedef struct {
     int width;
     int height;
+    int maxWidth;
+    int maxHeight;
 } ak_vi_res;
 
 typedef struct {

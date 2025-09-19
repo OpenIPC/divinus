@@ -155,7 +155,7 @@ void hal_identify(void) {
         return;
     }
 
-    if (!access("/sys/devices/platform/ak39-uart.0", F_OK) &&
+    if (!access("/sys/devices/platform/i2c-ak39", F_OK) &&
         hal_registry(0x08000000, &val, OP_READ)) {
         plat = HAL_PLATFORM_AK;
         strcpy(chip, "AK3918E");
@@ -170,6 +170,9 @@ void hal_identify(void) {
         chnState = (hal_chnstate*)ak_state;
         //aud_thread = ak_audio_thread;
         vid_thread = ak_video_thread;
+
+        // Needed for libplat_thread and uClibc
+        dlopen("libpthread.so.0", RTLD_LAZY | RTLD_GLOBAL);
         return;
     }
 #endif

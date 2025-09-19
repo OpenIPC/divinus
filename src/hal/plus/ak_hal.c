@@ -79,6 +79,24 @@ int ak_pipeline_create(char mirror, char flip)
         HAL_ERROR("ak_vi", "Getting the sensor resolution failed with %#x!\n%s\n",
             ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
 
+    {
+        ak_vi_cnf config;
+        config.capt.width = _ak_vi_res.width;
+        config.capt.height = _ak_vi_res.height;
+        config.capt.x = 0;
+        config.capt.y = 0;
+        for (char i = 0; i < 2; i++) {
+            config.dest[i].width = 640;
+            config.dest[i].height = 480;
+            config.dest[i].maxWidth = 640;
+            config.dest[i].maxHeight = 480;
+        }
+
+        if (ak_vi.fnSetDeviceConfig(_ak_vi_dev, &config))
+            HAL_ERROR("ak_vi", "Setting the sensor resolution failed with %#x!\n%s\n",
+                ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
+    }
+
     if (ak_vi.fnStartDevice(_ak_vi_dev))
         HAL_ERROR("ak_vi", "Starting the acquisition failed with %#x!\n%s\n",
             ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
