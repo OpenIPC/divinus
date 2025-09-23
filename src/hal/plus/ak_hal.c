@@ -85,12 +85,14 @@ int ak_pipeline_create(char mirror, char flip)
         config.capt.height = _ak_vi_res.height;
         config.capt.x = 0;
         config.capt.y = 0;
-        for (char i = 0; i < 2; i++) {
-            config.dest[i].width = 640;
-            config.dest[i].height = 480;
-            config.dest[i].maxWidth = 640;
-            config.dest[i].maxHeight = 480;
-        }
+        config.dest[0].width = 640;
+        config.dest[0].height = 480;
+        config.dest[0].maxWidth = 640;
+        config.dest[0].maxHeight = 480;
+        config.dest[1].width = _ak_vi_res.width;
+        config.dest[1].height = _ak_vi_res.height;
+        config.dest[1].maxWidth = _ak_vi_res.width;
+        config.dest[1].maxHeight = _ak_vi_res.height;
 
         if (ak_vi.fnSetDeviceConfig(_ak_vi_dev, &config))
             HAL_ERROR("ak_vi", "Setting the sensor resolution failed with %#x!\n%s\n",
@@ -195,7 +197,7 @@ void *ak_video_thread(void)
     int ret;
 
     while (keepRunning) {
-        for (int i = 0; i < AK_VENC_CHN_NUM; i++) {
+        for (char i = 0; i < AK_VENC_CHN_NUM; i++) {
             if (!ak_state[i].enable) continue;
             if (!ak_state[i].mainLoop) continue;
 
@@ -241,7 +243,10 @@ void ak_system_deinit(void)
 
 int ak_system_init(char *snrConfig)
 {
-    int ret = EXIT_SUCCESS;
+    int ret = EXIT_SUCCESS, val = 0xAA000000;
+
+    // Disable the watchdog timer if it isn't already
+    hal_registry(0x080080E8, &val, OP_WRITE);
     
     if (ak_vi.fnLoadSensorConfig(snrConfig))
         HAL_DANGER("ak_vi", "Loading the sensor config failed"

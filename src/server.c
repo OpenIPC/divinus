@@ -54,6 +54,22 @@ int server_fd = -1;
 pthread_t server_thread_id;
 pthread_mutex_t client_fds_mutex;
 
+static bool is_local_address(const char *client_ip) {
+    if (!client_ip) return false;
+    
+    if (!strcmp(client_ip, "127.0.0.1") ||
+        !strncmp(client_ip, "127.", 4))
+        return true;
+    
+    if (!strcmp(client_ip, "::1"))
+        return true;
+    
+    if (!strncmp(client_ip, "::ffff:127.", 11))
+        return true;
+    
+    return false;
+}
+
 static void close_socket_fd(int sockFd) {
     shutdown(sockFd, SHUT_RDWR);
     close(sockFd);
@@ -467,8 +483,8 @@ void parse_request(http_request_t *req) {
         req->total = 0;
         return;
     }
-grant_access:
 
+grant_access:
     req->total = 0;
     int received = recv(req->clntFd, req->input, REQSIZE, 0);
     if (received < 0)
@@ -605,23 +621,38 @@ void respond_request(http_request_t *req) {
     }
 
     if (app_config.web_enable_auth) {
-        char *auth = request_header("Authorization");
-        char cred[66], valid[256];
+        bool should_skip_auth = false;
 
-        strcpy(cred, app_config.web_auth_user);
-        strcpy(cred + strlen(app_config.web_auth_user), ":");
-        strcpy(cred + strlen(app_config.web_auth_user) + 1, app_config.web_auth_pass);
-        strcpy(valid, "Basic ");
-        base64_encode(valid + 6, cred, strlen(cred));
+        if (app_config.web_auth_skiplocal) {
+            struct sockaddr_in client_sock;
+            socklen_t client_sock_len = sizeof(client_sock);
+            memset(&client_sock, 0, client_sock_len);
 
-        if (!auth || !EQUALS(auth, valid)) {
-            respLen = sprintf(response,
-                "HTTP/1.1 401 Unauthorized\r\n"
-                "Content-Type: text/plain\r\n"
-                "WWW-Authenticate: Basic realm=\"Access the camera services\"\r\n"
-                "Connection: close\r\n\r\n");
-            send_and_close(req->clntFd, response, respLen);
-            return;
+            if (getpeername(req->clntFd, (struct sockaddr *)&client_sock, &client_sock_len) == 0) {
+                char *client_ip = inet_ntoa(client_sock.sin_addr);
+                should_skip_auth = is_local_address(client_ip);
+            }
+        }
+
+        if (!should_skip_auth) {
+            char *auth = request_header("Authorization");
+            char cred[66], valid[256];
+
+            strcpy(cred, app_config.web_auth_user);
+            strcpy(cred + strlen(app_config.web_auth_user), ":");
+            strcpy(cred + strlen(app_config.web_auth_user) + 1, app_config.web_auth_pass);
+            strcpy(valid, "Basic ");
+            base64_encode(valid + 6, cred, strlen(cred));
+
+            if (!auth || !EQUALS(auth, valid)) {
+                respLen = sprintf(response,
+                    "HTTP/1.1 401 Unauthorized\r\n"
+                    "Content-Type: text/plain\r\n"
+                    "WWW-Authenticate: Basic realm=\"Access the camera services\"\r\n"
+                    "Connection: close\r\n\r\n");
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            }
         }
     }
 
