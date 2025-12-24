@@ -306,11 +306,11 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
         p->trans[p->track_id].rtcp_packet_cnt = 0; 
         p->trans[p->track_id].rtcp_tick_org = 150; // TODO: must be variant
         p->trans[p->track_id].rtcp_tick = p->trans[p->track_id].rtcp_tick_org;
+
+        ASSERT(__rtcp_send_sr(p, p->track_id) == SUCCESS, return);
     }
 
     p->con_state = __CON_S_PLAYING;
-
-    ASSERT(__rtcp_send_sr(p) == SUCCESS, return);
 
     request_idr();
 }

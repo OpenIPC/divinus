@@ -350,7 +350,7 @@ static inline int __rtcp_poll(struct list_t *e, void *v)
     MUST(con = trans->con, return FAILURE);
 
     if ((con->trans[*track_id].rtcp_tick)-- == 0) {
-        ASSERT(__rtcp_send_sr(con) == SUCCESS, return FAILURE);
+        ASSERT(__rtcp_send_sr(con, *track_id) == SUCCESS, return FAILURE);
 
         /* postcondition check */
         DASSERT(con->trans[*track_id].rtcp_tick == 
