@@ -415,7 +415,7 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
 
     if (i6_rgn.fnGetChannelConfig(handle, &dest, &attribCurr))
         HAL_INFO("i6_rgn", "Attaching region %d...\n", handle);
-    else if (attribCurr.point.x != rect.x || attribCurr.point.x != rect.y ||
+    else if (attribCurr.point.x != rect.x || attribCurr.point.y != rect.y ||
         attribCurr.osd.bgFgAlpha[1] != opacity) {
         HAL_INFO("i6_rgn", "Parameters are different, reattaching "
             "region %d...\n", handle);

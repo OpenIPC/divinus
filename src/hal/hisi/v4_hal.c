@@ -426,7 +426,7 @@ int v4_region_create(char handle, hal_rect rect, short opacity)
 
     if (v4_rgn.fnGetChannelConfig(handle, &dest, &attribCurr))
         HAL_INFO("v4_rgn", "Attaching region %d...\n", handle);
-    else if (attribCurr.overlay.point.x != rect.x || attribCurr.overlay.point.x != rect.y) {
+    else if (attribCurr.overlay.point.x != rect.x || attribCurr.overlay.point.y != rect.y) {
         HAL_INFO("v4_rgn", "Position has changed, reattaching "
             "region %d...\n", handle);
         v4_rgn.fnDetachChannel(handle, &dest);
