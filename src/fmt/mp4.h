@@ -10,10 +10,7 @@
 #include "moof.h"
 #include "moov.h"
 #include "nal.h"
-
-#ifndef MIN
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#endif
+#include "../hal/macros.h"
 
 extern uint32_t default_sample_size;
 

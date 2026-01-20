@@ -2,7 +2,6 @@
 
 static struct udp_stream_ctx *g_udp_ctx = NULL;
 
-static unsigned long long get_timestamp_us();
 static void *udp_client_manager_thread(void *data);
 static int add_rtp_header(unsigned char *packet, int pay_size,
     unsigned short seq, unsigned int tstamp,
@@ -455,13 +454,4 @@ static int add_rtp_header(unsigned char *packet, int pay_size,
     packet[11] = ssrc & 0xFF;
 
     return RTP_HEADER_SIZE;
-}
-
-/**
- * Obtains a timestamp in microseconds
- */
-static unsigned long long get_timestamp_us() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (unsigned long long)tv.tv_sec * 1000000 + tv.tv_usec;
 }

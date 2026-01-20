@@ -108,6 +108,36 @@ enum BufError put_u16_le(struct BitBuf *ptr, const uint16_t val) {
     return BUF_OK;
 }
 
+enum BufError put_u24_be_to_offset(
+    struct BitBuf *ptr, const uint32_t offset, const uint32_t val) {
+    chk_ptr uint32_t pos = offset + 3;
+    if (pos >= ptr->size)
+        chk_realloc ptr->buf[offset + 0] = (val >> 16) & 0xff;
+    ptr->buf[offset + 1] = (val >> 8) & 0xff;
+    ptr->buf[offset + 2] = (val >> 0) & 0xff;
+    return BUF_OK;
+}
+enum BufError put_u24_be(struct BitBuf *ptr, const uint32_t val) {
+    chk_ptr enum BufError err = put_u24_be_to_offset(ptr, ptr->offset, val);
+    chk_err ptr->offset += 3;
+    return BUF_OK;
+}
+
+enum BufError put_u24_le_to_offset(
+    struct BitBuf *ptr, const uint32_t offset, const uint32_t val) {
+    chk_ptr uint32_t pos = offset + 3;
+    if (pos >= ptr->size)
+        chk_realloc ptr->buf[offset + 0] = (val >> 0) & 0xff;
+    ptr->buf[offset + 1] = (val >> 8) & 0xff;
+    ptr->buf[offset + 2] = (val >> 16) & 0xff;
+    return BUF_OK;
+}
+enum BufError put_u24_le(struct BitBuf *ptr, const uint32_t val) {
+    chk_ptr enum BufError err = put_u24_le_to_offset(ptr, ptr->offset, val);
+    chk_err ptr->offset += 3;
+    return BUF_OK;
+}
+
 enum BufError put_u32_be_to_offset(
     struct BitBuf *ptr, const uint32_t offset, const uint32_t val) {
     chk_ptr uint32_t pos = offset + sizeof(uint32_t);
@@ -123,6 +153,23 @@ enum BufError put_u32_be(struct BitBuf *ptr, const uint32_t val) {
     chk_err ptr->offset += sizeof(uint32_t);
     return BUF_OK;
 }
+
+enum BufError put_u32_le_to_offset(
+    struct BitBuf *ptr, const uint32_t offset, const uint32_t val) {
+    chk_ptr uint32_t pos = offset + 4;
+    if (pos >= ptr->size)
+        chk_realloc ptr->buf[offset + 0] = (val >> 0) & 0xff;
+    ptr->buf[offset + 1] = (val >> 8) & 0xff;
+    ptr->buf[offset + 2] = (val >> 16) & 0xff;
+    ptr->buf[offset + 3] = (val >> 24) & 0xff;
+    return BUF_OK;
+}
+enum BufError put_u32_le(struct BitBuf *ptr, const uint32_t val) {
+    chk_ptr enum BufError err = put_u32_le_to_offset(ptr, ptr->offset, val);
+    chk_err ptr->offset += sizeof(uint32_t);
+    return BUF_OK;
+}
+
 enum BufError put_i32_be(struct BitBuf *ptr, const int32_t val) {
     chk_ptr enum BufError err = put_u32_be_to_offset(ptr, ptr->offset, val);
     chk_err ptr->offset += sizeof(int32_t);
@@ -146,22 +193,6 @@ enum BufError put_u64_be_to_offset(
 enum BufError put_u64_be(struct BitBuf *ptr, const uint64_t val) {
     chk_ptr enum BufError err = put_u64_be_to_offset(ptr, ptr->offset, val);
     chk_err ptr->offset += sizeof(uint64_t);
-    return BUF_OK;
-}
-
-enum BufError put_u32_le_to_offset(
-    struct BitBuf *ptr, const uint32_t offset, const uint32_t val) {
-    chk_ptr uint32_t pos = offset + 4;
-    if (pos >= ptr->size)
-        chk_realloc ptr->buf[offset + 0] = (val >> 0) & 0xff;
-    ptr->buf[offset + 1] = (val >> 8) & 0xff;
-    ptr->buf[offset + 2] = (val >> 16) & 0xff;
-    ptr->buf[offset + 3] = (val >> 24) & 0xff;
-    return BUF_OK;
-}
-enum BufError put_u32_le(struct BitBuf *ptr, const uint32_t val) {
-    chk_ptr enum BufError err = put_u32_le_to_offset(ptr, ptr->offset, val);
-    chk_err ptr->offset += sizeof(uint32_t);
     return BUF_OK;
 }
 

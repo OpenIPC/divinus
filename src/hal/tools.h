@@ -83,6 +83,10 @@ void sha1_final(unsigned char digest[20], sha1_context *context);
 
 char *split(char **input, char *sep);
 
+uint32_t time_get_ms(void);
+
+unsigned long long time_get_us(void);
+
 void unescape_uri(char *uri);
 
 void uuid_generate(char *uuid);

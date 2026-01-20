@@ -54,9 +54,17 @@
     } while (0)
 
 #ifndef CEILING
-#define CEILING_POS(X) ((X-(int)(X)) > 0 ? (int)(X+1) : (int)(X))
-#define CEILING_NEG(X) (int)(X)
-#define CEILING(X) ( ((X) > 0) ? CEILING_POS(X) : CEILING_NEG(X) )
+#define CEILING_POS(x) ((x - (int)(x)) > 0 ? (int)(x + 1) : (int)(x))
+#define CEILING_NEG(x) (int)(x)
+#define CEILING(x) (((x) > 0) ? CEILING_POS(x) : CEILING_NEG(x))
+#endif
+
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
 #define CONTAINS(a, b) strstr(a, b)

@@ -482,6 +482,18 @@ char *split(char **input, char *sep) {
     return (curr);
 }
 
+uint32_t time_get_ms(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (uint32_t)(tv.tv_sec * 1000 + tv.tv_usec / 1000);
+}
+
+unsigned long long time_get_us(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (unsigned long long)tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
 void unescape_uri(char *uri) {
     char *src = uri;
     char *dst = uri;

@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "hal/support.h"
+#include "hal/tools.h"
 
 #define MAX_UDP_PACKET_SIZE 1400
 #define UDP_DEFAULT_PORT 5600

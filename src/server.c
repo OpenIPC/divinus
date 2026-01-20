@@ -1,7 +1,7 @@
 #include "server.h"
 
 #define MAX_CLIENTS 50
-#define REQSIZE 512 * 1024
+#define REQSIZE (512 * 1024)
 
 IMPORT_STR(.rodata, "../res/index.html", indexhtml);
 extern const char indexhtml[];

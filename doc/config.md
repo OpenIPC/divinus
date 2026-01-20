@@ -67,7 +67,7 @@ This document describes the fields that can be found within a configuration file
 
 - **enable**: Boolean to turn on special streaming methods (default: `false`).
 - **udp_srcport**: Source port for UDP streaming (default: `5600`).
-- **dest**: List of destination URLs for streaming (e.g., `udp://239.255.255.0:5600`).
+- **dest**: List of destination URLs for streaming (e.g., `- udp://239.255.255.0:5600 or - rtmp://myserver/path/mykey`).
 
 ## Audio section
 

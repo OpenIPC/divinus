@@ -7,8 +7,7 @@ pthread_t aencPid = 0, audPid = 0, ispPid = 0, vidPid = 0;
 struct BitBuf mp3Buf;
 shine_config_t mp3Cnf;
 shine_t mp3Enc;
-unsigned int pcmPos;
-unsigned int pcmSamp;
+unsigned int pcmPos, pcmSamp;
 short pcmSrc[SHINE_MAX_SAMPLES];
 
 void *aenc_thread(void) {
@@ -34,9 +33,11 @@ void *aenc_thread(void) {
         if (app_config.rtsp_enable)
             rtp_send_mp3(rtspHandle, mp3Buf.buf, mp3FrmSize);
 
+        rtmp_ingest_audio(mp3Buf.buf, mp3FrmSize);
+
         mp3Buf.offset -= mp3FrmSize;
-        if (mp3Buf.offset);
-            memcpy(mp3Buf.buf, mp3Buf.buf + mp3FrmSize, mp3Buf.offset);
+        if (mp3Buf.offset > 0)
+            memmove(mp3Buf.buf, mp3Buf.buf + mp3FrmSize, mp3Buf.offset);
         pthread_mutex_unlock(&aencMtx);
     }
     HAL_INFO("media", "Shutting down audio encoding thread...\n");
@@ -57,20 +58,22 @@ int save_audio_stream(hal_audframe *frame) {
     send_pcm_to_client(frame);
 
     unsigned int pcmLen = frame->length[0] / 2;
-    unsigned int pcmOrig = pcmLen;
     short *pcmPack = (short*)frame->data[0];
+    short *srcPtr = pcmPack + pcmLen;
 
     while (pcmPos + pcmLen >= pcmSamp) {
-        memcpy(pcmSrc + pcmPos, pcmPack + pcmOrig - pcmLen, (pcmSamp - pcmPos) * 2);
+        int copyLen = pcmSamp - pcmPos;
+        memcpy(pcmSrc + pcmPos, srcPtr - pcmLen, copyLen * 2);
         unsigned char *mp3Ptr = shine_encode_buffer_interleaved(mp3Enc, pcmSrc, &ret);
         pthread_mutex_lock(&aencMtx);
         put(&mp3Buf, mp3Ptr, ret);
         pthread_mutex_unlock(&aencMtx);
-        pcmLen -= (pcmSamp - pcmPos);
+        pcmLen -= copyLen;
         pcmPos = 0;
     }
 
-    memcpy(pcmSrc + pcmPos, pcmPack + pcmOrig - pcmLen, pcmLen * 2);
+    if (pcmLen > 0)
+        memcpy(pcmSrc + pcmPos, srcPtr - pcmLen, pcmLen * 2);
     pcmPos += pcmLen;
     
     return ret;
@@ -98,12 +101,15 @@ int save_video_stream(char index, hal_vidstream *stream) {
                     rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
                         stream->pack[i].length - stream->pack[i].offset, isH265);
 
-            if (app_config.stream_enable)
-                for (int i = 0; i < stream->count; i++)
+            if (app_config.stream_enable) {
+                for (int i = 0; i < stream->count; i++) {
                     udp_stream_send_nal(stream->pack[i].data + stream->pack[i].offset, 
                         stream->pack[i].length - stream->pack[i].offset, 
                         stream->pack[i].nalu[0].type == NalUnitType_CodedSliceIdr, isH265);
-            
+                    
+                    rtmp_ingest_video(&stream->pack[i], isH265);
+                }
+            }
             break;
         }
         case HAL_VIDCODEC_MJPG:
@@ -151,6 +157,14 @@ int start_streaming(void) {
     int ret = EXIT_SUCCESS;
 
     for (int i = 0; app_config.stream_dests[i] && *app_config.stream_dests[i]; i++) {
+        if (STARTS_WITH(app_config.stream_dests[i], "rtmp://")) {
+            flv_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
+                app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC, 
+                app_config.audio_bitrate, 1, app_config.audio_srate);
+            rtmp_init(app_config.stream_dests[i]);
+            continue;
+        }
+
         if (STARTS_WITH(app_config.stream_dests[i], "udp://")) {
             char *endptr, *hostptr, *portptr, dst[16];
             unsigned short port = 0;
@@ -202,6 +216,7 @@ void stop_streaming(void) {
         udp_stream_close();
         udpOn = 0;
     }
+    rtmp_close();
 }
 
 void request_idr(void) {
