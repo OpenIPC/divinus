@@ -344,12 +344,12 @@ void *region_thread(void) {
         osds[id].size = DEF_SIZE;
         osds[id].posx = DEF_POSX;
         osds[id].posy = DEF_POSY + (DEF_SIZE * 3 / 2) * id;
+        osds[id].outl = DEF_OUTL;
+        osds[id].thick = DEF_THICK;
         osds[id].updt = 0;
         strncpy(osds[id].font, DEF_FONT, sizeof(osds[id].font) - 1);
         osds[id].text[0] = '\0';
         osds[id].img[0] = '\0';
-        osds[id].outl = DEF_OUTL;
-        osds[id].thick = DEF_THICK;
     }
 
     while (keepRunning) {

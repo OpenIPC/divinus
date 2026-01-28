@@ -139,7 +139,7 @@ int save_app_config(void) {
     fprintf(file, "  enable: %s\n", app_config.stream_enable ? "true" : "false");
     fprintf(file, "  udp_srcport: %d\n", app_config.stream_udp_srcport);
     if (!EMPTY(*app_config.stream_dests)) {
-        fprintf(file, "  dests: ");
+        fprintf(file, "  dest: ");
         for (int i = 0; app_config.stream_dests[i] && *app_config.stream_dests[i]; i++) {
             fprintf(file, "    - %s\n", app_config.stream_dests[i]);
         }

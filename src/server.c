@@ -691,7 +691,7 @@ void respond_request(http_request_t *req) {
     }
 
     if (app_config.audio_enable && EQUALS(req->uri, "/audio.pcm")) {
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: audio/pcm\r\n"
             "Transfer-Encoding: chunked\r\n"
@@ -711,7 +711,7 @@ void respond_request(http_request_t *req) {
     if ((!app_config.mp4_codecH265 && EQUALS(req->uri, "/video.264")) ||
         (app_config.mp4_codecH265 && EQUALS(req->uri, "/video.265"))) {
         request_idr();
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/octet-stream\r\n"
             "Transfer-Encoding: chunked\r\n"
@@ -731,7 +731,7 @@ void respond_request(http_request_t *req) {
 
     if (app_config.mp4_enable && EQUALS(req->uri, "/video.mp4")) {
         request_idr();
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: video/mp4\r\n"
             "Transfer-Encoding: chunked\r\n"
@@ -750,7 +750,7 @@ void respond_request(http_request_t *req) {
     }
 
     if (app_config.mjpeg_enable && EQUALS(req->uri, "/mjpeg")) {
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.0 200 OK\r\n"
             "Cache-Control: no-cache\r\n"
             "Pragma: no-cache\r\n"
@@ -858,7 +858,7 @@ void respond_request(http_request_t *req) {
             if (app_config.audio_enable) enable_audio();
         }
 
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
@@ -891,7 +891,7 @@ void respond_request(http_request_t *req) {
             }
         }
 
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
@@ -929,7 +929,7 @@ void respond_request(http_request_t *req) {
             if (app_config.jpeg_enable) jpeg_init();
         }
 
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
@@ -987,7 +987,7 @@ void respond_request(http_request_t *req) {
             case HAL_VIDMODE_VBR: strcpy(mode, "VBR"); break;
             case HAL_VIDMODE_QP: strcpy(mode, "QP"); break;
         }
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
@@ -1077,7 +1077,7 @@ void respond_request(http_request_t *req) {
             case HAL_VIDPROFILE_MAIN: strcpy(profile, "MP"); break;
             case HAL_VIDPROFILE_HIGH: strcpy(profile, "HP"); break;
         }
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
@@ -1153,7 +1153,7 @@ void respond_request(http_request_t *req) {
             disable_night();
             if (app_config.night_mode_enable) enable_night();
         }
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
@@ -1369,7 +1369,7 @@ void respond_request(http_request_t *req) {
             sprintf(uptime, "%ld:%02ld:%02ld", si.uptime / 3600, (si.uptime % 3600) / 60, si.uptime % 60);
         else
             sprintf(uptime, "%ld:%02ld", si.uptime / 60, si.uptime % 60);
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
@@ -1403,7 +1403,7 @@ void respond_request(http_request_t *req) {
             }
         }
         clock_gettime(CLOCK_REALTIME, &t);
-        int respLen = sprintf(response,
+        respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
