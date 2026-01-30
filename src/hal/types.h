@@ -2,22 +2,6 @@
 
 #include "macros.h"
 
-#ifndef ALIGN_BACK
-#define ALIGN_BACK(x, a) (((x) / (a)) * (a))
-#endif
-#ifndef ALIGN_UP
-#define ALIGN_UP(x, a) ((((x) + ((a)-1)) / a) * a)
-#endif
-#ifndef CEILING_2_POWER
-#define CEILING_2_POWER(x, a) (((x) + ((a)-1)) & (~((a) - 1)))
-#endif
-#ifndef MIN
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#endif
-#ifndef MAX
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-#endif
-
 typedef enum {
     HAL_PLATFORM_UNK,
     HAL_PLATFORM_AK,
