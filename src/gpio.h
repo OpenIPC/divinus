@@ -1,3 +1,5 @@
+#pragma once
+
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/version.h>

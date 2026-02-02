@@ -3,4 +3,5 @@
 /.previous
 /src/**/*.o
 /toolchain
+compile_flags.txt
 divinus

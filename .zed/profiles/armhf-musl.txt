@@ -1,0 +1,4 @@
+-std=c11
+-D__arm__
+-D__ARM_PCS_VFP
+-I.

@@ -1,5 +1,3 @@
-#include <string.h>
-
 #include "moof.h"
 
 uint32_t pos_sequence_number = 0;
@@ -39,7 +37,7 @@ write_mdat(struct BitBuf *ptr,
     chk_err;
     err = put_str4(ptr, "mdat");
     chk_err;
-    
+
     err = put_u32_be(ptr, len_vid);
     chk_err;
     err = put(ptr, data_vid, len_vid);
@@ -94,7 +92,7 @@ enum BufError write_moof(
                 chk_err;
         }
     }
-    
+
     if (vid_offset.data_offset_present) {
         err = put_u32_be_to_offset(
             ptr, vid_offset.offset,
@@ -122,7 +120,7 @@ enum BufError write_mfhd(struct BitBuf *ptr, const uint32_t sequence_number) {
 
     err = put_u8(ptr, 0);
     chk_err;
-    
+
     err = put_u8(ptr, 0);
     chk_err; // 3 flags
     pos_sequence_number = ptr->offset;
@@ -147,7 +145,7 @@ enum BufError write_traf(
     chk_err;
 
     err = write_tfhd(
-        ptr, sequence_number, base_data_offset, samples_info[0].size, 
+        ptr, sequence_number, base_data_offset, samples_info[0].size,
         default_sample_duration, is_audio);
     chk_err;
     err = write_tfdt(ptr, base_media_decode_time, is_audio);
@@ -161,7 +159,7 @@ enum BufError write_traf(
 
 enum BufError write_tfhd(
     struct BitBuf *ptr, const uint32_t sequence_number,
-    const uint64_t base_data_offset, const uint32_t default_sample_size, 
+    const uint64_t base_data_offset, const uint32_t default_sample_size,
     const uint32_t default_sample_duration, char is_audio) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
@@ -297,7 +295,7 @@ enum BufError write_trun(
         } // 0x000200 sample-size-present
         err = put_u8(ptr, flags >> 16);
         chk_err;
-        
+
         err = put_u8(ptr, flags >> 8);
         chk_err;
 
@@ -315,7 +313,7 @@ enum BufError write_trun(
         err = put_i32_be(ptr, 0);
         chk_err; // 4 fake data_offset
     }
-    
+
     if (first_sample_flags_present) {
         err = put_u32_be(ptr, is_audio ? 0 : 33554432);
         chk_err; // 4 first_sample_flags
@@ -325,7 +323,7 @@ enum BufError write_trun(
         if (sample_duration_present) {
             err = put_u32_be(ptr, sample_info.duration);
             chk_err; // 4 sample_duration
-        } 
+        }
         if (sample_size_present) {
             err = put_u32_be(ptr, sample_info.size);
             chk_err; // 4 sample_size

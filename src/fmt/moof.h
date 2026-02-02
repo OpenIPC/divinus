@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string.h>
+
 #include "bitbuf.h"
 
 extern uint32_t pos_sequence_number;
