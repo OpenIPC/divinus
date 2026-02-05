@@ -1,8 +1,9 @@
 #include "mp4.h"
 
 uint32_t default_sample_size = 40000;
+uint32_t last_fragment_duration, timescale;
 
-unsigned int aud_samplerate = 0, aud_framesize = 0;
+unsigned int aud_samplerate = 0;
 unsigned short aud_bitrate = 0;
 char aud_channels = 0, aud_codec = 0, vid_framerate = 30;
 short vid_width = 1920, vid_height = 1080;
@@ -42,8 +43,8 @@ enum BufError create_header(char is_h265) {
     moov_info.horizontal_resolution = 0x00480000; // 72 dpi
     moov_info.vertical_resolution = 0x00480000;   // 72 dpi
     moov_info.creation_time = 0;
-    moov_info.timescale =
-        default_sample_size * vid_framerate;
+    timescale = default_sample_size * vid_framerate;
+    moov_info.timescale = timescale;
     moov_info.sps = buf_sps;
     moov_info.sps_length = buf_sps_len;
     moov_info.pps = buf_pps;
@@ -66,13 +67,6 @@ void mp4_set_config(short width, short height, char framerate, char acodec,
     aud_bitrate = bitrate;
     aud_channels = channels;
     aud_samplerate = srate;
-    if (aud_samplerate > 0) {
-        aud_framesize = 
-            (aud_samplerate >= 32000 ? 144 : 72) *
-            (aud_bitrate * 1000) / 
-            aud_samplerate;
-    } else aud_framesize = 384;
-
 }
 
 void mp4_set_sps(const char *nal_data, const uint32_t nal_len, char is_h265) {
@@ -95,6 +89,7 @@ void mp4_set_vps(const char *nal_data, const uint32_t nal_len) {
 
 enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     char is_iframe) {
+    uint64_t aud_ticks;
     enum BufError err;
 
     struct SampleInfo samples_info[2];
@@ -103,8 +98,12 @@ enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     samples_info[0].duration = default_sample_size;
     samples_info[0].flags = is_iframe ? 0 : 65536;
     samples_info[1].size = buf_aud.offset;
-    samples_info[1].duration = default_sample_size * 
-        buf_aud.offset / (aud_bitrate * 25 / 6);
+    if (aud_bitrate > 0)
+        aud_ticks = ((uint64_t)(buf_aud.offset << 3) * timescale) /
+            (aud_bitrate * 1000);
+    samples_info[1].duration = (uint32_t)aud_ticks;
+    last_fragment_duration =
+        MAX(samples_info[1].duration, samples_info[0].duration);
 
     buf_moof.offset = 0;
     err = write_moof(
@@ -113,7 +112,7 @@ enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     chk_err;
 
     buf_mdat.offset = 0;
-    err = write_mdat(&buf_mdat, nal_data, nal_len, 
+    err = write_mdat(&buf_mdat, nal_data, nal_len,
         buf_aud.buf, buf_aud.offset);
     chk_err;
 
@@ -145,7 +144,7 @@ enum BufError mp4_set_state(struct Mp4State *state) {
         state->base_media_decode_time);
     chk_err state->sequence_number++;
     state->base_data_offset += buf_moof.offset + buf_mdat.offset;
-    state->base_media_decode_time += state->default_sample_duration;
+    state->base_media_decode_time += last_fragment_duration;
     return BUF_OK;
 }
 

@@ -2,12 +2,16 @@
 
 const double inv255 = 1.0 / 255.0;
 
+static SFT_Font *cachedFont = NULL;
+static char cachedFontPath[256] = "";
+static double cachedFontSize = -1.0;
+
 SFT sft;
 SFT_Image canvas;
 SFT_LMetrics lmtx;
 hal_bitmap bitmap;
 
-int utf8_to_utf32(const unsigned char *utf8, 
+int utf8_to_utf32(const unsigned char *utf8,
     unsigned int *utf32, int max)
 {
     unsigned int c;
@@ -87,26 +91,35 @@ void text_copy_rendered(SFT_Image *dest, const SFT_Image *source, int x0, int y0
 
 int text_load_font(SFT *sft, const char *path, double size, SFT_LMetrics *lmtx)
 {
-    SFT_Font *font = sft_loadfile(path);
-    if (font == NULL)
-        HAL_ERROR("text", "sft_loadfile failed");
-    sft->font = font;
+    if (!cachedFont || cachedFontSize != size || !EQUALS(cachedFontPath, path)) {
+        if (cachedFont)
+            sft_freefont(cachedFont);
+        cachedFont = sft_loadfile(path);
+        if (!cachedFont)
+            HAL_ERROR("text", "Unable to load font file '%s'!", path);
+        strncpy(cachedFontPath, path, sizeof(cachedFontPath));
+        cachedFontPath[sizeof(cachedFontPath) - 1] = '\0';
+        cachedFontSize = size;
+    }
+
+    sft->font = cachedFont;
     sft->xScale = size;
     sft->yScale = size;
     sft->xOffset = 0.0;
     sft->yOffset = 0.0;
     sft->flags = SFT_DOWNWARD_Y;
     if (sft_lmetrics(sft, lmtx) < 0)
-        HAL_ERROR("text", "sft_lmetrics failed");
+        HAL_ERROR("text", "Unable to read font metrics for '%s' (size %.2f)!", path, size);
+
     return EXIT_SUCCESS;
 }
 
 int text_load_glyph(const SFT *sft, SFT_UChar codepoint, SFT_Glyph *glyph, SFT_GMetrics *metrics)
 {
     if (sft_lookup(sft, codepoint, glyph) < 0)
-        HAL_ERROR("text", "sft_lookup failed");
+        HAL_ERROR("text", "Cannot find glyph for codepoint U+%04X!", codepoint);
     if (sft_gmetrics(sft, *glyph, metrics) < 0)
-        HAL_ERROR("text", "sft_gmetrics failed");
+        HAL_ERROR("text", "Cannot read metrics for glyph U+%04X!", codepoint);
     return EXIT_SUCCESS;
 }
 
@@ -153,7 +166,7 @@ void text_dim_rendered(double *margin, double *height, double *width, const char
     *width = MAX(*width, lwidth) + 2 * *margin;
 }
 
-hal_bitmap text_create_rendered(const char *font, double size, const char *text, 
+hal_bitmap text_create_rendered(const char *font, double size, const char *text,
     int color, int outline, double thick)
 {
     text_load_font(&sft, font, size, &lmtx);
@@ -212,6 +225,5 @@ noOutline:;
     bitmap.dim.height = canvas.height;
     bitmap.data = canvas.pixels;
 
-    sft_freefont(sft.font);
     return bitmap;
 }
