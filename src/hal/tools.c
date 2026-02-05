@@ -10,7 +10,7 @@ int base64_decode(char *decoded, const char *string, int maxLen) {
     while (*string && *string != '=' && i < maxLen) {
         const char *p = strchr(base64_table, *string++);
         if (!p) continue;
-        
+
         v = p - base64_table;
         switch (buflen) {
             case 0:
@@ -86,34 +86,34 @@ int color_parse(const char *str) {
     char *remain = NULL;
     int len = strlen(str);
     int result = 0;
-    
+
     // Ignore leading spaces
     while (*str == ' ' || *str == '\t') str++;
-    
+
     // 4-bit hex format "#RGB"
     if (str[0] == '#' && len == 4) {
         int r = hex_to_int(str[1]);
         int g = hex_to_int(str[2]);
         int b = hex_to_int(str[3]);
-        
+
         if (r >= 0 && g >= 0 && b >= 0)
             return (1 << 16) | (r << 11) | (g << 6) | (b << 1);
     }
-    
+
     // 8-bit hex format "#RRGGBB"
     else if (str[0] == '#') {
         result = strtol(str + 1, &remain, 16);
         if (remain != str + 1 && *remain == '\0')
             return color_convert555(result);
     }
-    
+
     // C standard format "0xRRGGBB"
     else if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) {
         result = strtol(str, &remain, 0);
         if (remain != str && *remain == '\0')
             return color_convert555(result);
     }
-    
+
     // No prefix format "RRGGBB"
     else if (len >= 6) {
         result = strtol(str, &remain, 16);
@@ -143,10 +143,10 @@ int compile_regex(regex_t *r, const char *regex_text) {
 int escape_url(char *dst, const char *src, size_t maxlen) {
     static const char hex[] = "0123456789ABCDEF";
     int len = 0;
-    
+
     if (!dst || !src || !maxlen)
         return 0;
-        
+
     while (*src && len < maxlen - 1) {
         unsigned char c = *src;
 
@@ -156,16 +156,16 @@ int escape_url(char *dst, const char *src, size_t maxlen) {
         } else {
             if (len + 3 > maxlen - 1)
                 break;
-                
+
             *dst++ = '%';
             *dst++ = hex[c >> 4];
             *dst++ = hex[c & 0xF];
             len += 3;
         }
-        
+
         src++;
     }
-    
+
     *dst = '\0';
     return len;
 }
@@ -301,7 +301,7 @@ int hex_to_int(char value) {
 unsigned int ip_to_int(const char *ip) {
     struct in_addr addr;
 
-    if (!inet_aton(ip, &addr)) 
+    if (!inet_aton(ip, &addr))
         return 0;
 
     return ntohl(addr.s_addr);
@@ -390,7 +390,7 @@ static void sha1_transform(unsigned int state[5], const unsigned char buffer[64]
     e = state[4];
 
     for (i = 0; i < 20; i++) {
-        unsigned int temp = ((a << 5) | (a >> 27)) + 
+        unsigned int temp = ((a << 5) | (a >> 27)) +
             ((b & c) | ((~b) & d)) + e + w[i] + 0x5A827999;
         e = d;
         d = c;
@@ -480,18 +480,6 @@ char *split(char **input, char *sep) {
     char *curr = (char *)"";
     while (curr && !curr[0] && *input) curr = strsep(input, sep);
     return (curr);
-}
-
-uint32_t time_get_ms(void) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (uint32_t)(tv.tv_sec * 1000 + tv.tv_usec / 1000);
-}
-
-unsigned long long time_get_us(void) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (unsigned long long)tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
 void unescape_uri(char *uri) {

@@ -25,8 +25,8 @@ static int queue_count;
 static size_t queue_total_bytes;
 
 static uint32_t get_rtmp_timestamp() {
-    if (start_timestamp == 0) start_timestamp = time_get_ms();
-    return time_get_ms() - start_timestamp;
+    if (start_timestamp == 0) start_timestamp = millis();
+    return millis() - start_timestamp;
 }
 
 static int send_data(const void *buf, size_t len) {
@@ -142,13 +142,13 @@ static int rtmp_send_packet(int message_type, int stream_id, const void *data, i
 
 static void queue_push(int type, int stream_id, int timestamp, const void *data, size_t len, bool force) {
     pthread_mutex_lock(&queue_mutex);
-    
+
     if (!force && queue_total_bytes + len > MAX_QUEUE_BYTES) {
         HAL_WARNING("rtmp", "Queue full (%zu/%zu bytes), dropping packet!\n", queue_total_bytes, MAX_QUEUE_BYTES);
         pthread_mutex_unlock(&queue_mutex);
         return;
     }
-    
+
     RtmpPacket *pkt = malloc(sizeof(RtmpPacket));
     if (!pkt) {
         pthread_mutex_unlock(&queue_mutex);
@@ -185,7 +185,7 @@ static void *send_thread(void *arg) {
         while (queue_head == NULL && keepRunning && is_connected) {
             pthread_cond_wait(&queue_cond, &queue_mutex);
         }
-        
+
         if (!keepRunning || !is_connected) {
             pthread_mutex_unlock(&queue_mutex);
             break;
@@ -199,7 +199,7 @@ static void *send_thread(void *arg) {
         pthread_mutex_unlock(&queue_mutex);
 
         rtmp_send_packet(pkt->type, pkt->stream_id, pkt->data, pkt->len, pkt->timestamp);
-        
+
         free(pkt->data);
         free(pkt);
     }
@@ -261,29 +261,29 @@ static int rtmp_start_sequence(const char *url) {
     char *p = (char *)url;
     if (strncmp(p, "rtmp://", 7) != 0) return -1;
     p += 7;
-    
+
     char *slash = strchr(p, '/');
     if (!slash) return -1;
-    
+
     int host_len = slash - p;
     strncpy(host, p, host_len);
     host[host_len] = '\0';
-    
+
     char *curr_host = host;
     char *colon = strchr(host, ':');
     if (colon) {
         *colon = '\0';
         port = atoi(colon + 1);
     }
-    
+
     p = slash + 1;
     slash = strchr(p, '/');
     if (!slash) return -1;
-    
+
     int app_len = slash - p;
     strncpy(app, p, app_len);
     app[app_len] = '\0';
-    
+
     strcpy(stream, slash + 1);
 
     struct hostent *he = gethostbyname(curr_host);
@@ -312,7 +312,7 @@ static int rtmp_start_sequence(const char *url) {
 
     char tcurl[512];
     snprintf(tcurl, sizeof(tcurl), "rtmp://%s:%d/%s", curr_host, port, app);
-    
+
     if (rtmp_connect(app, tcurl) < 0) return -1;
     if (rtmp_create_stream() < 0) return -1;
     if (rtmp_publish(stream) < 0) return -1;
@@ -340,14 +340,14 @@ static void *recv_thread(void *arg) {
  */
 int rtmp_init(const char *url) {
     if (is_connected) rtmp_close();
-    
+
     pthread_mutex_lock(&rtmp_mutex);
     memset(&flv_state, 0, sizeof(flv_state));
     seq_header_sent = false;
     metadata_sent = false;
     int ret = rtmp_start_sequence(url);
     if (ret == 0) {
-        start_timestamp = time_get_ms();
+        start_timestamp = millis();
         is_connected = true;
 
         if (pthread_create(&recvPid, NULL, recv_thread, NULL)) {
@@ -396,7 +396,7 @@ void rtmp_close(void) {
         pthread_join(recvPid, NULL);
         pthread_join(sndPid, NULL);
     }
-    
+
     pthread_mutex_lock(&queue_mutex);
     while (queue_head) {
         RtmpPacket *pkt = queue_head;
@@ -408,7 +408,7 @@ void rtmp_close(void) {
     queue_count = 0;
     queue_total_bytes = 0;
     pthread_mutex_unlock(&queue_mutex);
-    
+
     pthread_mutex_unlock(&rtmp_mutex);
     HAL_INFO("rtmp", "RTMP has closed!\n");
 }
@@ -422,22 +422,22 @@ void rtmp_close(void) {
 int rtmp_ingest_video(hal_vidpack *packet, int is_h265) {
     if (!is_connected) return EXIT_FAILURE;
     if (!packet || !packet->data) return EXIT_FAILURE;
-    
+
     pthread_mutex_lock(&rtmp_mutex);
-    
+
     uint32_t now = get_rtmp_timestamp();
     flv_state.timestamp_ms = now;
     flv_state.audio_timestamp_ms = now;
 
     int count = packet->naluCnt;
     if (count > 8) count = 8;
-    
+
     for (int i = 0; i < count; i++) {
         hal_vidnalu *nalu = &packet->nalu[i];
         if (nalu->length == 0) continue;
 
         if (nalu->offset + nalu->length > packet->length) {
-            HAL_WARNING("rtmp", "NAL offset is out of bounds (off=%u len=%u total=%u)\n", 
+            HAL_WARNING("rtmp", "NAL offset is out of bounds (off=%u len=%u total=%u)\n",
                 nalu->offset, nalu->length, packet->length);
             continue;
         }
@@ -445,7 +445,7 @@ int rtmp_ingest_video(hal_vidpack *packet, int is_h265) {
         uint8_t *nal_start = packet->data + nalu->offset;
         uint32_t nal_len = nalu->length;
         int type = nalu->type;
-        
+
         bool is_slice = false;
         bool is_idr = false;
 
@@ -473,7 +473,7 @@ int rtmp_ingest_video(hal_vidpack *packet, int is_h265) {
                  meta.buf = meta_buf;
                  meta.size = sizeof(meta_buf);
                  meta.offset = 0;
-                 
+
                 if (flv_get_metadata(&meta) == BUF_OK && meta.offset > 0) {
                      queue_push(RTMP_MSG_AMF_META, 1, 0, meta.buf, meta.offset, true);
                      metadata_sent = true;
@@ -482,8 +482,8 @@ int rtmp_ingest_video(hal_vidpack *packet, int is_h265) {
             }
 
             if (!seq_header_sent) {
-                if (!is_idr) continue; 
-                
+                if (!is_idr) continue;
+
                 struct BitBuf header;
                 if (flv_get_header(&header) == BUF_OK && header.offset > 11) {
                     queue_push(RTMP_MSG_VIDEO, 1, 0, header.buf + 11, header.offset - 15, true);
@@ -491,7 +491,7 @@ int rtmp_ingest_video(hal_vidpack *packet, int is_h265) {
                     HAL_INFO("rtmp", "Sent video sequence header (size=%d)\n", header.offset - 15);
                 } else {
                      HAL_WARNING("rtmp", "Waiting for header generation...\n");
-                     continue; 
+                     continue;
                 }
             }
 
@@ -502,17 +502,17 @@ int rtmp_ingest_video(hal_vidpack *packet, int is_h265) {
                      if (flv_get_tags(&tags) == BUF_OK && tags.offset > 15) {
                          queue_push(RTMP_MSG_VIDEO, 1, flv_state.timestamp_ms, tags.buf + 11, tags.offset - 15, false);
                      }
-                     
+
                      if (flv_get_audio_tags(&tags) == BUF_OK && tags.offset > 15) {
                          flv_set_state(&flv_state);
-                         
+
                          queue_push(RTMP_MSG_AUDIO, 1, flv_state.audio_timestamp_ms, tags.buf + 11, tags.offset - 15, false);
                      }
                  }
             }
         }
     }
-    
+
     pthread_mutex_unlock(&rtmp_mutex);
     return EXIT_SUCCESS;
 }
@@ -525,11 +525,11 @@ int rtmp_ingest_video(hal_vidpack *packet, int is_h265) {
  */
 int rtmp_ingest_audio(void *data, int len) {
     if (!is_connected) return EXIT_FAILURE;
-    
+
     if (!seq_header_sent) return EXIT_SUCCESS;
 
     pthread_mutex_lock(&rtmp_mutex);
-    
+
     if (flv_ingest_audio((char*)data, len) != BUF_OK) {
         pthread_mutex_unlock(&rtmp_mutex);
         return EXIT_FAILURE;

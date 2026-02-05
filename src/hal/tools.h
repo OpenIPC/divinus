@@ -31,7 +31,7 @@ typedef struct {
 void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off);
 
 static inline int alt_isspace(int c) {
-    return (c == ' ' || c == '\f' || c == '\n' || 
+    return (c == ' ' || c == '\f' || c == '\n' ||
             c == '\r' || c == '\t' || c == '\v');
 }
 
@@ -82,10 +82,6 @@ void sha1_update(sha1_context *context, const unsigned char *data, unsigned int 
 void sha1_final(unsigned char digest[20], sha1_context *context);
 
 char *split(char **input, char *sep);
-
-uint32_t time_get_ms(void);
-
-unsigned long long time_get_us(void);
 
 void unescape_uri(char *uri);
 
