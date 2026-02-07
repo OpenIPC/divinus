@@ -24,7 +24,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | CV181x[^1]              | ↻            | ↻            | ↻           | ↻           | ↻                 |
 | GM813x[^2]              | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3516AV100[^3]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
-| Hi3516CV100[^4]         | ↻            | ↻            | ✔️          | ↻           | ↻                 |
+| Hi3516CV100[^4]         | ↻            | ↻            | ✔️          | ✔️          | ✔️                |
 | Hi3516CV200[^5]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3516CV300[^6]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | Hi3516CV500[^7]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |

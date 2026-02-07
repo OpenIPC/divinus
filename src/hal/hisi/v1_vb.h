@@ -54,7 +54,6 @@ inline static unsigned int v1_buffer_calculate_venc(short width, short height, v
     if (pixFmt == V1_PIXFMT_YUV422SP)
         headSize *= 2;
     else if (pixFmt == V1_PIXFMT_YUV420SP)
-        headSize *= 3;
-        headSize >>= 1;
+        headSize = (headSize * 3) >> 1;
     return bufSize + headSize;
 }

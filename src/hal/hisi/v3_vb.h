@@ -77,7 +77,7 @@ inline static unsigned int v3_buffer_calculate_vi(
         case V3_PIXFMT_RGB_BAYER_8BPP:  bitWidth = 8;  break;
         case V3_PIXFMT_RGB_BAYER_10BPP: bitWidth = 10; break;
         case V3_PIXFMT_RGB_BAYER_12BPP: bitWidth = 12; break;
-        case V3_PIXFMT_RGB_BAYER_14BPP: bitWidth = 14; break; 
+        case V3_PIXFMT_RGB_BAYER_14BPP: bitWidth = 14; break;
         case V3_PIXFMT_RGB_BAYER_16BPP: bitWidth = 16; break;
         default: bitWidth = 0; break;
     }
@@ -88,7 +88,7 @@ inline static unsigned int v3_buffer_calculate_vi(
         size = stride * height;
     } else if (compr == V3_COMPR_LINE) {
         unsigned int temp = ALIGN_UP(
-            (16 + width * bitWidth * 1000UL / 
+            (16 + width * bitWidth * 1000UL /
              cmpRatioLine + 8192 + 127) / 128, 2);
         stride = ALIGN_UP(temp * 16, alignWidth);
         size = stride * height;
@@ -110,7 +110,6 @@ inline static unsigned int v3_buffer_calculate_venc(short width, short height, v
     if (pixFmt == V3_PIXFMT_YUV422SP || pixFmt >= V3_PIXFMT_RGB_BAYER_8BPP)
         headSize *= 2;
     else if (pixFmt == V3_PIXFMT_YUV420SP)
-        headSize *= 3;
-        headSize >>= 1;
+        headSize = (headSize * 3) >> 1;
     return bufSize + headSize;
 }

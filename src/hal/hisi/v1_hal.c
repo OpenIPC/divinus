@@ -109,7 +109,7 @@ void *v1_audio_thread(void)
     memset(&echoFrame, 0, sizeof(echoFrame));
 
     while (keepRunning && audioOn) {
-        if (ret = v1_aud.fnGetFrame(_v1_aud_dev, _v1_aud_chn, 
+        if (ret = v1_aud.fnGetFrame(_v1_aud_dev, _v1_aud_chn,
             &frame, &echoFrame, 128)) {
             HAL_WARNING("v1_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
@@ -143,7 +143,7 @@ int v1_channel_bind(char index)
         return ret;
 
     {
-        v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
+        v1_sys_bind source = { .module = V1_SYS_MOD_VPSS,
             .device = _v1_vpss_grp, .channel = index };
         v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP,
             .device = index, .channel = 0 };
@@ -204,7 +204,7 @@ int v1_channel_unbind(char index)
         return ret;
 
     {
-        v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
+        v1_sys_bind source = { .module = V1_SYS_MOD_VPSS,
             .device = _v1_vpss_grp, .channel = index };
         v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP,
             .device = index, .channel = 0 };
@@ -232,7 +232,7 @@ int v1_pipeline_create(void)
         return ret;
     if (ret = v1_snr_drv.fnRegisterCallback())
         return ret;
-    
+
     if (ret = v1_isp.fnRegisterAE(&v1_ae_lib))
         return ret;
     if (ret = v1_isp.fnRegisterAWB(&v1_awb_lib))
@@ -247,7 +247,7 @@ int v1_pipeline_create(void)
     v1_config.tim.mode = V1_ISP_WIN_BOTH;
     if (ret = v1_isp.fnSetInputTiming(&v1_config.tim))
         return ret;
-    
+
     if (ret = v1_vi.fnSetDeviceConfig(_v1_vi_dev, &v1_config.videv))
         return ret;
     if (ret = v1_vi.fnEnableDevice(_v1_vi_dev))
@@ -255,15 +255,15 @@ int v1_pipeline_create(void)
 
     {
         v1_vi_chn channel;
-        channel.capt.width = v1_config.vichn.capt.width ? 
+        channel.capt.width = v1_config.vichn.capt.width ?
             v1_config.vichn.capt.width : v1_config.videv.rect.width;
-        channel.capt.height = v1_config.vichn.capt.height ? 
+        channel.capt.height = v1_config.vichn.capt.height ?
             v1_config.vichn.capt.height : v1_config.videv.rect.height;
         channel.capt.x = 0;
         channel.capt.y = 0;
-        channel.dest.width = v1_config.vichn.dest.width ? 
+        channel.dest.width = v1_config.vichn.dest.width ?
             v1_config.vichn.dest.width : v1_config.videv.rect.width;
-        channel.dest.height = v1_config.vichn.dest.height ? 
+        channel.dest.height = v1_config.vichn.dest.height ?
             v1_config.vichn.dest.height : v1_config.videv.rect.height;
         channel.field = v1_config.vichn.field;
         channel.pixFmt = V1_PIXFMT_YUV420SP;
@@ -281,9 +281,9 @@ int v1_pipeline_create(void)
     {
         v1_vpss_grp group;
         memset(&group, 0, sizeof(group));
-        group.dest.width = v1_config.vichn.capt.width ? 
+        group.dest.width = v1_config.vichn.capt.width ?
             v1_config.vichn.capt.width : v1_config.videv.rect.width;
-        group.dest.height = v1_config.vichn.capt.height ? 
+        group.dest.height = v1_config.vichn.capt.height ?
             v1_config.vichn.capt.height : v1_config.videv.rect.height;
         group.pixFmt = V1_PIXFMT_YUV420SP;
         group.nredOn = 1;
@@ -297,9 +297,9 @@ int v1_pipeline_create(void)
         return ret;
 
     {
-        v1_sys_bind source = { .module = V1_SYS_MOD_VIU, 
+        v1_sys_bind source = { .module = V1_SYS_MOD_VIU,
             .device = _v1_vi_dev, .channel = _v1_vi_chn };
-        v1_sys_bind dest = { .module = V1_SYS_MOD_VPSS, 
+        v1_sys_bind dest = { .module = V1_SYS_MOD_VPSS,
             .device = _v1_vpss_grp, .channel = 0 };
         if (ret = v1_sys.fnBind(&source, &dest))
             return ret;
@@ -322,7 +322,7 @@ void v1_pipeline_destroy(void)
             v1_vpss.fnDisableChannel(grp, chn);
 
         {
-            v1_sys_bind source = { .module = V1_SYS_MOD_VIU, 
+            v1_sys_bind source = { .module = V1_SYS_MOD_VIU,
                 .device = _v1_vi_dev, .channel = _v1_vi_chn };
             v1_sys_bind dest = { .module = V1_SYS_MOD_VPSS,
                 .device = grp, .channel = 0 };
@@ -333,7 +333,7 @@ void v1_pipeline_destroy(void)
         v1_vpss.fnDisableChannel(grp, _v1_vpss_chn);
         v1_vpss.fnDestroyGroup(grp);
     }
-    
+
     v1_vi.fnDisableChannel(_v1_vi_chn);
 
     v1_vi.fnDisableDevice(_v1_vi_dev);
@@ -362,7 +362,7 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
         if (ret = v1_rgn.fnCreateRegion(handle, &region))
             return ret;
     } else if (regionCurr.type != region.type ||
-        regionCurr.overlay.size.height != region.overlay.size.height || 
+        regionCurr.overlay.size.height != region.overlay.size.height ||
         regionCurr.overlay.size.width != region.overlay.size.width) {
         HAL_INFO("v1_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
@@ -397,7 +397,7 @@ int v1_region_create(char handle, hal_rect rect, short opacity)
 void v1_region_destroy(char handle)
 {
     v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP, .device = _v1_vpss_grp };
-    
+
     v1_rgn.fnDetachChannel(handle, &dest);
     v1_rgn.fnDestroyRegion(handle);
 }
@@ -452,7 +452,7 @@ int v1_video_create(char index, hal_vidconfig *config)
         channel.attrib.jpg.maxPic.height = config->height;
         channel.attrib.jpg.bufSize =
             ALIGN_UP(config->height, 16) * ALIGN_UP(config->width, 16);
-        channel.attrib.jpg.byFrame = 1;
+        channel.attrib.jpg.byFrame = 0;
         channel.attrib.jpg.fieldOrFrame = 0;
         channel.attrib.jpg.priority = 0;
         channel.attrib.jpg.pic.width = config->width;
@@ -462,9 +462,9 @@ int v1_video_create(char index, hal_vidconfig *config)
         channel.attrib.codec = V1_VENC_CODEC_MJPG;
         channel.attrib.mjpg.maxPic.width = config->width;
         channel.attrib.mjpg.maxPic.height = config->height;
-        channel.attrib.mjpg.bufSize = 
+        channel.attrib.mjpg.bufSize =
             ALIGN_UP(config->height, 16) * ALIGN_UP(config->width, 16);
-        channel.attrib.mjpg.byFrame = 1;
+        channel.attrib.mjpg.byFrame = 0;
         channel.attrib.mjpg.mainStrmOn = 1;
         channel.attrib.mjpg.fieldOrFrame = 0;
         channel.attrib.mjpg.priority = 0;
@@ -478,7 +478,7 @@ int v1_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V1_VENC_RATEMODE_MJPGVBR;
                 channel.rate.mjpgVbr = (v1_venc_rate_mjpgvbr){ .statTime = 1, .srcFps = config->framerate,
-                    .dstFps = config->framerate , .maxBitrate = MAX(config->bitrate, config->maxBitrate), 
+                    .dstFps = config->framerate , .maxBitrate = MAX(config->bitrate, config->maxBitrate),
                     .maxQual = config->maxQual, .minQual = config->maxQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V1_VENC_RATEMODE_MJPGQP;
@@ -500,13 +500,13 @@ int v1_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V1_VENC_RATEMODE_H264VBRv2;
                 channel.rate.h264Vbr = (v1_venc_rate_h264vbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
                     .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V1_VENC_RATEMODE_H264QP;
                 channel.rate.h264Qp = (v1_venc_rate_h264qp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual,
                     .predQual = config->minQual }; break;
             default:
                 HAL_ERROR("v1_venc", "H.264 encoder does not support this mode!");
@@ -514,9 +514,9 @@ int v1_video_create(char index, hal_vidconfig *config)
     } else HAL_ERROR("v1_venc", "This codec is not supported by the hardware!");
     attrib->maxPic.width = config->width;
     attrib->maxPic.height = config->height;
-    attrib->bufSize = config->height * config->width;
+    attrib->bufSize = config->width * config->height;
     attrib->profile = MIN(config->profile, 1);
-    attrib->byFrame = 1;
+    attrib->byFrame = 0;
     attrib->fieldOn = 0;
     attrib->mainStrmOn = 1;
     attrib->priority = 0;
@@ -533,7 +533,7 @@ attach:
     if (ret = v1_venc.fnRegisterChannel(index, index))
         return ret;
 
-    if (config->codec != HAL_VIDCODEC_JPG && 
+    if (config->codec != HAL_VIDCODEC_JPG &&
         (ret = v1_venc.fnStartReceiving(index)))
         return ret;
 
@@ -552,7 +552,7 @@ int v1_video_destroy(char index)
     v1_venc.fnStopReceiving(index);
 
     {
-        v1_sys_bind source = { .module = V1_SYS_MOD_VPSS, 
+        v1_sys_bind source = { .module = V1_SYS_MOD_VPSS,
             .device = _v1_vpss_grp, .channel = index };
         v1_sys_bind dest = { .module = V1_SYS_MOD_GROUP,
             .device = index, .channel = 0 };
@@ -568,13 +568,13 @@ int v1_video_destroy(char index)
 
     if (ret = v1_venc.fnDestroyGroup(index))
         return ret;
-    
+
     if (ret = v1_vpss.fnDisableChannel(_v1_vpss_grp, index))
         return ret;
 
     return EXIT_SUCCESS;
 }
-    
+
 int v1_video_destroy_all(void)
 {
     int ret;
@@ -729,7 +729,7 @@ void *v1_video_thread(void)
                 if (!v1_state[i].mainLoop) continue;
                 if (FD_ISSET(v1_state[i].fileDesc, &readFds)) {
                     memset(&stream, 0, sizeof(stream));
-                    
+
                     if (ret = v1_venc.fnQuery(i, &stat)) {
                         HAL_DANGER("v1_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
@@ -823,13 +823,13 @@ int v1_system_init(char *snrConfig)
         int alignWidth = 16;
         v1_vb_pool pool;
 
-        memset(&pool, 0, sizeof(pool)); 
-        
+        memset(&pool, 0, sizeof(pool));
+
         pool.count = 1;
         pool.comm[0].blockSize = v1_buffer_calculate_venc(
-            v1_config.vichn.capt.width ? 
+            v1_config.vichn.capt.width ?
                 v1_config.vichn.capt.width : v1_config.videv.rect.width,
-            v1_config.vichn.capt.height ? 
+            v1_config.vichn.capt.height ?
                 v1_config.vichn.capt.height : v1_config.videv.rect.height,
             V1_PIXFMT_YUV420SP, alignWidth);
         pool.comm[0].blockCnt = 10;
@@ -838,7 +838,7 @@ int v1_system_init(char *snrConfig)
             return ret;
         if (ret = v1_vb.fnInit())
             return ret;
-        
+
         if (ret = v1_sys.fnSetAlignment(&alignWidth))
             return ret;
     }
