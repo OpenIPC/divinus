@@ -374,6 +374,7 @@ enum ConfigError parse_app_config(void) {
     if (err != CONFIG_OK)
         goto RET_ERR;
     parse_int(&ini, "isp", "antiflicker", -1, 60, &app_config.antiflicker);
+    parse_int(&ini, "isp", "exposure", 0, 500000, &app_config.exposure);
 
     parse_bool(&ini, "mdns", "enable", &app_config.mdns_enable);
 

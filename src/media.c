@@ -274,6 +274,16 @@ void set_grayscale(bool active) {
     pthread_mutex_unlock(&chnMtx);
 }
 
+int set_exposure(unsigned int micros) {
+    int ret = -1;
+    switch (plat) {
+#if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I6:  ret = i6_sensor_exposure(micros); break;
+#endif
+    }
+    return ret;
+}
+
 int take_next_free_channel(bool mainLoop) {
     pthread_mutex_lock(&chnMtx);
     for (int i = 0; i < chnCount; i++) {
@@ -530,6 +540,7 @@ int enable_mjpeg(void) {
         config.framerate = app_config.mjpeg_fps;
         config.bitrate = app_config.mjpeg_bitrate;
         config.maxBitrate = app_config.mjpeg_bitrate * 5 / 4;
+        config.minQual = config.maxQual = app_config.jpeg_qfactor;
 
         switch (plat) {
 #if defined(__ARM_PCS_VFP)
@@ -837,6 +848,16 @@ int start_sdk(void) {
             case HAL_PLATFORM_T31: t31_config_load(app_config.sensor_config); break;
 #endif
         }
+
+    if (app_config.exposure > 0) {
+        ret = set_exposure(app_config.exposure);
+        if (ret)
+            HAL_DANGER("media", "Failed to set exposure %uus: %#x\n",
+                app_config.exposure, ret);
+        else
+            HAL_INFO("media", "Fixed exposure set to %uus\n",
+                app_config.exposure);
+    }
 
     HAL_INFO("media", "SDK has started successfully!\n");
 

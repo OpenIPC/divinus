@@ -480,17 +480,40 @@ int i6_sensor_exposure(unsigned int micros)
 {
     int ret;
 
+    if (micros == 0) {
+        /* Restore auto-exposure: reset limits to wide range and restore fps */
+        i6_isp_exp config;
+        if (ret = i6_isp.fnGetExposureLimit(0, &config))
+            return ret;
+        config.minShutterUs = 0;
+        config.maxShutterUs = 333333;
+        if (ret = i6_isp.fnSetExposureLimit(0, &config))
+            return ret;
+        if (_i6_snr_framerate > 0)
+            i6_snr.fnSetFramerate(_i6_snr_index, _i6_snr_framerate);
+        return 0;
+    }
+
+    /* Reduce sensor fps if exposure requires it (frame time must exceed shutter) */
+    if (micros > 33333) {
+        unsigned int needed_fps = 1000000 / micros;
+        if (needed_fps < 3) needed_fps = 3;
+        if (ret = i6_snr.fnSetFramerate(_i6_snr_index, needed_fps))
+            return ret;
+    }
+
     {
         i6_isp_exp config;
         if (ret = i6_isp.fnGetExposureLimit(0, &config))
             return ret;
 
+        config.minShutterUs = micros;
         config.maxShutterUs = micros;
         if (ret = i6_isp.fnSetExposureLimit(0, &config))
             return ret;
     }
 
-    return ret;
+    return 0;
 }
 
 int i6_video_create(char index, hal_vidconfig *config)

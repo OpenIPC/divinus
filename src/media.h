@@ -29,6 +29,7 @@ int start_streaming(void);
 void stop_streaming(void);
 
 void request_idr(void);
+int set_exposure(unsigned int micros);
 void set_grayscale(bool active);
 int take_next_free_channel(bool mainLoop);
 
