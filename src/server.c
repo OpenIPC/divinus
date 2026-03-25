@@ -56,17 +56,17 @@ pthread_mutex_t client_fds_mutex;
 
 static bool is_local_address(const char *client_ip) {
     if (!client_ip) return false;
-    
+
     if (!strcmp(client_ip, "127.0.0.1") ||
         !strncmp(client_ip, "127.", 4))
         return true;
-    
+
     if (!strcmp(client_ip, "::1"))
         return true;
-    
+
     if (!strncmp(client_ip, "::ffff:127.", 11))
         return true;
-    
+
     return false;
 }
 
@@ -108,7 +108,7 @@ int send_to_client(int i, char *buf, ssize_t size) {
         free_client(i);
         return EXIT_FAILURE;
     }
-    
+
     return EXIT_SUCCESS;
 }
 
@@ -121,7 +121,7 @@ void send_http_error(int fd, int code) {
     const char *desc = "\0", *msg = "Unspecified";
     char buffer[256];
     int len;
-    
+
     for (int i = 0; i < sizeof(http_errors) / sizeof(*http_errors); i++) {
         if (http_errors[i].code == code) {
             desc = http_errors[i].desc;
@@ -129,14 +129,14 @@ void send_http_error(int fd, int code) {
             break;
         }
     }
-    
+
     len = snprintf(buffer, sizeof(buffer),
         "HTTP/1.1 %d %s\r\n"
         "Content-Type: text/plain\r\n"
         "Connection: close\r\n"
         "\r\n%s\r\n",
         code, msg, desc);
-    
+
     send_and_close(fd, buffer, len);
 }
 
@@ -195,7 +195,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
             printf("NAL: %s received in packet %d\n", nal_type_to_str(pack->nalu[j].type), i);
             printf("     starts at %p, ends at %p\n", pack_data + pack->nalu[j].offset, pack_data + pack->nalu[j].offset + pack->nalu[j].length);
 #endif
-            if ((pack->nalu[j].type == NalUnitType_SPS || pack->nalu[j].type == NalUnitType_SPS_HEVC) 
+            if ((pack->nalu[j].type == NalUnitType_SPS || pack->nalu[j].type == NalUnitType_SPS_HEVC)
                 && pack->nalu[j].length >= 4 && pack->nalu[j].length <= UINT16_MAX)
                 mp4_set_sps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
             else if ((pack->nalu[j].type == NalUnitType_PPS || pack->nalu[j].type == NalUnitType_PPS_HEVC)
@@ -1160,7 +1160,7 @@ void respond_request(http_request_t *req) {
             "\r\n"
             "{\"active\":%s,\"manual\":%s,\"grayscale\":%s,\"ircut\":%s,\"ircut_pin1\":%d,\"ircut_pin2\":%d,"
             "\"irled\":%s,\"irled_pin\":%d,\"irsense_pin\":%d,\"adc_device\":\"%s\",\"adc_threshold\":%d}",
-            app_config.night_mode_enable ? "true" : "false", night_manual_on() ? "true" : "false", 
+            app_config.night_mode_enable ? "true" : "false", night_manual_on() ? "true" : "false",
             night_grayscale_on() ? "true" : "false",
             night_ircut_on() ? "true" : "false", app_config.ir_cut_pin1, app_config.ir_cut_pin2,
             night_irled_on() ? "true" : "false", app_config.ir_led_pin, app_config.ir_sensor_pin,
@@ -1192,7 +1192,7 @@ void respond_request(http_request_t *req) {
 
                 char path[32];
 
-                if (!memcmp(payloadb, "\x89\x50\x4E\x47\xD\xA\x1A\xA", 8)) 
+                if (!memcmp(payloadb, "\x89\x50\x4E\x47\xD\xA\x1A\xA", 8))
                     sprintf(path, "/tmp/osd%d.png", id);
                 else
                     sprintf(path, "/tmp/osd%d.bmp", id);
@@ -1350,7 +1350,7 @@ void respond_request(http_request_t *req) {
             "{\"recording\":%s,\"start_time\":\"%s\",\"continuous\":%s,\"path\":\"%s\","
             "\"filename\":\"%s\",\"segment_duration\":%d,\"segment_size\":%d}",
                 recordOn ? "true" : "false", start_time, app_config.record_continuous ? "true" : "false",
-                app_config.record_path, app_config.record_filename, 
+                app_config.record_path, app_config.record_filename,
                 app_config.record_segment_duration, app_config.record_segment_size);
         send_and_close(req->clntFd, response, respLen);
         return;
@@ -1376,7 +1376,7 @@ void respond_request(http_request_t *req) {
             "\r\n"
             "{\"chip\":\"%s\",\"loadavg\":[%.2f,%.2f,%.2f],\"memory\":\"%s\","
             "\"sensor\":\"%s\",\"temp\":\"%.1f\u00B0C\",\"uptime\":\"%s\"}",
-            chip, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0, 
+            chip, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0,
             memory, sensor, hal_temperature_read(), uptime);
         send_and_close(req->clntFd, response, respLen);
         return;

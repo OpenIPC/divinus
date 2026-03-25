@@ -53,6 +53,9 @@
         fprintf(stderr, "\033[0m"); \
     } while (0)
 
+#ifndef ABS
+#define ABS(x) ((x) < 0 ? -(x) : (x))
+#endif
 #ifndef ALIGN_BACK
 #define ALIGN_BACK(x, a) (((x) / (a)) * (a))
 #endif
@@ -74,6 +77,7 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
+#define CLEAR(x) memset(&(x), 0, sizeof(x))
 #define CONTAINS(a, b) strstr(a, b)
 #define EMPTY(x) (x[0] == '\0')
 #define ENDS_WITH(a, b) \
