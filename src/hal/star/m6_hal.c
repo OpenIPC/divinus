@@ -218,11 +218,11 @@ int m6_config_load(char *path)
     return m6_isp.fnLoadChannelConfig(_m6_isp_dev, _m6_isp_chn, path, 1234);
 }
 
-int m6_pipeline_create(char sensor, short width, short height, char mirror, char flip, char framerate)
+int m6_pipeline_create(char index, short width, short height, char mirror, char flip, char framerate)
 {
     int ret;
 
-    _m6_snr_index = sensor;
+    _m6_snr_index = index;
     _m6_snr_profile = -1;
 
     {
@@ -261,6 +261,7 @@ int m6_pipeline_create(char sensor, short width, short height, char mirror, char
         return ret;
     if (ret = m6_snr.fnGetPlaneInfo(_m6_snr_index, 0, &_m6_snr_plane))
         return ret;
+    strncpy(sensor, _m6_snr_plane.sensName, sizeof(sensor) - 1);
     if (ret = m6_snr.fnEnable(_m6_snr_index))
         return ret;
 

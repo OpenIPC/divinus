@@ -215,11 +215,11 @@ int i6_config_load(char *path)
     return i6_isp.fnLoadChannelConfig(_i6_isp_chn, path, 1234);
 }
 
-int i6_pipeline_create(char sensor, short width, short height, char mirror, char flip, char framerate)
+int i6_pipeline_create(char index, short width, short height, char mirror, char flip, char framerate)
 {
     int ret;
 
-    _i6_snr_index = sensor;
+    _i6_snr_index = index;
     _i6_snr_profile = -1;
 
     {
@@ -258,6 +258,7 @@ int i6_pipeline_create(char sensor, short width, short height, char mirror, char
         return ret;
     if (ret = i6_snr.fnGetPlaneInfo(_i6_snr_index, 0, &_i6_snr_plane))
         return ret;
+    strncpy(sensor, _i6_snr_plane.sensName, sizeof(sensor) - 1);
     if (ret = i6_snr.fnEnable(_i6_snr_index))
         return ret;
 

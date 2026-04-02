@@ -1,5 +1,6 @@
-#include "tools.h"
 #include "types.h"
+#include "globals.h"
+#include "tools.h"
 
 #if defined(__ARM_PCS_VFP)
 #include "star/i3_hal.h"
@@ -24,7 +25,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-// Newer versions of musl have UAPI headers 
+// Newer versions of musl have UAPI headers
 // that redefine struct sysinfo
 #if defined(__GLIBC__) || defined(__UCLIBC__) \
     || LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
@@ -38,19 +39,6 @@ extern int asprintf(char **restrict strp, const char *restrict fmt, ...);
 #endif
 
 extern int sysinfo (struct sysinfo *__info);
-
-extern void *aud_thread;
-extern void *isp_thread;
-extern void *vid_thread;
-
-extern char chnCount;
-extern hal_chnstate *chnState;
-
-extern char chip[16];
-extern char family[32];
-extern hal_platform plat;
-extern char sensor[16];
-extern int series;
 
 void hal_identify(void);
 float hal_temperature_read(void);

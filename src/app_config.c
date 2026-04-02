@@ -168,7 +168,7 @@ int save_app_config(void) {
         char imgEmpty = EMPTY(osds[i].img);
         char textEmpty = EMPTY(osds[i].text);
         if (imgEmpty && textEmpty) continue;
-    
+
         if (!imgEmpty)
             fprintf(file, "    reg%d_img: %s\n", i, osds[i].img);
         if (!textEmpty)
@@ -196,6 +196,7 @@ int save_app_config(void) {
     fprintf(file, "  height: %d\n", app_config.mjpeg_height);
     fprintf(file, "  fps: %d\n", app_config.mjpeg_fps);
     fprintf(file, "  bitrate: %d\n", app_config.mjpeg_bitrate);
+    fprintf(file, "  qfactor: %d\n", app_config.mjpeg_qfactor);
 
     fprintf(file, "http_post:\n");
     fprintf(file, "  enable: %s\n", app_config.http_post_enable ? "true" : "false");
@@ -263,6 +264,7 @@ enum ConfigError parse_app_config(void) {
     app_config.mjpeg_width = 640;
     app_config.mjpeg_height = 480;
     app_config.mjpeg_bitrate = 1024;
+    app_config.mjpeg_qfactor = 50;
 
     app_config.mirror = false;
     app_config.flip = false;
@@ -356,7 +358,7 @@ enum ConfigError parse_app_config(void) {
             &app_config.ir_cut_pin2);
         parse_int(
             &ini, "night_mode", "ir_led_pin", 0, PIN_MAX,
-            &app_config.ir_led_pin);            
+            &app_config.ir_led_pin);
         parse_int(
             &ini, "night_mode", "pin_switch_delay_us", 0, 1000,
             &app_config.pin_switch_delay_us);
@@ -456,10 +458,8 @@ enum ConfigError parse_app_config(void) {
     if (app_config.audio_enable) {
         parse_int(&ini, "audio", "bitrate", 32, 320, &app_config.audio_bitrate);
         parse_int(&ini, "audio", "gain", -60, 30, &app_config.audio_gain);
-        err = parse_int(&ini, "audio", "srate", 8000, 96000, 
+        parse_int(&ini, "audio", "srate", 8000, 96000,
             &app_config.audio_srate);
-        if (err != CONFIG_OK)
-            goto RET_ERR;
     }
 
     parse_bool(&ini, "mp4", "enable", &app_config.mp4_enable);
@@ -562,6 +562,7 @@ enum ConfigError parse_app_config(void) {
             &ini, "mjpeg", "bitrate", 32, INT_MAX, &app_config.mjpeg_bitrate);
         if (err != CONFIG_OK)
             goto RET_ERR;
+        parse_int(&ini, "mjpeg", "qfactor", 1, 99, &app_config.mjpeg_qfactor);
     }
 
     parse_bool(&ini, "http_post", "enable", &app_config.http_post_enable);

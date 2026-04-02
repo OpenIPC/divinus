@@ -9,10 +9,10 @@
 #include "m6_venc.h"
 #include "m6_vif.h"
 
+#include "../globals.h"
+
 #include <sys/select.h>
 #include <unistd.h>
-
-extern char audioOn, keepRunning;
 
 extern hal_chnstate m6_state[M6_VENC_CHN_NUM];
 extern int (*m6_aud_cb)(hal_audframe*);
@@ -32,7 +32,7 @@ int m6_channel_unbind(char index);
 
 int m6_config_load(char *path);
 
-int m6_pipeline_create(char sensor, short width, short height, char mirror, char flip, char framerate);
+int m6_pipeline_create(char index, short width, short height, char mirror, char flip, char framerate);
 void m6_pipeline_destroy(void);
 
 int m6_region_create(char handle, hal_rect rect, short opacity);

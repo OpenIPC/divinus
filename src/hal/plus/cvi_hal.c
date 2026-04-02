@@ -892,6 +892,7 @@ int cvi_system_init(char *snrConfig)
 
     if (cvi_parse_sensor_config(snrConfig, &cvi_config) != CONFIG_OK)
         HAL_ERROR("cvi_sys", "Can't load sensor config\n");
+    strncpy(sensor, cvi_config.sensor_type, sizeof(sensor) - 1);
 
     if (ret = cvi_sensor_init(cvi_config.dll_file, cvi_config.sensor_type))
         return ret;

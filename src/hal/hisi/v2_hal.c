@@ -862,6 +862,7 @@ int v2_system_init(char *snrConfig)
 
     if (v2_parse_sensor_config(snrConfig, &v2_config) != CONFIG_OK)
         HAL_ERROR("v2_sys", "Can't load sensor config\n");
+    strncpy(sensor, v2_config.sensor_type, sizeof(sensor) - 1);
 
     if (ret = v2_sensor_init(v2_config.dll_file, v2_config.sensor_type))
         return ret;

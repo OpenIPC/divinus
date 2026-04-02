@@ -11,12 +11,10 @@
 #include "i6_vif.h"
 #include "i6_vpe.h"
 
-#include "../support.h"
+#include "../globals.h"
 
 #include <sys/select.h>
 #include <unistd.h>
-
-extern char audioOn, keepRunning;
 
 extern hal_chnstate i6_state[I6_VENC_CHN_NUM];
 extern int (*i6_aud_cb)(hal_audframe*);
@@ -36,7 +34,7 @@ int i6_channel_unbind(char index);
 
 int i6_config_load(char *path);
 
-int i6_pipeline_create(char sensor, short width, short height, char mirror, char flip, char framerate);
+int i6_pipeline_create(char index, short width, short height, char mirror, char flip, char framerate);
 void i6_pipeline_destroy(void);
 
 int i6_region_create(char handle, hal_rect rect, short opacity);

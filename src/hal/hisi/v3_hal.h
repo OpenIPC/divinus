@@ -12,14 +12,12 @@
 #include "v3_vi.h"
 #include "v3_vpss.h"
 
-#include "../support.h"
+#include "../globals.h"
 
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
 #include <unistd.h>
-
-extern char audioOn, keepRunning;
 
 extern hal_chnstate v3_state[V3_VENC_CHN_NUM];
 extern int (*v3_aud_cb)(hal_audframe*);

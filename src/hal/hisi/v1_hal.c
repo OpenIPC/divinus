@@ -815,6 +815,7 @@ int v1_system_init(char *snrConfig)
 
     if (v1_parse_sensor_config(snrConfig, &v1_config) != CONFIG_OK)
         HAL_ERROR("v1_sys", "Can't load sensor config\n");
+    strncpy(sensor, v1_config.sensor_type, sizeof(sensor) - 1);
 
     v1_sys.fnExit();
     v1_vb.fnExit();

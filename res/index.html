@@ -3,31 +3,164 @@
 	<title>Divinus</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<style>
-		*{box-sizing:border-box}*+*{margin:.5em 0}pre{overflow:auto}.row,.w-100{width:100%}.vh-100{height:100vh}.card:focus,hr{outline:0;border:solid #fa0}.card,pre{padding:1em;border:solid #eee}.right{float:right}
-		.tc{text-align:center}.c{padding:1em;margin:auto;font:1em/1.6 sans-serif}.cont{max-width:64em}.gapless{border-spacing:0}.vc{position:relative;top:40%;transform:perspective(1px) translateY(-45%)}
-		a{color:#fa0;text-decoration:none}.btn:hover,a:hover{opacity:.6}.btn.primary{color:#fff;background:#fa0;border:solid #fa0}.btn{padding:1em;text-transform:uppercase;background:#fff;border:solid;font:.7em sans-serif}
-		.inline,a.btn{display:inline-block}.nope{display:none}.pill{border-radius:9999px}.rounded{border-radius:4px}.scrollx{overflow-x:auto}.scrolly{overflow-y:auto}.caps{text-transform:uppercase}.tracked{letter-spacing:.1em}
-		.btn.cell{display:table-cell;width:1%}.box{vertical-align:top}.box input,select{width:100%}.box td{padding:.5em}.close{position:absolute;right:2em;top:2em}.lbl-modal:focus,.lbl-modal:hover{cursor:pointer;opacity:.6}
-		.modal{display:none;background:#fff;position:fixed;bottom:0;left:0;right:0;top:0;margin:0;padding:0;z-index:1}.hide{position:absolute;top:-3px;left:-3px;width:1px;height:1px}.unl{border-bottom:2px solid}
-		input,select{font-family:sans-serif}input[type=checkbox]{position:absolute;opacity:0}input[type=checkbox]:checked+.modal{display:block;z-index:4}.menu .col{display:inline}.menu .btn{margin:-1em 0;padding:.75em}
-		.dim{opacity:1;transition:opacity .15s ease-in}.dim:focus,.dim:hover{opacity:.5;transition:opacity .15s ease-in}h6{font:400 1em sans-serif}h5{font:400 1.2em sans-serif}h4{font:400 1.5em sans-serif}
-		h3{font:400 2em sans-serif}h2{font:400 2.2em sans-serif}h1{font:400 2.5em sans-serif}.mega{font-size:3.5em}.large{font-size:1.5em}.small{font-size:.7em}.bold{font-weight:700}.normal{font-weight:400}.light{font-weight:300}
-		.m0{margin:0}.m1{margin:.5em}.m2{margin:1em}.m3{margin:2em}.m4{margin:4em}.mt0{margin-top:0}.mt1{margin-top:.5em}.mt2{margin-top:1em}.mt3{margin-top:2em}.mt4{margin-top:4em}
-		.mr0{margin-right:0}.mr1{margin-right:.5em}.mr2{margin-right:1em}.mr3{margin-right:2em}.mr4{margin-right:4em}.mb0{margin-bottom:0}.mb1{margin-bottom:.5em}.mb2{margin-bottom:1em}.mb3{margin-bottom:2em}.mb4{margin-bottom:4em}
-		.ml0{margin-left:0}.ml1{margin-left:.5em}.ml2{margin-left:1em}.ml3{margin-left:2em}.ml4{margin-left:4em}.p0{padding:0}.p1{padding:.5em}.p2{padding:1em}.p3{padding:2em}.p4{padding:4em}
-		.pv0{padding-top:0;padding-bottom:0}.pv1{padding-top:.5em;padding-bottom:.5em}.pv2{padding-top:1em;padding-bottom:1em}.pv3{padding-top:2em;padding-bottom:2em}.pv4{padding-top:4em;padding-bottom:4em}
-		.ph0{padding-right:0;padding-left:0}.ph1{padding-right:.5em;padding-left:.5em}.ph2{padding-right:1em;padding-left:1em}.ph3{padding-right:2em;padding-left:2em}.ph4{padding-right:4em;padding-left:4em}
-		.white{color:#fff}.bg-white{background-color:#fff}.b-white{border-color:#fff}.gray{color:#ccc}.bg-gray{background-color:#ccc}.b-gray{border-color:#ccc}.black{color:#000}.bg-black{background-color:#000}.b-black{border-color:#000}
-		.accent{color:#fa0}.bg-accent{background-color:#fa0}.b-accent{border-color:#fa0}.info{color:#2962ff}.bg-info{background-color:#2962ff}.b-info{border-color:#2962ff}.error{color:#d50000}.bg-error{background-color:#d50000}.b-error{border-color:#d50000}
-		.warning{color:#ffd600}.bg-warning{background-color:#ffd600}.b-warning{border-color:#ffd600}.success{color:#00c853}.bg-success{background-color:#00c853}.b-success{border-color:#00c853}
-		@media(min-width:50em){.col{display:table-cell}.\31{width:5%}.\33{width:22%}.\34{width:30%}.\35{width:40%}.\32{width:15%}.\36{width:50%}.row{display:table;border-spacing:1em 0;height:fit-content}.box > fieldset{height:100%}.close{right:4em}}
-		@media(max-width:40em){.menu{position:relative;padding:.5em 0;min-height:3em;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);tap-highlight-color:rgba(0,0,0,0);outline:none;tabindex:0}
-		 .menu b{display:block;text-align:center;padding:.5em 0}.menu .col *{padding:.75em 1.5em}.menu .col *:hover{background:#222}
-		 .menu .col{display:block;overflow:hidden;position:absolute;height:0;width:100%;left:0;top:100%;margin:0;background:#000;border:0;border-top:1px solid #fff;transition:height .3s}
-		 .menu .col a{display:block;margin-top:.5em}.menu .col .lbl-modal{display:block;margin-top:.5em;}.modal .menu .col{position:static;height:auto;border:0}
-		 .modal .menu .col a{display:table-cell;text-align:center;width:9%}.menu:after{content:"\2261";position:absolute;right:.225em;top:-.275em;color:#fff;font-size:3em;z-index:3}
-		 .menu:focus:after,.menu:active:after{content:"\2715";right:.375em;top:.125em;font-size:2em}.menu:focus .col,.menu:active .col{height:auto;border-top:1px solid #333}
-		 .modal .menu:after{display:none}.modal .btn.primary.close{position:static;margin:1em;display:table-cell;text-align:center;width:1%}.unl{margin-top:.25em}}
+		/* Variables */
+		:root {
+			--bg-color: #f4f5f7;
+			--text-color: #1f2937;
+			--accent: #0284c7;
+			--accent-hover: #0369a1;
+			--menu-bg: #1e293b;
+			--card-bg: #ffffff;
+			--border: #e5e7eb;
+			--border-focus: #9ca3af;
+		}
+
+		/* Reset & base */
+		* { box-sizing: border-box; }
+		* + * { margin: .5em 0; }
+		body { background: var(--bg-color); color: var(--text-color); font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; }
+
+		/* Typography */
+		h1 { font: 600 2.5em inherit; } h2 { font: 600 1.8em inherit; margin-top: 0; } h3 { font: 600 2em inherit; } h4 { font: 600 1.5em inherit; } h5 { font: 600 1.2em inherit; } h6 { font: 600 1em inherit; }
+		a { color: var(--accent); text-decoration: none; transition: color 0.2s; } a:hover { color: var(--accent-hover); }
+		pre { overflow: auto; padding: 1em; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+
+		/* Layout & grid */
+		.row, .w-100 { width: 100%; }
+		.vh-100 { height: 100vh; }
+		.tc { text-align: center; }
+		.tr { text-align: right; }
+		.vm { vertical-align: middle; }
+		.c { padding: 1em; margin: auto; font: 14px/1.5 system-ui, -apple-system, sans-serif; }
+		.cont { max-width: 64em; }
+		.gapless { border-spacing: 0; }
+		.vc { position: relative; top: 40%; transform: perspective(1px) translateY(-45%); }
+		.box { vertical-align: top; }
+		.box td { padding: .5em; }
+
+		/* UI components */
+		.card { padding: 1em; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+		.card:focus, hr { outline: 0; border: 1px solid var(--accent); }
+		fieldset { border: 1px solid var(--border); border-radius: 6px; padding: 1.5em; background: var(--card-bg); margin-bottom: 1em; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+		legend { font-weight: 600; color: var(--accent); padding: 0 0.5em; font-size: 1.1em; }
+		details { border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); margin-bottom: 1em; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+		summary { font-weight: 600; cursor: pointer; outline: none; list-style: none; }
+		summary::-webkit-details-marker { display: none; }
+		details[open] summary { border-bottom: 1px solid var(--border); }
+		.osd_sect { border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); margin-bottom: 1em; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+		.osd_head { font-weight: 600; cursor: pointer; outline: none; }
+		.caret { display: inline-block; width: 1.2em; height: 1.2em; line-height: 0.9em; text-align: center; border-radius: 50%; border: 2px solid var(--text-color); color: var(--text-color); margin-right: 0.5em; font-weight: bold; font-family: monospace; font-size: 1.1em; vertical-align: middle; transition: all 0.2s; padding-bottom: 0.1em; }
+		.caret::before { content: "+"; }
+		.osd_sect.open .caret { background: var(--text-color); color: var(--card-bg); }
+		.osd_sect.open .caret::before { content: "-"; }
+		.osd_sect.open .osd_head { border-bottom: 1px solid var(--border); }
+		.osd_body { display: none; }
+		.osd_sect.open .osd_body { display: block; }
+
+		/* Buttons */
+		.btn { padding: 0.6em 1.2em; text-transform: uppercase; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; font-weight: 600; color: var(--text-color); cursor: pointer; transition: all 0.2s; }
+		.btn:hover { background: #f9fafb; border-color: var(--border-focus); }
+		.btn.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
+		.btn.primary:hover { background: var(--accent-hover); }
+		a.btn { display: inline-block; }
+		.btn.cell { display: table-cell; width: 1%; }
+
+		/* Form inputs */
+		input, select { font-family: inherit; padding: 0.4em 0.6em; border: 1px solid var(--border); border-radius: 4px; background: #fff; color: var(--text-color); transition: border-color 0.2s; }
+		input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(2,132,199,0.2); }
+		.box input, .box select { width: 100%; }
+		input[type=checkbox] { position: absolute; opacity: 0; }
+		input[type=checkbox]:checked + .modal { display: block; z-index: 14; }
+		.color-input { height: 2em; border: none; }
+		.range-wrap { display: table; width: 100%; }
+		.range-val { display: table-cell; width: 3em; padding-right: 0.5em; text-align: left; vertical-align: middle; font-weight: 700; }
+		.range-input { display: table-cell; width: 100%; vertical-align: middle; }
+
+		/* Tables */
+		table { border-collapse: collapse; }
+		th { text-align: left; font-weight: 600; padding-bottom: 0.5em; border-bottom: 2px solid var(--border); }
+		.osd-table tbody { border-bottom: 2px solid var(--border); }
+		.osd-table tbody:last-child { border-bottom: none; }
+
+		/* Modals & navigation */
+		.modal { display: none; background: var(--bg-color); position: fixed; bottom: 0; left: 0; right: 0; top: 0; margin: 0; padding: 0; z-index: 10; }
+		.lbl-modal:focus, .lbl-modal:hover { cursor: pointer; opacity: .8; }
+		.menu .col { display: inline; }
+		.menu .btn { margin: -1em 0; padding: .75em; }
+		.close { position: absolute; right: 2em; top: 1.5em; }
+
+		/* Utilities */
+		.right { float: right; }
+		.inline { display: inline-block; }
+		.nope { display: none; }
+		.hide { position: absolute; top: -3px; left: -3px; width: 1px; height: 1px; }
+		.pill { border-radius: 9999px; }
+		.rounded { border-radius: 4px; }
+		.scrollx { overflow-x: auto; padding-bottom: .5em; }
+		.scrollx::-webkit-scrollbar { height: 10px; }
+		.scrollx::-webkit-scrollbar-track { background: var(--card-bg); border-radius: 4px; }
+		.scrollx::-webkit-scrollbar-thumb { background: var(--border-focus); border-radius: 4px; border: 2px solid var(--card-bg); }
+		.scrollx::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+		.scrolly { overflow-y: auto; }
+		.caps { text-transform: uppercase; }
+		.tracked { letter-spacing: .1em; }
+		.unl { border-bottom: 2px solid var(--border); padding-bottom: 0.3em; color: #111827; }
+		.dim { opacity: 1; transition: opacity .15s ease-in; }
+		.dim:focus, .dim:hover { opacity: .5; transition: opacity .15s ease-in; }
+		.pe-auto { pointer-events: auto; }
+		.osd-lbl { padding: 0.4em 0.8em; border-radius: 4px; }
+
+		/* Typography utilities */
+		.mega { font-size: 3em; } .large { font-size: 1.5em; } .small { font-size: .8em; }
+		.bold { font-weight: 700; } .normal { font-weight: 400; } .light { font-weight: 300; }
+
+		/* Spacing utilities */
+		.m0 { margin: 0; } .m1 { margin: .5em; } .m2 { margin: 1em; } .m3 { margin: 2em; } .m4 { margin: 4em; }
+		.mt0 { margin-top: 0; } .mt1 { margin-top: .5em; } .mt2 { margin-top: 1em; } .mt3 { margin-top: 2em; } .mt4 { margin-top: 4em; }
+		.mr0 { margin-right: 0; } .mr1 { margin-right: .5em; } .mr2 { margin-right: 1em; } .mr3 { margin-right: 2em; } .mr4 { margin-right: 4em; }
+		.mb0 { margin-bottom: 0; } .mb1 { margin-bottom: .5em; } .mb2 { margin-bottom: 1em; } .mb3 { margin-bottom: 2em; } .mb4 { margin-bottom: 4em; }
+		.ml0 { margin-left: 0; } .ml1 { margin-left: .5em; } .ml2 { margin-left: 1em; } .ml3 { margin-left: 2em; } .ml4 { margin-left: 4em; }
+		.p0 { padding: 0; } .p1 { padding: .5em; } .p2 { padding: 1em; } .p3 { padding: 2em; } .p4 { padding: 4em; }
+		.pv0 { padding-top: 0; padding-bottom: 0; } .pv1 { padding-top: .5em; padding-bottom: .5em; } .pv2 { padding-top: 1em; padding-bottom: 1em; } .pv3 { padding-top: 2em; padding-bottom: 2em; } .pv4 { padding-top: 4em; padding-bottom: 4em; }
+		.ph0 { padding-right: 0; padding-left: 0; } .ph1 { padding-right: .5em; padding-left: .5em; } .ph2 { padding-right: 1em; padding-left: 1em; } .ph3 { padding-right: 2em; padding-left: 2em; } .ph4 { padding-right: 4em; padding-left: 4em; }
+
+		/* Color utilities */
+		.white { color: #fff; } .bg-white { background-color: #fff; } .b-white { border-color: #fff; }
+		.gray { color: #9ca3af; } .bg-gray { background-color: #9ca3af; } .b-gray { border-color: #9ca3af; }
+		.black { color: #000; } .bg-black { background-color: var(--menu-bg); } .b-black { border-color: var(--menu-bg); }
+		.accent { color: var(--accent); } .bg-accent { background-color: var(--accent); } .b-accent { border-color: var(--accent); }
+		.info { color: #0ea5e9; } .bg-info { background-color: #0ea5e9; } .b-info { border-color: #0ea5e9; }
+		.error { color: #ef4444; } .bg-error { background-color: #ef4444; } .b-error { border-color: #ef4444; }
+		.warning { color: #f59e0b; } .bg-warning { background-color: #f59e0b; } .b-warning { border-color: #f59e0b; }
+		.success { color: #10b981; } .bg-success { background-color: #10b981; } .b-success { border-color: #10b981; }
+
+		/* Media queries */
+		@media (min-width: 50em) {
+			.col { display: table-cell; }
+			.\31 { width: 5%; } .\32 { width: 15%; } .\33 { width: 22%; } .\34 { width: 30%; } .\35 { width: 40%; } .\36 { width: 50%; }
+			.row { display: table; border-spacing: 1em 0; height: fit-content; }
+			.box > fieldset { height: 100%; margin: 0; }
+			.close { right: 4em; }
+		}
+
+		@media (max-width: 40em) {
+			.menu { position: relative; padding: .5em 0; min-height: 3em; cursor: pointer; -webkit-tap-highlight-color: rgba(0,0,0,0); tap-highlight-color: rgba(0,0,0,0); outline: none; tabindex: 0; }
+			.modal .menu.row { display: block; position: sticky; top: 0; z-index: 30; }
+			.menu b { display: block; text-align: center; padding: .5em 0; background: inherit; }
+			.menu .col * { padding: .75em 1.5em; }
+			.menu .col *:hover { background: rgba(255,255,255,0.1); }
+			.menu .col { display: block; overflow: hidden; position: absolute; height: 0; width: 100%; left: 0; top: 100%; margin: 0; background: var(--menu-bg); border: 0; border-top: 1px solid rgba(255,255,255,0.1); transition: height .3s; z-index: 20; }
+			.menu .col a { display: block; margin-top: .5em; }
+			.menu .col .lbl-modal { display: block; margin-top: .5em; }
+			.modal .menu .col { position: static; height: auto; border: 0; display: table; width: 100%; table-layout: fixed; padding: 0; border-spacing: 0.5em 0; margin-top: 0.5em; }
+			.modal .menu .col a { display: table-cell; text-align: center; vertical-align: middle; width: auto; padding: 0.6em 0; border-radius: 4px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); margin: 0; }
+			.menu:after { content: "\2261"; position: absolute; right: .225em; top: -.275em; color: #fff; font-size: 3em; z-index: 23; }
+			.menu:focus:after, .menu:active:after { content: "\2715"; right: .375em; top: .125em; font-size: 2em; }
+			.menu:focus .col, .menu:active .col { height: auto; border-top: 1px solid rgba(255,255,255,0.1); }
+			.modal .menu:after { display: none; }
+			.modal .btn.primary.close { position: static; display: table-cell; text-align: center; vertical-align: middle; width: auto; padding: 0.6em 0; margin: 0; border-radius: 4px; }
+			.unl { margin-top: .25em; }
+		}
 	</style>
 	<script>
 		var ua = window.navigator.userAgent;
@@ -61,16 +194,23 @@
 						var lbls = document.getElementsByTagName('LABEL');
 						for (var i = 0; i < lbls.length; i++) {
 							if (lbls[i].htmlFor != endp + '_' + key) continue;
-							lbls[i].innerHTML = dec[key];
+							lbls[i].innerHTML = 'Region ' + dec[key];
 							break;
 						}
 						continue;
 					} else if (!elem) continue;
 
-					if (elem.tagName == 'INPUT' || elem.tagName == 'SELECT')
+					if (elem.tagName == 'INPUT' || elem.tagName == 'SELECT') {
 						elem.value = dec[key];
-					else
+						if (elem.type == 'range') {
+							var valElem = document.getElementById(elem.id + '_val');
+							if (valElem) valElem.innerHTML = dec[key];
+						}
+						if (typeof updateOsdSummary === 'function' && (elem.id.indexOf('_text') > -1 || elem.id.indexOf('_img') > -1))
+							updateOsdSummary(elem.id);
+					} else {
 						elem.innerHTML = dec[key];
+					}
 				}
 			}
 			req.open('GET', '/api/' + endp);
@@ -98,6 +238,16 @@
 						elems[j].name = elems[j].name.replace(row, row + '/' + i);
 					if (elems[j].target)
 						elems[j].target = elems[j].target.replace(row, row + '/' + i);
+					if (elems[j].type == 'range') {
+						elems[j].value = elems[j].defaultValue || 0; // reset default
+					}
+				}
+				for (var j = 0; j < elems.length; j++) {
+					if (elems[j].className && elems[j].className.indexOf('range-val') > -1) {
+						var inputId = elems[j].id.replace('_val', '');
+						var inputElem = clone.querySelector('#' + inputId.replace('/', '\\/'));
+						if (inputElem) elems[j].innerHTML = inputElem.value;
+					}
 				}
 				tpl.parentNode.appendChild(clone);
 			}
@@ -176,6 +326,18 @@
 			}
 			req.open('GET', '/api/record' + act);
 			req.send();
+		}
+
+		function updateOsdSummary(id) {
+			if (!id || id.indexOf('osd/') !== 0) return;
+			var base = id.substring(0, id.lastIndexOf('_'));
+			var textElem = document.getElementById(base + '_text');
+			var imgElem = document.getElementById(base + '_img');
+			var titleElem = document.getElementById(base + '_title');
+			if (textElem && imgElem && titleElem) {
+				var title = imgElem.value ? imgElem.value : textElem.value;
+				titleElem.innerHTML = title ? " - " + title : "";
+			}
 		}
 
 		function every5Sec() {
@@ -312,7 +474,7 @@
 								<td><input type="number" id="audio_gain"></td>
 							</tr>
 							<tr>
-								<td><label for="audio_srate">Sample rate</label></td>
+								<td><label for="audio_srate">Sample&nbsp;rate</label></td>
 								<td><input type="number" id="audio_srate"></td>
 							</tr>
 						</table>
@@ -340,7 +502,7 @@
 							</tr>
 							<tr>
 								<td><label for="jpeg_qfactor">Quality&nbsp;(%)</label></td>
-								<td><input type="number" id="jpeg_qfactor"></td>
+								<td><input type="number" id="jpeg_qfactor" min="1" max="99"></td>
 							</tr>
 						</table>
 						<a href="javascript:apiApply('jpeg')" class="btn right">Apply</a>
@@ -372,7 +534,11 @@
 								<td><input type="number" id="mp4_fps"></td>
 							</tr>
 							<tr>
-								<td><label for="mp4_bitrate">Bitrate (kbps)</label></td>
+								<td><label for="mp4_gop">Keyframe&nbsp;interval</label></td>
+								<td><input type="number" id="mp4_gop"></td>
+							</tr>
+							<tr>
+								<td><label for="mp4_bitrate">Bitrate&nbsp;(kbps)</label></td>
 								<td><input type="number" id="mp4_bitrate"></td>
 							</tr>
 							<tr>
@@ -383,7 +549,7 @@
 								</select></td>
 							</tr>
 							<tr>
-								<td><label for="mp4_mode">Rate control</label></td>
+								<td><label for="mp4_mode">Rate&nbsp;control</label></td>
 								<td><select id="mp4_mode">
 									<option value="CBR">CBR</option>
 									<option value="VBR">VBR</option>
@@ -428,12 +594,16 @@
 								<td><input type="number" id="mjpeg_fps"></td>
 							</tr>
 							<tr>
-								<td><label for="mjpeg_mode">Rate control</label></td>
+								<td><label for="mjpeg_mode">Rate&nbsp;control</label></td>
 								<td><select id="mjpeg_mode">
 									<option value="CBR">CBR</option>
 									<option value="VBR">VBR</option>
 									<option value="QP">QP</option>
 								</select></td>
+							</tr>
+							<tr>
+								<td><label for="mjpeg_qfactor">Quality&nbsp;(%)</label></td>
+								<td><input type="number" id="mjpeg_qfactor" min="1" max="99"></td>
 							</tr>
 						</table>
 						<a href="javascript:apiApply('mjpeg')" class="btn right">Apply</a>
@@ -454,45 +624,49 @@
 		</div>
 		<div class="c cont">
 			<h2 class="unl">OSD</h2>
-			<div class="scrollx">
-				<table class="tc w-100">
-					<tr>
-						<th>ID</th>
-						<th>Color</th>
-						<th>Opacity</th>
-						<th>Position</th>
-						<th>Font family</th>
-						<th>Size</th>
-						<th>Outline</th>
-						<th>Thickness</th>
-						<th>Text</th>
-						<th>Local file</th>
-						<th></th>
-					</tr>
-					<tr id="osd_tpl" style="display:none">
-						<td>
-							<iframe name="osd_file" class="hide"></iframe>
-							<form target="osd_file" method="post" 
-							 enctype="multipart/form-data" action="/api/osd">
-								<input type="file" id="osd_id" class="nope" name="osd_upld"
-								 accept=".bmp,.png" onchange="this.form.submit()">
-								<label for="osd_id" class="btn"></label>
-							</form>
-						</td>
-						<td><input type="color" id="osd_color"></td>
-						<td><input type="range" id="osd_opal" min="0" max="255"></td>
-						<td><input type="text" id="osd_pos" size="5"></td>
-						<td><input type="text" id="osd_font"></td>
-						<td><input type="number" id="osd_size" step="0.1" size="3"
-							style="width:5em"></td>
-						<td><input type="color" id="osd_outl"></td>
-						<td><input type="number" id="osd_thick" step="0.1" size="3"
-							style="width:5em"></td>
-						<td><input type="text" id="osd_text"></td>
-						<td><input type="text" id="osd_img" placeholder="Leave empty for file uploads"></td>
-						<td><a href="javascript:apiApply('osd')" class="btn">Apply</a></td>
-					</tr>
-				</table>
+			<div id="osd_tpl" style="display:none">
+				<div class="w-100 box osd_sect">
+					<div class="m0 p1 osd_head" onclick="var p=this.parentNode; p.className=p.className.indexOf(' open')>-1?p.className.replace(' open',''):p.className+' open'">
+						<table class="w-100 gapless">
+							<tr>
+								<td class="vm" style="width:1%; white-space:nowrap;">
+									<span class="caret"></span>
+									<form target="osd_file" method="post" enctype="multipart/form-data" action="/api/osd" class="m0 inline vm">
+										<input type="file" id="osd_id" class="nope" name="osd_upld" accept=".bmp,.png" onchange="this.form.submit()">
+										<label for="osd_id" class="btn primary m0 inline vm tc osd-lbl pe-auto" onclick="event.stopPropagation()"></label>
+									</form>
+								</td>
+								<td class="vm" style="padding-left:1em;">
+									<span id="osd_title" class="gray"></span>
+									<iframe name="osd_file" class="hide"></iframe>
+								</td>
+								<td class="tr vm" style="width:1%; white-space:nowrap; padding-right: 0.5em;">
+									<a href="javascript:apiApply('osd')" class="btn pe-auto" onclick="event.stopPropagation()">Apply</a>
+								</td>
+							</tr>
+						</table>
+					</div>
+					<div class="p2 osd_body">
+						<table class="w-100">
+							<tr><td><label for="osd_text">Text</label></td><td><input type="text" id="osd_text" oninput="updateOsdSummary(this.id)"></td></tr>
+							<tr><td><label for="osd_pos">Position</label></td><td><input type="text" id="osd_pos"></td></tr>
+							<tr><td><label for="osd_font">Font family</label></td><td><input type="text" id="osd_font"></td></tr>
+							<tr><td><label for="osd_size">Size</label></td><td><input type="number" id="osd_size" step="0.1"></td></tr>
+							<tr><td><label for="osd_color">Color</label></td><td><input type="color" id="osd_color" class="w-100 p0 color-input"></td></tr>
+							<tr><td><label for="osd_outl">Outline</label></td><td><input type="color" id="osd_outl" class="w-100 p0 color-input"></td></tr>
+							<tr><td><label for="osd_opal">Opacity</label></td><td>
+								<div class="range-wrap">
+									<span id="osd_opal_val" class="range-val"></span>
+									<div class="range-input">
+										<input type="range" id="osd_opal" min="0" max="255" value="255" class="w-100 m0" oninput="document.getElementById(this.id+'_val').innerHTML=this.value">
+									</div>
+								</div>
+							</td></tr>
+							<tr><td><label for="osd_thick">Thickness</label></td><td><input type="number" id="osd_thick" step="0.1"></td></tr>
+							<tr><td><label for="osd_img">Local file</label></td><td><input type="text" id="osd_img" oninput="updateOsdSummary(this.id)"></td></tr>
+						</table>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>

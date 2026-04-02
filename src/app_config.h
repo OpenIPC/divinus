@@ -104,6 +104,7 @@ struct AppConfig {
     unsigned int mjpeg_width;
     unsigned int mjpeg_height;
     unsigned int mjpeg_bitrate;
+    unsigned int mjpeg_qfactor;
 
     // [http_post]
     bool http_post_enable;

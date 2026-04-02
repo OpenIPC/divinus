@@ -6,9 +6,7 @@
 #include "ak_venc.h"
 #include "ak_vi.h"
 
-#include "../support.h"
-
-extern char audioOn, keepRunning;
+#include "../globals.h"
 
 extern hal_chnstate ak_state[AK_VENC_CHN_NUM];
 extern int (*ak_aud_cb)(hal_audframe*);

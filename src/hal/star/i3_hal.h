@@ -8,12 +8,10 @@
 #include "i3_venc.h"
 #include "i3_vi.h"
 
-#include "../support.h"
+#include "../globals.h"
 
 #include <sys/select.h>
 #include <unistd.h>
-
-extern char audioOn, keepRunning;
 
 extern hal_chnstate i3_state[I3_VENC_CHN_NUM];
 extern int (*i3_aud_cb)(hal_audframe*);

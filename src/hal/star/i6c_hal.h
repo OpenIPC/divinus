@@ -11,10 +11,10 @@
 #include "i6c_venc.h"
 #include "i6c_vif.h"
 
+#include "../globals.h"
+
 #include <sys/select.h>
 #include <unistd.h>
-
-extern char audioOn, keepRunning;
 
 extern hal_chnstate i6c_state[I6C_VENC_CHN_NUM];
 extern int (*i6c_aud_cb)(hal_audframe*);
@@ -34,7 +34,7 @@ int i6c_channel_unbind(char index);
 
 int i6c_config_load(char *path);
 
-int i6c_pipeline_create(char sensor, short width, short height, char mirror, char flip, char framerate);
+int i6c_pipeline_create(char index, short width, short height, char mirror, char flip, char framerate);
 void i6c_pipeline_destroy(void);
 
 int i6c_region_create(char handle, hal_rect rect, short opacity);

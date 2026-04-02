@@ -12,12 +12,12 @@
 #include "v2_vi.h"
 #include "v2_vpss.h"
 
+#include "../globals.h"
+
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
 #include <unistd.h>
-
-extern char audioOn, keepRunning;
 
 extern hal_chnstate v2_state[V2_VENC_CHN_NUM];
 extern int (*v2_aud_cb)(hal_audframe*);

@@ -9,12 +9,10 @@
 #include "t31_venc.h"
 
 #include "../config.h"
-#include "../support.h"
+#include "../globals.h"
 
 #include <sys/select.h>
 #include <unistd.h>
-
-extern char audioOn, keepRunning;
 
 extern hal_chnstate t31_state[T31_VENC_CHN_NUM];
 extern int (*t31_aud_cb)(hal_audframe*);

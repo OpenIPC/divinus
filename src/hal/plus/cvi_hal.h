@@ -12,10 +12,10 @@
 #include "cvi_vi.h"
 #include "cvi_vpss.h"
 
+#include "../globals.h"
+
 #include <sys/select.h>
 #include <unistd.h>
-
-extern char audioOn, keepRunning;
 
 extern hal_chnstate cvi_state[CVI_VENC_CHN_NUM];
 extern int (*cvi_aud_cb)(hal_audframe*);

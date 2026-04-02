@@ -881,6 +881,7 @@ int v3_system_init(char *snrConfig)
 
     if (v3_parse_sensor_config(snrConfig, &v3_config) != CONFIG_OK)
         HAL_ERROR("v3_sys", "Can't load sensor config\n");
+    strncpy(sensor, v3_config.sensor_type, sizeof(sensor) - 1);
 
     if (ret = v3_sensor_init(v3_config.dll_file, v3_config.sensor_type))
         return ret;

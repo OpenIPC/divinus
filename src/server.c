@@ -967,6 +967,14 @@ void respond_request(http_request_t *req) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
                         app_config.mjpeg_fps = result;
+                } else if (EQUALS(key, "bitrate")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.mjpeg_bitrate = result;
+                } else if (EQUALS(key, "qfactor")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.mjpeg_qfactor = result;
                 } else if (EQUALS(key, "mode")) {
                     if (EQUALS_CASE(value, "CBR"))
                         app_config.mjpeg_mode = HAL_VIDMODE_CBR;
@@ -992,10 +1000,11 @@ void respond_request(http_request_t *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"enable\":%s,\"width\":%d,\"height\":%d,\"fps\":%d,\"mode\":\"%s\",\"bitrate\":%d}",
+            "{\"enable\":%s,\"width\":%d,\"height\":%d,\"fps\":%d,\"mode\":\"%s\","
+            "\"bitrate\":%d,\"qfactor\":%d}",
             app_config.mjpeg_enable ? "true" : "false",
             app_config.mjpeg_width, app_config.mjpeg_height, app_config.mjpeg_fps, mode,
-            app_config.mjpeg_bitrate);
+            app_config.mjpeg_bitrate, app_config.mjpeg_qfactor);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
@@ -1082,11 +1091,10 @@ void respond_request(http_request_t *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"enable\":%s,\"width\":%d,\"height\":%d,\"fps\":%d,"
+            "{\"enable\":%s,\"width\":%d,\"height\":%d,\"fps\":%d,\"gop\":%d,"
             "\"h265\":%s,\"mode\":\"%s\",\"profile\":\"%s\",\"bitrate\":%d}",
-            app_config.mp4_enable ? "true" : "false",
-            app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps, h265, mode,
-            profile, app_config.mp4_bitrate);
+            app_config.mp4_enable ? "true" : "false", app_config.mp4_width, app_config.mp4_height,
+            app_config.mp4_fps, app_config.mp4_gop, h265, mode, profile, app_config.mp4_bitrate);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
