@@ -901,6 +901,42 @@ void respond_request(http_request_t *req) {
         return;
     }
 
+    if (EQUALS(req->uri, "/api/isp")) {
+        if (!EMPTY(req->query)) {
+            char *remain;
+            while (req->query) {
+                char *value = split(&req->query, "&");
+                if (!value || !*value) continue;
+                unescape_uri(value);
+                char *key = split(&value, "=");
+                if (!key || !*key || !value || !*value) continue;
+                if (EQUALS(key, "mirror")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.mirror = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.mirror = 0;
+                } else if (EQUALS(key, "flip")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.flip = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.flip = 0;
+                } else if (EQUALS(key, "antiflicker")) {
+                    app_config.antiflicker = strtol(value, &remain, 10);
+                }
+            }
+        }
+        respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json;charset=UTF-8\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "{\"mirror\":%s, \"flip\":%s, \"antiflicker\":%d}",
+            app_config.mirror ? "true" : "false", app_config.flip ? "true" : "false",
+            app_config.antiflicker);
+        send_and_close(req->clntFd, response, respLen);
+        return;
+    }
+
     if (EQUALS(req->uri, "/api/jpeg")) {
         if (!EMPTY(req->query)) {
             char *remain;

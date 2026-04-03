@@ -413,7 +413,37 @@
 		<div class="c cont">
 			<h2 class="unl">Media</h2>
 			<div class="row">
-				<div class="12 col box">
+    			<div class="6 col box">
+    				<fieldset>
+    					<legend>ISP adjustments</legend>
+    					<table class="w-100">
+    						<tr>
+    							<td><label for="isp_mirror">Mirror</label></td>
+    							<td><select id="isp_mirror">
+    								<option value="false">OFF</option>
+    								<option value="true">ON</option>
+    							</select></td>
+    						</tr>
+    						<tr>
+    							<td><label for="isp_flip">Flip</label></td>
+    							<td><select id="isp_flip">
+    								<option value="false">OFF</option>
+    								<option value="true">ON</option>
+    							</select></td>
+    						</tr>
+    						<tr>
+    							<td><label for="isp_antiflicker">Anti-flicker</label></td>
+    							<td><select id="isp_antiflicker">
+    								<option value="0">Disabled</option>
+    								<option value="50">50 Hz</option>
+    								<option value="60">60 Hz</option>
+    							</select></td>
+    						</tr>
+    					</table>
+    					<a href="javascript:apiApply('isp')" class="btn right">Apply</a>
+    				</fieldset>
+    			</div>
+				<div class="6 col box">
 					<fieldset>
 						<legend>Recordings</legend>
 						<table class="w-100">
