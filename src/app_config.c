@@ -446,12 +446,10 @@ enum ConfigError parse_app_config(void) {
         int count, val;
         parse_int(&ini, "stream", "udp_srcport", 0, USHRT_MAX, &val);
         if (err != CONFIG_OK) app_config.stream_udp_srcport = (unsigned short)val;
-        err = parse_list(&ini, "stream", "dest",
+        parse_list(&ini, "stream", "dest",
             sizeof(app_config.stream_dests) / sizeof(*app_config.stream_dests),
             &count, app_config.stream_dests);
         *app_config.stream_dests[count] = '\0';
-        if (err != CONFIG_OK)
-            goto RET_ERR;
     }
 
     parse_bool(&ini, "audio", "enable", &app_config.audio_enable);

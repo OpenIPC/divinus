@@ -40,7 +40,7 @@ typedef struct {
     int (*fnCreateGroup)(int group, v2_vpss_grp *config);
     int (*fnDestroyGroup)(int group);
     int (*fnResetGroup)(int group);
-    int (*fnSetGroupConfig)(int channel, v2_vpss_grp *config);
+    int (*fnSetGroupConfig)(int group, v2_vpss_grp *config);
     int (*fnStartGroup)(int group);
     int (*fnStopGroup)(int group);
 
@@ -93,7 +93,7 @@ static int v2_vpss_load(v2_vpss_impl *vpss_lib) {
     if (!(vpss_lib->fnSetChannelMode = (int(*)(int group, int channel, v2_vpss_mode *config))
         hal_symbol_load("v2_vpss", vpss_lib->handle, "HI_MPI_VPSS_SetChnMode")))
         return EXIT_FAILURE;
-    
+
     return EXIT_SUCCESS;
 }
 
