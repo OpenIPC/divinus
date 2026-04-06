@@ -67,9 +67,9 @@ int utf8_to_utf32(const unsigned char *utf8,
 
 void text_copy_rendered(SFT_Image *dest, const SFT_Image *source, int x0, int y0, int color)
 {
-    unsigned short maskr = (color & 0x7C00) >> 10;
-    unsigned short maskg = (color & 0x3E0) >> 5;
-    unsigned short maskb = color & 0x1F;
+    unsigned int maskr = (color & 0x7C00) >> 10;
+    unsigned int maskg = (color & 0x3E0) >> 5;
+    unsigned int maskb = color & 0x1F;
 
     unsigned short *d = dest->pixels;
     unsigned char *s = source->pixels;
@@ -77,12 +77,17 @@ void text_copy_rendered(SFT_Image *dest, const SFT_Image *source, int x0, int y0
 
     for (int y = 0; y < source->height; y++) {
         for (int x = 0; x < source->width; x++) {
-            if (s[x] == 0) continue;
-            double t = s[x] * inv255;
-            unsigned short r = (1.0 - t) * ((d[x] & 0x7C00) >> 10) + t * maskr;
-            unsigned short g = (1.0 - t) * ((d[x] & 0x3E0) >> 5) + t * maskg;
-            unsigned short b = (1.0 - t) * (d[x] & 0x1F) + t * maskb;
-            d[x] = ((t > 0.0) << 15) | (r << 10) | (g << 5) | b;
+            unsigned int a = s[x];
+            if (a == 0) continue;
+            unsigned int inv_a = 255 - a;
+            unsigned short dst = d[x];
+            unsigned int r = maskr * a + ((dst & 0x7C00) >> 10) * inv_a;
+            unsigned int g = maskg * a + ((dst & 0x3E0) >> 5) * inv_a;
+            unsigned int b = maskb * a + (dst & 0x1F) * inv_a;
+            r = (r + 1 + (r >> 8)) >> 8;
+            g = (g + 1 + (g >> 8)) >> 8;
+            b = (b + 1 + (b >> 8)) >> 8;
+            d[x] = (1 << 15) | (r << 10) | (g << 5) | b;
         }
         d += dest->width;
         s += source->width;
