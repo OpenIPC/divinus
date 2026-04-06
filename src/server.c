@@ -1,7 +1,10 @@
 #include "server.h"
+#include <poll.h>
+#include <fcntl.h>
 
-#define MAX_CLIENTS 50
-#define REQSIZE (512 * 1024)
+#define HTTP_MAX_CLIENTS 50
+#define HTTP_MIN_BUF_SIZE 4096
+#define HTTP_MAX_BUF_SIZE (4 * 1024 * 1024)
 
 IMPORT_STR(.rodata, "../res/index.html", indexhtml);
 extern const char indexhtml[];
@@ -21,6 +24,8 @@ typedef struct {
     int clntFd;
     char *input, *method, *payload, *prot, *query, *uri;
     int paysize, total;
+    size_t buf_size;
+    int header_len;
 } http_request_t;
 
 struct {
@@ -28,7 +33,7 @@ struct {
     enum StreamType type;
     struct Mp4State mp4;
     unsigned int nalCnt;
-} client_fds[MAX_CLIENTS];
+} client_fds[HTTP_MAX_CLIENTS];
 
 typedef struct {
     char *name, *value;
@@ -147,7 +152,7 @@ void send_h26x_to_client(char index, hal_vidstream *stream) {
         unsigned char *pack_data = pack->data + pack->offset;
 
         pthread_mutex_lock(&client_fds_mutex);
-        for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
+        for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i) {
             if (client_fds[i].sockFd < 0) continue;
             if (client_fds[i].type != STREAM_H26X) continue;
 
@@ -212,7 +217,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
         static enum BufError err;
         static char len_buf[50];
         pthread_mutex_lock(&client_fds_mutex);
-        for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
+        for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i) {
             if (client_fds[i].sockFd < 0) continue;
             if (client_fds[i].type != STREAM_MP4) continue;
 
@@ -269,7 +274,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
 
 void send_mp3_to_client(char *buf, ssize_t size) {
     pthread_mutex_lock(&client_fds_mutex);
-    for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
+    for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i) {
         if (client_fds[i].sockFd < 0) continue;
         if (client_fds[i].type != STREAM_MP3) continue;
 
@@ -287,7 +292,7 @@ void send_mp3_to_client(char *buf, ssize_t size) {
 
 void send_pcm_to_client(hal_audframe *frame) {
     pthread_mutex_lock(&client_fds_mutex);
-    for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
+    for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i) {
         if (client_fds[i].sockFd < 0) continue;
         if (client_fds[i].type != STREAM_PCM) continue;
 
@@ -313,7 +318,7 @@ void send_mjpeg_to_client(char index, char *buf, ssize_t size) {
     buf[size++] = '\n';
 
     pthread_mutex_lock(&client_fds_mutex);
-    for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
+    for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i) {
         if (client_fds[i].sockFd < 0) continue;
         if (client_fds[i].type != STREAM_MJPEG) continue;
 
@@ -337,7 +342,7 @@ void send_jpeg_to_client(char index, char *buf, ssize_t size) {
     buf[size++] = '\n';
 
     pthread_mutex_lock(&client_fds_mutex);
-    for (unsigned int i = 0; i < MAX_CLIENTS; ++i) {
+    for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i) {
         if (client_fds[i].sockFd < 0) continue;
         if (client_fds[i].type != STREAM_JPEG) continue;
 
@@ -480,25 +485,23 @@ void parse_request(http_request_t *req) {
             if (ip_in_cidr(client_ip, app_config.web_whitelist[i])) goto grant_access;
         close_socket_fd(req->clntFd);
         req->clntFd = -1;
-        req->total = 0;
         return;
     }
 
 grant_access:
-    req->total = 0;
-    int received = recv(req->clntFd, req->input, REQSIZE, 0);
-    if (received < 0)
-        HAL_WARNING("server", "Reading from client failed!\n");
-    else if (!received)
-        HAL_WARNING("server", "Client disconnected unexpectedly!\n");
-    req->total += received;
-
     if (req->total <= 0) return;
 
+    req->input[req->total] = '\0';
     char *state = NULL;
     req->method = strtok_r(req->input, " \t\r\n", &state);
     req->uri = strtok_r(NULL, " \t", &state);
     req->prot = strtok_r(NULL, " \t\r\n", &state);
+
+    if (!req->method || !req->uri || !req->prot) {
+        close_socket_fd(req->clntFd);
+        req->clntFd = -1;
+        return;
+    }
 
     HAL_INFO("server", "\x1b[32mNew request: (%s) %s\n"
         "         Received from: %s\x1b[0m\n",
@@ -510,39 +513,25 @@ grant_access:
         req->query = req->uri - 1;
 
     http_header_t *h = http_headers;
-    char *l;
     while (h < http_headers + 16) {
         char *k, *v, *e;
         if (!(k = strtok_r(NULL, "\r\n: \t", &state)))
             break;
         v = strtok_r(NULL, "\r\n", &state);
+        if (!v) break;
         while (*v && *v == ' ' && v++);
         h->name = k;
         h++->value = v;
 #ifdef DEBUG_HTTP
         fprintf(stderr, "         (H) %s: %s\n", k, v);
 #endif
+        if (state >= req->input + req->header_len) break;
         e = v + 1 + strlen(v);
         if (e[1] == '\r' && e[2] == '\n')
             break;
     }
 
-    l = request_header("Content-Length");
-    req->paysize = l ? atol(l) : 0;
-
-    while (l && req->total < req->paysize) {
-        received = recv(req->clntFd, req->input + req->total, REQSIZE - req->total, 0);
-        if (received < 0) {
-            HAL_WARNING("server", "Reading from client failed!\n");
-            break;
-        } else if (!received) {
-            HAL_WARNING("server", "Client disconnected unexpectedly!\n");
-            break;
-        }
-        req->total += received;
-    }
-
-    req->payload = strtok_r(NULL, "\r\n", &state);
+    req->payload = req->input + req->header_len;
 }
 
 void respond_request(http_request_t *req) {
@@ -680,7 +669,7 @@ void respond_request(http_request_t *req) {
             "Connection: keep-alive\r\n\r\n");
         send_to_fd(req->clntFd, response, respLen);
         pthread_mutex_lock(&client_fds_mutex);
-        for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
+        for (uint32_t i = 0; i < HTTP_MAX_CLIENTS; ++i)
             if (client_fds[i].sockFd < 0) {
                 client_fds[i].sockFd = req->clntFd;
                 client_fds[i].type = STREAM_MP3;
@@ -698,7 +687,7 @@ void respond_request(http_request_t *req) {
             "Connection: keep-alive\r\n\r\n");
         send_to_fd(req->clntFd, response, respLen);
         pthread_mutex_lock(&client_fds_mutex);
-        for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
+        for (uint32_t i = 0; i < HTTP_MAX_CLIENTS; ++i)
             if (client_fds[i].sockFd < 0) {
                 client_fds[i].sockFd = req->clntFd;
                 client_fds[i].type = STREAM_PCM;
@@ -718,7 +707,7 @@ void respond_request(http_request_t *req) {
             "Connection: keep-alive\r\n\r\n");
         send_to_fd(req->clntFd, response, respLen);
         pthread_mutex_lock(&client_fds_mutex);
-        for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
+        for (uint32_t i = 0; i < HTTP_MAX_CLIENTS; ++i)
             if (client_fds[i].sockFd < 0) {
                 client_fds[i].sockFd = req->clntFd;
                 client_fds[i].type = STREAM_H26X;
@@ -738,7 +727,7 @@ void respond_request(http_request_t *req) {
             "Connection: keep-alive\r\n\r\n");
         send_to_fd(req->clntFd, response, respLen);
         pthread_mutex_lock(&client_fds_mutex);
-        for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
+        for (uint32_t i = 0; i < HTTP_MAX_CLIENTS; ++i)
             if (client_fds[i].sockFd < 0) {
                 client_fds[i].sockFd = req->clntFd;
                 client_fds[i].type = STREAM_MP4;
@@ -758,7 +747,7 @@ void respond_request(http_request_t *req) {
             "Content-Type: multipart/x-mixed-replace; boundary=boundarydonotcross\r\n\r\n");
         send_to_fd(req->clntFd, response, respLen);
         pthread_mutex_lock(&client_fds_mutex);
-        for (uint32_t i = 0; i < MAX_CLIENTS; ++i)
+        for (uint32_t i = 0; i < HTTP_MAX_CLIENTS; ++i)
             if (client_fds[i].sockFd < 0) {
                 client_fds[i].sockFd = req->clntFd;
                 client_fds[i].type = STREAM_MJPEG;
@@ -1464,13 +1453,15 @@ void respond_request(http_request_t *req) {
 }
 
 void *server_thread(void *vargp) {
-    http_request_t req = {0};
     int ret, server_fd = *((int *)vargp);
     int enable = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
         HAL_WARNING("server", "setsockopt(SO_REUSEADDR) failed");
         fflush(stdout);
     }
+
+    fcntl(server_fd, F_SETFL, fcntl(server_fd, F_GETFL, 0) | O_NONBLOCK);
+
     struct sockaddr_in client, server = {
         .sin_family = AF_INET,
         .sin_port = htons(app_config.web_port),
@@ -1484,19 +1475,133 @@ void *server_thread(void *vargp) {
     }
     listen(server_fd, 128);
 
-    req.input = malloc(REQSIZE);
+    struct pollfd fds[HTTP_MAX_CLIENTS + 1];
+    http_request_t reqs[HTTP_MAX_CLIENTS];
 
-    while (keepRunning) {
-        if ((req.clntFd = accept(server_fd, NULL, NULL)) == -1)
-            break;
-
-        parse_request(&req);
-
-        respond_request(&req);
+    for (int i = 0; i < HTTP_MAX_CLIENTS; i++) {
+        fds[i + 1].fd = -1;
+        reqs[i].clntFd = -1;
+        reqs[i].input = NULL;
     }
 
-    if (req.input)
-        free(req.input);
+    fds[0].fd = server_fd;
+    fds[0].events = POLLIN;
+
+    while (keepRunning) {
+        int poll_count = poll(fds, HTTP_MAX_CLIENTS + 1, 1000);
+        if (poll_count < 0) {
+            if (errno == EINTR) continue;
+            break;
+        }
+
+        if (fds[0].revents & POLLIN) {
+            struct sockaddr_in client_sock;
+            socklen_t client_sock_len = sizeof(client_sock);
+            int clntFd = accept(server_fd, (struct sockaddr *)&client_sock, &client_sock_len);
+            if (clntFd >= 0) {
+                fcntl(clntFd, F_SETFL, fcntl(clntFd, F_GETFL, 0) | O_NONBLOCK);
+                int i = 0;
+                for (i = 0; i < HTTP_MAX_CLIENTS; i++) {
+                    if (fds[i+1].fd == -1) {
+                        fds[i+1].fd = clntFd;
+                        fds[i+1].events = POLLIN;
+                        reqs[i].clntFd = clntFd;
+                        reqs[i].total = 0;
+                        reqs[i].buf_size = HTTP_MIN_BUF_SIZE;
+                        reqs[i].input = malloc(reqs[i].buf_size + 1);
+                        reqs[i].header_len = 0;
+                        reqs[i].paysize = 0;
+                        break;
+                    }
+                }
+                if (i == HTTP_MAX_CLIENTS) {
+                    close_socket_fd(clntFd);
+                }
+            }
+        }
+
+        for (int i = 0; i < HTTP_MAX_CLIENTS; i++) {
+            if (fds[i + 1].fd != -1) {
+                if (fds[i + 1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+                    close_socket_fd(fds[i + 1].fd);
+                    fds[i + 1].fd = -1;
+                    free(reqs[i].input);
+                    reqs[i].input = NULL;
+                    continue;
+                }
+                if (fds[i + 1].revents & POLLIN) {
+                    http_request_t *req = &reqs[i];
+
+                    if (req->total == req->buf_size) {
+                        req->buf_size *= 2;
+                        if (req->buf_size > HTTP_MAX_BUF_SIZE) {
+                            close_socket_fd(req->clntFd);
+                            fds[i + 1].fd = -1;
+                            free(req->input);
+                            req->input = NULL;
+                            continue;
+                        }
+                        req->input = realloc(req->input, req->buf_size + 1);
+                    }
+
+                    int received = recv(req->clntFd, req->input + req->total, req->buf_size - req->total, 0);
+                    if (received < 0) {
+                        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+                            continue;
+                        close_socket_fd(req->clntFd);
+                        fds[i + 1].fd = -1;
+                        free(req->input);
+                        req->input = NULL;
+                        continue;
+                    } else if (received == 0) {
+                        close_socket_fd(req->clntFd);
+                        fds[i + 1].fd = -1;
+                        free(req->input);
+                        req->input = NULL;
+                        continue;
+                    }
+                    req->total += received;
+
+                    if (req->header_len == 0) {
+                        char *hdr_end = memstr(req->input, "\r\n\r\n", req->total, 4);
+                        if (hdr_end) {
+                            req->header_len = (hdr_end + 4) - req->input;
+
+                            char *cl = req->input;
+                            req->paysize = 0;
+                            while (cl < hdr_end) {
+                                if (!strncasecmp(cl, "Content-Length:", 15)) {
+                                    req->paysize = atoi(cl + 15);
+                                    break;
+                                }
+                                cl = strchr(cl, '\n');
+                                if (!cl) break;
+                                cl++;
+                            }
+                        }
+                    }
+
+                    if (req->header_len > 0 && req->total >= req->header_len + req->paysize) {
+                        parse_request(req);
+                        if (req->clntFd != -1) {
+                            fcntl(req->clntFd, F_SETFL, fcntl(req->clntFd, F_GETFL, 0) & ~O_NONBLOCK);
+                            respond_request(req);
+                        }
+                        fds[i + 1].fd = -1;
+                        free(req->input);
+                        req->input = NULL;
+                    }
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < HTTP_MAX_CLIENTS; i++) {
+        if (fds[i + 1].fd != -1) {
+            close_socket_fd(fds[i + 1].fd);
+            free(reqs[i].input);
+        }
+    }
 
     close_socket_fd(server_fd);
     HAL_INFO("server", "Thread has exited\n");
@@ -1504,7 +1609,7 @@ void *server_thread(void *vargp) {
 }
 
 int start_server() {
-    for (unsigned int i = 0; i < MAX_CLIENTS; i++) {
+    for (int i = 0; i < HTTP_MAX_CLIENTS; i++) {
         client_fds[i].sockFd = -1;
         client_fds[i].type = -1;
     }
@@ -1517,7 +1622,7 @@ int start_server() {
         pthread_attr_init(&thread_attr);
         size_t stacksize;
         pthread_attr_getstacksize(&thread_attr, &stacksize);
-        size_t new_stacksize = app_config.web_server_thread_stack_size + REQSIZE;
+        size_t new_stacksize = app_config.web_server_thread_stack_size;
         if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
             HAL_WARNING("server", "Can't set stack size %zu\n", new_stacksize);
         if (pthread_create(

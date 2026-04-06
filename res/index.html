@@ -342,8 +342,7 @@
 			var imgElem = document.getElementById(base + '_img');
 			var titleElem = document.getElementById(base + '_title');
 			if (textElem && imgElem && titleElem) {
-				var title = imgElem.value ? imgElem.value : textElem.value;
-				titleElem.innerHTML = title ? " - " + title : "";
+				titleElem.innerHTML = imgElem.value ? imgElem.value : textElem.value;
 			}
 		}
 
