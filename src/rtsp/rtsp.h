@@ -90,6 +90,9 @@ typedef struct {
     int rtcp_tick_org;
     unsigned short rtp_seq;
     unsigned int rtp_timestamp;
+    char is_tcp;
+    unsigned char channel_rtp;
+    unsigned char channel_rtcp;
 } transport_t;
 
 struct connection_item_t {
@@ -109,6 +112,7 @@ struct connection_item_t {
     unsigned long long session_id;
     unsigned long long given_session_id;
     unsigned int ssrc;
+    pthread_mutex_t write_mutex;
     struct list_t list_entry;
 };
 
@@ -174,12 +178,12 @@ static inline void rtsp_unlock(rtsp_handle h)
 static inline int __read_line(struct connection_item_t *p, char *buf)
 {
     /* we set the socket to non-blocking */
-    if (fgets(buf, __RTSP_TCP_BUF_SIZE, p->fp_tcp_read) == NULL) 
+    if (fgets(buf, __RTSP_TCP_BUF_SIZE, p->fp_tcp_read) == NULL)
 	{
         /* unexpected end. we do not expect it */
         if (p->parser_state == __PARSER_S_INIT) {
             /* when this selected sd is EOF at first glance, it's dead */
-            DBG("disconnected\n"); 
+            DBG("disconnected\n");
         } else {
             /* corrupted message. nothing to be done */
             ERR("message end before delimiter\n");
@@ -205,8 +209,8 @@ static inline unsigned long long __get_random_llu(unsigned *ctx)
 {
     return 0
         | __get_random_byte(ctx)
-        | (__get_random_byte(ctx)) << 8 
-        | (__get_random_byte(ctx)) << 16 
+        | (__get_random_byte(ctx)) << 8
+        | (__get_random_byte(ctx)) << 16
         | (__get_random_byte(ctx)) << 24
         | (__get_random_byte(ctx)) << 32
         | (__get_random_byte(ctx)) << 40

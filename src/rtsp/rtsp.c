@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -32,6 +33,8 @@ extern void request_idr();
 #define __STR_TEARDOWN  "TEARDOWN"
 #define __STR_TRANSPORT  "TRANSPORT"
 #define __STR_CLIENTPORT  "client_port"
+#define __STR_INTERLEAVED "interleaved"
+#define __STR_RTP_AVP_TCP "RTP/AVP/TCP"
 #define __STR_SESSION  "SESSION"
 #define __STR_PAUSE "PAUSE"
 #define __STR_RECORDING "RECORDING"
@@ -100,6 +103,7 @@ static inline bufpool_handle __connectionpool_create(int num)
         for(i = 0; i < num; i++) {
             __connection_pool[i].pool = h;
             __connection_pool[i].con_state = __CON_S_DISCONNECTED;
+            pthread_mutex_init(&__connection_pool[i].write_mutex, NULL);
         }
     }
 
@@ -129,9 +133,24 @@ static inline bufpool_handle __transpool_create(int num)
 /******************************************************************************
  *              RESPONSE IMPLEMENTATIONS
  ******************************************************************************/
+static int __rtsp_write(struct connection_item_t *p, const char *fmt, ...)
+{
+    va_list args;
+    int ret;
+
+    pthread_mutex_lock(&p->write_mutex);
+    va_start(args, fmt);
+    ret = vfprintf(p->fp_tcp_write, fmt, args);
+    va_end(args);
+    fflush(p->fp_tcp_write);
+    pthread_mutex_unlock(&p->write_mutex);
+
+    return ret;
+}
+
 static void __method_auth(struct connection_item_t *p, rtsp_handle h)
 {
-    fprintf(p->fp_tcp_write, "RTSP/1.0 401 Unauthorized\r\n"
+    __rtsp_write(p, "RTSP/1.0 401 Unauthorized\r\n"
             "CSeq: %d\r\n"
             "WWW-Authenticate: Basic realm=\"Access the camera streams\"\r\n"
             "\r\n", p->cseq);
@@ -139,7 +158,7 @@ static void __method_auth(struct connection_item_t *p, rtsp_handle h)
 
 static void __method_options(struct connection_item_t *p, rtsp_handle h)
 {
-    fprintf(p->fp_tcp_write, "RTSP/1.0 200 OK\r\n"
+    __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
             "CSeq: %d\r\n"
             "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n"
             "\r\n", p->cseq);
@@ -173,7 +192,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
             "m=audio 0 RTP/AVP %d\r\n"
             "a=control:track=1\r\n"
             "a=rtpmap:%d %s/90000\r\n",
-            h->audioPt, h->audioPt, audioRtpfmt, h->audioPt);
+            h->audioPt, h->audioPt, audioRtpfmt);
     }
 
     if (h->isH265 &&
@@ -214,7 +233,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
         snprintf(sdp, __RTSP_TCP_BUF_SIZE - 1,
                 "%sm=video 0 RTP/AVP 96\r\n"
                 "a=control:track=0\r\n"
-                "a=rtpmap:96 H265/90000\r\n"
+                "a=rtpmap:96 H264/90000\r\n"
                 "a=fmtp:96 profile-level-id=%s;"
                 " packetization-mode=1;"
                 " sprop-parameter-sets=%s,%s;%s",
@@ -234,7 +253,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
                 audioRtp);
     }
 
-    fprintf(p->fp_tcp_write, "RTSP/1.0 200 OK\r\n"
+    __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
             "CSeq: %d\r\n"
             "Content-Type: application/sdp\r\n"
             "Content-Length: %d\r\n"
@@ -251,44 +270,56 @@ static void __method_setup(struct connection_item_t *p, rtsp_handle h)
 	}
 
     DBG("created session id %llx\n", p->session_id);
-    p->trans[p->track_id].server_port_rtp = SERVER_RTP_PORT + p->track_id;
-    p->trans[p->track_id].server_port_rtcp = SERVER_RTCP_PORT + p->track_id;
 
-    fprintf(p->fp_tcp_write, "RTSP/1.0 200 OK\r\n"
-        "CSeq: %d\r\n"
-        "Transport: RTP/AVP/UDP;unicast;client_port=%u-%u;server_port=%u-%u\r\n"
-        "Session: %llx\r\n"
-        "\r\n", p->cseq,
-        p->trans[p->track_id].client_port_rtp,
-        p->trans[p->track_id].client_port_rtcp,
-        p->trans[p->track_id].server_port_rtp,
-        p->trans[p->track_id].server_port_rtcp,
-        p->session_id);
+    if (p->trans[p->track_id].is_tcp) {
+        __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
+            "CSeq: %d\r\n"
+            "Transport: RTP/AVP/TCP;unicast;interleaved=%u-%u\r\n"
+            "Session: %llx\r\n"
+            "\r\n", p->cseq,
+            p->trans[p->track_id].channel_rtp,
+            p->trans[p->track_id].channel_rtcp,
+            p->session_id);
+    } else {
+        p->trans[p->track_id].server_port_rtp = SERVER_RTP_PORT + p->track_id;
+        p->trans[p->track_id].server_port_rtcp = SERVER_RTCP_PORT + p->track_id;
+
+        __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
+            "CSeq: %d\r\n"
+            "Transport: RTP/AVP/UDP;unicast;client_port=%u-%u;server_port=%u-%u\r\n"
+            "Session: %llx\r\n"
+            "\r\n", p->cseq,
+            p->trans[p->track_id].client_port_rtp,
+            p->trans[p->track_id].client_port_rtcp,
+            p->trans[p->track_id].server_port_rtp,
+            p->trans[p->track_id].server_port_rtcp,
+            p->session_id);
+    }
 
     p->con_state = __CON_S_READY;
 }
 
 static void __method_pause(struct connection_item_t *p, rtsp_handle h)
 {
-    fprintf(p->fp_tcp_write,
+    __rtsp_write(p,
         "RTSP/1.0 "__RESPONCE_STR_METHODNOTALLOWED "\r\n");
 }
 
 static void __method_record(struct connection_item_t *p, rtsp_handle h)
 {
-    fprintf(p->fp_tcp_write,
+    __rtsp_write(p,
         "RTSP/1.0 " __RESPONCE_STR_METHODNOTALLOWED "\r\n");
 }
 
 static void __method_error(struct connection_item_t *p, rtsp_handle h)
 {
-    fprintf(p->fp_tcp_write,
+    __rtsp_write(p,
         "RTSP/1.0 " __RESPONCE_STR_SERVERERROR "\r\n");
 }
 
 static void __method_play(struct connection_item_t *p, rtsp_handle h)
 {
-    fprintf(p->fp_tcp_write,
+    __rtsp_write(p,
         "RTSP/1.0 200 OK\r\n"
         "CSeq: %d\r\n"
         "Range: npt=now-\r\n"
@@ -317,7 +348,7 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
 
 static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
 {
-    fprintf(p->fp_tcp_write,
+    __rtsp_write(p,
         "RTSP/1.0 200 OK\r\n"
         "CSeq: %d\r\n"
         "\r\n", p->cseq);
@@ -350,6 +381,26 @@ static int __message_proc_sock(struct list_t *e, void *p)
     }
 
     if (FD_ISSET(con->client_fd, &(socks->rfds))) {
+        int first_char = fgetc(con->fp_tcp_read);
+        if (first_char == '$') {
+            unsigned char head[3];
+            if (fread(head, 1, 3, con->fp_tcp_read) == 3) {
+                int len = (head[1] << 8) | head[2];
+                while (len > 0) {
+                    int r = fread(buf, 1, min(len, sizeof(buf)), con->fp_tcp_read);
+                    if (r <= 0) break;
+                    len -= r;
+                }
+                DBG("discarded interleaved packet (%d bytes)\n", (head[1] << 8) | head[2]);
+            }
+            return SUCCESS;
+        } else if (first_char != EOF) {
+            ungetc(first_char, con->fp_tcp_read);
+        } else {
+            con->con_state = __CON_S_DISCONNECTED;
+            return SUCCESS;
+        }
+
         con->parser_state = __PARSER_S_INIT;
         con->method = __METHOD_NONE;
 
@@ -390,6 +441,9 @@ static int __message_proc_sock(struct list_t *e, void *p)
                 con->given_session_id = session_id;
                 con->parser_state = __PARSER_S_SESSION;
             } else if (SCMP(__STR_TRANSPORT, buf)) {
+                if (strstr(buf, __STR_RTP_AVP_TCP)) {
+                    con->trans[con->track_id].is_tcp = 1;
+                }
                 for (tok = strtok_r(buf, "; ", &last); tok != NULL; tok = strtok_r(NULL, "; ", &last)) {
                     if (SCMP(__STR_CLIENTPORT, tok)) {
                         ASSERT(sscanf(tok, __STR_CLIENTPORT "=%u-%u",
@@ -398,7 +452,13 @@ static int __message_proc_sock(struct list_t *e, void *p)
                                 goto error);
 
                         con->parser_state = __PARSER_S_TRANSPORT;
-                        break;
+                    } else if (SCMP(__STR_INTERLEAVED, tok)) {
+                        ASSERT(sscanf(tok, __STR_INTERLEAVED "=%hhu-%hhu",
+                            &con->trans[con->track_id].channel_rtp,
+                            &con->trans[con->track_id].channel_rtcp) > 0,
+                                goto error);
+
+                        con->parser_state = __PARSER_S_TRANSPORT;
                     }
                 }
             }
@@ -433,8 +493,6 @@ error:
                 default: ERR("unexpected method state\n"); return FAILURE;
             }
         }
-
-        fflush(con->fp_tcp_write);
     }
     return SUCCESS;
 }

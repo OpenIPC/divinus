@@ -4,6 +4,7 @@
 #if defined (__cplusplus)
 extern "C" {
 #endif
+
 #include <unistd.h>
 #include <time.h>
 
@@ -23,11 +24,13 @@ typedef struct __rtsp_obj_t *rtsp_handle;
 /******************************************************************************
  *              LIBRARY FUNCTIONS
  ******************************************************************************/
-/* put virtual pointer to 'buf', which consists of 1 or more NALUs (start code required). 
+/* put virtual pointer to 'buf', which consists of 1 or more NALUs (start code required).
    SPS and PPS parameters are automatically collected during execution. */
 
+#include "../hal/types.h"
+
 void rtp_disable_audio(rtsp_handle h);
-int rtp_send_h26x(rtsp_handle h, unsigned char *buf, size_t len, char isH265);
+int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265);
 int rtp_send_mp3(rtsp_handle h, unsigned char *buf, size_t len);
 
 extern void rtsp_finish(rtsp_handle h);
@@ -35,6 +38,8 @@ extern void rtsp_finish(rtsp_handle h);
 extern rtsp_handle rtsp_create(unsigned char max_con, unsigned int port, int priority);
 
 extern void rtsp_configure_auth(rtsp_handle h, const char *user, const char *pass);
+
+extern int rtsp_tick(rtsp_handle h);
 
 #if defined (__cplusplus)
 }

@@ -97,9 +97,7 @@ int save_video_stream(char index, hal_vidstream *stream) {
                 send_h26x_to_client(index, stream);
             }
             if (app_config.rtsp_enable)
-                for (int i = 0; i < stream->count; i++)
-                    rtp_send_h26x(rtspHandle, stream->pack[i].data + stream->pack[i].offset, 
-                        stream->pack[i].length - stream->pack[i].offset, isH265);
+                rtp_send_h26x(rtspHandle, stream, isH265);
 
             if (app_config.stream_enable) {
                 for (int i = 0; i < stream->count; i++) {
