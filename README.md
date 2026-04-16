@@ -15,6 +15,10 @@ Since it is using runtime dynamic linking, its executable remains particularly c
 
 In spite of these design choices, Divinus boasts numerous features that cater to a wide range of uses you will be able to make of it.
 
+<p align="center">
+  <img src="doc/webui.png" alt="WebUI" width="800">
+</p>
+
 
 ### Supported hardware and features
 

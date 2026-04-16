@@ -636,7 +636,13 @@ int i3_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 
         i3_venc_strm strm;
         memset(&strm, 0, sizeof(strm));
-        strm.packet = (i3_venc_pack*)malloc(sizeof(i3_venc_pack) * stat.curPacks);
+        i3_venc_pack packs[8];
+        if (stat.curPacks > 8) {
+            strm.packet = (i3_venc_pack*)malloc(sizeof(i3_venc_pack) * stat.curPacks);
+        } else {
+            strm.packet = packs;
+        }
+
         if (!strm.packet) {
             HAL_DANGER("i3_venc", "Memory allocation on channel %d failed!\n", index);
             goto abort;
@@ -646,7 +652,7 @@ int i3_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
         if (ret = i3_venc.fnGetStream(index, &strm, stat.curPacks)) {
             HAL_DANGER("i3_venc", "Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
-            free(strm.packet);
+            if (stat.curPacks > 8) free(strm.packet);
             strm.packet = NULL;
             goto abort;
         }
@@ -670,6 +676,7 @@ int i3_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 
 abort:
         i3_venc.fnFreeStream(index, &strm);
+        if (stat.curPacks > 8) free(strm.packet);
     }
 
     i3_venc.fnStopReceiving(index);
@@ -824,8 +831,7 @@ void *i3_video_thread(void)
                         HAL_DANGER("i3_venc", "Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
-                    free(stream.packet);
-                    stream.packet = NULL;
+                    if (stat.curPacks > 8) free(stream.packet);
                 }
             }
         }

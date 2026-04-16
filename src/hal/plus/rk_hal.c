@@ -660,7 +660,13 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
         rk_venc_strm strm;
         memset(&strm, 0, sizeof(strm));
-        strm.packet = (rk_venc_pack*)malloc(sizeof(rk_venc_pack) * stat.curPacks);
+        rk_venc_pack packs[8];
+        if (stat.curPacks > 8) {
+            strm.packet = (rk_venc_pack*)malloc(sizeof(rk_venc_pack) * stat.curPacks);
+        } else {
+            strm.packet = packs;
+        }
+
         if (!strm.packet) {
             HAL_DANGER("rk_venc", "Memory allocation on channel %d failed!\n", index);
             goto abort;
@@ -692,7 +698,7 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
         rk_venc.fnFreeStream(index, &strm);
     abort:
-        if (strm.packet) {
+        if (stat.curPacks > 8 && strm.packet) {
             free(strm.packet);
             strm.packet = NULL;
         }
@@ -767,8 +773,13 @@ void *rk_video_thread(void)
                         continue;
                     }*/stat.curPacks = 1;
 
-                    stream.packet = (rk_venc_pack*)malloc(
-                        sizeof(rk_venc_pack) * stat.curPacks);
+                    rk_venc_pack packs[8];
+                    if (stat.curPacks > 8) {
+                        stream.packet = (rk_venc_pack*)malloc(sizeof(rk_venc_pack) * stat.curPacks);
+                    } else {
+                        stream.packet = packs;
+                    }
+
                     if (!stream.packet) {
                         HAL_DANGER("rk_venc", "Memory allocation on channel %d failed!\n", i);
                         break;
@@ -778,7 +789,8 @@ void *rk_video_thread(void)
                     if (ret = rk_venc.fnGetStream(i, &stream, 40)) {
                         HAL_DANGER("rk_venc", "Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
-                        goto free;
+                        if (stat.curPacks > 8) free(stream.packet);
+                        break;
                     }
 
                     if (rk_vid_cb) {
@@ -824,14 +836,10 @@ void *rk_video_thread(void)
                     }
 
                     if (ret = rk_venc.fnFreeStream(i, &stream)) {
-                        HAL_DANGER("rk_venc", "Releasing the stream on "
+                        HAL_WARNING("rk_venc", "Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
-free:
-                    if (stream.packet) {
-                        free(stream.packet);
-                        stream.packet = NULL;
-                    }
+                    if (stat.curPacks > 8) free(stream.packet);
                 }
             }
         }

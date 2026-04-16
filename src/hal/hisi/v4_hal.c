@@ -792,7 +792,13 @@ int v4_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
         v4_venc_strm strm;
         memset(&strm, 0, sizeof(strm));
-        strm.packet = (v4_venc_pack*)malloc(sizeof(v4_venc_pack) * stat.curPacks);
+        v4_venc_pack packs[8];
+        if (stat.curPacks > 8) {
+            strm.packet = (v4_venc_pack*)malloc(sizeof(v4_venc_pack) * stat.curPacks);
+        } else {
+            strm.packet = packs;
+        }
+
         if (!strm.packet) {
             HAL_DANGER("v4_venc", "Memory allocation on channel %d failed!\n", index);
             goto abort;
@@ -802,7 +808,7 @@ int v4_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         if (ret = v4_venc.fnGetStream(index, &strm, stat.curPacks)) {
             HAL_DANGER("v4_venc", "Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
-            free(strm.packet);
+            if (stat.curPacks > 8) free(strm.packet);
             strm.packet = NULL;
             goto abort;
         }
@@ -826,6 +832,7 @@ int v4_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
 abort:
         v4_venc.fnFreeStream(index, &strm);
+        if (stat.curPacks > 8) free(strm.packet);
     }
 
     v4_venc.fnFreeDescriptor(index);
@@ -896,8 +903,13 @@ void *v4_video_thread(void)
                         continue;
                     }
 
-                    stream.packet = (v4_venc_pack*)malloc(
-                        sizeof(v4_venc_pack) * stat.curPacks);
+                    v4_venc_pack packs[8];
+                    if (stat.curPacks > 8) {
+                        stream.packet = (v4_venc_pack*)malloc(sizeof(v4_venc_pack) * stat.curPacks);
+                    } else {
+                        stream.packet = packs;
+                    }
+
                     if (!stream.packet) {
                         HAL_DANGER("v4_venc", "Memory allocation on channel %d failed!\n", i);
                         break;
@@ -907,6 +919,7 @@ void *v4_video_thread(void)
                     if (ret = v4_venc.fnGetStream(i, &stream, 40)) {
                         HAL_DANGER("v4_venc", "Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
+                        if (stat.curPacks > 8) free(stream.packet);
                         break;
                     }
 
@@ -941,8 +954,7 @@ void *v4_video_thread(void)
                         HAL_WARNING("v4_venc", "Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
-                    free(stream.packet);
-                    stream.packet = NULL;
+                    if (stat.curPacks > 8) free(stream.packet);
                 }
             }
         }
