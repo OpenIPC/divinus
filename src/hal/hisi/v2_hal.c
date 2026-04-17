@@ -92,7 +92,7 @@ int v2_audio_init(int samplerate)
     }
     if (ret = v2_aud.fnEnableDevice(_v2_aud_dev))
         return ret;
-    
+
     {
         v2_aud_para para;
         para.userFrmDepth = 30;
@@ -115,7 +115,7 @@ void *v2_audio_thread(void)
     memset(&echoFrame, 0, sizeof(echoFrame));
 
     while (keepRunning && audioOn) {
-        if (ret = v2_aud.fnGetFrame(_v2_aud_dev, _v2_aud_chn, 
+        if (ret = v2_aud.fnGetFrame(_v2_aud_dev, _v2_aud_chn,
             &frame, &echoFrame, 128)) {
             HAL_WARNING("v2_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
@@ -149,7 +149,7 @@ int v2_channel_bind(char index)
         return ret;
 
     {
-        v2_sys_bind source = { .module = V2_SYS_MOD_VPSS, 
+        v2_sys_bind source = { .module = V2_SYS_MOD_VPSS,
             .device = _v2_vpss_grp, .channel = index };
         v2_sys_bind dest = { .module = V2_SYS_MOD_VENC,
             .device = _v2_venc_dev, .channel = index };
@@ -210,7 +210,7 @@ int v2_channel_unbind(char index)
         return ret;
 
     {
-        v2_sys_bind source = { .module = V2_SYS_MOD_VPSS, 
+        v2_sys_bind source = { .module = V2_SYS_MOD_VPSS,
             .device = _v2_vpss_grp, .channel = index };
         v2_sys_bind dest = { .module = V2_SYS_MOD_VENC,
             .device = _v2_venc_dev, .channel = index };
@@ -244,15 +244,15 @@ int v2_pipeline_create(void)
 
     {
         v2_vi_chn channel;
-        channel.capt.width = v2_config.vichn.capt.width ? 
+        channel.capt.width = v2_config.vichn.capt.width ?
             v2_config.vichn.capt.width : v2_config.videv.rect.width;
-        channel.capt.height = v2_config.vichn.capt.height ? 
+        channel.capt.height = v2_config.vichn.capt.height ?
             v2_config.vichn.capt.height : v2_config.videv.rect.height;
         channel.capt.x = 0;
         channel.capt.y = 0;
-        channel.dest.width = v2_config.vichn.dest.width ? 
+        channel.dest.width = v2_config.vichn.dest.width ?
             v2_config.vichn.dest.width : v2_config.videv.rect.width;
-        channel.dest.height = v2_config.vichn.dest.height ? 
+        channel.dest.height = v2_config.vichn.dest.height ?
             v2_config.vichn.dest.height : v2_config.videv.rect.height;
         channel.field = v2_config.vichn.field;
         channel.pixFmt = V2_PIXFMT_YUV420SP;
@@ -269,7 +269,7 @@ int v2_pipeline_create(void)
 
     if (ret = v2_snr_drv.fnRegisterCallback())
         return ret;
-    
+
     if (ret = v2_isp.fnRegisterAE(_v2_vi_dev, &v2_ae_lib))
         return ret;
     if (ret = v2_isp.fnRegisterAWB(_v2_vi_dev, &v2_awb_lib))
@@ -283,13 +283,13 @@ int v2_pipeline_create(void)
         return ret;
     if (ret = v2_isp.fnInit(_v2_vi_dev))
         return ret;
-    
+
     {
         v2_vpss_grp group;
         memset(&group, 0, sizeof(group));
-        group.dest.width = v2_config.vichn.capt.width ? 
+        group.dest.width = v2_config.vichn.capt.width ?
             v2_config.vichn.capt.width : v2_config.videv.rect.width;
-        group.dest.height = v2_config.vichn.capt.height ? 
+        group.dest.height = v2_config.vichn.capt.height ?
             v2_config.vichn.capt.height : v2_config.videv.rect.height;
         group.pixFmt = V2_PIXFMT_YUV420SP;
         group.nredOn = 1;
@@ -301,9 +301,9 @@ int v2_pipeline_create(void)
         return ret;
 
     {
-        v2_sys_bind source = { .module = V2_SYS_MOD_VIU, 
+        v2_sys_bind source = { .module = V2_SYS_MOD_VIU,
             .device = _v2_vi_dev, .channel = _v2_vi_chn };
-        v2_sys_bind dest = { .module = V2_SYS_MOD_VPSS, 
+        v2_sys_bind dest = { .module = V2_SYS_MOD_VPSS,
             .device = _v2_vpss_grp, .channel = 0 };
         if (ret = v2_sys.fnBind(&source, &dest))
             return ret;
@@ -326,7 +326,7 @@ void v2_pipeline_destroy(void)
             v2_vpss.fnDisableChannel(grp, chn);
 
         {
-            v2_sys_bind source = { .module = V2_SYS_MOD_VIU, 
+            v2_sys_bind source = { .module = V2_SYS_MOD_VIU,
                 .device = _v2_vi_dev, .channel = _v2_vi_chn };
             v2_sys_bind dest = { .module = V2_SYS_MOD_VPSS,
                 .device = grp, .channel = 0 };
@@ -336,7 +336,7 @@ void v2_pipeline_destroy(void)
         v2_vpss.fnStopGroup(grp);
         v2_vpss.fnDestroyGroup(grp);
     }
-    
+
     v2_vi.fnDisableChannel(_v2_vi_chn);
 
     v2_vi.fnDisableDevice(_v2_vi_dev);
@@ -365,7 +365,7 @@ int v2_region_create(char handle, hal_rect rect, short opacity)
         if (ret = v2_rgn.fnCreateRegion(handle, &region))
             return ret;
     } else if (regionCurr.type != region.type ||
-        regionCurr.overlay.size.height != region.overlay.size.height || 
+        regionCurr.overlay.size.height != region.overlay.size.height ||
         regionCurr.overlay.size.width != region.overlay.size.width) {
         HAL_INFO("v2_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
@@ -400,7 +400,7 @@ int v2_region_create(char handle, hal_rect rect, short opacity)
 void v2_region_destroy(char handle)
 {
     v2_sys_bind dest = { .module = V2_SYS_MOD_VENC, .device = _v2_venc_dev };
-    
+
     v2_rgn.fnDetachChannel(handle, &dest);
     v2_rgn.fnDestroyRegion(handle);
 }
@@ -457,7 +457,7 @@ int v2_sensor_init(char *name, char *obj)
             break;
     } if (!v2_snr_drv.handle)
         HAL_ERROR("v2_snr", "Failed to load the sensor driver");
-    
+
     if (!(v2_snr_drv.fnRegisterCallback = (int(*)(void))dlsym(v2_snr_drv.handle, "sensor_register_callback")))
         HAL_ERROR("v2_snr", "Failed to connect the callback register function");
     if (!(v2_snr_drv.fnUnRegisterCallback = (int(*)(void))dlsym(v2_snr_drv.handle, "sensor_unregister_callback")))
@@ -501,7 +501,7 @@ int v2_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V2_VENC_RATEMODE_MJPGVBR;
                 channel.rate.mjpgVbr = (v2_venc_rate_mjpgvbr){ .statTime = 1, .srcFps = config->framerate,
-                    .dstFps = config->framerate , .maxBitrate = MAX(config->bitrate, config->maxBitrate), 
+                    .dstFps = config->framerate , .maxBitrate = MAX(config->bitrate, config->maxBitrate),
                     .maxQual = config->maxQual, .minQual = config->maxQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V2_VENC_RATEMODE_MJPGQP;
@@ -523,13 +523,13 @@ int v2_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V2_VENC_RATEMODE_H265VBR;
                 channel.rate.h265Vbr = (v2_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
                     .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V2_VENC_RATEMODE_H265QP;
                 channel.rate.h265Qp = (v2_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual,
                     .predQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V2_VENC_RATEMODE_H265AVBR;
@@ -551,13 +551,13 @@ int v2_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V2_VENC_RATEMODE_H264VBR;
                 channel.rate.h264Vbr = (v2_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
                     .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V2_VENC_RATEMODE_H264QP;
                 channel.rate.h264Qp = (v2_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual,
                     .predQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V2_VENC_RATEMODE_H264AVBR;
@@ -581,7 +581,7 @@ attach:
     if (ret = v2_venc.fnCreateChannel(index, &channel))
         return ret;
 
-    if (config->codec != HAL_VIDCODEC_JPG && 
+    if (config->codec != HAL_VIDCODEC_JPG &&
         (ret = v2_venc.fnStartReceiving(index)))
         return ret;
 
@@ -600,7 +600,7 @@ int v2_video_destroy(char index)
     v2_venc.fnStopReceiving(index);
 
     {
-        v2_sys_bind source = { .module = V2_SYS_MOD_VPSS, 
+        v2_sys_bind source = { .module = V2_SYS_MOD_VPSS,
             .device = _v2_vpss_grp, .channel = index };
         v2_sys_bind dest = { .module = V2_SYS_MOD_VENC,
             .device = _v2_venc_dev, .channel = index };
@@ -610,13 +610,13 @@ int v2_video_destroy(char index)
 
     if (ret = v2_venc.fnDestroyChannel(index))
         return ret;
-    
+
     if (ret = v2_vpss.fnDisableChannel(_v2_vpss_grp, index))
         return ret;
 
     return EXIT_SUCCESS;
 }
-    
+
 int v2_video_destroy_all(void)
 {
     int ret;
@@ -682,11 +682,10 @@ int v2_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         v2_venc_strm strm;
         memset(&strm, 0, sizeof(strm));
         v2_venc_pack packs[8];
-        if (stat.curPacks > 8) {
+        if (stat.curPacks > 8)
             strm.packet = (v2_venc_pack*)malloc(sizeof(v2_venc_pack) * stat.curPacks);
-        } else {
+        else
             strm.packet = packs;
-        }
 
         if (!strm.packet) {
             HAL_DANGER("v2_venc", "Memory allocation on channel %d failed!\n", index);
@@ -780,7 +779,7 @@ void *v2_video_thread(void)
                 if (!v2_state[i].mainLoop) continue;
                 if (FD_ISSET(v2_state[i].fileDesc, &readFds)) {
                     memset(&stream, 0, sizeof(stream));
-                    
+
                     if (ret = v2_venc.fnQuery(i, &stat)) {
                         HAL_DANGER("v2_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
@@ -793,11 +792,10 @@ void *v2_video_thread(void)
                     }
 
                     v2_venc_pack packs[8];
-                    if (stat.curPacks > 8) {
+                    if (stat.curPacks > 8)
                         stream.packet = (v2_venc_pack*)malloc(sizeof(v2_venc_pack) * stat.curPacks);
-                    } else {
+                    else
                         stream.packet = packs;
-                    }
 
                     if (!stream.packet) {
                         HAL_DANGER("v2_venc", "Memory allocation on channel %d failed!\n", i);
@@ -886,13 +884,13 @@ int v2_system_init(char *snrConfig)
         int alignWidth = 16;
         v2_vb_pool pool;
 
-        memset(&pool, 0, sizeof(pool)); 
-        
+        memset(&pool, 0, sizeof(pool));
+
         pool.count = 1;
         pool.comm[0].blockSize = v2_buffer_calculate_venc(
-            v2_config.vichn.capt.width ? 
+            v2_config.vichn.capt.width ?
                 v2_config.vichn.capt.width : v2_config.videv.rect.width,
-            v2_config.vichn.capt.height ? 
+            v2_config.vichn.capt.height ?
                 v2_config.vichn.capt.height : v2_config.videv.rect.height,
             V2_PIXFMT_YUV420SP, alignWidth);
         pool.comm[0].blockCnt = 4;
@@ -904,7 +902,7 @@ int v2_system_init(char *snrConfig)
             return ret;
         if (ret = v2_vb.fnInit())
             return ret;
-        
+
         if (ret = v2_sys.fnSetAlignment(&alignWidth))
             return ret;
     }
@@ -921,7 +919,7 @@ float v2_system_readtemp(void)
 
     if (hal_registry(0x20270110, &val, OP_READ) && prep != val)
         hal_registry(0x20270110, &prep, OP_WRITE);
-    
+
     if (!hal_registry(0x20270114, &val, OP_READ))
         return result;
 

@@ -75,7 +75,7 @@ int t31_audio_init(int samplerate)
     }
     if (ret = t31_aud.fnEnableDevice(_t31_aud_dev))
         return ret;
-    
+
     {
         t31_aud_chn config;
         config.usrFrmDepth = 40;
@@ -90,7 +90,7 @@ int t31_audio_init(int samplerate)
 
     if (ret = t31_aud.fnSetVolume(_t31_aud_dev, _t31_aud_chn, 60))
         return ret;
-    
+
     return EXIT_SUCCESS;
 }
 
@@ -170,7 +170,7 @@ int t31_channel_create(char index, short width, short height, char framerate, ch
             .scale = { .enable = 0, .width = width, .height = height },
             .fpsNum = framerate, .fpsDen = 1, .bufCount = 1, .phyOrExtChn = 0,
         };
-    
+
         _t31_fs_chn[index] = index;
 
         if (ret = t31_fs.fnCreateChannel(_t31_fs_chn[index], &channel))
@@ -245,7 +245,7 @@ int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate
             }
             else *path++;
         }
-        
+
         if (!sensorlocal)
             HAL_INFO("t31_hal", "Couldn't determine the sensor name from kernel modules!\n");
 
@@ -331,7 +331,7 @@ int t31_region_create(int *handle, hal_rect rect, short opacity)
         if ((ret = t31_osd.fnCreateRegion(&region)) < 0)
             return ret;
         else *handle = ret;
-    } else if (regionCurr.rect.p1.y - regionCurr.rect.p0.y != rect.height || 
+    } else if (regionCurr.rect.p1.y - regionCurr.rect.p0.y != rect.height ||
         regionCurr.rect.p1.x - regionCurr.rect.p0.x != rect.width) {
         HAL_INFO("t31_osd", "Parameters are different, recreating "
             "region...\n");
@@ -348,7 +348,7 @@ int t31_region_create(int *handle, hal_rect rect, short opacity)
     attrib.show = 1;
     attrib.alphaOn = 1;
     attrib.fgAlpha = opacity;
-    
+
     t31_osd.fnRegisterRegion(*handle, _t31_osd_grp, &attrib);
 
     return EXIT_SUCCESS;
@@ -368,7 +368,7 @@ int t31_region_setbitmap(int *handle, hal_bitmap *bitmap)
     region.rect.p1.x = region.rect.p0.x + bitmap->dim.width - 1;
     region.rect.p1.y = region.rect.p0.y + bitmap->dim.height - 1;
     region.pixFmt = T31_PIXFMT_BGR555LE;
-    region.data.picture = bitmap->data;    
+    region.data.picture = bitmap->data;
     return t31_osd.fnSetRegionConfig(*handle, &region);
 }
 
@@ -411,12 +411,12 @@ int t31_video_create(char index, hal_vidconfig *config)
         config->width = _t31_snr_dim.width;
         config->height = _t31_snr_dim.height;
     }
-    t31_venc.fnSetDefaults(&channel, profile, ratemode, config->width, config->height, 
+    t31_venc.fnSetDefaults(&channel, profile, ratemode, config->width, config->height,
         config->framerate, 1, config->gop, config->gop / config->framerate, -1, 0);
 
     switch (channel.rate.mode) {
         case T31_VENC_RATEMODE_CBR:
-            channel.rate.cbr = (t31_venc_rate_cbr){ .tgtBitrate = MAX(config->bitrate, config->maxBitrate), 
+            channel.rate.cbr = (t31_venc_rate_cbr){ .tgtBitrate = MAX(config->bitrate, config->maxBitrate),
                 .initQual = -1, .minQual = 34, .maxQual = 48, .ipDelta = -1, .pbDelta = -1,
                 .options = T31_VENC_RCOPT_SCN_CHG_RES | T31_VENC_RCOPT_SC_PREVENTION }; break;
         case T31_VENC_RATEMODE_VBR:
@@ -427,7 +427,7 @@ int t31_video_create(char index, hal_vidconfig *config)
         case T31_VENC_RATEMODE_QP:
             channel.rate.qpModeQual = MAX(config->minQual, config->maxQual); break;
         case T31_VENC_RATEMODE_AVBR:
-            channel.rate.avbr = (t31_venc_rate_xvbr){ .tgtBitrate = config->bitrate, .maxBitrate = 
+            channel.rate.avbr = (t31_venc_rate_xvbr){ .tgtBitrate = config->bitrate, .maxBitrate =
                 config->maxBitrate, .initQual = -1, .minQual = config->minQual, .maxQual = config->maxQual,
                 .ipDelta = -1, .pbDelta = -1, .options = T31_VENC_RCOPT_SCN_CHG_RES |
                 T31_VENC_RCOPT_SC_PREVENTION, .maxPsnr = 42 }; break;
@@ -442,10 +442,10 @@ int t31_video_create(char index, hal_vidconfig *config)
     if (ret = t31_venc.fnRegisterChannel(index, index))
         return ret;
 
-    if (config->codec != HAL_VIDCODEC_JPG && 
+    if (config->codec != HAL_VIDCODEC_JPG &&
         (ret = t31_venc.fnStartReceiving(index)))
         return ret;
-    
+
     t31_state[index].payload = config->codec;
 
     return EXIT_SUCCESS;
@@ -500,7 +500,7 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         HAL_INFO("t31_venc", "Snapshot falling back to the MJPEG channel,"
             " its resolution will be used in place\n");
         for (char i = 0; i < T31_VENC_CHN_NUM; i++) {
-            if (!t31_state[i].enable) continue; 
+            if (!t31_state[i].enable) continue;
             if (t31_state[i].payload != HAL_VIDCODEC_MJPG) continue;
             index = i;
             mjpeg = 1;
@@ -528,7 +528,7 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
             "%d failed!\n", index);
         goto abort;
     }
-    
+
     t31_venc_stat stat;
     if (ret = t31_venc.fnQuery(index, &stat)) {
         HAL_DANGER("t31_venc", "Querying the encoder channel "
@@ -543,7 +543,12 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
     t31_venc_strm strm;
     memset(&strm, 0, sizeof(strm));
-    strm.packet = (t31_venc_pack*)malloc(sizeof(t31_venc_pack) * stat.curPacks);
+    t31_venc_pack packs[8];
+    if (stat.curPacks > 8)
+        strm.packet = (t31_venc_pack*)malloc(sizeof(t31_venc_pack) * stat.curPacks);
+    else
+        strm.packet = packs;
+
     if (!strm.packet) {
         HAL_DANGER("t31_venc", "Memory allocation on channel %d failed!\n", index);
         goto abort;
@@ -553,7 +558,7 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     if (ret = t31_venc.fnGetStream(index, &strm, 0)) {
         HAL_DANGER("t31_venc", "Getting the stream on "
             "channel %d failed with %#x!\n", index, ret);
-        free(strm.packet);
+        if (stat.curPacks > 8) free(strm.packet);
         strm.packet = NULL;
         goto abort;
     }
@@ -577,6 +582,7 @@ int t31_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
 abort:
     t31_venc.fnFreeStream(index, &strm);
+    if (stat.curPacks > 8) free(strm.packet);
 
     if (!mjpeg) {
         t31_venc.fnStopReceiving(index);
@@ -632,11 +638,30 @@ void *t31_video_thread(void)
                 if (!t31_state[i].enable) continue;
                 if (!t31_state[i].mainLoop) continue;
                 if (FD_ISSET(t31_state[i].fileDesc, &readFds)) {
+                    if (ret = t31_venc.fnQuery(i, &stat)) {
+                        HAL_DANGER("t31_venc", "Querying the encoder channel "
+                            "%d failed with %#x!\n", i, ret);
+                        break;
+                    }
+
                     t31_venc_strm stream;
+                    memset(&stream, 0, sizeof(stream));
+                    t31_venc_pack packs[8];
+                    if (stat.curPacks > 8)
+                        stream.packet = (t31_venc_pack*)malloc(sizeof(t31_venc_pack) * stat.curPacks);
+                    else
+                        stream.packet = packs;
+
+                    if (!stream.packet) {
+                        HAL_DANGER("t31_venc", "Memory allocation on channel %d failed!\n", i);
+                        break;
+                    }
+                    stream.count = stat.curPacks;
 
                     if (ret = t31_venc.fnGetStream(i, &stream, 0)) {
                         HAL_DANGER("t31_venc", "Getting the stream on "
                             "channel %d failed with %#x!\n", i, ret);
+                        if (stat.curPacks > 8) free(stream.packet);
                         break;
                     }
 
@@ -679,6 +704,7 @@ void *t31_video_thread(void)
                         HAL_DANGER("t31_venc", "Releasing the stream on "
                             "channel %d failed with %#x!\n", i, ret);
                     }
+                    if (stat.curPacks > 8) free(stream.packet);
                 }
             }
         }

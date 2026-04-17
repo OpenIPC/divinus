@@ -640,11 +640,10 @@ int v1_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         v1_venc_strm strm;
         memset(&strm, 0, sizeof(strm));
         v1_venc_pack packs[8];
-        if (stat.curPacks > 8) {
+        if (stat.curPacks > 8)
             strm.packet = (v1_venc_pack*)malloc(sizeof(v1_venc_pack) * stat.curPacks);
-        } else {
+        else
             strm.packet = packs;
-        }
 
         if (!strm.packet) {
             HAL_DANGER("v1_venc", "Memory allocation on channel %d failed!\n", index);
@@ -749,11 +748,10 @@ void *v1_video_thread(void)
                     }
 
                     v1_venc_pack packs[8];
-                    if (stat.curPacks > 8) {
+                    if (stat.curPacks > 8)
                         stream.packet = (v1_venc_pack*)malloc(sizeof(v1_venc_pack) * stat.curPacks);
-                    } else {
+                    else
                         stream.packet = packs;
-                    }
 
                     if (!stream.packet) {
                         HAL_DANGER("v1_venc", "Memory allocation on channel %d failed!\n", i);

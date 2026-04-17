@@ -94,7 +94,7 @@ int v4_audio_init(int samplerate)
     }
     if (ret = v4_aud.fnEnableDevice(_v4_aud_dev))
         return ret;
-    
+
     if (ret = v4_aud.fnEnableChannel(_v4_aud_dev, _v4_aud_chn))
         return ret;
 
@@ -111,7 +111,7 @@ void *v4_audio_thread(void)
     memset(&echoFrame, 0, sizeof(echoFrame));
 
     while (keepRunning && audioOn) {
-        if (ret = v4_aud.fnGetFrame(_v4_aud_dev, _v4_aud_chn, 
+        if (ret = v4_aud.fnGetFrame(_v4_aud_dev, _v4_aud_chn,
             &frame, &echoFrame, 128)) {
             HAL_WARNING("v4_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
@@ -145,7 +145,7 @@ int v4_channel_bind(char index)
         return ret;
 
     {
-        v4_sys_bind source = { .module = V4_SYS_MOD_VPSS, 
+        v4_sys_bind source = { .module = V4_SYS_MOD_VPSS,
             .device = _v4_vpss_grp, .channel = index };
         v4_sys_bind dest = { .module = V4_SYS_MOD_VENC,
             .device = _v4_venc_dev, .channel = index };
@@ -203,7 +203,7 @@ int v4_channel_unbind(char index)
         return ret;
 
     {
-        v4_sys_bind source = { .module = V4_SYS_MOD_VPSS, 
+        v4_sys_bind source = { .module = V4_SYS_MOD_VPSS,
             .device = _v4_vpss_grp, .channel = index };
         v4_sys_bind dest = { .module = V4_SYS_MOD_VENC,
             .device = _v4_venc_dev, .channel = index };
@@ -310,7 +310,7 @@ int v4_pipeline_create(void)
 
     if (ret = v4_snr_drv.obj->pfnRegisterCallback(_v4_vi_pipe, &v4_ae_lib, &v4_awb_lib))
         return ret;
-    
+
     if (ret = v4_isp.fnRegisterAE(_v4_vi_pipe, &v4_ae_lib))
         return ret;
     if (ret = v4_isp.fnRegisterAWB(_v4_vi_pipe, &v4_awb_lib))
@@ -324,7 +324,7 @@ int v4_pipeline_create(void)
         return ret;
     if (ret = v4_isp.fnInit(_v4_vi_pipe))
         return ret;
-    
+
     {
         v4_vpss_grp group;
         memset(&group, 0, sizeof(group));
@@ -345,9 +345,9 @@ int v4_pipeline_create(void)
         return ret;
 
     {
-        v4_sys_bind source = { .module = V4_SYS_MOD_VIU, 
+        v4_sys_bind source = { .module = V4_SYS_MOD_VIU,
             .device = _v4_vi_dev, .channel = _v4_vi_chn };
-        v4_sys_bind dest = { .module = V4_SYS_MOD_VPSS, 
+        v4_sys_bind dest = { .module = V4_SYS_MOD_VPSS,
             .device = _v4_vpss_grp, .channel = 0 };
         if (ret = v4_sys.fnBind(&source, &dest))
             return ret;
@@ -370,7 +370,7 @@ void v4_pipeline_destroy(void)
             v4_vpss.fnDisableChannel(grp, chn);
 
         {
-            v4_sys_bind source = { .module = V4_SYS_MOD_VIU, 
+            v4_sys_bind source = { .module = V4_SYS_MOD_VIU,
                 .device = _v4_vi_dev, .channel = _v4_vi_chn };
             v4_sys_bind dest = { .module = V4_SYS_MOD_VPSS,
                 .device = grp, .channel = 0 };
@@ -380,7 +380,7 @@ void v4_pipeline_destroy(void)
         v4_vpss.fnStopGroup(grp);
         v4_vpss.fnDestroyGroup(grp);
     }
-    
+
     v4_vi.fnDisableChannel(_v4_vi_pipe, _v4_vi_chn);
 
     v4_vi.fnStopPipe(_v4_vi_pipe);
@@ -414,7 +414,7 @@ int v4_region_create(char handle, hal_rect rect, short opacity)
         if (ret = v4_rgn.fnCreateRegion(handle, &region))
             return ret;
     } else if (regionCurr.type != region.type ||
-        regionCurr.overlay.size.height != region.overlay.size.height || 
+        regionCurr.overlay.size.height != region.overlay.size.height ||
         regionCurr.overlay.size.width != region.overlay.size.width) {
         HAL_INFO("v4_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
@@ -450,7 +450,7 @@ int v4_region_create(char handle, hal_rect rect, short opacity)
 void v4_region_destroy(char handle)
 {
     v4_sys_bind dest = { .module = V4_SYS_MOD_VENC, .device = _v4_venc_dev };
-    
+
     v4_rgn.fnDetachChannel(handle, &dest);
     v4_rgn.fnDestroyRegion(handle);
 }
@@ -499,7 +499,7 @@ int v4_sensor_config(void) {
         ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_SENS, unsigned int), &config.device);
 
         ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device);
-        
+
         if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_DEV, v4a_snr_dev), &config))
             HAL_ERROR("v4_snr", "Configuring imaging device has failed!\n");
 
@@ -536,7 +536,7 @@ int v4_sensor_config(void) {
         ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CLKON_SENS, unsigned int), &config.device);
 
         ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_RST_SENS, unsigned int), &config.device);
-        
+
         if (ioctl(fd, _IOW(V4_SNR_IOC_MAGIC, V4_SNR_CMD_CONF_DEV, v4_snr_dev), &config))
             HAL_ERROR("v4_snr", "Configuring imaging device has failed!\n");
 
@@ -590,7 +590,7 @@ int v4_sensor_init(char *name, char *obj)
             break;
     } if (!v4_snr_drv.handle)
         HAL_ERROR("v4_snr", "Failed to load the sensor driver\n");
-    
+
     if (!(v4_snr_drv.obj = (v4_snr_obj*)dlsym(v4_snr_drv.handle, obj)))
         HAL_ERROR("v4_snr", "Failed to connect the sensor object\n");
 
@@ -612,8 +612,8 @@ int v4_video_create(char index, hal_vidconfig *config)
                     .dstFps = config->framerate, .maxBitrate = config->bitrate }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V4_VENC_RATEMODE_MJPGVBR;
-                channel.rate.mjpgVbr = (v4_venc_rate_mjpgbr){ .statTime = 1, 
-                    .srcFps = config->framerate, .dstFps = config->framerate, 
+                channel.rate.mjpgVbr = (v4_venc_rate_mjpgbr){ .statTime = 1,
+                    .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V4_VENC_RATEMODE_MJPGQP;
@@ -634,12 +634,12 @@ int v4_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H265VBR;
                 channel.rate.h265Vbr = (v4_venc_rate_h26xbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V4_VENC_RATEMODE_H265QP;
                 channel.rate.h265Qp = (v4_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual,
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H265AVBR;
@@ -661,12 +661,12 @@ int v4_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H264VBR;
                 channel.rate.h264Vbr = (v4_venc_rate_h26xbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V4_VENC_RATEMODE_H264QP;
                 channel.rate.h264Qp = (v4_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual,
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V4_VENC_RATEMODE_H264AVBR;
@@ -691,11 +691,11 @@ int v4_video_create(char index, hal_vidconfig *config)
 
     {
         int count = -1;
-        if (config->codec != HAL_VIDCODEC_JPG && 
+        if (config->codec != HAL_VIDCODEC_JPG &&
             (ret = v4_venc.fnStartReceivingEx(index, &count)))
             return ret;
     }
-    
+
     v4_state[index].payload = config->codec;
 
     return EXIT_SUCCESS;
@@ -711,7 +711,7 @@ int v4_video_destroy(char index)
     v4_venc.fnStopReceiving(index);
 
     {
-        v4_sys_bind source = { .module = V4_SYS_MOD_VPSS, 
+        v4_sys_bind source = { .module = V4_SYS_MOD_VPSS,
             .device = _v4_vpss_grp, .channel = index };
         v4_sys_bind dest = { .module = V4_SYS_MOD_VENC,
             .device = _v4_venc_dev, .channel = index };
@@ -721,13 +721,13 @@ int v4_video_destroy(char index)
 
     if (ret = v4_venc.fnDestroyChannel(index))
         return ret;
-    
+
     if (ret = v4_vpss.fnDisableChannel(_v4_vpss_grp, index))
         return ret;
 
     return EXIT_SUCCESS;
 }
-    
+
 int v4_video_destroy_all(void)
 {
     int ret;
@@ -793,11 +793,10 @@ int v4_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         v4_venc_strm strm;
         memset(&strm, 0, sizeof(strm));
         v4_venc_pack packs[8];
-        if (stat.curPacks > 8) {
+        if (stat.curPacks > 8)
             strm.packet = (v4_venc_pack*)malloc(sizeof(v4_venc_pack) * stat.curPacks);
-        } else {
+        else
             strm.packet = packs;
-        }
 
         if (!strm.packet) {
             HAL_DANGER("v4_venc", "Memory allocation on channel %d failed!\n", index);
@@ -891,7 +890,7 @@ void *v4_video_thread(void)
                 if (!v4_state[i].mainLoop) continue;
                 if (FD_ISSET(v4_state[i].fileDesc, &readFds)) {
                     memset(&stream, 0, sizeof(stream));
-                    
+
                     if (ret = v4_venc.fnQuery(i, &stat)) {
                         HAL_DANGER("v4_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
@@ -904,11 +903,10 @@ void *v4_video_thread(void)
                     }
 
                     v4_venc_pack packs[8];
-                    if (stat.curPacks > 8) {
+                    if (stat.curPacks > 8)
                         stream.packet = (v4_venc_pack*)malloc(sizeof(v4_venc_pack) * stat.curPacks);
-                    } else {
+                    else
                         stream.packet = packs;
-                    }
 
                     if (!stream.packet) {
                         HAL_DANGER("v4_venc", "Memory allocation on channel %d failed!\n", i);
@@ -995,15 +993,15 @@ int v4_system_init(char *snrConfig)
 
     {
         v4_vb_pool pool;
-        memset(&pool, 0, sizeof(pool)); 
-        
+        memset(&pool, 0, sizeof(pool));
+
         pool.count = 2;
         pool.comm[0].blockSize = v4_buffer_calculate_vi(v4_config.isp.size.width,
             v4_config.isp.size.height, V4_PIXFMT_RGB_BAYER_8BPP + v4_config.mipi.prec,
             V4_COMPR_NONE, 8);
         pool.comm[0].blockCnt = 3;
         pool.comm[1].blockSize = v4_buffer_calculate_venc(
-            v4_config.isp.size.width, v4_config.isp.size.height, 
+            v4_config.isp.size.width, v4_config.isp.size.height,
             V4_PIXFMT_YVU420SP, 8);
         pool.comm[1].blockCnt = 2;
 

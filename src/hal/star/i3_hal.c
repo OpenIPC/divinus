@@ -76,14 +76,14 @@ int i3_audio_init(int samplerate)
     }
     if (ret = i3_aud.fnEnableDevice(_i3_aud_dev))
         return ret;
-    
+
     if (ret = i3_aud.fnEnableChannel(_i3_aud_dev, _i3_aud_chn))
         return ret;
     if (ret = i3_aud.fnSetVolume(_i3_aud_dev, _i3_aud_chn, 13))
         return ret;
 
     {
-        i3_sys_bind bind = { .module = I3_SYS_MOD_AI, 
+        i3_sys_bind bind = { .module = I3_SYS_MOD_AI,
             .device = _i3_aud_dev, .channel = _i3_aud_chn };
         if (ret = i3_sys.fnSetOutputDepth(&bind, 2, 4))
             return ret;
@@ -100,7 +100,7 @@ void *i3_audio_thread(void)
     memset(&frame, 0, sizeof(frame));
 
     while (keepRunning) {
-        if (ret = i3_aud.fnGetFrame(_i3_aud_dev, _i3_aud_chn, 
+        if (ret = i3_aud.fnGetFrame(_i3_aud_dev, _i3_aud_chn,
             &frame, NULL, 128)) {
             HAL_WARNING("i3_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
@@ -137,7 +137,7 @@ int i3_channel_bind(char index, char framerate)
         unsigned int device;
         if (ret = i3_venc.fnGetChannelDeviceId(index, &device))
             return ret;
-        i3_sys_bind source = { .module = I3_SYS_MOD_VPE, 
+        i3_sys_bind source = { .module = I3_SYS_MOD_VPE,
             .device = _i3_vpe_dev, .channel = _i3_vpe_chn, .port = index };
         i3_sys_bind dest = { .module = I3_SYS_MOD_VENC,
             .device = device, .channel = index, .port = _i3_venc_port };
@@ -178,7 +178,7 @@ int i3_channel_unbind(char index)
         unsigned int device;
         if (ret = i3_venc.fnGetChannelDeviceId(index, &device))
             return ret;
-        i3_sys_bind source = { .module = I3_SYS_MOD_VPE, 
+        i3_sys_bind source = { .module = I3_SYS_MOD_VPE,
             .device = _i3_vpe_dev, .channel = _i3_vpe_chn, .port = index };
         i3_sys_bind dest = { .module = I3_SYS_MOD_VENC,
             .device = device, .channel = index, .port = _i3_venc_port };
@@ -186,7 +186,7 @@ int i3_channel_unbind(char index)
             return ret;
     }
 
-    return EXIT_SUCCESS; 
+    return EXIT_SUCCESS;
 }*/
 
 int i3_config_load(char *path)
@@ -202,7 +202,7 @@ int i3_config_load(char *path)
         i3_vif_dev device;
         memset(&device, 0, sizeof(device));
         device.intf = _i3_snr_pad.intf;
-        device.work = device.intf == I3_INTF_BT656 ? 
+        device.work = device.intf == I3_INTF_BT656 ?
             I3_VIF_WORK_1MULTIPLEX : I3_VIF_WORK_RGB_REALTIME;
         device.hdr = I3_HDR_OFF;
         if (device.intf == I3_INTF_MIPI) {
@@ -225,7 +225,7 @@ int i3_config_load(char *path)
         port.dest.width = _i3_snr_plane.capt.width;
         port.field = 0;
         port.interlaceOn = 0;
-        port.pixFmt = (i3_common_pixfmt)(_i3_snr_plane.bayer > I3_BAYER_END ? 
+        port.pixFmt = (i3_common_pixfmt)(_i3_snr_plane.bayer > I3_BAYER_END ?
             _i3_snr_plane.pixFmt : (I3_PIXFMT_RGB_BAYER + _i3_snr_plane.precision * I3_BAYER_END + _i3_snr_plane.bayer));
         port.frate = I3_VIF_FRATE_FULL;
         port.frameLineCnt = 0;
@@ -240,7 +240,7 @@ int i3_config_load(char *path)
         memset(&channel, 0, sizeof(channel));
         channel.capt.height = _i3_snr_plane.capt.height;
         channel.capt.width = _i3_snr_plane.capt.width;
-        channel.pixFmt = (i3_common_pixfmt)(_i3_snr_plane.bayer > I3_BAYER_END ? 
+        channel.pixFmt = (i3_common_pixfmt)(_i3_snr_plane.bayer > I3_BAYER_END ?
             _i3_snr_plane.pixFmt : (I3_PIXFMT_RGB_BAYER + _i3_snr_plane.precision * I3_BAYER_END + _i3_snr_plane.bayer));
         channel.hdr = I3_HDR_OFF;
         channel.sensor = (i3_vpe_sens)(_i3_snr_index + 1);
@@ -252,7 +252,7 @@ int i3_config_load(char *path)
         memset(&channel, 0, sizeof(channel));
         channel.capt.height = _i3_snr_plane.capt.height;
         channel.capt.width = _i3_snr_plane.capt.width;
-        channel.pixFmt = (i3_common_pixfmt)(_i3_snr_plane.bayer > I3_BAYER_END ? 
+        channel.pixFmt = (i3_common_pixfmt)(_i3_snr_plane.bayer > I3_BAYER_END ?
             _i3_snr_plane.pixFmt : (I3_PIXFMT_RGB_BAYER + _i3_snr_plane.precision * I3_BAYER_END + _i3_snr_plane.bayer));
         channel.hdr = I3_HDR_OFF;
         channel.sensor = (i3_vpe_sens)(_i3_snr_index + 1);
@@ -275,7 +275,7 @@ int i3_config_load(char *path)
         return ret;
 
     {
-        i3_sys_bind source = { .module = I3_SYS_MOD_VIF, 
+        i3_sys_bind source = { .module = I3_SYS_MOD_VIF,
             .device = _i3_vif_dev, .channel = _i3_vif_chn, .port = _i3_vif_port };
         i3_sys_bind dest = { .module = I3_SYS_MOD_VPE,
             .device = _i3_vpe_dev, .channel = _i3_vpe_chn, .port = _i3_vpe_port };
@@ -292,7 +292,7 @@ void i3_pipeline_destroy(void)
         i3_vpe.fnDisablePort(_i3_vpe_chn, i);
 
     {
-        i3_sys_bind source = { .module = I3_SYS_MOD_VIF, 
+        i3_sys_bind source = { .module = I3_SYS_MOD_VIF,
             .device = _i3_vif_dev, .channel = _i3_vif_chn, .port = _i3_vif_port };
         i3_sys_bind dest = { .module = I3_SYS_MOD_VPE,
             .device = _i3_vif_dev, .channel = _i3_vpe_chn, .port = _i3_vpe_port };
@@ -325,7 +325,7 @@ int i3_region_create(char handle, hal_rect rect, short opacity)
         if (ret = i3_rgn.fnCreateRegion(handle, &region))
             return ret;
     } else if (regionCurr.type != region.type ||
-        regionCurr.size.height != region.size.height || 
+        regionCurr.size.height != region.size.height ||
         regionCurr.size.width != region.size.width) {
         HAL_INFO("i3_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
@@ -374,7 +374,7 @@ void i3_region_destroy(char handle)
 {
     i3_sys_bind dest = { .module = 0,
         .device = _i3_vpe_dev, .channel = _i3_vpe_chn };
-    
+
     dest.port = 1;
     i3_rgn.fnDetachChannel(handle, &dest);
     dest.port = 0;
@@ -395,20 +395,20 @@ int i3_video_create(char index, hal_vidconfig *config)
     int ret;
     i3_venc_chn channel;
     i3_venc_attr_h26x *attrib;
-    
+
     if (config->codec == HAL_VIDCODEC_JPG || config->codec == HAL_VIDCODEC_MJPG) {
         channel.attrib.codec = I3_VENC_CODEC_MJPG;
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = series == 0xEF ? I3OG_VENC_RATEMODE_MJPGCBR : I3_VENC_RATEMODE_MJPGCBR;
                 channel.rate.mjpgCbr.bitrate = config->bitrate << 10;
-                channel.rate.mjpgCbr.fpsNum = 
+                channel.rate.mjpgCbr.fpsNum =
                     config->codec == HAL_VIDCODEC_JPG ? 1 : config->framerate;
                 channel.rate.mjpgCbr.fpsDen = 1;
                 break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = series == 0xEF ? I3OG_VENC_RATEMODE_MJPGQP : I3_VENC_RATEMODE_MJPGQP;
-                channel.rate.mjpgQp.fpsNum = 
+                channel.rate.mjpgQp.fpsNum =
                     config->codec == HAL_VIDCODEC_JPG ? 1 : config->framerate;
                 channel.rate.mjpgCbr.fpsDen = 1;
                 channel.rate.mjpgQp.quality = MAX(config->minQual, config->maxQual);
@@ -435,13 +435,13 @@ int i3_video_create(char index, hal_vidconfig *config)
                 channel.rate.mode = series == 0xEF ? I3OG_VENC_RATEMODE_H265CBR :
                     I3_VENC_RATEMODE_H265CBR;
                 channel.rate.h265Cbr = (i3_venc_rate_h26xcbr){ .gop = config->gop,
-                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .bitrate =
                     (unsigned int)(config->bitrate) << 10, .avgLvl = 1 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = series == 0xEF ? I3OG_VENC_RATEMODE_H265VBR :
                     I3_VENC_RATEMODE_H265VBR;
                 channel.rate.h265Vbr = (i3_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate =
                     (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
@@ -456,12 +456,12 @@ int i3_video_create(char index, hal_vidconfig *config)
                 channel.rate.mode = series == 0xEF ? I3OG_VENC_RATEMODE_H265AVBR :
                     I3_VENC_RATEMODE_H265AVBR;
                 channel.rate.h265Avbr = (i3_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate =
                     (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             default:
                 HAL_ERROR("i3_venc", "H.265 encoder does not support this mode!");
-        }  
+        }
     } else if (config->codec == HAL_VIDCODEC_H264) {
         channel.attrib.codec = I3_VENC_CODEC_H264;
         attrib = &channel.attrib.h264;
@@ -472,13 +472,13 @@ int i3_video_create(char index, hal_vidconfig *config)
                 channel.rate.mode = series == 0xEF ? I3OG_VENC_RATEMODE_H264CBR :
                     I3_VENC_RATEMODE_H264CBR;
                 channel.rate.h264Cbr = (i3_venc_rate_h26xcbr){ .gop = config->gop,
-                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .bitrate = 
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .bitrate =
                     (unsigned int)(config->bitrate) << 10, .avgLvl = 1 }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = series == 0xEF ? I3OG_VENC_RATEMODE_H264VBR :
                     I3_VENC_RATEMODE_H264VBR;
                 channel.rate.h264Vbr = (i3_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    .statTime = 1, .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate =
                     (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
@@ -497,7 +497,7 @@ int i3_video_create(char index, hal_vidconfig *config)
                 channel.rate.mode = series == 0xEF ? I3OG_VENC_RATEMODE_H264AVBR :
                     I3_VENC_RATEMODE_H264AVBR;
                 channel.rate.h264Avbr = (i3_venc_rate_h26xvbr){ .gop = config->gop, .statTime = 1,
-                    .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate = 
+                    .fpsNum = config->framerate, .fpsDen = 1, .maxBitrate =
                     (unsigned int)(MAX(config->bitrate, config->maxBitrate)) << 10,
                     .maxQual = config->maxQual, .minQual = config->minQual }; break;
             default:
@@ -518,7 +518,7 @@ attach:
     if (ret = i3_venc.fnCreateChannel(index, &channel))
         return ret;
 
-    if (config->codec != HAL_VIDCODEC_JPG && 
+    if (config->codec != HAL_VIDCODEC_JPG &&
         (ret = i3_venc.fnStartReceiving(index)))
         return ret;
 
@@ -540,7 +540,7 @@ int i3_video_destroy(char index)
         unsigned int device;
         if (ret = i3_venc.fnGetChannelDeviceId(index, &device))
             return ret;
-        i3_sys_bind source = { .module = I3_SYS_MOD_VPE, 
+        i3_sys_bind source = { .module = I3_SYS_MOD_VPE,
             .device = _i3_vpe_dev, .channel = _i3_vpe_chn, .port = index };
         i3_sys_bind dest = { .module = I3_SYS_MOD_VENC,
             .device = device, .channel = index, .port = _i3_venc_port };
@@ -550,7 +550,7 @@ int i3_video_destroy(char index)
 
     if (ret = i3_venc.fnDestroyChannel(index))
         return ret;
-    
+
     if (ret = i3_vpe.fnDisablePort(_i3_vpe_chn, index))
         return ret;
 
@@ -637,11 +637,10 @@ int i3_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
         i3_venc_strm strm;
         memset(&strm, 0, sizeof(strm));
         i3_venc_pack packs[8];
-        if (stat.curPacks > 8) {
+        if (stat.curPacks > 8)
             strm.packet = (i3_venc_pack*)malloc(sizeof(i3_venc_pack) * stat.curPacks);
-        } else {
+        else
             strm.packet = packs;
-        }
 
         if (!strm.packet) {
             HAL_DANGER("i3_venc", "Memory allocation on channel %d failed!\n", index);
@@ -733,7 +732,7 @@ void *i3_video_thread(void)
                 if (!i3_state[i].mainLoop) continue;
                 if (FD_ISSET(i3_state[i].fileDesc, &readFds)) {
                     memset(&stream, 0, sizeof(stream));
-                    
+
                     if (ret = i3_venc.fnQuery(i, &stat)) {
                         HAL_DANGER("i3_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
@@ -795,7 +794,7 @@ void *i3_video_thread(void)
                                 outPack[0].naluCnt = n;
                                 outPack[0].nalu[n].offset = pack->length;
                                 for (n = 0; n < outPack[0].naluCnt; n++)
-                                    outPack[0].nalu[n].length = 
+                                    outPack[0].nalu[n].length =
                                         outPack[0].nalu[n + 1].offset -
                                         outPack[0].nalu[n].offset;
                             } else switch (i3_state[i].payload) {

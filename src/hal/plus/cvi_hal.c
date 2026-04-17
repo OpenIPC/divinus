@@ -93,7 +93,7 @@ int cvi_audio_init(int samplerate)
     }
     if (ret = cvi_aud.fnEnableDevice(_cvi_aud_dev))
         return ret;
-    
+
     if (ret = cvi_aud.fnEnableChannel(_cvi_aud_dev, _cvi_aud_chn))
         return ret;
 
@@ -110,7 +110,7 @@ void *cvi_audio_thread(void)
     memset(&echoFrame, 0, sizeof(echoFrame));
 
     while (keepRunning && audioOn) {
-        if (ret = cvi_aud.fnGetFrame(_cvi_aud_dev, _cvi_aud_chn, 
+        if (ret = cvi_aud.fnGetFrame(_cvi_aud_dev, _cvi_aud_chn,
             &frame, &echoFrame, 128)) {
             HAL_WARNING("cvi_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
@@ -147,7 +147,7 @@ int cvi_channel_bind(char index)
         return ret;
 
     {
-        cvi_sys_bind source = { .module = CVI_SYS_MOD_VPSS, 
+        cvi_sys_bind source = { .module = CVI_SYS_MOD_VPSS,
             .device = _cvi_vpss_grp, .channel = index };
         cvi_sys_bind dest = { .module = CVI_SYS_MOD_VENC,
             .device = _cvi_venc_dev, .channel = index };
@@ -203,12 +203,12 @@ int cvi_channel_unbind(char index)
     int ret;
 
     cvi_vpss.fnDetachChannelPool(_cvi_vpss_grp, index);
-    
+
     if (ret = cvi_vpss.fnDisableChannel(_cvi_vpss_grp, index))
         return ret;
 
     {
-        cvi_sys_bind source = { .module = CVI_SYS_MOD_VPSS, 
+        cvi_sys_bind source = { .module = CVI_SYS_MOD_VPSS,
             .device = _cvi_vpss_grp, .channel = index };
         cvi_sys_bind dest = { .module = CVI_SYS_MOD_VENC,
             .device = _cvi_venc_dev, .channel = index };
@@ -277,7 +277,7 @@ int cvi_pipeline_create(void)
     }
     if (ret = cvi_vi.fnStartPipe(_cvi_vi_pipe))
         return ret;
-    
+
     if (ret = cvi_isp.fnRegisterAE(_cvi_vi_pipe, &cvi_ae_lib))
         return ret;
     if (ret = cvi_isp.fnRegisterAWB(_cvi_vi_pipe, &cvi_awb_lib))
@@ -336,9 +336,9 @@ int cvi_pipeline_create(void)
     }
 
     {
-        cvi_sys_bind source = { .module = CVI_SYS_MOD_VI, 
+        cvi_sys_bind source = { .module = CVI_SYS_MOD_VI,
             .device = _cvi_vi_dev, .channel = _cvi_vi_chn };
-        cvi_sys_bind dest = { .module = CVI_SYS_MOD_VPSS, 
+        cvi_sys_bind dest = { .module = CVI_SYS_MOD_VPSS,
             .device = _cvi_vpss_grp, .channel = 0 };
         if (ret = cvi_sys.fnBind(&source, &dest))
             return ret;
@@ -361,7 +361,7 @@ void cvi_pipeline_destroy(void)
             cvi_vpss.fnDisableChannel(grp, chn);
 
         {
-            cvi_sys_bind source = { .module = CVI_SYS_MOD_VI, 
+            cvi_sys_bind source = { .module = CVI_SYS_MOD_VI,
                 .device = _cvi_vi_dev, .channel = _cvi_vi_chn };
             cvi_sys_bind dest = { .module = CVI_SYS_MOD_VPSS,
                 .device = grp, .channel = 0 };
@@ -371,7 +371,7 @@ void cvi_pipeline_destroy(void)
         cvi_vpss.fnStopGroup(grp);
         cvi_vpss.fnDestroyGroup(grp);
     }
-    
+
     cvi_vi.fnDisableChannel(_cvi_vi_pipe, _cvi_vi_chn);
 
     cvi_vi.fnStopPipe(_cvi_vi_pipe);
@@ -400,7 +400,7 @@ int cvi_region_create(char handle, hal_rect rect, short opacity)
         HAL_INFO("cvi_rgn", "Creating region %d...\n", handle);
         if (ret = cvi_rgn.fnCreateRegion(handle, &region))
             return ret;
-    } else if (regionCurr.overlay.size.height != region.overlay.size.height || 
+    } else if (regionCurr.overlay.size.height != region.overlay.size.height ||
         regionCurr.overlay.size.width != region.overlay.size.width) {
         HAL_INFO("cvi_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
@@ -434,7 +434,7 @@ void cvi_region_destroy(char handle)
 {
     cvi_sys_bind channel = { .module = CVI_SYS_MOD_VENC,
         .device = _cvi_venc_dev, .channel = 0 };
-    
+
     cvi_rgn.fnDetachChannel(handle, &channel);
     cvi_rgn.fnDestroyRegion(handle);
 }
@@ -506,7 +506,7 @@ int cvi_sensor_init(char *name, char *obj)
             break;
     } if (!cvi_snr_drv.handle)
         HAL_ERROR("cvi_snr", "Failed to load the sensor driver\n");
-    
+
     if (!(cvi_snr_drv.obj = (cvi_snr_obj*)dlsym(cvi_snr_drv.handle, obj)))
         HAL_ERROR("cvi_snr", "Failed to connect the sensor object\nError: %s\n", dlerror());
 
@@ -528,8 +528,8 @@ int cvi_video_create(char index, hal_vidconfig *config)
                     .dstFps = config->framerate, .maxBitrate = config->bitrate }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = CVI_VENC_RATEMODE_MJPGVBR;
-                channel.rate.mjpgVbr = (cvi_venc_rate_mjpgbr){ .statTime = 1, 
-                    .srcFps = config->framerate, .dstFps = config->framerate, 
+                channel.rate.mjpgVbr = (cvi_venc_rate_mjpgbr){ .statTime = 1,
+                    .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = CVI_VENC_RATEMODE_MJPGQP;
@@ -550,12 +550,12 @@ int cvi_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = CVI_VENC_RATEMODE_H265VBR;
                 channel.rate.h265Vbr = (cvi_venc_rate_h26xbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = CVI_VENC_RATEMODE_H265QP;
                 channel.rate.h265Qp = (cvi_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual,
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = CVI_VENC_RATEMODE_H265AVBR;
@@ -577,12 +577,12 @@ int cvi_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = CVI_VENC_RATEMODE_H264VBR;
                 channel.rate.h264Vbr = (cvi_venc_rate_h26xbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate) }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = CVI_VENC_RATEMODE_H264QP;
                 channel.rate.h264Qp = (cvi_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual,
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = CVI_VENC_RATEMODE_H264AVBR;
@@ -607,11 +607,11 @@ int cvi_video_create(char index, hal_vidconfig *config)
 
     {
         int count = -1;
-        if (config->codec != HAL_VIDCODEC_JPG && 
+        if (config->codec != HAL_VIDCODEC_JPG &&
             (ret = cvi_venc.fnStartReceivingEx(index, &count)))
             return ret;
     }
-    
+
     cvi_state[index].payload = config->codec;
 
     return EXIT_SUCCESS;
@@ -627,7 +627,7 @@ int cvi_video_destroy(char index)
     cvi_venc.fnStopReceiving(index);
 
     {
-        cvi_sys_bind source = { .module = CVI_SYS_MOD_VPSS, 
+        cvi_sys_bind source = { .module = CVI_SYS_MOD_VPSS,
             .device = _cvi_vpss_grp, .channel = index };
         cvi_sys_bind dest = { .module = CVI_SYS_MOD_VENC,
             .device = _cvi_venc_dev, .channel = index };
@@ -637,13 +637,13 @@ int cvi_video_destroy(char index)
 
     if (ret = cvi_venc.fnDestroyChannel(index))
         return ret;
-    
+
     if (ret = cvi_vpss.fnDisableChannel(_cvi_vpss_grp, index))
         return ret;
 
     return EXIT_SUCCESS;
 }
-    
+
 int cvi_video_destroy_all(void)
 {
     int ret;
@@ -709,11 +709,10 @@ int cvi_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         cvi_venc_strm strm;
         memset(&strm, 0, sizeof(strm));
         cvi_venc_pack packs[8];
-        if (stat.curPacks > 8) {
+        if (stat.curPacks > 8)
             strm.packet = (cvi_venc_pack*)malloc(sizeof(cvi_venc_pack) * stat.curPacks);
-        } else {
+        else
             strm.packet = packs;
-        }
 
         if (!strm.packet) {
             HAL_DANGER("cvi_venc", "Memory allocation on channel %d failed!\n", index);
@@ -807,7 +806,7 @@ void *cvi_video_thread(void)
                 if (!cvi_state[i].mainLoop) continue;
                 if (FD_ISSET(cvi_state[i].fileDesc, &readFds)) {
                     memset(&stream, 0, sizeof(stream));
-                    
+
                     if (ret = cvi_venc.fnQuery(i, &stat)) {
                         HAL_DANGER("cvi_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
@@ -820,11 +819,10 @@ void *cvi_video_thread(void)
                     }
 
                     cvi_venc_pack packs[8];
-                    if (stat.curPacks > 8) {
+                    if (stat.curPacks > 8)
                         stream.packet = (cvi_venc_pack*)malloc(sizeof(cvi_venc_pack) * stat.curPacks);
-                    } else {
+                    else
                         stream.packet = packs;
-                    }
 
                     if (!stream.packet) {
                         HAL_DANGER("cvi_venc", "Memory allocation on channel %d failed!\n", i);

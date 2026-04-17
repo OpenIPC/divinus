@@ -92,7 +92,7 @@ int rk_audio_init(int samplerate)
     }
     if (ret = rk_aud.fnEnableDevice(_rk_aud_dev))
         return ret;
-    
+
     if (ret = rk_aud.fnEnableChannel(_rk_aud_dev, _rk_aud_chn))
         return ret;
 
@@ -109,7 +109,7 @@ void *rk_audio_thread(void)
     memset(&echoFrame, 0, sizeof(echoFrame));
 
     while (keepRunning) {
-        if (ret = rk_aud.fnGetFrame(_rk_aud_dev, _rk_aud_chn, 
+        if (ret = rk_aud.fnGetFrame(_rk_aud_dev, _rk_aud_chn,
             &frame, &echoFrame, 128)) {
             HAL_WARNING("rk_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
@@ -143,7 +143,7 @@ int rk_channel_bind(char index)
         return ret;
 
     {
-        rk_sys_bind source = { .module = RK_SYS_MOD_VPSS, 
+        rk_sys_bind source = { .module = RK_SYS_MOD_VPSS,
             .device = _rk_vpss_grp, .channel = index };
         rk_sys_bind dest = { .module = RK_SYS_MOD_VENC,
             .device = _rk_venc_dev, .channel = index };
@@ -204,7 +204,7 @@ int rk_channel_unbind(char index)
         return ret;
 
     {
-        rk_sys_bind source = { .module = RK_SYS_MOD_VPSS, 
+        rk_sys_bind source = { .module = RK_SYS_MOD_VPSS,
             .device = _rk_vpss_grp, .channel = index };
         rk_sys_bind dest = { .module = RK_SYS_MOD_VENC,
             .device = _rk_venc_dev, .channel = index };
@@ -279,7 +279,7 @@ int rk_pipeline_create(short width, short height)
     }
     if (ret = rk_vi.fnEnableChannel(_rk_vi_pipe, _rk_vi_chn))
         return ret;
-    
+
     {
         rk_vpss_grp group;
         group.dest.width = width;
@@ -298,9 +298,9 @@ int rk_pipeline_create(short width, short height)
         return ret;
 
     {
-        rk_sys_bind source = { .module = RK_SYS_MOD_VI, 
+        rk_sys_bind source = { .module = RK_SYS_MOD_VI,
             .device = _rk_vi_dev, .channel = _rk_vi_chn };
-        rk_sys_bind dest = { .module = RK_SYS_MOD_VPSS, 
+        rk_sys_bind dest = { .module = RK_SYS_MOD_VPSS,
             .device = _rk_vpss_grp, .channel = 0 };
         if (ret = rk_sys.fnBind(&source, &dest))
             return ret;
@@ -317,7 +317,7 @@ void rk_pipeline_destroy(void)
             rk_vpss.fnDisableChannel(grp, chn);
 
         {
-            rk_sys_bind source = { .module = RK_SYS_MOD_VI, 
+            rk_sys_bind source = { .module = RK_SYS_MOD_VI,
                 .device = _rk_vi_dev, .channel = _rk_vi_chn };
             rk_sys_bind dest = { .module = RK_SYS_MOD_VPSS,
                 .device = grp, .channel = 0 };
@@ -327,7 +327,7 @@ void rk_pipeline_destroy(void)
         rk_vpss.fnStopGroup(grp);
         rk_vpss.fnDestroyGroup(grp);
     }
-    
+
     rk_vi.fnDisableChannel(_rk_vi_pipe, _rk_vi_chn);
 
     rk_vi.fnDisableDevice(_rk_vi_dev);
@@ -356,7 +356,7 @@ int rk_region_create(char handle, hal_rect rect, short opacity)
         HAL_INFO("rk_rgn", "Creating region %d...\n", handle);
         if (ret = rk_rgn.fnCreateRegion(handle, &region))
             return ret;
-    } else if (regionCurr.overlay.size.height != region.overlay.size.height || 
+    } else if (regionCurr.overlay.size.height != region.overlay.size.height ||
         regionCurr.overlay.size.width != region.overlay.size.width) {
         HAL_INFO("rk_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
@@ -392,7 +392,7 @@ void rk_region_destroy(char handle)
 {
     rk_sys_bind channel = { .module = RK_SYS_MOD_VENC,
         .device = _rk_venc_dev, .channel = 0 };
-    
+
     rk_rgn.fnDetachChannel(handle, &channel);
     rk_rgn.fnDestroyRegion(handle);
 }
@@ -446,13 +446,13 @@ int rk_video_create(char index, hal_vidconfig *config)
         switch (config->mode) {
             case HAL_VIDMODE_CBR:
                 channel.rate.mode = RK_VENC_RATEMODE_MJPGCBR;
-                channel.rate.mjpgCbr = (rk_venc_rate_mjpgcbr){ .statTime = 1, 
+                channel.rate.mjpgCbr = (rk_venc_rate_mjpgcbr){ .statTime = 1,
                     .srcFpsNum = config->framerate, .srcFpsDen = 1,
                     .dstFpsNum = config->framerate, .dstFpsDen = 1,
                     .bitrate = config->bitrate }; break;
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = RK_VENC_RATEMODE_MJPGVBR;
-                channel.rate.mjpgVbr = (rk_venc_rate_mjpgvbr){ .statTime = 1, 
+                channel.rate.mjpgVbr = (rk_venc_rate_mjpgvbr){ .statTime = 1,
                     .srcFpsNum = config->framerate, .srcFpsDen = 1,
                     .dstFpsNum = config->framerate, .dstFpsDen = 1, .bitrate = config->bitrate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate),
@@ -486,7 +486,7 @@ int rk_video_create(char index, hal_vidconfig *config)
                 channel.rate.mode = RK_VENC_RATEMODE_H265QP;
                 channel.rate.h265Qp = (rk_venc_rate_h26xqp){ .gop = config->gop,
                     .srcFpsNum = config->framerate, .srcFpsDen = 1,
-                    .dstFpsNum = config->framerate, .dstFpsDen = 1, .interQual = config->maxQual, 
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1, .interQual = config->maxQual,
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = RK_VENC_RATEMODE_H265AVBR;
@@ -525,7 +525,7 @@ int rk_video_create(char index, hal_vidconfig *config)
                 channel.rate.mode = RK_VENC_RATEMODE_H264QP;
                 channel.rate.h264Qp = (rk_venc_rate_h26xqp){ .gop = config->gop,
                     .srcFpsNum = config->framerate, .srcFpsDen = 1,
-                    .dstFpsNum = config->framerate, .dstFpsDen = 1, .interQual = config->maxQual, 
+                    .dstFpsNum = config->framerate, .dstFpsDen = 1, .interQual = config->maxQual,
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = RK_VENC_RATEMODE_H264AVBR;
@@ -559,11 +559,11 @@ int rk_video_create(char index, hal_vidconfig *config)
 
     {
         int count = -1;
-        if (config->codec != HAL_VIDCODEC_JPG && 
+        if (config->codec != HAL_VIDCODEC_JPG &&
             (ret = rk_venc.fnStartReceivingEx(index, &count)))
             return ret;
     }
-    
+
     rk_state[index].payload = config->codec;
 
     return EXIT_SUCCESS;
@@ -579,7 +579,7 @@ int rk_video_destroy(char index)
     rk_venc.fnStopReceiving(index);
 
     {
-        rk_sys_bind source = { .module = RK_SYS_MOD_VPSS, 
+        rk_sys_bind source = { .module = RK_SYS_MOD_VPSS,
             .device = _rk_vpss_grp, .channel = index };
         rk_sys_bind dest = { .module = RK_SYS_MOD_VENC,
             .device = _rk_venc_dev, .channel = index };
@@ -589,13 +589,13 @@ int rk_video_destroy(char index)
 
     if (ret = rk_venc.fnDestroyChannel(index))
         return ret;
-    
+
     if (ret = rk_vpss.fnDisableChannel(_rk_vpss_grp, index))
         return ret;
 
     return EXIT_SUCCESS;
 }
-    
+
 int rk_video_destroy_all(void)
 {
     int ret;
@@ -661,11 +661,10 @@ int rk_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         rk_venc_strm strm;
         memset(&strm, 0, sizeof(strm));
         rk_venc_pack packs[8];
-        if (stat.curPacks > 8) {
+        if (stat.curPacks > 8)
             strm.packet = (rk_venc_pack*)malloc(sizeof(rk_venc_pack) * stat.curPacks);
-        } else {
+        else
             strm.packet = packs;
-        }
 
         if (!strm.packet) {
             HAL_DANGER("rk_venc", "Memory allocation on channel %d failed!\n", index);
@@ -761,7 +760,7 @@ void *rk_video_thread(void)
                 if (!rk_state[i].mainLoop) continue;
                 if (FD_ISSET(rk_state[i].fileDesc, &readFds)) {
                     memset(&stream, 0, sizeof(stream));
-                    
+
                     /*if (ret = rk_venc.fnQuery(i, &stat)) {
                         HAL_DANGER("rk_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
@@ -774,11 +773,10 @@ void *rk_video_thread(void)
                     }*/stat.curPacks = 1;
 
                     rk_venc_pack packs[8];
-                    if (stat.curPacks > 8) {
+                    if (stat.curPacks > 8)
                         stream.packet = (rk_venc_pack*)malloc(sizeof(rk_venc_pack) * stat.curPacks);
-                    } else {
+                    else
                         stream.packet = packs;
-                    }
 
                     if (!stream.packet) {
                         HAL_DANGER("rk_venc", "Memory allocation on channel %d failed!\n", i);
@@ -818,7 +816,7 @@ void *rk_video_thread(void)
                                         outPack[0].naluCnt = n;
                                         outPack[0].nalu[n].offset = pack->length;
                                         for (n = 0; n < outPack[0].naluCnt; n++)
-                                            outPack[0].nalu[n].length = 
+                                            outPack[0].nalu[n].length =
                                                 outPack[0].nalu[n + 1].offset -
                                                 outPack[0].nalu[n].offset;
                                     }

@@ -92,7 +92,7 @@ int v3_audio_init(int samplerate)
     }
     if (ret = v3_aud.fnEnableDevice(_v3_aud_dev))
         return ret;
-    
+
     if (ret = v3_aud.fnEnableChannel(_v3_aud_dev, _v3_aud_chn))
         return ret;
 
@@ -109,7 +109,7 @@ void *v3_audio_thread(void)
     memset(&echoFrame, 0, sizeof(echoFrame));
 
     while (keepRunning && audioOn) {
-        if (ret = v3_aud.fnGetFrame(_v3_aud_dev, _v3_aud_chn, 
+        if (ret = v3_aud.fnGetFrame(_v3_aud_dev, _v3_aud_chn,
             &frame, &echoFrame, 128)) {
             HAL_WARNING("v3_aud", "Getting the frame failed "
                 "with %#x!\n", ret);
@@ -143,7 +143,7 @@ int v3_channel_bind(char index)
         return ret;
 
     {
-        v3_sys_bind source = { .module = V3_SYS_MOD_VPSS, 
+        v3_sys_bind source = { .module = V3_SYS_MOD_VPSS,
             .device = _v3_vpss_grp, .channel = index };
         v3_sys_bind dest = { .module = V3_SYS_MOD_VENC,
             .device = _v3_venc_dev, .channel = index };
@@ -204,7 +204,7 @@ int v3_channel_unbind(char index)
         return ret;
 
     {
-        v3_sys_bind source = { .module = V3_SYS_MOD_VPSS, 
+        v3_sys_bind source = { .module = V3_SYS_MOD_VPSS,
             .device = _v3_vpss_grp, .channel = index };
         v3_sys_bind dest = { .module = V3_SYS_MOD_VENC,
             .device = _v3_venc_dev, .channel = index };
@@ -238,15 +238,15 @@ int v3_pipeline_create(void)
 
     {
         v3_vi_chn channel;
-        channel.capt.width = v3_config.vichn.capt.width ? 
+        channel.capt.width = v3_config.vichn.capt.width ?
             v3_config.vichn.capt.width : v3_config.videv.rect.width;
-        channel.capt.height = v3_config.vichn.capt.height ? 
+        channel.capt.height = v3_config.vichn.capt.height ?
             v3_config.vichn.capt.height : v3_config.videv.rect.height;
         channel.capt.x = 0;
         channel.capt.y = 0;
-        channel.dest.width = v3_config.vichn.dest.width ? 
+        channel.dest.width = v3_config.vichn.dest.width ?
             v3_config.vichn.dest.width : v3_config.videv.rect.width;
-        channel.dest.height = v3_config.vichn.dest.height ? 
+        channel.dest.height = v3_config.vichn.dest.height ?
             v3_config.vichn.dest.height : v3_config.videv.rect.height;
         channel.field = v3_config.vichn.field;
         channel.pixFmt = V3_PIXFMT_YUV420SP;
@@ -263,7 +263,7 @@ int v3_pipeline_create(void)
 
     if (ret = v3_snr_drv.fnRegisterCallback())
         return ret;
-    
+
     if (ret = v3_isp.fnRegisterAE(_v3_vi_dev, &v3_ae_lib))
         return ret;
     if (ret = v3_isp.fnRegisterAWB(_v3_vi_dev, &v3_awb_lib))
@@ -277,13 +277,13 @@ int v3_pipeline_create(void)
         return ret;
     if (ret = v3_isp.fnInit(_v3_vi_dev))
         return ret;
-    
+
     {
         v3_vpss_grp group;
         memset(&group, 0, sizeof(group));
-        group.dest.width = v3_config.vichn.capt.width ? 
+        group.dest.width = v3_config.vichn.capt.width ?
             v3_config.vichn.capt.width : v3_config.videv.rect.width;
-        group.dest.height = v3_config.vichn.capt.height ? 
+        group.dest.height = v3_config.vichn.capt.height ?
             v3_config.vichn.capt.height : v3_config.videv.rect.height;
         group.pixFmt = V3_PIXFMT_YUV420SP;
         group.nredOn = 1;
@@ -295,9 +295,9 @@ int v3_pipeline_create(void)
         return ret;
 
     {
-        v3_sys_bind source = { .module = V3_SYS_MOD_VIU, 
+        v3_sys_bind source = { .module = V3_SYS_MOD_VIU,
             .device = _v3_vi_dev, .channel = _v3_vi_chn };
-        v3_sys_bind dest = { .module = V3_SYS_MOD_VPSS, 
+        v3_sys_bind dest = { .module = V3_SYS_MOD_VPSS,
             .device = _v3_vpss_grp, .channel = 0 };
         if (ret = v3_sys.fnBind(&source, &dest))
             return ret;
@@ -320,7 +320,7 @@ void v3_pipeline_destroy(void)
             v3_vpss.fnDisableChannel(grp, chn);
 
         {
-            v3_sys_bind source = { .module = V3_SYS_MOD_VIU, 
+            v3_sys_bind source = { .module = V3_SYS_MOD_VIU,
                 .device = _v3_vi_dev, .channel = _v3_vi_chn };
             v3_sys_bind dest = { .module = V3_SYS_MOD_VPSS,
                 .device = grp, .channel = 0 };
@@ -330,7 +330,7 @@ void v3_pipeline_destroy(void)
         v3_vpss.fnStopGroup(grp);
         v3_vpss.fnDestroyGroup(grp);
     }
-    
+
     v3_vi.fnDisableChannel(_v3_vi_chn);
 
     v3_vi.fnDisableDevice(_v3_vi_dev);
@@ -361,7 +361,7 @@ int v3_region_create(char handle, hal_rect rect, short opacity)
         if (ret = v3_rgn.fnCreateRegion(handle, &region))
             return ret;
     } else if (regionCurr.type != region.type ||
-        regionCurr.overlay.size.height != region.overlay.size.height || 
+        regionCurr.overlay.size.height != region.overlay.size.height ||
         regionCurr.overlay.size.width != region.overlay.size.width) {
         HAL_INFO("v3_rgn", "Parameters are different, recreating "
             "region %d...\n", handle);
@@ -396,7 +396,7 @@ int v3_region_create(char handle, hal_rect rect, short opacity)
 void v3_region_destroy(char handle)
 {
     v3_sys_bind dest = { .module = V3_SYS_MOD_VENC, .device = _v3_venc_dev };
-    
+
     v3_rgn.fnDetachChannel(handle, &dest);
     v3_rgn.fnDestroyRegion(handle);
 }
@@ -429,7 +429,7 @@ int v3_sensor_config(void) {
     ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_RST_MIPI, unsigned int), &config.device);
 
     ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_RST_SENS, unsigned int), &config.device);
-    
+
     if (ioctl(fd, _IOW(V3_SNR_IOC_MAGIC, V3_SNR_CMD_CONF_DEV, v3_snr_dev), &config))
         HAL_ERROR("v3_snr", "Configuring imaging device has failed!\n");
 
@@ -478,7 +478,7 @@ int v3_sensor_init(char *name, char *obj)
             break;
     } if (!v3_snr_drv.handle)
         HAL_ERROR("v3_snr", "Failed to load the sensor driver");
-    
+
     if (!(v3_snr_drv.fnRegisterCallback = (int(*)(void))dlsym(v3_snr_drv.handle, "sensor_register_callback")))
         HAL_ERROR("v3_snr", "Failed to connect the callback register function");
     if (!(v3_snr_drv.fnUnRegisterCallback = (int(*)(void))dlsym(v3_snr_drv.handle, "sensor_unregister_callback")))
@@ -522,7 +522,7 @@ int v3_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V3_VENC_RATEMODE_MJPGVBR;
                 channel.rate.mjpgVbr = (v3_venc_rate_mjpgvbr){ .statTime = 1, .srcFps = config->framerate,
-                    .dstFps = config->framerate , .maxBitrate = MAX(config->bitrate, config->maxBitrate), 
+                    .dstFps = config->framerate , .maxBitrate = MAX(config->bitrate, config->maxBitrate),
                     .maxQual = config->maxQual, .minQual = config->maxQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V3_VENC_RATEMODE_MJPGQP;
@@ -544,13 +544,13 @@ int v3_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V3_VENC_RATEMODE_H265VBR;
                 channel.rate.h265Vbr = (v3_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
                     .minQual = config->minQual, .minIQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V3_VENC_RATEMODE_H265QP;
                 channel.rate.h265Qp = (v3_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual,
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V3_VENC_RATEMODE_H265AVBR;
@@ -572,13 +572,13 @@ int v3_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_VBR:
                 channel.rate.mode = V3_VENC_RATEMODE_H264VBR;
                 channel.rate.h264Vbr = (v3_venc_rate_h26xvbr){ .gop = config->gop,
-                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate, 
+                    .statTime = 1, .srcFps = config->framerate, .dstFps = config->framerate,
                     .maxBitrate = MAX(config->bitrate, config->maxBitrate), .maxQual = config->maxQual,
                     .minQual = config->minQual, .minIQual = config->minQual }; break;
             case HAL_VIDMODE_QP:
                 channel.rate.mode = V3_VENC_RATEMODE_H264QP;
                 channel.rate.h264Qp = (v3_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual, 
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual,
                     .predQual = config->minQual, .bipredQual = config->minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = V3_VENC_RATEMODE_H264AVBR;
@@ -600,7 +600,7 @@ attach:
     if (ret = v3_venc.fnCreateChannel(index, &channel))
         return ret;
 
-    if (config->codec != HAL_VIDCODEC_JPG && 
+    if (config->codec != HAL_VIDCODEC_JPG &&
         (ret = v3_venc.fnStartReceiving(index)))
         return ret;
 
@@ -619,7 +619,7 @@ int v3_video_destroy(char index)
     v3_venc.fnStopReceiving(index);
 
     {
-        v3_sys_bind source = { .module = V3_SYS_MOD_VPSS, 
+        v3_sys_bind source = { .module = V3_SYS_MOD_VPSS,
             .device = _v3_vpss_grp, .channel = index };
         v3_sys_bind dest = { .module = V3_SYS_MOD_VENC,
             .device = _v3_venc_dev, .channel = index };
@@ -629,13 +629,13 @@ int v3_video_destroy(char index)
 
     if (ret = v3_venc.fnDestroyChannel(index))
         return ret;
-    
+
     if (ret = v3_vpss.fnDisableChannel(_v3_vpss_grp, index))
         return ret;
 
     return EXIT_SUCCESS;
 }
-    
+
 int v3_video_destroy_all(void)
 {
     int ret;
@@ -701,11 +701,10 @@ int v3_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         v3_venc_strm strm;
         memset(&strm, 0, sizeof(strm));
         v3_venc_pack packs[8];
-        if (stat.curPacks > 8) {
+        if (stat.curPacks > 8)
             strm.packet = (v3_venc_pack*)malloc(sizeof(v3_venc_pack) * stat.curPacks);
-        } else {
+        else
             strm.packet = packs;
-        }
 
         if (!strm.packet) {
             HAL_DANGER("v3_venc", "Memory allocation on channel %d failed!\n", index);
@@ -799,7 +798,7 @@ void *v3_video_thread(void)
                 if (!v3_state[i].mainLoop) continue;
                 if (FD_ISSET(v3_state[i].fileDesc, &readFds)) {
                     memset(&stream, 0, sizeof(stream));
-                    
+
                     if (ret = v3_venc.fnQuery(i, &stat)) {
                         HAL_DANGER("v3_venc", "Querying the encoder channel "
                             "%d failed with %#x!\n", i, ret);
@@ -807,11 +806,10 @@ void *v3_video_thread(void)
                     }
 
                     v3_venc_pack packs[8];
-                    if (stat.curPacks > 8) {
+                    if (stat.curPacks > 8)
                         stream.packet = (v3_venc_pack*)malloc(sizeof(v3_venc_pack) * stat.curPacks);
-                    } else {
+                    else
                         stream.packet = packs;
-                    }
 
                     if (!stream.packet) {
                         HAL_DANGER("v3_venc", "Memory allocation on channel %d failed!\n", i);
@@ -900,13 +898,13 @@ int v3_system_init(char *snrConfig)
         int alignWidth = 16;
         v3_vb_pool pool;
 
-        memset(&pool, 0, sizeof(pool)); 
-        
+        memset(&pool, 0, sizeof(pool));
+
         pool.count = 1;
         pool.comm[0].blockSize = v3_buffer_calculate_venc(
-            v3_config.vichn.capt.width ? 
+            v3_config.vichn.capt.width ?
                 v3_config.vichn.capt.width : v3_config.videv.rect.width,
-            v3_config.vichn.capt.height ? 
+            v3_config.vichn.capt.height ?
                 v3_config.vichn.capt.height : v3_config.videv.rect.height,
             V3_PIXFMT_YUV420SP, alignWidth);
         pool.comm[0].blockCnt = 4;
@@ -918,7 +916,7 @@ int v3_system_init(char *snrConfig)
             return ret;
         if (ret = v3_vb.fnInit())
             return ret;
-        
+
         if (ret = v3_sys.fnSetAlignment(&alignWidth))
             return ret;
     }
