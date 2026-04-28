@@ -913,11 +913,15 @@ void rtsp_configure_auth(rtsp_handle h, const char *user, const char *pass)
 int rtsp_tick(rtsp_handle h)
 {
     ASSERT(h, return FAILURE);
+    struct timespec ts;
     struct timeval tv;
 
-    ASSERT(gettimeofday(&tv, NULL) == 0, ({
-        ERR("gettimeofday failed\n");
+    ASSERT(clock_gettime(CLOCK_MONOTONIC_COARSE, &ts) == 0, ({
+        ERR("clock_gettime failed\n");
         return FAILURE;}));
+
+    tv.tv_sec = ts.tv_sec;
+    tv.tv_usec = ts.tv_nsec / 1000;
 
     return __get_timestamp_offset(&h->stat, &tv);
 }

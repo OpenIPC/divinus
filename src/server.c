@@ -1,6 +1,4 @@
 #include "server.h"
-#include <poll.h>
-#include <fcntl.h>
 
 #define HTTP_MAX_CLIENTS 50
 #define HTTP_MIN_BUF_SIZE 4096
@@ -88,24 +86,24 @@ void free_client(int i) {
 }
 
 int send_to_fd(int fd, char *buf, ssize_t size) {
-    ssize_t sent = 0, len = 0;
     if (fd < 0) return -1;
-
-    while (sent < size) {
-        len = send(fd, buf + sent, size - sent, MSG_NOSIGNAL);
-        if (len < 0) return -1;
-        sent += len;
+    ssize_t sent = send(fd, buf, size, MSG_DONTWAIT | MSG_NOSIGNAL);
+    if (sent < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) return 0;
+        return -1;
     }
-
     return EXIT_SUCCESS;
 }
 
-int send_to_fd_nonblock(int fd, char *buf, ssize_t size) {
-    if (fd < 0) return -1;
-
-    send(fd, buf, size, MSG_DONTWAIT | MSG_NOSIGNAL);
-
-    return EXIT_SUCCESS;
+int sendv_to_client(int i, struct iovec *iov, int iovcnt) {
+    ssize_t n = writev(client_fds[i].sockFd, iov, iovcnt);
+    if (n < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) return 0;
+        if (errno == EINTR) return 0;
+        free_client(i);
+        return -1;
+    }
+    return 0;
 }
 
 int send_to_client(int i, char *buf, ssize_t size) {
@@ -148,39 +146,39 @@ void send_http_error(int fd, int code) {
 void send_h26x_to_client(char index, hal_vidstream *stream) {
     for (unsigned int i = 0; i < stream->count; ++i) {
         hal_vidpack *pack = &stream->pack[i];
-        unsigned int pack_len = pack->length - pack->offset;
         unsigned char *pack_data = pack->data + pack->offset;
 
         pthread_mutex_lock(&client_fds_mutex);
-        for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i) {
-            if (client_fds[i].sockFd < 0) continue;
-            if (client_fds[i].type != STREAM_H26X) continue;
+        for (unsigned int c = 0; c < HTTP_MAX_CLIENTS; ++c) {
+            if (client_fds[c].sockFd < 0) continue;
+            if (client_fds[c].type != STREAM_H26X) continue;
 
             for (char j = 0; j < pack->naluCnt; j++) {
-                if (client_fds[i].nalCnt == 0 &&
+                if (client_fds[c].nalCnt == 0 &&
                     pack->nalu[j].type != NalUnitType_SPS &&
                     pack->nalu[j].type != NalUnitType_SPS_HEVC)
                     continue;
 
-#ifdef DEBUG_VIDEO
-                printf("NAL: %s send to %d\n", nal_type_to_str(pack->nalu[j].type), i);
-#endif
+                static char len_buf[16];
+                int len_size = sprintf(len_buf, "%zX\r\n", pack->nalu[j].length);
 
-                static char len_buf[50];
-                ssize_t len_size = sprintf(len_buf, "%zX\r\n", pack->nalu[j].length);
-                if (send_to_client(i, len_buf, len_size) < 0)
-                    continue; // send <SIZE>\r\n
-                if (send_to_client(i, pack_data + pack->nalu[j].offset, pack->nalu[j].length) < 0)
-                    continue; // send <DATA>
-                if (send_to_client(i, "\r\n", 2) < 0)
-                    continue; // send \r\n
+                struct iovec iov[3];
+                iov[0].iov_base = len_buf;
+                iov[0].iov_len = len_size;
+                iov[1].iov_base = pack_data + pack->nalu[j].offset;
+                iov[1].iov_len = pack->nalu[j].length;
+                iov[2].iov_base = (void*)"\r\n";
+                iov[2].iov_len = 2;
 
-                client_fds[i].nalCnt++;
-                if (client_fds[i].nalCnt == 300) {
+                if (sendv_to_client(c, iov, 3) < 0)
+                    break;
+
+                client_fds[c].nalCnt++;
+                if (client_fds[c].nalCnt == 300) {
                     char end[] = "0\r\n\r\n";
-                    if (send_to_client(i, end, sizeof(end)) < 0)
-                        continue;
-                    free_client(i);
+                    send_to_client(c, end, sizeof(end) - 1);
+                    free_client(c);
+                    break;
                 }
             }
         }
@@ -189,17 +187,11 @@ void send_h26x_to_client(char index, hal_vidstream *stream) {
 }
 
 void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
-
     for (unsigned int i = 0; i < stream->count; ++i) {
         hal_vidpack *pack = &stream->pack[i];
-        unsigned int pack_len = pack->length - pack->offset;
         unsigned char *pack_data = pack->data + pack->offset;
 
         for (char j = 0; j < pack->naluCnt; j++) {
-#ifdef DEBUG_VIDEO
-            printf("NAL: %s received in packet %d\n", nal_type_to_str(pack->nalu[j].type), i);
-            printf("     starts at %p, ends at %p\n", pack_data + pack->nalu[j].offset, pack_data + pack->nalu[j].offset + pack->nalu[j].length);
-#endif
             if ((pack->nalu[j].type == NalUnitType_SPS || pack->nalu[j].type == NalUnitType_SPS_HEVC)
                 && pack->nalu[j].length >= 4 && pack->nalu[j].length <= UINT16_MAX)
                 mp4_set_sps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
@@ -227,11 +219,11 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                 chk_err_continue ssize_t len_size =
                     sprintf(len_buf, "%zX\r\n", header_buf.offset);
                 if (send_to_client(i, len_buf, len_size) < 0)
-                    continue; // send <SIZE>\r\n
+                    continue;
                 if (send_to_client(i, header_buf.buf, header_buf.offset) < 0)
-                    continue; // send <DATA>
-                if (send_to_client(i, "\r\n", 2) < 0)
-                    continue; // send \r\n
+                    continue;
+                if (send_to_client(i, (void*)"\r\n", 2) < 0)
+                    continue;
 
                 client_fds[i].mp4.sequence_number = 0;
                 client_fds[i].mp4.base_data_offset = header_buf.offset;
@@ -248,24 +240,34 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                 err = mp4_get_moof(&moof_buf);
                 chk_err_continue ssize_t len_size =
                     sprintf(len_buf, "%zX\r\n", (ssize_t)moof_buf.offset);
-                if (send_to_client(i, len_buf, len_size) < 0)
-                    continue; // send <SIZE>\r\n
-                if (send_to_client(i, moof_buf.buf, moof_buf.offset) < 0)
-                    continue; // send <DATA>
-                if (send_to_client(i, "\r\n", 2) < 0)
-                    continue; // send \r\n
+
+                struct iovec iov[3];
+                iov[0].iov_base = len_buf;
+                iov[0].iov_len = len_size;
+                iov[1].iov_base = moof_buf.buf;
+                iov[1].iov_len = moof_buf.offset;
+                iov[2].iov_base = (void*)"\r\n";
+                iov[2].iov_len = 2;
+
+                if (sendv_to_client(i, iov, 3) < 0)
+                    continue;
             }
             {
                 struct BitBuf mdat_buf;
                 err = mp4_get_mdat(&mdat_buf);
                 chk_err_continue ssize_t len_size =
                     sprintf(len_buf, "%zX\r\n", (ssize_t)mdat_buf.offset);
-                if (send_to_client(i, len_buf, len_size) < 0)
-                    continue; // send <SIZE>\r\n
-                if (send_to_client(i, mdat_buf.buf, mdat_buf.offset) < 0)
-                    continue; // send <DATA>
-                if (send_to_client(i, "\r\n", 2) < 0)
-                    continue; // send \r\n
+
+                struct iovec iov[3];
+                iov[0].iov_base = len_buf;
+                iov[0].iov_len = len_size;
+                iov[1].iov_base = mdat_buf.buf;
+                iov[1].iov_len = mdat_buf.offset;
+                iov[2].iov_base = (void*)"\r\n";
+                iov[2].iov_len = 2;
+
+                if (sendv_to_client(i, iov, 3) < 0)
+                    continue;
             }
         }
         pthread_mutex_unlock(&client_fds_mutex);

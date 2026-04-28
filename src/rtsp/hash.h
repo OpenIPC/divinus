@@ -61,17 +61,16 @@ static inline struct __hash_entry *__new_hash_entry(hash_key_t key, void *value)
 
 static inline void hash_destroy(hash_handle h)
 {
-    int i;
-    if(h){
-        if(h->pool){
-            for(i = 0;i < h->size;i++) {
-                list_destroy(&(h->pool[i]));
-            }
-            FREE(h->pool);
-        }
+    if(!h) return;
 
-        FREE(h);
+    if(h->pool){
+        for(int i = 0;i < h->size;i++) {
+            list_destroy(&(h->pool[i]));
+        }
+        FREE(h->pool);
     }
+
+    FREE(h);
 }
 
 static inline hash_handle hash_create(int size, size_t buf_size)
@@ -101,7 +100,7 @@ static inline int __lookup_key(struct list_t *e, void *v)
     return (p->key == key);
 }
 
-static inline struct __hash_entry *__find_entry(hash_handle h, int pos, hash_key_t key)   
+static inline struct __hash_entry *__find_entry(hash_handle h, int pos, hash_key_t key)
 {
     struct __hash_entry *p;
     struct list_t *e;
@@ -128,15 +127,15 @@ static inline void *hash_lookup(hash_handle h, hash_key_t key)
     struct __hash_entry *p;
     return (p = __find_entry(h,pos,key))? p->value : NULL;
 }
-    
+
 static inline int hash_add(hash_handle h, hash_key_t key, void *val)
 {
     struct __hash_entry *p;
     int pos =  __hash_buf(h->size,key,h->buf_size);
 
-    ASSERT(p = __new_hash_entry(key,val), 
+    ASSERT(p = __new_hash_entry(key,val),
         return FAILURE);
-    
+
     list_add(&(h->pool[pos]), &p->list_entry);
 
     h->num_items += 1;

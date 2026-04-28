@@ -12,7 +12,7 @@
 
 #define MAX_SECTIONS 16
 #define REG_SECTION "^([[:space:]]*\\[(\\w+)\\][[:space:]]|(\\w+):)"
-#define REG_PARAM "^[[:space:]]*%s[[:space:]]*[=:][[:space:]]*(.[^;#\n\r]*)"
+#define REG_PARAM "^[[:space:]]*%s[[:blank:]]*[=:][[:blank:]]*(.[^;#\n\r]*)"
 
 struct IniConfig {
     char *str;

@@ -45,7 +45,7 @@ static inline int bufpool_attach(bufpool_handle h, void *buf);
 static inline void bufpool_statistics(bufpool_handle h);
 
 /******************************************************************************
- *              INLINE FUNCTIONS 
+ *              INLINE FUNCTIONS
  ******************************************************************************/
  /* to use strict-aliase compiler optimization, we cannot use void **, so use macro : completely dependent of gcc-extension :p */
 #define bufpool_get_free(__h,__p_buf) ({ \
@@ -68,14 +68,14 @@ __unlock: \
 static inline int __bufpool_ref_manipulate(bufpool_handle h, void *buf, int val)
 {
     struct __bufpool_elem_t *p;
-    
+
     DASSERT(h->elems,return FAILURE);
     DASSERT(h->num > 0,return FAILURE);
 
     ASSERT(p = hash_lookup(h->buf_table,(hash_key_t) buf), return FAILURE);
 
     DASSERT(CHECK_MAGIC(MAGIC_BUFPOOL_ELEM,&p), return FAILURE);
-    
+
     p->ref_count += val;
 
     TEST(p->ref_count >= 0, ({
@@ -112,7 +112,7 @@ static inline void bufpool_statistics(bufpool_handle h)
     pthread_mutex_lock(&h->mutex);
 
     free_elems = list_length(&h->free_list);
-    free_elems_ratio = ((float)free_elems/(float)h->num) * max; 
+    free_elems_ratio = ((float)free_elems/(float)h->num) * max;
 
     for(i = 0; i < free_elems_ratio; i++) {
         tmp[j++] = '=';
@@ -135,9 +135,9 @@ static inline int bufpool_attach(bufpool_handle h, void *buf)
     DASSERT(h,return FAILURE);
 
     pthread_mutex_lock(&h->mutex);
-    
+
     ret = __bufpool_ref_manipulate(h,buf,1);
-    
+
     pthread_mutex_unlock(&h->mutex);
 
     return ret;
@@ -149,9 +149,9 @@ static inline int bufpool_detach(bufpool_handle h, void *buf)
     DASSERT(h,return FAILURE);
 
     pthread_mutex_lock(&h->mutex);
-    
+
     ret = __bufpool_ref_manipulate(h,buf,-1);
-    
+
     pthread_mutex_unlock(&h->mutex);
 
     return ret;
@@ -207,7 +207,7 @@ static inline bufpool_handle bufpool_create(int num, void * (*bufgetter_fxn)(int
         ASSERT(p == &nh->elems[i], goto error);
 #endif
     }
-    
+
 
     nh->num = num;
 
@@ -220,22 +220,21 @@ error:
 
 static void bufpool_delete(bufpool_handle h)
 {
-    int i;
-    if (h) {
-        if (h->elems) {
-            for(i = 0;i < h->num; i++) {
-                if(h->elems[i].reset) {
-                    h->elems[i].reset(h->elems[i].buf);
-                }
+    if (!h) return;
+
+    if (h->elems) {
+        for (int i = 0;i < h->num; i++) {
+            if(h->elems[i].reset) {
+                h->elems[i].reset(h->elems[i].buf);
             }
-            FREE(h->elems);
         }
-
-        hash_destroy(h->buf_table);
-
-        pthread_mutex_destroy(&h->mutex);
-        FREE(h);
+        FREE(h->elems);
     }
+
+    hash_destroy(h->buf_table);
+
+    pthread_mutex_destroy(&h->mutex);
+    FREE(h);
 }
 
 

@@ -2,8 +2,10 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <poll.h>
 #include <regex.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -11,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 #include <time.h>
 #include <unistd.h>
 

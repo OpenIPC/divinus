@@ -90,26 +90,26 @@ static inline void rendezvous_meet(rendezvous_handle hRv)
     DASSERT(hRv,return);
 
 
-    
+
     pthread_mutex_lock(&hRv->mutex);
-    
+
     if (!hRv->force) {
-    
+
         if (hRv->count > 0) {
             hRv->count--;
         }
-    
+
         if (hRv->count > 0 ) {
             pthread_cond_wait(&hRv->cond, &hRv->mutex);
-        } 
+        }
         else {
             pthread_cond_broadcast(&hRv->cond);
             hRv->count = hRv->orig;
         }
-    
+
     }
     pthread_mutex_unlock(&hRv->mutex);
-    
+
 }
 
 /******************************************************************************
@@ -289,7 +289,7 @@ fifo_flush(fifo_handle hfifo)
 	pthread_mutex_unlock(&hfifo->mutex);
 
 	/*
-	 * Make sure any fifo_get() calls are unblocked 
+	 * Make sure any fifo_get() calls are unblocked
 	 */
 	if (write(hfifo->pipes[1], &ch, 1) != 1) {
 		return FAILURE;
@@ -363,7 +363,7 @@ typedef struct thread_job {
 } thread_job;
 
 typedef thread_job *thread_handle;
-    
+
 typedef struct threadpool {
     thread_job *threads[MAX_NUMTHREAD];
     shared_interface *sharedp;
@@ -426,28 +426,27 @@ static inline int _fifo_connect(fifo_handle *lhs, fifo_handle *rhs);
 
 static inline void threadpool_delete(threadpool_handle h)
 {
-    int i;
-    if(h){
-        if(h->sharedp){
-            if(h->sharedp->rv_init){
-                rendezvous_delete(h->sharedp->rv_init);
-            }
-            if(h->sharedp->rv_cleanup){
-                rendezvous_delete(h->sharedp->rv_cleanup);
-            }
+    if(!h) return;
 
-            gbl_delete(h->sharedp->gbl);
-
-            FREE(h->sharedp);
+    if(h->sharedp){
+        if(h->sharedp->rv_init){
+            rendezvous_delete(h->sharedp->rv_init);
         }
-        
-        for(i=0;i<h->cnt;i++){
-            thread_delete(h->threads[i]);
+        if(h->sharedp->rv_cleanup){
+            rendezvous_delete(h->sharedp->rv_cleanup);
         }
 
+        gbl_delete(h->sharedp->gbl);
 
-        FREE(h);
+        FREE(h->sharedp);
     }
+
+    for(int i=0;i<h->cnt;i++){
+        thread_delete(h->threads[i]);
+    }
+
+
+    FREE(h);
 }
 
 static inline threadpool_handle threadpool_create(void *argsp)
@@ -486,7 +485,7 @@ static inline int threadpool_add(threadpool_handle h,thread_handle threadp)
 
     for(i=0;i<h->cnt;i++){
         DASSERT(h->threads[i] != threadp,return FAILURE);
-                
+
     }
 
     memcpy(tmp,threadp->name,MAX_THREADNAME);
@@ -553,7 +552,7 @@ static inline thread_handle create_base_thread(threadpool_handle h_pool, const c
     nh->param_priv = params;
 
     strncpy(nh->name, name,MAX_THREADNAME);
-    
+
     ASSERT(threadpool_add(h_pool,nh) == SUCCESS ,goto error);
 
     return nh;
@@ -647,27 +646,27 @@ static inline void thread_sync_cleanup(thread_handle h)
     if(h->hOutPut != NULL) fifo_flush(h->hOutPut);
     if(h->hInPut != NULL) fifo_flush(h->hInPut);
 
-    
+
     /* Make sure the other threads aren't waiting for us */
     rendezvous_force(sharedp->rv_init);
-    
+
     /* Meet up with other threads before cleaning up */
     rendezvous_meet(sharedp->rv_cleanup);
-    
+
     DBG("%s thread died\n",h->name);
 }
 
 static inline void thread_delete(thread_handle h)
 {
-    if(h){
-        if(h->started){
-            ERR("BUG: deleting uninitialized thread %s\n",h->name);
-        }
+    if(!h) return;
 
-        FREE(h->param_priv);
-
-        FREE(h);
+    if(h->started){
+        ERR("BUG: deleting uninitialized thread %s\n",h->name);
     }
+
+    FREE(h->param_priv);
+
+    FREE(h);
 }
 
 static inline int _fifo_connect(fifo_handle *lhs, fifo_handle *rhs)
@@ -689,7 +688,7 @@ static inline int _fifo_connect(fifo_handle *lhs, fifo_handle *rhs)
 }
 
 
-static inline int thread_joint(thread_handle lhs, thread_handle rhs) 
+static inline int thread_joint(thread_handle lhs, thread_handle rhs)
 {
     ASSERT(lhs,return FAILURE);
     ASSERT(rhs,return FAILURE);
@@ -700,7 +699,7 @@ static inline int thread_joint(thread_handle lhs, thread_handle rhs)
     return SUCCESS;
 }
 
-static inline int thread_chain(thread_handle lhs, thread_handle rhs) 
+static inline int thread_chain(thread_handle lhs, thread_handle rhs)
 {
     ASSERT(lhs,return FAILURE);
     ASSERT(rhs,return FAILURE);
@@ -710,7 +709,7 @@ static inline int thread_chain(thread_handle lhs, thread_handle rhs)
     return SUCCESS;
 }
 
-static inline int thread_extend(thread_handle lhs, thread_handle rhs) 
+static inline int thread_extend(thread_handle lhs, thread_handle rhs)
 {
     ASSERT(lhs,return FAILURE);
     ASSERT(rhs,return FAILURE);
@@ -720,7 +719,7 @@ static inline int thread_extend(thread_handle lhs, thread_handle rhs)
     return SUCCESS;
 }
 
-static inline int thread_close(thread_handle lhs, thread_handle rhs) 
+static inline int thread_close(thread_handle lhs, thread_handle rhs)
 {
     ASSERT(lhs,return FAILURE);
     ASSERT(rhs,return FAILURE);
