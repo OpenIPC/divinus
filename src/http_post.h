@@ -10,10 +10,9 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "hal/globals.h"
 #include "hal/macros.h"
 #include "jpeg.h"
-
-extern char keepRunning;
 
 void start_http_post_send();
 void stop_http_post_send();

@@ -20,6 +20,7 @@
 #include "app_config.h"
 #include "fmt/mp4.h"
 #include "fmt/nal.h"
+#include "hal/globals.h"
 #include "hal/types.h"
 #include "jpeg.h"
 #include "media.h"
@@ -29,7 +30,6 @@
 #include "region.h"
 #include "watchdog.h"
 
-extern char graceful, keepRunning, recordOn;
 extern time_t recordStartTime;
 
 int start_server();

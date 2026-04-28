@@ -9,6 +9,7 @@
 #include <time.h>
 
 #include "app_config.h"
+#include "hal/globals.h"
 #include "hal/support.h"
 #include "lib/spng.h"
 #include "text.h"
@@ -23,8 +24,6 @@
 #define DEF_THICK 0.0f
 #define DEF_TIMEFMT "%Y/%m/%d %H:%M:%S"
 #define MAX_OSD 10
-
-extern char keepRunning;
 
 typedef struct {
     unsigned int size;

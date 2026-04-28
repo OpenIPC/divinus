@@ -35,7 +35,7 @@ void handle_exit(int signo) {
 int main(int argc, char *argv[]) {
     {
         char signal_error[] = {SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGSEGV};
-        char signal_exit[] = {SIGINT, SIGQUIT, SIGTERM};
+        char signal_exit[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
         char signal_null[] = {EPIPE, SIGPIPE};
 
         for (char *s = signal_error; s < (&signal_error)[1]; s++)
@@ -132,6 +132,11 @@ int main(int argc, char *argv[]) {
 
     if (!graceful)
         restore_app_config();
+
+    if (graceful) {
+        fprintf(stderr, "Restarting...\n");
+        execvp(argv[0], argv);
+    }
 
     fprintf(stderr, "Main thread is shutting down...\n");
     return EXIT_SUCCESS;

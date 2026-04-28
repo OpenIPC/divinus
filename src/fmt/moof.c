@@ -57,6 +57,12 @@ enum BufError write_moof(
     const uint32_t samples_aud_len) {
     enum BufError err;
     uint32_t start_atom = ptr->offset;
+
+    pos_sequence_number = 0;
+    pos_base_data_offset = 0;
+    pos_audio_media_decode_time = 0;
+    pos_video_media_decode_time = 0;
+
     err = put_u32_be(ptr, 0);
     chk_err;
     err = put_str4(ptr, "moof");

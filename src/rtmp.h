@@ -14,6 +14,7 @@
 #include "app_config.h"
 #include "fmt/flv.h"
 #include "fmt/nal.h"
+#include "hal/globals.h"
 #include "hal/macros.h"
 #include "hal/tools.h"
 #include "hal/types.h"
@@ -36,8 +37,6 @@
 #define RTMP_CS_CMD             2
 #define RTMP_CS_AUDIO           4
 #define RTMP_CS_VIDEO           6
-
-extern char keepRunning;
 
 int rtmp_init(const char *url);
 void rtmp_close(void);

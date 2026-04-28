@@ -878,6 +878,10 @@ void respond_request(http_request_t *req) {
                     else
                         HAL_WARNING("server", "Failed to save configuration!\n");
                     break;
+                } else if (EQUALS(key, "restart")) {
+                    kill(getpid(), SIGHUP);
+                    result = 0;
+                    break;
                 }
             }
         }

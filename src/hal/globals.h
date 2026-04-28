@@ -2,7 +2,8 @@
 
 #include "types.h"
 
-extern char audioOn, keepRunning;
+extern char graceful, keepRunning;
+extern char audioOn, recordOn;
 
 extern void *aud_thread;
 extern void *isp_thread;
