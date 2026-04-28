@@ -9,7 +9,7 @@ int http_post_send(hal_jpegdata *jpeg) {
     if (sockfd == -1)
         HAL_ERROR("http_post", "Socket creation failed!\n");
 
-    struct addrinfo *server_addr;
+    struct addrinfo *server_addr = NULL;
     int ret = getaddrinfo(host_addr, "80", NULL, &server_addr);
     if (!ret) {
         const struct addrinfo *r;
@@ -62,7 +62,8 @@ int http_post_send(hal_jpegdata *jpeg) {
 
         close(sockfd);
     }
-    freeaddrinfo(server_addr);
+
+    if (server_addr) freeaddrinfo(server_addr);
 
     return EXIT_SUCCESS;
 }
@@ -94,6 +95,13 @@ void *http_post_thread(void) {
             continue;
         }
     }
+
+    if (jpeg.data) {
+        free(jpeg.data);
+        jpeg.data = NULL;
+    }
+
+    return NULL;
 }
 
 void start_http_post_send() {

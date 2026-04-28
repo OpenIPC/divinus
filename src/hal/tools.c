@@ -336,9 +336,12 @@ char *memstr(char *haystack, char *needle, int size, char needlesize) {
 }
 
 unsigned int millis() {
-    struct timeval t;
-    gettimeofday(&t, NULL);
-    return t.tv_sec * 1000 + (t.tv_usec + 500) / 1000;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
+    uint32_t sec = (uint32_t)ts.tv_sec;
+    uint32_t sec_ms = (sec << 10) - (sec << 4) - (sec << 3);
+    uint32_t nsec_ms = ts.tv_nsec / 1000000;
+    return sec_ms + nsec_ms;
 }
 
 void reverse(void *arr, size_t width) {

@@ -109,6 +109,9 @@ int main(int argc, char *argv[]) {
         HAL_INFO("rtsp", "Server has closed!\n");
     }
 
+    if (app_config.http_post_enable)
+        stop_http_post_send();
+
     if (app_config.osd_enable)
         stop_region_handler();
 
