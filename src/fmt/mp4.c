@@ -89,7 +89,7 @@ void mp4_set_vps(const char *nal_data, const uint32_t nal_len) {
 
 enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     char is_iframe) {
-    uint64_t aud_ticks;
+    uint64_t aud_ticks = 0;
     enum BufError err;
 
     struct SampleInfo samples_info[2];
@@ -98,12 +98,15 @@ enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     samples_info[0].duration = default_sample_size;
     samples_info[0].flags = is_iframe ? 0 : 65536;
     samples_info[1].size = buf_aud.offset;
-    if (aud_bitrate > 0)
+    if (aud_bitrate > 0 && buf_aud.offset > 0) {
         aud_ticks = ((uint64_t)(buf_aud.offset << 3) * timescale) /
             (aud_bitrate * 1000);
-    samples_info[1].duration = (uint32_t)aud_ticks;
-    last_fragment_duration =
-        MAX(samples_info[1].duration, samples_info[0].duration);
+        samples_info[1].duration = (uint32_t)aud_ticks;
+        last_fragment_duration = MAX(samples_info[1].duration, samples_info[0].duration);
+    } else {
+        samples_info[1].duration = 0;
+        last_fragment_duration = samples_info[0].duration;
+    }
 
     buf_moof.offset = 0;
     err = write_moof(

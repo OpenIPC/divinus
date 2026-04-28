@@ -315,7 +315,8 @@ enum BufError write_trun(
     }
 
     if (first_sample_flags_present) {
-        err = put_u32_be(ptr, is_audio ? 0 : 33554432);
+        err = put_u32_be(ptr, is_audio ? 0x02000000 :
+            (samples_info[0].flags == 0 ? 0x02000000 : 0x01010000));
         chk_err; // 4 first_sample_flags
     }
     for (uint32_t i = 0; i < samples_info_count; ++i) {

@@ -444,8 +444,8 @@ enum ConfigError parse_app_config(void) {
     parse_bool(&ini, "stream", "enable", &app_config.stream_enable);
     if (app_config.stream_enable) {
         int count, val;
-        parse_int(&ini, "stream", "udp_srcport", 0, USHRT_MAX, &val);
-        if (err != CONFIG_OK) app_config.stream_udp_srcport = (unsigned short)val;
+        err = parse_int(&ini, "stream", "udp_srcport", 0, USHRT_MAX, &val);
+        if (err == CONFIG_OK) app_config.stream_udp_srcport = (unsigned short)val;
         parse_list(&ini, "stream", "dest",
             sizeof(app_config.stream_dests) / sizeof(*app_config.stream_dests),
             &count, app_config.stream_dests);
