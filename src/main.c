@@ -34,16 +34,23 @@ void handle_exit(int signo) {
 
 int main(int argc, char *argv[]) {
     {
-        char signal_error[] = {SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGSEGV};
-        char signal_exit[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
-        char signal_null[] = {EPIPE, SIGPIPE};
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = handle_error;
+        sigaction(SIGABRT, &sa, NULL);
+        sigaction(SIGBUS, &sa, NULL);
+        sigaction(SIGFPE, &sa, NULL);
+        sigaction(SIGILL, &sa, NULL);
+        sigaction(SIGSEGV, &sa, NULL);
 
-        for (char *s = signal_error; s < (&signal_error)[1]; s++)
-            signal(*s, handle_error);
-        for (char *s = signal_exit; s < (&signal_exit)[1]; s++)
-            signal(*s, handle_exit);
-        for (char *s = signal_null; s < (&signal_null)[1]; s++)
-            signal(*s, NULL);
+        sa.sa_handler = handle_exit;
+        sigaction(SIGHUP, &sa, NULL);
+        sigaction(SIGINT, &sa, NULL);
+        sigaction(SIGQUIT, &sa, NULL);
+        sigaction(SIGTERM, &sa, NULL);
+
+        sa.sa_handler = SIG_IGN;
+        sigaction(SIGPIPE, &sa, NULL);
     }
 
     hal_identify();

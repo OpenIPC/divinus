@@ -159,7 +159,7 @@ void send_h26x_to_client(char index, hal_vidstream *stream) {
                     pack->nalu[j].type != NalUnitType_SPS_HEVC)
                     continue;
 
-                static char len_buf[16];
+                char len_buf[16];
                 int len_size = sprintf(len_buf, "%zX\r\n", pack->nalu[j].length);
 
                 struct iovec iov[3];
@@ -207,7 +207,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
         }
 
         static enum BufError err;
-        static char len_buf[50];
+        char len_buf[50];
         pthread_mutex_lock(&client_fds_mutex);
         for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i) {
             if (client_fds[i].sockFd < 0) continue;
@@ -280,7 +280,7 @@ void send_mp3_to_client(char *buf, ssize_t size) {
         if (client_fds[i].sockFd < 0) continue;
         if (client_fds[i].type != STREAM_MP3) continue;
 
-        static char len_buf[50];
+        char len_buf[50];
         ssize_t len_size = sprintf(len_buf, "%zX\r\n", size);
         if (send_to_client(i, len_buf, len_size) < 0)
             continue; // send <SIZE>\r\n
@@ -298,7 +298,7 @@ void send_pcm_to_client(hal_audframe *frame) {
         if (client_fds[i].sockFd < 0) continue;
         if (client_fds[i].type != STREAM_PCM) continue;
 
-        static char len_buf[50];
+        char len_buf[50];
         ssize_t len_size = sprintf(len_buf, "%zX\r\n", frame->length[0]);
         if (send_to_client(i, len_buf, len_size) < 0)
             continue; // send <SIZE>\r\n
@@ -366,18 +366,19 @@ struct jpegtask {
 };
 
 void *send_jpeg_thread(void *vargp) {
-    struct jpegtask task = *((struct jpegtask *)vargp);
+    struct jpegtask *task = (struct jpegtask *)vargp;
     hal_jpegdata jpeg = {0};
     HAL_INFO("server", "Requesting a JPEG snapshot (%ux%u, qfactor %u, color2Gray %d)...\n",
-        task.width, task.height, task.qfactor, task.color2Gray);
+        task->width, task->height, task->qfactor, task->color2Gray);
     int ret =
-        jpeg_get(task.width, task.height, task.qfactor, task.color2Gray, &jpeg);
+        jpeg_get(task->width, task->height, task->qfactor, task->color2Gray, &jpeg);
     if (ret) {
         HAL_DANGER("server", "Failed to receive a JPEG snapshot...\n");
         static char response[] =
             "HTTP/1.1 503 Internal Error\r\n"
             "Connection: close\r\n\r\n";
-        send_and_close(task.client_fd, response, sizeof(response) - 1); // zero ending string!
+        send_and_close(task->client_fd, response, sizeof(response) - 1); // zero ending string!
+        free(task);
         return NULL;
     }
     HAL_INFO("server", "JPEG snapshot has been received!\n");
@@ -388,11 +389,12 @@ void *send_jpeg_thread(void *vargp) {
         "Content-Length: %lu\r\n"
         "Connection: close\r\n\r\n",
         jpeg.jpegSize);
-    send_to_fd(task.client_fd, buf, buf_len);
-    send_to_fd(task.client_fd, jpeg.data, jpeg.jpegSize);
-    send_to_fd(task.client_fd, "\r\n", 2);
-    close_socket_fd(task.client_fd);
+    send_to_fd(task->client_fd, buf, buf_len);
+    send_to_fd(task->client_fd, jpeg.data, jpeg.jpegSize);
+    send_to_fd(task->client_fd, "\r\n", 2);
+    close_socket_fd(task->client_fd);
     free(jpeg.data);
+    free(task);
     HAL_INFO("server", "JPEG snapshot has been sent!\n");
     return NULL;
 }
@@ -512,7 +514,13 @@ grant_access:
     if (req->query = strchr(req->uri, '?'))
         *req->query++ = '\0';
     else
-        req->query = req->uri - 1;
+        req->query = NULL;
+
+    if (req->uri && strstr(req->uri, "..")) {
+        close_socket_fd(req->clntFd);
+        req->clntFd = -1;
+        return;
+    }
 
     http_header_t *h = http_headers;
     while (h < http_headers + 16) {
@@ -761,14 +769,14 @@ void respond_request(http_request_t *req) {
 
     if (app_config.jpeg_enable && STARTS_WITH(req->uri, "/image.jpg")) {
         {
-            struct jpegtask task;
-            task.client_fd = req->clntFd;
-            task.width = app_config.jpeg_width;
-            task.height = app_config.jpeg_height;
-            task.qfactor = app_config.jpeg_qfactor;
-            task.color2Gray = 0;
+            struct jpegtask *task = malloc(sizeof(struct jpegtask));
+            task->client_fd = req->clntFd;
+            task->width = app_config.jpeg_width;
+            task->height = app_config.jpeg_height;
+            task->qfactor = app_config.jpeg_qfactor;
+            task->color2Gray = 0;
 
-            if (!EMPTY(req->query)) {
+            if (req->query) {
                 char *remain;
                 while (req->query) {
                     char *value = split(&req->query, "&");
@@ -778,23 +786,23 @@ void respond_request(http_request_t *req) {
                     if (EQUALS(key, "width")) {
                         short result = strtol(value, &remain, 10);
                         if (remain != value)
-                            task.width = result;
+                            task->width = result;
                     }
                     else if (EQUALS(key, "height")) {
                         short result = strtol(value, &remain, 10);
                         if (remain != value)
-                            task.height = result;
+                            task->height = result;
                     }
                     else if (EQUALS(key, "qfactor")) {
                         short result = strtol(value, &remain, 10);
                         if (remain != value)
-                            task.qfactor = result;
+                            task->qfactor = result;
                     }
                     else if (EQUALS(key, "color2gray") || EQUALS(key, "gray")) {
                         if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
-                            task.color2Gray = 1;
+                            task->color2Gray = 1;
                         else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
-                            task.color2Gray = 0;
+                            task->color2Gray = 0;
                     }
                 }
             }
@@ -807,17 +815,21 @@ void respond_request(http_request_t *req) {
             size_t new_stacksize = 16 * 1024;
             if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
                 HAL_DANGER("jpeg", "Can't set stack size %zu\n", new_stacksize);
-            pthread_create(
-                &thread_id, &thread_attr, send_jpeg_thread, (void *)&task);
+            if (pthread_create(
+                &thread_id, &thread_attr, send_jpeg_thread, (void *)task)) {
+                HAL_DANGER("jpeg", "Can't create thread\n");
+                free(task);
+            }
             if (pthread_attr_setstacksize(&thread_attr, stacksize))
                 HAL_DANGER("jpeg", "Can't set stack size %zu\n", stacksize);
             pthread_attr_destroy(&thread_attr);
+            pthread_detach(thread_id);
         }
         return;
     }
 
     if (EQUALS(req->uri, "/api/audio")) {
-        if (!EMPTY(req->query)) {
+        if (req->query) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
@@ -863,7 +875,7 @@ void respond_request(http_request_t *req) {
 
     if (EQUALS(req->uri, "/api/cmd")) {
         int result = -1;
-        if (!EMPTY(req->query)) {
+        if (req->query) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
@@ -897,7 +909,7 @@ void respond_request(http_request_t *req) {
     }
 
     if (EQUALS(req->uri, "/api/isp")) {
-        if (!EMPTY(req->query)) {
+        if (req->query) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
@@ -933,7 +945,7 @@ void respond_request(http_request_t *req) {
     }
 
     if (EQUALS(req->uri, "/api/jpeg")) {
-        if (!EMPTY(req->query)) {
+        if (req->query) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
@@ -973,7 +985,7 @@ void respond_request(http_request_t *req) {
     }
 
     if (EQUALS(req->uri, "/api/mjpeg")) {
-        if (!EMPTY(req->query)) {
+        if (req->query) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
@@ -1041,7 +1053,7 @@ void respond_request(http_request_t *req) {
     }
 
     if (EQUALS(req->uri, "/api/mp4")) {
-        if (!EMPTY(req->query)) {
+        if (req->query) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
@@ -1131,7 +1143,7 @@ void respond_request(http_request_t *req) {
     }
 
     if (EQUALS(req->uri, "/api/night")) {
-        if (!EMPTY(req->query)) {
+        if (req->query) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
@@ -1254,8 +1266,7 @@ void respond_request(http_request_t *req) {
                 return;
             }
         }
-        if (!EMPTY(req->query))
-        {
+        if (req->query) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
@@ -1334,7 +1345,7 @@ void respond_request(http_request_t *req) {
     }
 
     if (EQUALS(req->uri, "/api/record")) {
-        if (!EMPTY(req->query)) {
+        if (req->query) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
@@ -1423,7 +1434,7 @@ void respond_request(http_request_t *req) {
 
     if (EQUALS(req->uri, "/api/time")) {
         struct timespec t;
-        if (!EMPTY(req->query)) {
+        if (req->query) {
             char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");

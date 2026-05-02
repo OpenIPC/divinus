@@ -3,7 +3,7 @@
 int jpeg_index;
 bool jpeg_module_init = false;
 
-pthread_mutex_t jpeg_mutex;
+pthread_mutex_t jpeg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int jpeg_init() {  
     int ret;
