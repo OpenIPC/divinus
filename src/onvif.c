@@ -32,7 +32,7 @@ int start_onvif(void) {
     pthread_attr_init(&thread_attr);
     size_t stacksize;
     pthread_attr_getstacksize(&thread_attr, &stacksize);
-    size_t new_stacksize = 16 * 1024;
+    size_t new_stacksize = 64 * 1024;
     if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
         HAL_DANGER("onvif", "Can't set stack size %zu\n", new_stacksize);
     pthread_create(&onvifPid, &thread_attr, (void *(*)(void *))onvif_thread, NULL);
@@ -281,6 +281,18 @@ void onvif_respond_mediaprofiles(char *response, int *respLen) {
             app_config.mp4_codecH265 ? "H265" : "H264",
             app_config.mp4_width, app_config.mp4_height,
             app_config.mp4_fps, app_config.mp4_bitrate);
+        profileCnt++;
+    }
+
+    if (app_config.mp4sub_enable) {
+        profileLen += sprintf(&profile[profileLen], mediaprofilexml,
+            "MainStream", "profile_2",
+            profileCnt + 1, profileCnt + 1,
+            app_config.mp4sub_height, app_config.mp4sub_width,
+            profileCnt + 1, profileCnt + 1,
+            app_config.mp4sub_codecH265 ? "H265" : "H264",
+            app_config.mp4sub_width, app_config.mp4sub_height,
+            app_config.mp4sub_fps, app_config.mp4sub_bitrate);
         profileCnt++;
     }
 

@@ -91,6 +91,17 @@ struct AppConfig {
     unsigned int mp4_profile;
     unsigned int mp4_bitrate;
 
+    // [mp4sub]
+    bool mp4sub_enable;
+    bool mp4sub_codecH265;
+    unsigned int mp4sub_mode;
+    unsigned int mp4sub_fps;
+    unsigned int mp4sub_gop;
+    unsigned int mp4sub_width;
+    unsigned int mp4sub_height;
+    unsigned int mp4sub_profile;
+    unsigned int mp4sub_bitrate;
+
     // [jpeg]
     bool jpeg_enable;
     unsigned int jpeg_width;

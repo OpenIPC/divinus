@@ -38,7 +38,7 @@ typedef struct {
     void *bind;
     unsigned int evType;
     gm_common_pollevt event;
-    int internal[4];
+    int internal[5];
 } gm_common_pollfd;
 
 typedef struct {
@@ -69,5 +69,5 @@ typedef struct {
     gm_common_pack pack;
     int ret;
     int reserved[6];
-    int internal[28];
+    int internal[29];
 } gm_common_strm;

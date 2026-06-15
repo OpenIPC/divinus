@@ -162,6 +162,17 @@ int app_config_save(void) {
     fprintf(file, "  profile: %d\n", app_config.mp4_profile);
     fprintf(file, "  bitrate: %d\n", app_config.mp4_bitrate);
 
+    fprintf(file, "mp4sub:\n");
+    fprintf(file, "  enable: %s\n", app_config.mp4sub_enable ? "true" : "false");
+    fprintf(file, "  codec: %s\n", app_config.mp4sub_codecH265 ? "H.265" : "H.264");
+    fprintf(file, "  mode: %d\n", app_config.mp4sub_mode);
+    fprintf(file, "  width: %d\n", app_config.mp4sub_width);
+    fprintf(file, "  height: %d\n", app_config.mp4sub_height);
+    fprintf(file, "  fps: %d\n", app_config.mp4sub_fps);
+    fprintf(file, "  gop: %d\n", app_config.mp4sub_gop);
+    fprintf(file, "  profile: %d\n", app_config.mp4sub_profile);
+    fprintf(file, "  bitrate: %d\n", app_config.mp4sub_bitrate);
+
     fprintf(file, "osd:\n");
     fprintf(file, "  enable: %s\n", app_config.osd_enable ? "true" : "false");
     for (char i = 0; i < MAX_OSD; i++) {
@@ -258,6 +269,15 @@ enum ConfigError app_config_parse(void) {
     app_config.audio_gain = 0;
     app_config.jpeg_enable = false;
     app_config.mp4_enable = false;
+
+    app_config.mp4sub_enable = false;
+    app_config.mp4sub_fps = 15;
+    app_config.mp4sub_width = 640;
+    app_config.mp4sub_height = 480;
+    app_config.mp4sub_bitrate = 512;
+    app_config.mp4sub_gop = 15;
+    app_config.mp4sub_profile = HAL_VIDPROFILE_BASELINE;
+    app_config.mp4sub_mode = HAL_VIDMODE_CBR;
 
     app_config.mjpeg_enable = false;
     app_config.mjpeg_fps = 15;
@@ -512,6 +532,39 @@ enum ConfigError app_config_parse(void) {
             &ini, "mp4", "bitrate", 32, INT_MAX, &app_config.mp4_bitrate);
         if (err != CONFIG_OK)
             goto RET_ERR;
+    }
+
+    parse_bool(&ini, "mp4sub", "enable", &app_config.mp4sub_enable);
+    if (app_config.mp4sub_enable) {
+        {
+            const char *possible_values[] = {"CBR", "VBR", "QP", "ABR", "AVBR"};
+            const int count = sizeof(possible_values) / sizeof(const char *);
+            int val = 0;
+            parse_enum(&ini, "mp4sub", "mode", (void *)&val,
+                possible_values, count, 0);
+            app_config.mp4sub_mode = val;
+        }
+        parse_int(
+            &ini, "mp4sub", "width", 160, INT_MAX, &app_config.mp4sub_width);
+        parse_int(
+            &ini, "mp4sub", "height", 120, INT_MAX, &app_config.mp4sub_height);
+        parse_int(&ini, "mp4sub", "fps", 1, INT_MAX, &app_config.mp4sub_fps);
+        app_config.mp4sub_gop = app_config.mp4sub_fps;
+        parse_int(&ini, "mp4sub", "gop", 1, INT_MAX, &app_config.mp4sub_gop);
+        {
+            const char *possible_values[] = {"BP", "MP", "HP"};
+            const int count = sizeof(possible_values) / sizeof(const char *);
+            const char *possible_values2[] = {"BASELINE", "MAIN", "HIGH"};
+            const int count2 = sizeof(possible_values2) / sizeof(const char *);
+            int val = 0;
+            if (parse_enum(&ini, "mp4sub", "profile", (void *)&val,
+                    possible_values, count, 0) != CONFIG_OK)
+                parse_enum(&ini, "mp4sub", "profile", (void *)&val,
+                    possible_values2, count2, 0);
+            app_config.mp4sub_profile = val;
+        }
+        parse_int(
+            &ini, "mp4sub", "bitrate", 32, INT_MAX, &app_config.mp4sub_bitrate);
     }
 
     err = parse_bool(&ini, "jpeg", "enable", &app_config.jpeg_enable);

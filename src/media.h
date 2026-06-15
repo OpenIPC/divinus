@@ -35,6 +35,7 @@ int take_next_free_channel(bool mainLoop);
 int create_channel(char index, short width, short height, char framerate, char jpeg);
 int bind_channel(char index, char framerate, char jpeg);
 int unbind_channel(char index, char jpeg);
+int apply_channel(void);
 int media_video_disable(char index, char jpeg);
 
 void media_audio_disable(void);
@@ -43,3 +44,5 @@ int media_mjpeg_disable(void);
 int media_mjpeg_enable(void);
 int media_mp4_disable(void);
 int media_mp4_enable(void);
+int media_mp4sub_disable(void);
+int media_mp4sub_enable(void);

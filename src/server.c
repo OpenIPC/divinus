@@ -15,6 +15,7 @@ enum StreamType {
     STREAM_MJPEG,
     STREAM_MP3,
     STREAM_MP4,
+    STREAM_MP4SUB,
     STREAM_PCM
 };
 
@@ -287,6 +288,94 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
             {
                 struct BitBuf mdat_buf;
                 err = mp4_get_mdat(&mdat_buf);
+                chk_err_continue ssize_t len_size =
+                    sprintf(len_buf, "%zX\r\n", (ssize_t)mdat_buf.offset);
+
+                struct iovec iov[3];
+                iov[0].iov_base = len_buf;
+                iov[0].iov_len = len_size;
+                iov[1].iov_base = mdat_buf.buf;
+                iov[1].iov_len = mdat_buf.offset;
+                iov[2].iov_base = (void*)"\r\n";
+                iov[2].iov_len = 2;
+
+                if (sendv_to_client(i, iov, 3) < 0)
+                    continue;
+            }
+        }
+        pthread_mutex_unlock(&client_fds_mutex);
+    }
+}
+
+void send_mp4sub_to_client(char index, hal_vidstream *stream, char isH265) {
+    for (unsigned int i = 0; i < stream->count; ++i) {
+        hal_vidpack *pack = &stream->pack[i];
+        unsigned char *pack_data = pack->data + pack->offset;
+
+        for (char j = 0; j < pack->naluCnt; j++) {
+            if ((pack->nalu[j].type == NalUnitType_SPS || pack->nalu[j].type == NalUnitType_SPS_HEVC)
+                && pack->nalu[j].length >= 4 && pack->nalu[j].length <= UINT16_MAX)
+                mp4_sub_set_sps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
+            else if ((pack->nalu[j].type == NalUnitType_PPS || pack->nalu[j].type == NalUnitType_PPS_HEVC)
+                && pack->nalu[j].length <= UINT16_MAX)
+                mp4_sub_set_pps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
+            else if (pack->nalu[j].type == NalUnitType_VPS_HEVC && pack->nalu[j].length <= UINT16_MAX)
+                mp4_sub_set_vps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4);
+            else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux)
+                mp4_sub_set_slice(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, 1);
+            else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr)
+                mp4_sub_set_slice(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, 0);
+        }
+
+        static enum BufError err;
+        char len_buf[50];
+        pthread_mutex_lock(&client_fds_mutex);
+        for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i) {
+            if (client_fds[i].sockFd < 0) continue;
+            if (client_fds[i].type != STREAM_MP4SUB) continue;
+
+            if (!client_fds[i].mp4.header_sent) {
+                struct BitBuf header_buf;
+                err = mp4_sub_get_header(&header_buf);
+                chk_err_continue ssize_t len_size =
+                    sprintf(len_buf, "%zX\r\n", header_buf.offset);
+                if (send_to_client(i, len_buf, len_size) < 0)
+                    continue;
+                if (send_to_client(i, header_buf.buf, header_buf.offset) < 0)
+                    continue;
+                if (send_to_client(i, (void*)"\r\n", 2) < 0)
+                    continue;
+
+                client_fds[i].mp4.sequence_number = 0;
+                client_fds[i].mp4.base_data_offset = header_buf.offset;
+                client_fds[i].mp4.base_media_decode_time = 0;
+                client_fds[i].mp4.header_sent = true;
+                client_fds[i].mp4.nals_count = 0;
+                client_fds[i].mp4.default_sample_duration =
+                    default_sample_size_sub;
+            }
+
+            err = mp4_sub_set_state(&client_fds[i].mp4);
+            chk_err_continue {
+                struct BitBuf moof_buf;
+                err = mp4_sub_get_moof(&moof_buf);
+                chk_err_continue ssize_t len_size =
+                    sprintf(len_buf, "%zX\r\n", (ssize_t)moof_buf.offset);
+
+                struct iovec iov[3];
+                iov[0].iov_base = len_buf;
+                iov[0].iov_len = len_size;
+                iov[1].iov_base = moof_buf.buf;
+                iov[1].iov_len = moof_buf.offset;
+                iov[2].iov_base = (void*)"\r\n";
+                iov[2].iov_len = 2;
+
+                if (sendv_to_client(i, iov, 3) < 0)
+                    continue;
+            }
+            {
+                struct BitBuf mdat_buf;
+                err = mp4_sub_get_mdat(&mdat_buf);
                 chk_err_continue ssize_t len_size =
                     sprintf(len_buf, "%zX\r\n", (ssize_t)mdat_buf.offset);
 
@@ -780,6 +869,47 @@ void respond_request(http_request_t *req) {
         return;
     }
 
+    if ((!app_config.mp4sub_codecH265 && EQUALS(req->uri, "/video_sub.264")) ||
+        (app_config.mp4sub_codecH265 && EQUALS(req->uri, "/video_sub.265"))) {
+        request_idr();
+        respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: video/mp4\r\n"
+            "Transfer-Encoding: chunked\r\n"
+            "Connection: keep-alive\r\n\r\n");
+        send_to_fd(req->clntFd, response, respLen);
+        pthread_mutex_lock(&client_fds_mutex);
+        for (uint32_t i = 0; i < HTTP_MAX_CLIENTS; ++i)
+            if (client_fds[i].sockFd < 0) {
+                client_fds[i].sockFd = req->clntFd;
+                client_fds[i].type = STREAM_H26X;
+                client_fds[i].mp4.header_sent = false;
+                break;
+            }
+        pthread_mutex_unlock(&client_fds_mutex);
+        return;
+    }
+
+    if (app_config.mp4sub_enable && EQUALS(req->uri, "/video_sub.mp4")) {
+        request_idr();
+        respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: video/mp4\r\n"
+            "Transfer-Encoding: chunked\r\n"
+            "Connection: keep-alive\r\n\r\n");
+        send_to_fd(req->clntFd, response, respLen);
+        pthread_mutex_lock(&client_fds_mutex);
+        for (uint32_t i = 0; i < HTTP_MAX_CLIENTS; ++i)
+            if (client_fds[i].sockFd < 0) {
+                client_fds[i].sockFd = req->clntFd;
+                client_fds[i].type = STREAM_MP4SUB;
+                client_fds[i].mp4.header_sent = false;
+                break;
+            }
+        pthread_mutex_unlock(&client_fds_mutex);
+        return;
+    }
+
     if (app_config.mjpeg_enable && EQUALS(req->uri, "/mjpeg")) {
         respLen = sprintf(response,
             "HTTP/1.0 200 OK\r\n"
@@ -1061,7 +1191,8 @@ void respond_request(http_request_t *req) {
             }
 
             media_mjpeg_disable();
-            if (app_config.mjpeg_enable) media_mjpeg_enable();
+            if (app_config.mjpeg_enable && !app_config.mp4sub_enable) media_mjpeg_enable();
+            apply_channel();
         }
 
         char mode[5] = "\0";
@@ -1142,6 +1273,7 @@ void respond_request(http_request_t *req) {
 
             media_mp4_disable();
             if (app_config.mp4_enable) media_mp4_enable();
+            apply_channel();
         }
 
         char h265[6] = "false";
@@ -1170,6 +1302,83 @@ void respond_request(http_request_t *req) {
             "\"h265\":%s,\"mode\":\"%s\",\"profile\":\"%s\",\"bitrate\":%d}",
             app_config.mp4_enable ? "true" : "false", app_config.mp4_width, app_config.mp4_height,
             app_config.mp4_fps, app_config.mp4_gop, h265, mode, profile, app_config.mp4_bitrate);
+        send_and_close(req->clntFd, response, respLen);
+        return;
+    }
+
+    if (EQUALS(req->uri, "/api/mp4sub")) {
+        if (req->query) {
+            char *remain;
+            while (req->query) {
+                char *value = split(&req->query, "&");
+                if (!value || !*value) continue;
+                unescape_uri(value);
+                char *key = split(&value, "=");
+                if (!key || !*key || !value || !*value) continue;
+                if (EQUALS(key, "enable")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        app_config.mp4sub_enable = 1;
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        app_config.mp4sub_enable = 0;
+                } else if (EQUALS(key, "width")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.mp4sub_width = result;
+                } else if (EQUALS(key, "height")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.mp4sub_height = result;
+                } else if (EQUALS(key, "fps")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.mp4sub_fps = result;
+                } else if (EQUALS(key, "bitrate")) {
+                    short result = strtol(value, &remain, 10);
+                    if (remain != value)
+                        app_config.mp4sub_bitrate = result;
+                } else if (EQUALS(key, "mode")) {
+                    if (EQUALS_CASE(value, "CBR"))
+                        app_config.mp4sub_mode = HAL_VIDMODE_CBR;
+                    else if (EQUALS_CASE(value, "VBR"))
+                        app_config.mp4sub_mode = HAL_VIDMODE_VBR;
+                    else if (EQUALS_CASE(value, "QP"))
+                        app_config.mp4sub_mode = HAL_VIDMODE_QP;
+                } else if (EQUALS(key, "profile")) {
+                    if (EQUALS_CASE(value, "BP") || EQUALS_CASE(value, "BASELINE"))
+                        app_config.mp4sub_profile = HAL_VIDPROFILE_BASELINE;
+                    else if (EQUALS_CASE(value, "MP") || EQUALS_CASE(value, "MAIN"))
+                        app_config.mp4sub_profile = HAL_VIDPROFILE_MAIN;
+                    else if (EQUALS_CASE(value, "HP") || EQUALS_CASE(value, "HIGH"))
+                        app_config.mp4sub_profile = HAL_VIDPROFILE_HIGH;
+                }
+            }
+
+            media_mp4sub_disable();
+            if (app_config.mp4sub_enable) media_mp4sub_enable();
+            apply_channel();
+        }
+
+        char mode[5] = "\0";
+        char profile[3] = "\0";
+        switch (app_config.mp4sub_mode) {
+            case HAL_VIDMODE_CBR: strcpy(mode, "CBR"); break;
+            case HAL_VIDMODE_VBR: strcpy(mode, "VBR"); break;
+            case HAL_VIDMODE_QP: strcpy(mode, "QP"); break;
+        }
+        switch (app_config.mp4sub_profile) {
+            case HAL_VIDPROFILE_BASELINE: strcpy(profile, "BP"); break;
+            case HAL_VIDPROFILE_MAIN: strcpy(profile, "MP"); break;
+            case HAL_VIDPROFILE_HIGH: strcpy(profile, "HP"); break;
+        }
+        respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json;charset=UTF-8\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "{\"enable\":%s,\"width\":%d,\"height\":%d,\"fps\":%d,\"gop\":%d,"
+            "\"mode\":\"%s\",\"profile\":\"%s\",\"bitrate\":%d}",
+            app_config.mp4sub_enable ? "true" : "false", app_config.mp4sub_width, app_config.mp4sub_height,
+            app_config.mp4sub_fps, app_config.mp4sub_gop, mode, profile, app_config.mp4sub_bitrate);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
