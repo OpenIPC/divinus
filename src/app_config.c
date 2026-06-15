@@ -537,6 +537,17 @@ enum ConfigError app_config_parse(void) {
     parse_bool(&ini, "mp4sub", "enable", &app_config.mp4sub_enable);
     if (app_config.mp4sub_enable) {
         {
+            const char *possible_values[] = {"H.264", "H.265", "H264", "H265", "AVC", "HEVC"};
+            const int count = sizeof(possible_values) / sizeof(const char *);
+            int val = 0;
+            parse_enum(&ini, "mp4", "codec", (void *)&val,
+                possible_values, count, 0);
+            if (val % 2)
+                app_config.mp4sub_codecH265 = true;
+            else
+                app_config.mp4sub_codecH265 = false;
+        }
+        {
             const char *possible_values[] = {"CBR", "VBR", "QP", "ABR", "AVBR"};
             const int count = sizeof(possible_values) / sizeof(const char *);
             int val = 0;
