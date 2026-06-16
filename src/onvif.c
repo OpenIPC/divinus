@@ -286,7 +286,7 @@ void onvif_respond_mediaprofiles(char *response, int *respLen) {
 
     if (app_config.mp4sub_enable) {
         profileLen += sprintf(&profile[profileLen], mediaprofilexml,
-            "MainStream", "profile_2",
+            "SubStream", "profile_2",
             profileCnt + 1, profileCnt + 1,
             app_config.mp4sub_height, app_config.mp4sub_width,
             profileCnt + 1, profileCnt + 1,
