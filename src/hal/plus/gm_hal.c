@@ -15,7 +15,36 @@ void* _gm_aud_grp;
 void* _gm_cap_dev;
 void* _gm_cap_grp;
 void* _gm_venc_dev[GM_VENC_CHN_NUM];
+void* _gm_cap_devs[GM_VENC_CHN_NUM];
 int   _gm_venc_sz[GM_VENC_CHN_NUM] = {0};
+
+/* 
+For reference only
+Argument                        GM8220/GM8296       GM8135/GM8136 
+gm_file_attr_t                  Support             Support 
+gm_cap_attr_t                   Support             Support 
+gm_cap_advanced_attr_t          Support             Not support 
+gm_crop_attr_t                  Support             Not support 
+gm_pip_crop_attr_t              Support             Not support 
+gm_didn_attr_t                  Support             Only supports denoise 
+gm_image_quality_attr_t         Support             Not support 
+gm_rotation_attr_t              Support             Only supports filp 
+gm_win_attr_t                   Support             Support 
+gm_pip_win_attr_t               Support             Not support 
+gm_win_aspect_ratio_attr_t      Support             Not support 
+gm_h264e_attr_t                 Support             Support 
+gm_mpeg4e_attr_t                Support             Not support 
+gm_mjpege_attr_t                Support             Not support 
+gm_h264_advanced_attr_t         Support             Not support 
+gm_h264_roiqp_attr_t            Support             Not support 
+gm_h264_watermark_attr_t        Support             Not support 
+gm_h264_vui_attr_t              Support             Not support 
+gm_raw_attr_t                   Support             Not support 
+gm_audio_grab_attr_t            Support             Support 
+gm_audio_enc_attr_t             Support             Support 
+gm_audio_render_attr_t          Support             Support 
+gm_fdt_attr_t                   Support             Not support
+*/
 
 void gm_hal_deinit(void)
 {
@@ -148,12 +177,28 @@ int gm_channel_bind(char index)
 {
     int ret;
 
+    void *cap_dev = _gm_cap_devs[index] ? _gm_cap_devs[index] : _gm_cap_dev;
+
+    HAL_INFO("gm_venc", "ch%d: binding cap_dev=%p (per=%p shared=%p) to venc=%p",
+        index, cap_dev, _gm_cap_devs[index], _gm_cap_dev, _gm_venc_dev[index]);
+
     _gm_venc_fds[index].bind = 
-        gm_lib.fnBind(_gm_cap_grp, _gm_cap_dev, _gm_venc_dev[index]);
+        gm_lib.fnBind(_gm_cap_grp, cap_dev, _gm_venc_dev[index]);
     _gm_venc_fds[index].evType = GM_POLL_READ;
 
-    if ((ret = gm_lib.fnRefreshGroup(_gm_cap_grp)) < 0)
+    HAL_INFO("gm_venc", "ch%d: fnBind returned bind=%p", index, _gm_venc_fds[index].bind);
+
+    return EXIT_SUCCESS;
+}
+
+int gm_apply_group(void)
+{
+    int ret;
+
+    if ((ret = gm_lib.fnRefreshGroup(_gm_cap_grp)) < 0) {
+        HAL_INFO("gm_venc", "Apply group failed ret=%d", ret);
         return ret;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -297,6 +342,19 @@ int gm_video_create(char index, hal_vidconfig *config)
             }
             h264chn.level = 41;
             gm_lib.fnSetDeviceConfig(_gm_venc_dev[index], &h264chn);
+
+            if (index > 0) {
+                _gm_cap_devs[index] = gm_lib.fnCreateDevice(GM_LIB_DEV_CAPTURE);
+                {
+                    GM_DECLARE(gm_lib, cap_cfg, gm_cap_cnf, "gm_cap_attr_t");
+                    cap_cfg.channel = 0;
+                    cap_cfg.output = index;
+                    HAL_INFO("gm_venc", "ch%d: cap_dev=%p output=%d channel=%d",
+                        index, _gm_cap_devs[index], cap_cfg.output, cap_cfg.channel);
+                    int cret = gm_lib.fnSetDeviceConfig(_gm_cap_devs[index], &cap_cfg);
+                    HAL_INFO("gm_venc", "ch%d: SetDeviceConfig ret=%d", index, cret);
+                }
+            }
             break;
         } default: HAL_ERROR("gm_venc", "This codec is not supported by the hardware!");
     }
@@ -319,6 +377,11 @@ int gm_video_destroy(char index)
     gm_lib.fnRefreshGroup(_gm_cap_grp);
 
     gm_lib.fnDestroyDevice(_gm_venc_dev[index]);
+
+    if (_gm_cap_devs[index]) {
+        gm_lib.fnDestroyDevice(_gm_cap_devs[index]);
+        _gm_cap_devs[index] = NULL;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -343,30 +406,31 @@ int gm_video_snapshot_grab(short width, short height, char quality, hal_jpegdata
     char *buffer = malloc(GM_MAX_SNAP);
 
     gm_venc_snap snap;
+    memset(&snap, 0, sizeof(snap));
     snap.bind = _gm_venc_fds[0].bind;
     snap.quality = quality;
     snap.buffer = buffer;
     snap.length = GM_MAX_SNAP;
-    snap.dest.width = MIN(width, GM_VENC_SNAP_WIDTH_MAX);
-    snap.dest.height = MIN(height, GM_VENC_SNAP_HEIGHT_MAX);
+    snap.dest.width = width;
+    snap.dest.height = height;
 
-    if ((ret = gm_lib.fnSnapshot(&snap, 1000)) <= 0)
-        goto abort;
+    if ((ret = gm_lib.fnSnapshot(&snap, 1000)) <= 0) {
+        free(buffer);
+        HAL_ERROR("gm_venc", "Taking a snapshot failed with %#x!\n", ret);
+        return EXIT_FAILURE;
+    }
 
     jpeg->data = buffer;
     jpeg->jpegSize = jpeg->length = ret;
     return EXIT_SUCCESS;
-
-abort:
-    free(buffer);
-    HAL_ERROR("gm_venc", "Taking a snapshot failed with %#x!\n", ret);
 }
 
 void *gm_video_thread(void)
 {
     int ret;
+    gm_common_pollfd poll_fds[GM_VENC_CHN_NUM];
     gm_common_strm stream[GM_VENC_CHN_NUM];
-    memset(stream, 0, sizeof(stream));
+    char poll_map[GM_VENC_CHN_NUM];
 
     int bufSize = 0;
     for (char i = 0; i < GM_VENC_CHN_NUM; i++)
@@ -376,37 +440,65 @@ void *gm_video_thread(void)
     if (!bsData) goto abort;
 
     while (keepRunning) {
-        ret = gm_lib.fnPollStream(_gm_venc_fds, GM_VENC_CHN_NUM, 500);
-        if (ret == GM_ERR_TIMEOUT) {
-            HAL_WARNING("gm_venc", "Main stream loop timed out!\n");
+        int poll_cnt = 0;
+        for (char i = 0; i < GM_VENC_CHN_NUM; i++) {
+            if (!_gm_venc_fds[i].bind)
+                continue;
+            poll_fds[poll_cnt] = _gm_venc_fds[i];
+            memset(&poll_fds[poll_cnt].event, 0, sizeof(poll_fds[poll_cnt].event));
+            poll_map[poll_cnt] = i;
+            poll_cnt++;
+        }
+
+        if (poll_cnt == 0) {
+            usleep(500000);
             continue;
         }
 
-        for (char i = 0; i < GM_VENC_CHN_NUM; i++) {
-            if (_gm_venc_fds[i].event.type != GM_POLL_READ)
+        ret = gm_lib.fnPollStream(poll_fds, poll_cnt, 500);
+        if (ret == GM_ERR_TIMEOUT)
+            continue;
+
+        if (ret < 0) {
+            static int last_poll_err = 0;
+            if (ret != last_poll_err) {
+                HAL_WARNING("gm_venc", "fnPollStream failed %#x\n", ret);
+                last_poll_err = ret;
+            }
+            continue;
+        }
+
+        int offset = 0;
+        memset(stream, 0, sizeof(stream));
+        for (char i = 0; i < poll_cnt; i++) {
+            char ch = poll_map[i];
+            if (poll_fds[i].event.type != GM_POLL_READ)
                 continue;
-            if (_gm_venc_fds[i].event.bsLength > bufSize) {
-                HAL_WARNING("gm_venc", "Bitstream buffer needs %d bytes "
-                    "more, dropping the upcoming data!\n",
-                    _gm_venc_fds[i].event.bsLength - bufSize);
+
+            if (poll_fds[i].event.bsLength > _gm_venc_sz[ch]) {
+                HAL_WARNING("gm_venc", "ch%d: bsLength=%d > buf=%d, dropping\n",
+                    ch, poll_fds[i].event.bsLength, _gm_venc_sz[ch]);
+                offset += _gm_venc_sz[ch];
                 continue;
             }
 
-            stream[i].bind = _gm_venc_fds[i].bind;
-            stream[i].pack.bsData = bsData;
-            stream[i].pack.bsLength = bufSize;
-            stream[i].pack.mdData = 0;
-            stream[i].pack.mdLength = 0;
+            stream[ch].bind = _gm_venc_fds[ch].bind;
+            stream[ch].pack.bsData = bsData + offset;
+            stream[ch].pack.bsLength = _gm_venc_sz[ch];
+            stream[ch].pack.mdData = 0;
+            stream[ch].pack.mdLength = 0;
+            stream[ch].pack.bsSize = 0;
+            stream[ch].pack.mdSize = 0;
+            offset += _gm_venc_sz[ch];
         }
 
-        if ((ret = gm_lib.fnReceiveStream(stream, GM_VENC_CHN_NUM)) < 0)
-            HAL_WARNING("gm_venc", "Receiving the streams failed "
-                "with %#x!\n", ret);
-        else for (char i = 0; i < GM_VENC_CHN_NUM; i++) {
+        if ((ret = gm_lib.fnReceiveStream(stream, GM_VENC_CHN_NUM)) < 0) {
+            HAL_WARNING("gm_venc", "fnReceiveStream failed %#x\n", ret);
+        } else for (char i = 0; i < GM_VENC_CHN_NUM; i++) {
             if (!stream[i].bind) continue;
             if (stream[i].ret < 0)
-                HAL_WARNING("gm_venc", "Failed to the receive bitstream on "
-                    "channel %d with %#x!\n", i, stream[i].ret);
+                HAL_WARNING("gm_venc", "ch%d: recv err=%#x\n",
+                    i, stream[i].ret);
             else if (!stream[i].ret && gm_vid_cb) {
                 gm_common_pack *pack = &stream[i].pack;
                 hal_vidstream outStrm;

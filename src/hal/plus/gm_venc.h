@@ -2,7 +2,7 @@
 
 #include "gm_common.h"
 
-// Considering the encoder modules we use (H.264 and JPEG)
+// Considering the encoder modules we use (H.264 main, H.264 sub, MJPEG, JPEG)
 #define GM_VENC_CHN_NUM 2
 
 #define GM_VENC_SNAP_HEIGHT_MAX 576

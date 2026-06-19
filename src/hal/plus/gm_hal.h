@@ -24,6 +24,7 @@ void *gm_audio_thread(void);
 
 int gm_channel_bind(char index);
 int gm_channel_unbind(char index);
+int gm_apply_group(void);
 
 int gm_pipeline_create(char mirror, char flip);
 void gm_pipeline_destroy(void);
@@ -82,6 +83,49 @@ typedef struct {
 
     int   (*fnRequestIdr)(void *device);
 } gm_lib_impl;
+
+/* 
+For reference only
+Argument                            GM8220/GM8296              GM8135/GM8136 
+gm_init                             Support                    Support 
+gm_release                          Support                    Support 
+gm_get_sysinfo                      Support                    Support 
+gm_new_obj                          Support                    Support 
+gm_delete_obj                       Support                    Support 
+gm_bind                             Support                    Support 
+gm_unbind                           Support                    Support 
+gm_new_groupfd                      Support                    Support 
+gm_delete_groupfd                   Support                    Support 
+gm_set_attr                         Support                    Support 
+gm_apply                            Support                    Support 
+gm_apply_attr                       Support                    Support 
+gm_poll                             Support                    Support 
+gm_send_multi_bitstreams            Support                    Support 
+gm_recv_multi_bitstreams            Support                    Support 
+gm_clear_window                     Support                    Support 
+gm_request_snapshot                 Support                    Support 
+gm_set_palette_table                Support                    Support 
+gm_request_dec_snapshot             Support                    Not support 
+gm_request_disp_snapshot            Support                    Not support 
+gm_request_keyframe                 Support                    Not support
+gm_get_rawdata                      Support                    Not support 
+gm_decode_keyframe                  Support                    Not support 
+gm_set_osg_images                   Support                    Not support 
+gm_set_osg_windows                  Support                    Not support 
+gm_set_masks                        Support                    Not support 
+gm_set_display_rate                 Support                    Not support 
+gm_register_group_notify_handler    Support                    Not support 
+gm_set_win_pattern                  Support                    Not support 
+gm_enable_win_pattern               Support                    Not support 
+gm_set_fdt_windows                  Support                    Not support 
+gm_set_cap_motion                   Not support                Support 
+gm_recv_multi_cap_md                Not support                Support 
+gm_set_cap_tamper                   Not support                Support 
+gm_set_osd_font                     Not support                Support 
+gm_set_osd_font2                    Not support                Support 
+gm_set_osd_mask                     Not support                Support 
+gm_update_new_font                  Not support                Support
+*/
 
 static int gm_lib_load(gm_lib_impl *aio_lib) {
     if (!(aio_lib->handle = dlopen("libgm.so", RTLD_LAZY | RTLD_GLOBAL)))
