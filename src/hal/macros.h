@@ -81,7 +81,7 @@
 #define CONTAINS(a, b) strstr(a, b)
 #define EMPTY(x) (x[0] == '\0')
 #define ENDS_WITH(a, b) \
-    ((strlen(a) > strlen(b)) && !strcmp(a + strlen(a) - strlen(b), b))
+    (strlen(a) > (sizeof(b) - 1) && !strcmp(a + strlen(a) - (sizeof(b) - 1), b))
 #define EQUALS(a, b) !strcmp(a, b)
 #define EQUALS_CASE(a, b) !strcasecmp(a, b)
-#define STARTS_WITH(a, b) !strncmp(a, b, strlen(b))
+#define STARTS_WITH(a, b) !strncmp(a, b, sizeof(b) - 1)
