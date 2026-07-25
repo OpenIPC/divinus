@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (app_config.http_post_enable)
-        http_post_start();
+        http_post_stop();
 
     if (app_config.osd_enable)
         region_stop();
