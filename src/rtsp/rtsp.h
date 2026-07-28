@@ -124,6 +124,10 @@ struct transfer_item_t {
 
 struct __rtsp_obj_t {
     pthread_mutex_t mutex;
+    /* Raised by rtsp_finish(). The encoder threads keep calling rtp_send_*()
+     * with this handle after that point, so it has to stay readable for the
+     * rest of the process lifetime. Guarded by mutex. */
+    char finished;
     struct list_head_t con_list;
     threadpool_handle pool;
     bufpool_handle con_pool;

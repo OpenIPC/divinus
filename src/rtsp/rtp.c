@@ -415,12 +415,19 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
     /* checkout RTP packet */
     DASSERT(h, return FAILURE);
 
-    if (gbl_get_quit(h->pool->sharedp->gbl)) {
+    /* Do not reach through h->pool to find out whether the server is gone:
+     * rtsp_finish() raises that quit flag and then deletes the threadpool it
+     * lives in, so the check itself read freed memory. h->finished lives in the
+     * handle, which rtsp_finish() now keeps alive for exactly this reason. */
+    rtsp_lock(h);
+    if (h->finished) {
+        rtsp_unlock(h);
 #ifdef DEBUG_RTSP
         ERR("server threads have gone already. call rtsp_finish()\n");
 #endif
         return FAILURE;
     }
+    rtsp_unlock(h);
 
     h->isH265 = isH265;
 
@@ -471,12 +478,16 @@ int rtp_send_mp3(rtsp_handle h, unsigned char *buf, size_t len)
     /* checkout RTP packet */
     DASSERT(h, return FAILURE);
 
-    if (gbl_get_quit(h->pool->sharedp->gbl)) {
+    /* See the note in rtp_send_h26x(). */
+    rtsp_lock(h);
+    if (h->finished) {
+        rtsp_unlock(h);
 #ifdef DEBUG_RTSP
         ERR("server threads have gone already. call rtsp_finish()\n");
 #endif
         return FAILURE;
     }
+    rtsp_unlock(h);
 
     h->audioPt = 14;
 

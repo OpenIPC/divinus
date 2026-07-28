@@ -838,6 +838,13 @@ void rtsp_finish(rtsp_handle h)
 {
     /* close every connections in the handle */
     if (h) {
+        /* Tell the encoder threads to stop reaching into this handle before any
+         * of it goes away. They call rtp_send_h26x()/rtp_send_mp3() from
+         * media.c, which is still running at this point. */
+        pthread_mutex_lock(&h->mutex);
+        h->finished = 1;
+        pthread_mutex_unlock(&h->mutex);
+
         list_destroy(&h->con_list);
 
         if (h->pool) {
@@ -854,11 +861,17 @@ void rtsp_finish(rtsp_handle h)
             mime_encoded_delete(h->sprop_pps_b64);
 
             threadpool_delete(h->pool);
+            h->pool = NULL;
         }
 
-        pthread_mutex_destroy(&h->mutex);
-
-        FREE(h);
+        /* Deliberately no pthread_mutex_destroy()/FREE(h) here. main.c calls
+         * rtsp_finish() well before sdk_stop() and never clears the rtspHandle
+         * global, so the encoder threads keep calling rtp_send_h26x() and
+         * rtp_send_mp3() with this pointer until the process exits; they need
+         * the mutex and the finished flag to stay valid in order to bail out.
+         * rtsp_create() runs once per process, so this costs a single small
+         * allocation that process exit reclaims. rtsp_create()'s own error path
+         * still frees the handle, where nothing can reach it yet. */
     }
 
     return;
@@ -897,7 +910,13 @@ rtsp_handle rtsp_create(unsigned char max_con, unsigned int port, int priority)
     return nh;
 
 error:
+    /* Nothing has published this handle yet, so unlike the shutdown path there
+     * is no encoder thread that could still dereference it. */
     rtsp_finish(nh);
+    if (nh) {
+        pthread_mutex_destroy(&nh->mutex);
+        FREE(nh);
+    }
     return NULL;
 }
 
