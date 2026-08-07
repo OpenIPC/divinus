@@ -111,11 +111,6 @@ int main(int argc, char *argv[]) {
     if (app_config.record_enable && app_config.record_continuous)
         record_stop();
 
-    if (app_config.rtsp_enable) {
-        rtsp_finish(rtspHandle);
-        HAL_INFO("rtsp", "Server has closed!\n");
-    }
-
     if (app_config.http_post_enable)
         http_post_stop();
 
@@ -129,6 +124,11 @@ int main(int argc, char *argv[]) {
 
     if (app_config.stream_enable)
         media_stop();
+
+    if (app_config.rtsp_enable) {
+        rtsp_finish(rtspHandle);
+        HAL_INFO("rtsp", "Server has closed!\n");
+    }
 
     server_stop();
 

@@ -10,12 +10,13 @@ This document describes the fields that can be found within a configuration file
 - **web_enable_auth**: Boolean to enable authentication on the API, live stream and WebUI endpoints (default: `false`).
 - **web_auth_user**: Username for basic authentication (default: `admin`).
 - **web_auth_pass**: Password for basic authentication (default: `12345`).
+- **web_auth_skiplocal**: Boolean to skip authentication for local addresses (default: `true`).
 - **web_enable_static**: Boolean to enable serving static web content (default: `false`).
 - **isp_thread_stack_size**: Stack size for ISP thread, if applicable (default: `16384`).
 - **venc_stream_thread_stack_size**: Stack size for video encoding stream thread (default: `16384`).
 - **web_server_thread_stack_size**: Stack size for web server thread (default: `65536`).
 - **time_format**: Format for displaying time, refer to strftime() modifiers for exact parameters (e.g., `"%Y-%m-%d %H:%M:%S"`).
-- **watchdog**: Watchdog timer in seconds, where 0 means disabled (default: `30`).
+- **watchdog**: Watchdog timer in seconds, where 0 means disabled (default: `0`).
 
 ## Night mode section
 

@@ -27,11 +27,31 @@ Calls various integrated commands.
 | Method | Parameters | Description                     |
 |--------|------------|---------------------------------|
 | GET    | `save`     | Saves the current configuration |
+| GET    | `restart`  | Restarts the streaming service  |
 
 **Response**
 ```json
 {
   "code": 0  // 0 = success, !0 = error code
+}
+```
+
+#### `/api/isp`
+
+Configures ISP (image signal processor) parameters.
+
+| Method | Parameters   | Description                |
+|--------|--------------|----------------------------|
+| GET    | `mirror`     | Enable/disable mirroring   |
+| GET    | `flip`       | Enable/disable flipping    |
+| GET    | `antiflicker`| Antiflicker in Hz (-1=off) |
+
+**Response**
+```json
+{
+  "mirror": false,
+  "flip": false,
+  "antiflicker": 60
 }
 ```
 
