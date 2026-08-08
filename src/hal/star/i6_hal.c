@@ -83,7 +83,7 @@ int i6_audio_init(int samplerate, int gain)
         config.bit24On = 0;
         config.intf = I6_AUD_INTF_I2S_SLAVE;
         config.sound = I6_AUD_SND_MONO;
-        config.frmNum = 0;
+        config.frmNum = 4;
         config.packNumPerFrm = 640;
         config.codecChnNum = 0;
         config.chnNum = 1;
@@ -121,28 +121,26 @@ void *i6_audio_thread(void)
     memset(&frame, 0, sizeof(frame));
 
     while (keepRunning  && audioOn) {
-        if (ret = i6_aud.fnGetFrame(_i6_aud_dev, _i6_aud_chn,
-            &frame, NULL, 128)) {
-            HAL_WARNING("i6_aud", "Getting the frame failed "
-                "with %#x!\n", ret);
-            continue;
+        while ((ret = i6_aud.fnGetFrame(_i6_aud_dev, _i6_aud_chn,
+            &frame, NULL, 0)) == 0) {
+            if (i6_aud_cb) {
+                hal_audframe outFrame;
+                outFrame.channelCnt = 1;
+                outFrame.data[0] = frame.addr[0];
+                outFrame.length[0] = frame.length;
+                outFrame.seq = frame.sequence;
+                outFrame.timestamp = frame.timestamp;
+                (i6_aud_cb)(&outFrame);
+            }
+
+            if (ret = i6_aud.fnFreeFrame(_i6_aud_dev, _i6_aud_chn,
+                &frame, NULL)) {
+                HAL_WARNING("i6_aud", "Releasing the frame failed"
+                    " with %#x!\n", ret);
+            }
         }
 
-        if (i6_aud_cb) {
-            hal_audframe outFrame;
-            outFrame.channelCnt = 1;
-            outFrame.data[0] = frame.addr[0];
-            outFrame.length[0] = frame.length;
-            outFrame.seq = frame.sequence;
-            outFrame.timestamp = frame.timestamp;
-            (i6_aud_cb)(&outFrame);
-        }
-
-        if (ret = i6_aud.fnFreeFrame(_i6_aud_dev, _i6_aud_chn,
-            &frame, NULL)) {
-            HAL_WARNING("i6_aud", "Releasing the frame failed"
-                " with %#x!\n", ret);
-        }
+        usleep(5000);
     }
     HAL_INFO("i6_aud", "Shutting down capture thread...\n");
 }

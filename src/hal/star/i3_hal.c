@@ -68,7 +68,7 @@ int i3_audio_init(int samplerate)
         config.bit24On = 0;
         config.intf = I3_AUD_INTF_I2S_SLAVE;
         config.sound = I3_AUD_SND_MONO;
-        config.frmNum = 0;
+        config.frmNum = 4;
         config.packNumPerFrm = 640;
         config.chnNum = 1;
         if (ret = i3_aud.fnSetDeviceConfig(_i3_aud_dev, &config))
@@ -99,29 +99,27 @@ void *i3_audio_thread(void)
     i3_aud_frm frame;
     memset(&frame, 0, sizeof(frame));
 
-    while (keepRunning) {
-        if (ret = i3_aud.fnGetFrame(_i3_aud_dev, _i3_aud_chn,
-            &frame, NULL, 128)) {
-            HAL_WARNING("i3_aud", "Getting the frame failed "
-                "with %#x!\n", ret);
-            continue;
+    while (keepRunning && audioOn) {
+        while ((ret = i3_aud.fnGetFrame(_i3_aud_dev, _i3_aud_chn,
+            &frame, NULL, 0)) == 0) {
+            if (i3_aud_cb) {
+                hal_audframe outFrame;
+                outFrame.channelCnt = 1;
+                outFrame.data[0] = frame.addr[0];
+                outFrame.length[0] = frame.length;
+                outFrame.seq = frame.sequence;
+                outFrame.timestamp = frame.timestamp;
+                (i3_aud_cb)(&outFrame);
+            }
+
+            if (ret = i3_aud.fnFreeFrame(_i3_aud_dev, _i3_aud_chn,
+                &frame, NULL)) {
+                HAL_WARNING("i3_aud", "Releasing the frame failed"
+                    " with %#x!\n", ret);
+            }
         }
 
-        if (i3_aud_cb) {
-            hal_audframe outFrame;
-            outFrame.channelCnt = 1;
-            outFrame.data[0] = frame.addr[0];
-            outFrame.length[0] = frame.length;
-            outFrame.seq = frame.sequence;
-            outFrame.timestamp = frame.timestamp;
-            (i3_aud_cb)(&outFrame);
-        }
-
-        if (ret = i3_aud.fnFreeFrame(_i3_aud_dev, _i3_aud_chn,
-            &frame, NULL)) {
-            HAL_WARNING("i3_aud", "Releasing the frame failed"
-                " with %#x!\n", ret);
-        }
+        usleep(5000);
     }
     HAL_INFO("i3_aud", "Shutting down capture thread...\n");
 }

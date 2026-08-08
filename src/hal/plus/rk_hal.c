@@ -108,29 +108,27 @@ void *rk_audio_thread(void)
     memset(&frame, 0, sizeof(frame));
     memset(&echoFrame, 0, sizeof(echoFrame));
 
-    while (keepRunning) {
-        if (ret = rk_aud.fnGetFrame(_rk_aud_dev, _rk_aud_chn,
-            &frame, &echoFrame, 128)) {
-            HAL_WARNING("rk_aud", "Getting the frame failed "
-                "with %#x!\n", ret);
-            continue;
+    while (keepRunning && audioOn) {
+        while ((ret = rk_aud.fnGetFrame(_rk_aud_dev, _rk_aud_chn,
+            &frame, &echoFrame, 0)) == 0) {
+            if (rk_aud_cb) {
+                hal_audframe outFrame;
+                outFrame.channelCnt = 1;
+                outFrame.data[0] = rk_mb.fnGetData(frame.mbBlk);
+                outFrame.length[0] = frame.length;
+                outFrame.seq = frame.sequence;
+                outFrame.timestamp = frame.timestamp;
+                (rk_aud_cb)(&outFrame);
+            }
+
+            if (ret = rk_aud.fnFreeFrame(_rk_aud_dev, _rk_aud_chn,
+                &frame, &echoFrame)) {
+                HAL_DANGER("rk_aud", "Releasing the frame failed"
+                    " with %#x!\n", ret);
+            }
         }
 
-        if (rk_aud_cb) {
-            hal_audframe outFrame;
-            outFrame.channelCnt = 1;
-            outFrame.data[0] = rk_mb.fnGetData(frame.mbBlk);
-            outFrame.length[0] = frame.length;
-            outFrame.seq = frame.sequence;
-            outFrame.timestamp = frame.timestamp;
-            (rk_aud_cb)(&outFrame);
-        }
-
-        if (ret = rk_aud.fnFreeFrame(_rk_aud_dev, _rk_aud_chn,
-            &frame, &echoFrame)) {
-            HAL_DANGER("rk_aud", "Releasing the frame failed"
-                " with %#x!\n", ret);
-        }
+        usleep(5000);
     }
     HAL_INFO("rk_aud", "Shutting down encoding thread...\n");
 }

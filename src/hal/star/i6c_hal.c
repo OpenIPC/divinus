@@ -131,28 +131,26 @@ void *i6c_audio_thread(void)
     memset(&frame, 0, sizeof(frame));
 
     while (keepRunning && audioOn) {
-        if (ret = i6c_aud.fnGetFrame(_i6c_aud_dev, _i6c_aud_chn,
-            &frame, NULL, 128)) {
-            HAL_WARNING("i6c_aud", "Getting the frame failed "
-                "with %#x!\n", ret);
-            continue;
+        while ((ret = i6c_aud.fnGetFrame(_i6c_aud_dev, _i6c_aud_chn,
+            &frame, NULL, 0)) == 0) {
+            if (i6c_aud_cb) {
+                hal_audframe outFrame;
+                outFrame.channelCnt = 1;
+                outFrame.data[0] = frame.addr[0];
+                outFrame.length[0] = frame.length[0];
+                outFrame.seq = frame.sequence;
+                outFrame.timestamp = frame.timestamp;
+                (i6c_aud_cb)(&outFrame);
+            }
+
+            if (ret = i6c_aud.fnFreeFrame(_i6c_aud_dev, _i6c_aud_chn,
+                &frame, NULL)) {
+                HAL_WARNING("i6c_aud", "Releasing the frame failed"
+                    " with %#x!\n", ret);
+            }
         }
 
-        if (i6c_aud_cb) {
-            hal_audframe outFrame;
-            outFrame.channelCnt = 1;
-            outFrame.data[0] = frame.addr[0];
-            outFrame.length[0] = frame.length[0];
-            outFrame.seq = frame.sequence;
-            outFrame.timestamp = frame.timestamp;
-            (i6c_aud_cb)(&outFrame);
-        }
-
-        if (ret = i6c_aud.fnFreeFrame(_i6c_aud_dev, _i6c_aud_chn,
-            &frame, NULL)) {
-            HAL_WARNING("i6c_aud", "Releasing the frame failed"
-                " with %#x!\n", ret);
-        }
+        usleep(5000);
     }
     HAL_INFO("i6c_aud", "Shutting down capture thread...\n");
 }

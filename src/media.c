@@ -10,42 +10,13 @@ shine_t mp3Enc;
 unsigned int pcmPos, pcmSamp;
 short pcmSrc[SHINE_MAX_SAMPLES];
 
-void *aenc_thread(void) {
-    const uint32_t mp3FrmSize =
-        (app_config.audio_srate >= 32000 ? 144 : 72) *
-        (app_config.audio_bitrate * 1000) /
-        app_config.audio_srate;
-
-    while (keepRunning && audioOn) {
-        pthread_mutex_lock(&aencMtx);
-        if (mp3Buf.offset < mp3FrmSize) {
-            pthread_mutex_unlock(&aencMtx);
-            usleep(10000);
-            continue;
-        }
-
-        send_mp3_to_client(mp3Buf.buf, mp3FrmSize);
-
-        pthread_mutex_lock(&mp4Mtx);
-        mp4_ingest_audio(mp3Buf.buf, mp3FrmSize);
-        pthread_mutex_unlock(&mp4Mtx);
-
-        if (app_config.rtsp_enable)
-            rtp_send_mp3(rtspHandle, mp3Buf.buf, mp3FrmSize);
-
-        rtmp_ingest_audio(mp3Buf.buf, mp3FrmSize);
-
-        mp3Buf.offset -= mp3FrmSize;
-        if (mp3Buf.offset > 0)
-            memmove(mp3Buf.buf, mp3Buf.buf + mp3FrmSize, mp3Buf.offset);
-        pthread_mutex_unlock(&aencMtx);
-    }
-    HAL_INFO("media", "Shutting down audio encoding thread...\n");
-}
+/* Raw PCM queue between the capture callback and the MP3 encoder, so the
+ * capture thread only ever copies a frame and the SDK never drops buffers
+ * waiting on the encode.  Newest frames are dropped when it is full. */
+static struct ringbuf audRing;
+static unsigned int audDrops;
 
 int save_audio_stream(hal_audframe *frame) {
-    int ret = EXIT_SUCCESS;
-
 #ifdef DEBUG_AUDIO
     printf("[audio] data:%p - %02x %02x %02x %02x %02x %02x %02x %02x\n",
         frame->data, frame->data[0][0], frame->data[0][1], frame->data[0][2], frame->data[0][3],
@@ -55,28 +26,85 @@ int save_audio_stream(hal_audframe *frame) {
     printf("        ts:%d\n", frame->timestamp);
 #endif
 
-    send_pcm_to_client(frame);
+    static uint8_t pack[AUD_FRAME_MAX + 2];
+    unsigned int len = frame->length[0] > AUD_FRAME_MAX ?
+        AUD_FRAME_MAX : frame->length[0];
+    pack[0] = (len >> 8) & 0xFF;
+    pack[1] = len & 0xFF;
+    memcpy(pack + 2, frame->data[0], len);
 
-    unsigned int pcmLen = frame->length[0] / 2;
-    short *pcmPack = (short*)frame->data[0];
-    short *srcPtr = pcmPack + pcmLen;
+    if (ringbuf_put(&audRing, pack, len + 2))
+        audDrops++;
 
-    while (pcmPos + pcmLen >= pcmSamp) {
-        int copyLen = pcmSamp - pcmPos;
-        memcpy(pcmSrc + pcmPos, srcPtr - pcmLen, copyLen * 2);
-        unsigned char *mp3Ptr = shine_encode_buffer_interleaved(mp3Enc, pcmSrc, &ret);
+    return EXIT_SUCCESS;
+}
+
+void *aenc_thread(void) {
+    static uint8_t frame_buf[AUD_FRAME_MAX + 2];
+    const uint32_t mp3FrmSize =
+        (app_config.audio_srate >= 32000 ? 144 : 72) *
+        (app_config.audio_bitrate * 1000) /
+        app_config.audio_srate;
+    uint8_t hdr[2];
+    unsigned int seq = 0;
+    int ret;
+
+    while (keepRunning && audioOn) {
         pthread_mutex_lock(&aencMtx);
-        put(&mp3Buf, mp3Ptr, ret);
+        if (mp3Buf.offset >= mp3FrmSize) {
+            send_mp3_to_client(mp3Buf.buf, mp3FrmSize);
+            pthread_mutex_lock(&mp4Mtx);
+            mp4_ingest_audio(mp3Buf.buf, mp3FrmSize);
+            pthread_mutex_unlock(&mp4Mtx);
+            if (app_config.rtsp_enable)
+                rtp_send_mp3(rtspHandle, mp3Buf.buf, mp3FrmSize);
+            rtmp_ingest_audio(mp3Buf.buf, mp3FrmSize);
+            mp3Buf.offset -= mp3FrmSize;
+            if (mp3Buf.offset > 0)
+                memmove(mp3Buf.buf, mp3Buf.buf + mp3FrmSize, mp3Buf.offset);
+        }
         pthread_mutex_unlock(&aencMtx);
-        pcmLen -= copyLen;
-        pcmPos = 0;
+
+        if (ringbuf_peek(&audRing, hdr, 2)) {
+            usleep(5000);
+            continue;
+        }
+        unsigned int flen = (hdr[0] << 8) | hdr[1];
+        if (ringbuf_used(&audRing) < 2 + flen) {
+            usleep(5000);
+            continue;
+        }
+        ringbuf_get(&audRing, frame_buf, 2 + flen);
+
+        hal_audframe outFrame;
+        outFrame.channelCnt = 1;
+        outFrame.data[0] = (unsigned char *)frame_buf + 2;
+        outFrame.length[0] = flen;
+        outFrame.seq = seq++;
+        outFrame.timestamp = millis();
+        send_pcm_to_client(&outFrame);
+
+        unsigned int pcmLen = flen / 2;
+        short *pcmPack = (short *)(frame_buf + 2);
+        short *srcPtr = pcmPack + pcmLen;
+
+        while (pcmPos + pcmLen >= pcmSamp) {
+            int copyLen = pcmSamp - pcmPos;
+            memcpy(pcmSrc + pcmPos, srcPtr - pcmLen, copyLen * 2);
+            unsigned char *mp3Ptr = shine_encode_buffer_interleaved(mp3Enc, pcmSrc, &ret);
+            pthread_mutex_lock(&aencMtx);
+            put(&mp3Buf, mp3Ptr, ret);
+            pthread_mutex_unlock(&aencMtx);
+            pcmLen -= copyLen;
+            pcmPos = 0;
+        }
+
+        if (pcmLen > 0)
+            memcpy(pcmSrc + pcmPos, srcPtr - pcmLen, pcmLen * 2);
+        pcmPos += pcmLen;
     }
-
-    if (pcmLen > 0)
-        memcpy(pcmSrc + pcmPos, srcPtr - pcmLen, pcmLen * 2);
-    pcmPos += pcmLen;
-
-    return ret;
+    HAL_INFO("media", "Shutting down audio encode thread (%u dropped)...\n", audDrops);
+    return NULL;
 }
 
 int save_video_stream(char index, hal_vidstream *stream) {
@@ -388,6 +416,7 @@ void media_audio_disable(void) {
 
     pthread_join(aencPid, NULL);
     pthread_join(audPid, NULL);
+    ringbuf_destroy(&audRing);
     shine_close(mp3Enc);
 
     switch (plat) {
@@ -414,6 +443,9 @@ int media_audio_enable(void) {
     int ret = EXIT_SUCCESS;
 
     if (audioOn) return ret;
+
+    if (ringbuf_init(&audRing, AUD_RING_CAP))
+        HAL_ERROR("media", "Audio queue initialization failed!\n");
 
     switch (plat) {
 #if defined(__ARM_PCS_VFP)

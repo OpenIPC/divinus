@@ -94,50 +94,48 @@ void *gm_audio_thread(void)
     if (!bsData) goto abort;
 
     while (keepRunning && audioOn) {
-        ret = gm_lib.fnPollStream(_gm_aud_fds, GM_AUD_CHN_NUM, 500);
-        if (ret == GM_ERR_TIMEOUT) {
-            HAL_WARNING("gm_aud", "Main stream loop timed out!\n");
-            continue;
-        }
+        while ((ret = gm_lib.fnPollStream(_gm_aud_fds, GM_AUD_CHN_NUM, 0)) > 0) {
+            for (char i = 0; i < GM_AUD_CHN_NUM; i++) {
+                if (_gm_aud_fds[i].event.type != GM_POLL_READ)
+                    continue;
+                if (_gm_aud_fds[i].event.bsLength > bufSize) {
+                    HAL_WARNING("gm_aud", "Bitstream buffer needs %d bytes "
+                        "more, dropping the upcoming data!\n",
+                        _gm_aud_fds[i].event.bsLength - bufSize);
+                    continue;
+                }
 
-        for (char i = 0; i < GM_AUD_CHN_NUM; i++) {
-            if (_gm_aud_fds[i].event.type != GM_POLL_READ)
-                continue;
-            if (_gm_aud_fds[i].event.bsLength > bufSize) {
-                HAL_WARNING("gm_aud", "Bitstream buffer needs %d bytes "
-                    "more, dropping the upcoming data!\n",
-                    _gm_aud_fds[i].event.bsLength - bufSize);
-                continue;
+                stream[i].bind = _gm_aud_fds[i].bind;
+                stream[i].pack.bsData = bsData;
+                stream[i].pack.bsLength = bufSize;
+                stream[i].pack.mdData = 0;
+                stream[i].pack.mdLength = 0;
             }
 
-            stream[i].bind = _gm_aud_fds[i].bind;
-            stream[i].pack.bsData = bsData;
-            stream[i].pack.bsLength = bufSize;
-            stream[i].pack.mdData = 0;
-            stream[i].pack.mdLength = 0;
-        }
-
-        if ((ret = gm_lib.fnReceiveStream(stream, GM_AUD_CHN_NUM)) < 0)
-            HAL_WARNING("gm_aud", "Receiving the streams failed "
-                "with %#x!\n", ret);
-        else for (char i = 0; i < GM_AUD_CHN_NUM; i++) {
-            if (!stream[i].bind) continue;
-            if (stream[i].ret < 0)
-                HAL_WARNING("gm_aud", "Failed to the receive bitstream on "
-                    "channel %d with %#x!\n", i, stream[i].ret);
-            else if (!stream[i].ret && gm_vid_cb) {
-                gm_common_pack *pack = &stream[i].pack;
-                if (gm_aud_cb) {
-                    hal_audframe outFrame;
-                    outFrame.channelCnt = 1;
-                    outFrame.data[0] = pack->bsData;
-                    outFrame.length[0] = pack->bsSize;
-                    outFrame.seq = sequence++;
-                    outFrame.timestamp = pack->timestamp;
-                    (gm_aud_cb)(&outFrame);
+            if ((ret = gm_lib.fnReceiveStream(stream, GM_AUD_CHN_NUM)) < 0)
+                HAL_WARNING("gm_aud", "Receiving the streams failed "
+                    "with %#x!\n", ret);
+            else for (char i = 0; i < GM_AUD_CHN_NUM; i++) {
+                if (!stream[i].bind) continue;
+                if (stream[i].ret < 0)
+                    HAL_WARNING("gm_aud", "Failed to the receive bitstream on "
+                        "channel %d with %#x!\n", i, stream[i].ret);
+                else if (!stream[i].ret && gm_vid_cb) {
+                    gm_common_pack *pack = &stream[i].pack;
+                    if (gm_aud_cb) {
+                        hal_audframe outFrame;
+                        outFrame.channelCnt = 1;
+                        outFrame.data[0] = pack->bsData;
+                        outFrame.length[0] = pack->bsSize;
+                        outFrame.seq = sequence++;
+                        outFrame.timestamp = pack->timestamp;
+                        (gm_aud_cb)(&outFrame);
+                    }
                 }
             }
         }
+
+        usleep(5000);
     }
 abort:
     HAL_INFO("gm_venc", "Shutting down encoding thread...\n");

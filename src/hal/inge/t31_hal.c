@@ -102,29 +102,30 @@ void *t31_audio_thread(void)
     memset(&frame, 0, sizeof(frame));
 
     while (keepRunning && audioOn) {
-        if (ret = t31_aud.fnPollFrame(_t31_aud_dev, _t31_aud_chn, 1000))
-            continue;
+        while (!t31_aud.fnPollFrame(_t31_aud_dev, _t31_aud_chn, 0)) {
+            if (ret = t31_aud.fnGetFrame(_t31_aud_dev, _t31_aud_chn, &frame, 1)) {
+                HAL_WARNING("t31_aud", "Getting the frame failed "
+                    "with %#x!\n", ret);
+                break;
+            }
 
-        if (ret = t31_aud.fnGetFrame(_t31_aud_dev, _t31_aud_chn, &frame, 1)) {
-            HAL_WARNING("t31_aud", "Getting the frame failed "
-                "with %#x!\n", ret);
-            continue;
+            if (t31_aud_cb) {
+                hal_audframe outFrame;
+                outFrame.channelCnt = 1;
+                outFrame.data[0] = (char*)frame.addr;
+                outFrame.length[0] = frame.length;
+                outFrame.seq = frame.sequence;
+                outFrame.timestamp = frame.timestamp;
+                (t31_aud_cb)(&outFrame);
+            }
+
+            if (ret = t31_aud.fnFreeFrame(_t31_aud_dev, _t31_aud_chn, &frame)) {
+                HAL_WARNING("t31_aud", "Releasing the frame failed"
+                    " with %#x!\n", ret);
+            }
         }
 
-        if (t31_aud_cb) {
-            hal_audframe outFrame;
-            outFrame.channelCnt = 1;
-            outFrame.data[0] = (char*)frame.addr;
-            outFrame.length[0] = frame.length;
-            outFrame.seq = frame.sequence;
-            outFrame.timestamp = frame.timestamp;
-            (t31_aud_cb)(&outFrame);
-        }
-
-        if (ret = t31_aud.fnFreeFrame(_t31_aud_dev, _t31_aud_chn, &frame)) {
-            HAL_WARNING("t31_aud", "Releasing the frame failed"
-                " with %#x!\n", ret);
-        }
+        usleep(5000);
     }
     HAL_INFO("t31_aud", "Shutting down capture thread...\n");
 }

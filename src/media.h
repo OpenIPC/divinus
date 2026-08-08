@@ -1,5 +1,8 @@
 #pragma once
 
+#define AUD_RING_CAP (1 << 16) /* 64 KB, roughly 0.7 s of 48 kHz mono */
+#define AUD_FRAME_MAX 16384    /* largest frame any HAL produces */
+
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -11,6 +14,7 @@
 #include "app_config.h"
 #include "error.h"
 #include "hal/globals.h"
+#include "hal/ringbuf.h"
 #include "hal/types.h"
 #include "http_post.h"
 #include "jpeg.h"
