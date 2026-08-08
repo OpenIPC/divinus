@@ -94,18 +94,21 @@ void send_mp4_to_record(hal_vidstream *stream, char isH265) {
         unsigned char *pack_data = pack->data + pack->offset;
 
         for (char j = 0; j < pack->naluCnt; j++) {
-            if ((pack->nalu[j].type == NalUnitType_SPS || pack->nalu[j].type == NalUnitType_SPS_HEVC) 
-                && pack->nalu[j].length >= 4 && pack->nalu[j].length <= UINT16_MAX)
-                mp4_set_sps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
+            /* nalu[].offset points at the start code, which is 3 or 4
+             * bytes depending on the encoder; the muxer wants the payload. */
+            unsigned int scLen = (pack_data[pack->nalu[j].offset + 2] == 1) ? 3 : 4;
+            if ((pack->nalu[j].type == NalUnitType_SPS || pack->nalu[j].type == NalUnitType_SPS_HEVC)
+                && pack->nalu[j].length > scLen && pack->nalu[j].length <= UINT16_MAX)
+                mp4_set_sps(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, isH265);
             else if ((pack->nalu[j].type == NalUnitType_PPS || pack->nalu[j].type == NalUnitType_PPS_HEVC)
                 && pack->nalu[j].length <= UINT16_MAX)
-                mp4_set_pps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, isH265);
+                mp4_set_pps(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, isH265);
             else if (pack->nalu[j].type == NalUnitType_VPS_HEVC && pack->nalu[j].length <= UINT16_MAX)
-                mp4_set_vps(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4);
+                mp4_set_vps(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen);
             else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux)
-                mp4_set_slice(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, 1);
+                mp4_set_slice(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, 1);
             else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr)
-                mp4_set_slice(pack_data + pack->nalu[j].offset + 4, pack->nalu[j].length - 4, 0);
+                mp4_set_slice(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, 0);
         }
 
         static enum BufError err;
