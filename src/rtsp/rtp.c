@@ -287,7 +287,7 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
     if (h->isH265 && !(h->sprop_vps_b64)) {
         nalptr = buf;
         single_len = 0;
-        while (__split_nal(buf, &nalptr, &single_len, len) == SUCCESS) {
+        while (nal_split(buf, &nalptr, &single_len, len) == SUCCESS) {
             if (nalptr[0] >> 1 & 0x3F == H265_NAL_TYPE_VPS) {
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]), single_len), return FAILURE);
 
@@ -314,7 +314,7 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
         nalptr = buf;
         single_len = 0;
 
-        while (__split_nal(buf, &nalptr, &single_len, len) == SUCCESS) {
+        while (nal_split(buf, &nalptr, &single_len, len) == SUCCESS) {
             if ((!(h->isH265) && (nalptr[0] & 0x1F) == H264_NAL_TYPE_SPS) ||
                 (h->isH265 && (nalptr[0] >> 1 & 0x3F) == H265_NAL_TYPE_SPS)) {
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]), single_len), return FAILURE);
@@ -350,7 +350,7 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
     if (!(h->sprop_pps_b64)) {
         nalptr = buf;
         single_len = 0;
-        while (__split_nal(buf, &nalptr, &single_len, len) == SUCCESS) {
+        while (nal_split(buf, &nalptr, &single_len, len) == SUCCESS) {
             if ((!(h->isH265) && (nalptr[0] & 0x1F) == H264_NAL_TYPE_PPS) ||
                 (h->isH265 && (nalptr[0] >> 1 & 0x3F) == H265_NAL_TYPE_PPS)) {
                 ASSERT(single_len >= 4, return FAILURE);
@@ -444,7 +444,7 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
             if (length >= 4 && data[0] == 0 && data[1] == 0 && data[2] == 0 && data[3] == 1) {
                 unsigned char *nalptr = data;
                 size_t single_len = 0;
-                while (__split_nal(data, &nalptr, &single_len, length) == SUCCESS) {
+                while (nal_split(data, &nalptr, &single_len, length) == SUCCESS) {
                     ASSERT(__transfer_nal_h26x(&(trans.list_head), nalptr, single_len, h->isH265) == SUCCESS, goto error);
                 }
             } else {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 enum NalUnitType {                    //   Table 7-1 NAL unit type codes
@@ -46,6 +47,53 @@ static inline unsigned int nal_find_startcode(const unsigned char *buf,
         }
     }
     return len;
+}
+
+/* Splits an Annex B buffer into NAL units, one per call.
+ *
+ * Stateful iterator: on each successful call, sets *nalptr to the start of
+ * the next NALU's payload (past its start code) and *p_len to its length.
+ * Returns 0 until the buffer is exhausted, -1 then.
+ *
+ * Handles both 3-byte (0x000001, used by SigmaStar/MStar hardware) and
+ * 4-byte (0x00000001) start codes.
+ *
+ * Trailing zero bytes between NALUs (alignment padding) are kept as part
+ * of the preceding NALU: they are legal EBSP trailing bytes, and keeping
+ * them is what lets the iterator advance to the next start code.  Trimming
+ * them strands the next call inside the padding, which yields a zero-length
+ * NALU and loops forever.
+ */
+static inline int nal_split(unsigned char *buf, unsigned char **nalptr,
+                            size_t *p_len, size_t max_len)
+{
+    size_t pos = (size_t)(*nalptr - buf) + *p_len;
+
+    for (;;) {
+        uint32_t sc = nal_find_startcode((const uint8_t *)buf, (uint32_t)pos,
+            (uint32_t)max_len);
+        if (sc >= (uint32_t)max_len) {
+            if (pos >= max_len)
+                return -1;
+            /* Last segment runs to end of buffer */
+            *nalptr = buf + pos;
+            *p_len  = max_len - pos;
+            return 0;
+        }
+
+        if (pos < sc) {
+            /* NALU payload from pos up to the start code */
+            *nalptr = buf + pos;
+            *p_len  = sc - pos;
+            return 0;
+        }
+
+        /* pos sits on a (possibly misaligned) start code: skip it.  When
+         * 3-byte codes are preceded by padding, nal_find_startcode() can
+         * report a 4-byte match one byte early; skipping sc_len from that
+         * match still lands on the payload, so boundaries stay correct. */
+        pos = sc + ((buf[sc + 2] == 1) ? 3u : 4u);
+    }
 }
 
 struct NAL {
