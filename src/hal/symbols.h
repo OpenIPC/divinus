@@ -5,7 +5,7 @@
 
 #include "macros.h"
 
-static void inline *hal_symbol_load(const char *module, void *handle, const char *symbol) {
+static inline void *hal_symbol_load(const char *module, void *handle, const char *symbol) {
     void *function = dlsym(handle, symbol);
     if (!function) {
         HAL_DANGER(module, "Failed to acquire symbol %s!\n", symbol);

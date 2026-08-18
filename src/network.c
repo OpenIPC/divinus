@@ -7,18 +7,18 @@ NetInfo netinfo;
 void network_init(void) {
     if (configured) return;
 
-    struct ifaddrs *ifa, *ifaddr;
-    if (getifaddrs(&ifaddr) == -1) {
-        HAL_DANGER("network", "Failed to get network interfaces!\n");
-        return;
-    }
-
     struct utsname uts;
     if (uname(&uts) == -1) {
         HAL_DANGER("network", "Failed to get system information!\n");
         return;
     }
     strcpy(netinfo.host, uts.nodename);
+
+    struct ifaddrs *ifa, *ifaddr;
+    if (getifaddrs(&ifaddr) == -1) {
+        HAL_DANGER("network", "Failed to get network interfaces!\n");
+        return;
+    }
 
     for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
         if (netinfo.count >= 3) break;
@@ -75,6 +75,8 @@ int mdns_start(void) {
         entry = rr_create_a(create_nlabel(hostname), ip_to_int(netinfo.ipaddr[i]));
         mdnsd_add_rr(mdns, entry);
     }
+
+    return EXIT_SUCCESS;
 }
 
 void mdns_stop(void) {

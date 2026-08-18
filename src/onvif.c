@@ -318,7 +318,7 @@ void onvif_respond_snapshot(char *response, int *respLen) {
         snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%s@%s:%d/image.jpg",
             user, pass, netinfo.ipaddr[0], app_config.web_port);
     } else
-        snprintf(snapshot_url, sizeof(snapshot_url), "http:///%s:%d/image.jpg",
+        snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%d/image.jpg",
             netinfo.ipaddr[0], app_config.web_port);
 
     int maxLen = *respLen;

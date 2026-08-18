@@ -70,20 +70,20 @@ void mp4_set_config(short width, short height, char framerate, char acodec,
 }
 
 void mp4_set_sps(const char *nal_data, const uint32_t nal_len, char is_h265) {
-    memcpy(buf_sps, nal_data, MIN(nal_len, sizeof(buf_sps)));
-    buf_sps_len = nal_len;
+    buf_sps_len = MIN(nal_len, (uint32_t)sizeof(buf_sps));
+    memcpy(buf_sps, nal_data, buf_sps_len);
     create_header(is_h265);
 }
 
 void mp4_set_pps(const char *nal_data, const uint32_t nal_len, char is_h265) {
-    memcpy(buf_pps, nal_data, MIN(nal_len, sizeof(buf_pps)));
-    buf_pps_len = nal_len;
+    buf_pps_len = MIN(nal_len, (uint32_t)sizeof(buf_pps));
+    memcpy(buf_pps, nal_data, buf_pps_len);
     create_header(is_h265);
 }
 
 void mp4_set_vps(const char *nal_data, const uint32_t nal_len) {
-    memcpy(buf_vps, nal_data, MIN(nal_len, sizeof(buf_vps)));
-    buf_vps_len = nal_len;
+    buf_vps_len = MIN(nal_len, (uint32_t)sizeof(buf_vps));
+    memcpy(buf_vps, nal_data, buf_vps_len);
     create_header(1);
 }
 

@@ -91,8 +91,7 @@ int app_config_save(void) {
     fprintf(file, "  isp_thread_stack_size: %d\n", app_config.isp_thread_stack_size);
     fprintf(file, "  venc_stream_thread_stack_size: %d\n", app_config.venc_stream_thread_stack_size);
     fprintf(file, "  web_server_thread_stack_size: %d\n", app_config.web_server_thread_stack_size);
-    if (!EMPTY(timefmt) || EQUALS(timefmt, DEF_TIMEFMT))
-        fprintf(file, "  time_format: %s\n", timefmt);
+    fprintf(file, "  time_format: %s\n", timefmt);
     fprintf(file, "  watchdog: %d\n", app_config.watchdog);
 
     fprintf(file, "night_mode:\n");
