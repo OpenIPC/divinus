@@ -10,12 +10,12 @@ IMPORT_STR(.rodata, "../res/onvif/badauth.xml", badauthxml);
 extern const char badauthxml[];
 
 enum StreamType {
-    STREAM_H26X,
-    STREAM_JPEG,
-    STREAM_MJPEG,
-    STREAM_MP3,
-    STREAM_MP4,
-    STREAM_PCM
+    STREAM_H26X  = (1 << 0),
+    STREAM_JPEG  = (1 << 1),
+    STREAM_MJPEG = (1 << 2),
+    STREAM_MP3   = (1 << 3),
+    STREAM_MP4   = (1 << 4),
+    STREAM_PCM   = (1 << 5)
 };
 
 typedef struct {
@@ -218,35 +218,17 @@ void send_h26x_to_client(char index, hal_vidstream *stream) {
     }
 }
 
-/* Escape a string for use inside a JSON string literal. Usernames and codec
- * names come from a request or the config file, and an unescaped quote or
- * backslash makes the response unparseable for the web UI's JSON.parse(). */
-static const char *json_str(char *dst, size_t dstsz, const char *src) {
-    size_t o = 0;
-    for (; src && *src && o + 7 < dstsz; src++) {
-        unsigned char c = (unsigned char)*src;
-        if (c == '"' || c == '\\') { dst[o++] = '\\'; dst[o++] = c; }
-        else if (c < 0x20) o += snprintf(dst + o, dstsz - o, "\\u%04x", c);
-        else dst[o++] = c;
-    }
-    dst[o] = 0;
-    return dst;
-}
-
-/* Whether any HTTP client is consuming the MP3 encoder's output (raw MP3 or MP4) */
-char http_audio_clients(void) {
+char any_http_audio(void) {
     char any = 0;
     pthread_mutex_lock(&client_fds_mutex);
     for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i)
         if (client_fds[i].sockFd >= 0 &&
-            (client_fds[i].type == STREAM_MP4 || client_fds[i].type == STREAM_MP3)) { any = 1; break; }
+            (client_fds[i].type & (STREAM_MP3 | STREAM_MP4 | STREAM_PCM))) { any = 1; break; }
     pthread_mutex_unlock(&client_fds_mutex);
     return any;
 }
 
 void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
-    /* Building moof/mdat for every frame is wasted work without a consumer;
-     * the parameter sets are still cached so a header is ready when one connects */
     char anyClient = 0;
     pthread_mutex_lock(&client_fds_mutex);
     for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i)
@@ -1228,16 +1210,15 @@ void respond_request(http_request_t *req) {
                 else if (EQUALS(key, "enable_auth"))
                     app_config.rtsp_enable_auth = EQUALS_CASE(value, "true") || EQUALS(value, "1");
                 else if (EQUALS(key, "port")) {
-                    int result = strtol(value, &remain, 10);
-                    if (remain != value && result > 0 && result < 65536)
+                    long result;
+                    if (parse_ranged(value, 1, 65535, &result))
                         app_config.rtsp_port = result;
                 } else if (EQUALS(key, "auth_user"))
                     strncpy(app_config.rtsp_auth_user, value, sizeof(app_config.rtsp_auth_user) - 1);
                 else if (EQUALS(key, "auth_pass"))
                     strncpy(app_config.rtsp_auth_pass, value, sizeof(app_config.rtsp_auth_pass) - 1);
                 else if (EQUALS(key, "audio_codec")) {
-                    /* only the codecs the RTP path implements */
-                    if (EQUALS(value, "pcma") || EQUALS(value, "mp3")) {
+                    if (EQUALS(value, "pcma") || EQUALS(value, "pcmu") || EQUALS(value, "mp3")) {
                         strncpy(app_config.rtsp_audio_codec, value,
                             sizeof(app_config.rtsp_audio_codec) - 1);
                         app_config.rtsp_audio_codec[sizeof(app_config.rtsp_audio_codec) - 1] = 0;
@@ -1245,8 +1226,8 @@ void respond_request(http_request_t *req) {
                 }
             }
         }
-        char escUser[sizeof(app_config.rtsp_auth_user) * 6 + 1];
-        char escCodec[sizeof(app_config.rtsp_audio_codec) * 6 + 1];
+        char esc_user[sizeof(app_config.rtsp_auth_user) * 6 + 1];
+        char esc_codec[sizeof(app_config.rtsp_audio_codec) * 6 + 1];
         respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
@@ -1256,8 +1237,8 @@ void respond_request(http_request_t *req) {
             "\"note\":\"port and codec changes apply after restart\"}",
             app_config.rtsp_enable ? "true" : "false", app_config.rtsp_enable_auth ? "true" : "false",
             app_config.rtsp_port,
-            json_str(escUser, sizeof(escUser), app_config.rtsp_auth_user),
-            json_str(escCodec, sizeof(escCodec), app_config.rtsp_audio_codec));
+            escape_json(esc_user, app_config.rtsp_auth_user, sizeof(esc_user)),
+            escape_json(esc_codec, app_config.rtsp_audio_codec, sizeof(esc_codec)));
         send_and_close(req->clntFd, response, respLen);
         return;
     }
@@ -1279,7 +1260,7 @@ void respond_request(http_request_t *req) {
                     strncpy(app_config.onvif_auth_pass, value, sizeof(app_config.onvif_auth_pass) - 1);
             }
         }
-        char escOnvifUser[sizeof(app_config.onvif_auth_user) * 6 + 1];
+        char esc_onvif_user[sizeof(app_config.onvif_auth_user) * 6 + 1];
         respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
@@ -1287,7 +1268,7 @@ void respond_request(http_request_t *req) {
             "\r\n"
             "{\"enable\":%s,\"enable_auth\":%s,\"auth_user\":\"%s\",\"note\":\"applies after restart\"}",
             app_config.onvif_enable ? "true" : "false", app_config.onvif_enable_auth ? "true" : "false",
-            json_str(escOnvifUser, sizeof(escOnvifUser), app_config.onvif_auth_user));
+            escape_json(esc_onvif_user, app_config.onvif_auth_user, sizeof(esc_onvif_user)));
         send_and_close(req->clntFd, response, respLen);
         return;
     }

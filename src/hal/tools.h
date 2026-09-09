@@ -47,6 +47,8 @@ int color_parse(const char *str);
 
 int compile_regex(regex_t *r, const char *regex_text);
 
+int escape_json(char *dst, const char *src, size_t maxlen);
+
 int escape_url(char *dst, const char *src, size_t maxlen);
 
 void generate_nonce(char *nonce, size_t len);
@@ -72,6 +74,8 @@ char ip_in_cidr(const char *ip, const char *cidr);
 char *memstr(char *haystack, char *needle, int size, char needlesize);
 
 unsigned int millis();
+
+int parse_ranged(const char *value, long min, long max, long *out);
 
 void reverse(void *arr, size_t width);
 

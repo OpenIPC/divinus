@@ -21,6 +21,7 @@
 #include "fmt/mp4.h"
 #include "fmt/nal.h"
 #include "hal/globals.h"
+#include "hal/tools.h"
 #include "hal/types.h"
 #include "jpeg.h"
 #include "media.h"
@@ -39,6 +40,6 @@ void send_jpeg_to_client(char index, char *buf, ssize_t size);
 void send_mjpeg_to_client(char index, char *buf, ssize_t size);
 void send_h26x_to_client(char index, hal_vidstream *stream);
 void send_mp3_to_client(char *buf, ssize_t size);
-char http_audio_clients(void);
+char any_http_audio(void);
 void send_mp4_to_client(char index, hal_vidstream *stream, char isH265);
 void send_pcm_to_client(hal_audframe *frame);

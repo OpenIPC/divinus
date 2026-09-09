@@ -140,6 +140,28 @@ int compile_regex(regex_t *r, const char *regex_text) {
 }
 
 
+int escape_json(char *dst, const char *src, size_t maxlen)
+{
+    size_t o = 0;
+
+    for (; src && *src && o + 7 < maxlen; src++) {
+        unsigned char c = (unsigned char)*src;
+
+        if (c == '"' || c == '\\') {
+            dst[o++] = '\\';
+            dst[o++] = c;
+        } else if (c < 0x20) {
+            o += snprintf(dst + o, maxlen - o, "\\u%04x", c);
+        } else {
+            dst[o++] = c;
+        }
+    }
+
+    dst[o] = 0;
+    return o;
+}
+
+
 int escape_url(char *dst, const char *src, size_t maxlen) {
     static const char hex[] = "0123456789ABCDEF";
     int len = 0;
@@ -516,4 +538,20 @@ void uuid_generate(char *uuid) {
         }
     }
     uuid[36] = '\0';
+}
+
+int parse_ranged(const char *value, long min, long max, long *out)
+{
+    char *remain;
+    long result;
+
+    errno = 0;
+    result = strtol(value, &remain, 10);
+
+    if (remain == value || (remain && *remain) || errno == ERANGE ||
+        result < min || result > max)
+        return 0;
+
+    *out = result;
+    return 1;
 }

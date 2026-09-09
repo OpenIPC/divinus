@@ -435,11 +435,11 @@ enum ConfigError app_config_parse(void) {
     parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
     parse_int(&ini, "rtsp", "port", 0, USHRT_MAX, &app_config.rtsp_port);
     {
-        /* Bounded, and only the two codecs the RTP path implements: anything
+        /* Bounded, and only the codecs the RTP path implements: anything
          * else would advertise a payload type nothing produces. */
         char codec[16] = {0};
         if (parse_param_value_n(&ini, "rtsp", "audio_codec", codec, sizeof(codec)) == CONFIG_OK) {
-            if (EQUALS(codec, "pcma") || EQUALS(codec, "mp3")) {
+            if (EQUALS(codec, "pcma") || EQUALS(codec, "pcmu") || EQUALS(codec, "mp3")) {
                 strncpy(app_config.rtsp_audio_codec, codec,
                     sizeof(app_config.rtsp_audio_codec) - 1);
                 app_config.rtsp_audio_codec[sizeof(app_config.rtsp_audio_codec) - 1] = 0;

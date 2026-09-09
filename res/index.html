@@ -368,12 +368,12 @@
 		function onLoad() {
 			apiRead('audio');
 			apiRead('jpeg');
-			apiRead('mp4');
 			apiRead('mjpeg');
+			apiRead('mp4');
 			apiRead('night');
+			apiRead('onvif');
 			apiRead('record');
 			apiRead('rtsp');
-			apiRead('onvif');
 			toggleRecord(document.getElementById('record_state'));
 			apiRead('time');
 
@@ -678,37 +678,6 @@
 			</div>
 		</div>
 		<div class="c cont">
-			<h2 class="unl">Network</h2>
-			<div class="row">
-				<div class="col">
-					<fieldset>
-						<legend>RTSP</legend>
-						<table class="tc w-100">
-							<tr><td><label for="rtsp_enable">Enable</label></td><td><select id="rtsp_enable"><option value="false">OFF</option><option value="true">ON</option></select></td></tr>
-							<tr><td><label for="rtsp_port">Port</label></td><td><input type="number" id="rtsp_port" min="1" max="65535"></td></tr>
-							<tr><td><label for="rtsp_enable_auth">Authentication</label></td><td><select id="rtsp_enable_auth"><option value="false">OFF</option><option value="true">ON</option></select></td></tr>
-							<tr><td><label for="rtsp_auth_user">Username</label></td><td><input type="text" id="rtsp_auth_user"></td></tr>
-							<tr><td><label for="rtsp_auth_pass">Password</label></td><td><input type="password" id="rtsp_auth_pass"></td></tr>
-							<tr><td><label for="rtsp_audio_codec">Audio codec</label></td><td><select id="rtsp_audio_codec"><option value="pcma">G.711 A-law (8 kHz)</option><option value="mp3">MP3</option></select></td></tr>
-						</table>
-						<a href="javascript:apiApply('rtsp')" class="btn right">Apply</a>
-						<small>Port and codec changes take effect after a restart; use Save to keep them.</small>
-					</fieldset>
-				</div>
-				<div class="col">
-					<fieldset>
-						<legend>ONVIF</legend>
-						<table class="tc w-100">
-							<tr><td><label for="onvif_enable">Enable</label></td><td><select id="onvif_enable"><option value="false">OFF</option><option value="true">ON</option></select></td></tr>
-							<tr><td><label for="onvif_enable_auth">Authentication</label></td><td><select id="onvif_enable_auth"><option value="false">OFF</option><option value="true">ON</option></select></td></tr>
-							<tr><td><label for="onvif_auth_user">Username</label></td><td><input type="text" id="onvif_auth_user"></td></tr>
-							<tr><td><label for="onvif_auth_pass">Password</label></td><td><input type="password" id="onvif_auth_pass"></td></tr>
-						</table>
-						<a href="javascript:apiApply('onvif')" class="btn right">Apply</a>
-						<small>Applies after a restart; use Save to keep it.</small>
-					</fieldset>
-				</div>
-			</div>
 			<h2 class="unl">OSD</h2>
 			<div id="osd_tpl" style="display:none">
 				<div class="w-100 box osd_sect">
@@ -752,6 +721,94 @@
 							<tr><td><label for="osd_img">Local file</label></td><td><input type="text" id="osd_img" oninput="updateOsdSummary(this.id)"></td></tr>
 						</table>
 					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<input type="checkbox" id="network-modal">
+	<div class="c modal vh-100 w-100 scrolly">
+		<div class="c bg-black menu pv2 row" tabindex="0">
+			<b><label for="network-modal" class="lbl-modal ph2 gray">Divinus</label></b>
+			<div class="col">
+				<a href="javascript:saveConfig()" class="ph2">Save</a>
+				<a href="javascript:restartApp()" class="ph2">Restart</a>
+				<label for="network-modal" class="btn primary close">Close</label>
+			</div>
+		</div>
+		<div class="c cont">
+			<h2 class="unl">Network</h2>
+			<div class="row">
+				<div class="6 col box">
+					<fieldset>
+						<legend>RTSP</legend>
+						<table class="w-100">
+							<tr>
+								<td><label for="rtsp_enable">Enabled</label></td>
+								<td><select id="rtsp_enable">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="rtsp_port">Port</label></td>
+								<td><input type="number" id="rtsp_port" min="1" max="65535"></td>
+							</tr>
+							<tr>
+								<td><label for="rtsp_enable_auth">Authentication</label></td>
+								<td><select id="rtsp_enable_auth">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="rtsp_auth_user">Username</label></td>
+								<td><input type="text" id="rtsp_auth_user"></td>
+							</tr>
+							<tr>
+								<td><label for="rtsp_auth_pass">Password</label></td>
+								<td><input type="password" id="rtsp_auth_pass"></td>
+							</tr>
+							<tr>
+								<td><label for="rtsp_audio_codec">Audio&nbsp;codec</label></td>
+								<td><select id="rtsp_audio_codec">
+									<option value="pcma">G.711A</option>
+									<option value="pcmu">G.711U</option>
+									<option value="mp3">MP3</option>
+								</select></td>
+							</tr>
+						</table>
+						<a href="javascript:apiApply('rtsp')" class="btn right">Apply</a>
+					</fieldset>
+				</div>
+				<div class="6 col box">
+					<fieldset>
+						<legend>ONVIF</legend>
+						<table class="w-100">
+							<tr>
+								<td><label for="onvif_enable">Enabled</label></td>
+								<td><select id="onvif_enable">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="onvif_enable_auth">Authentication</label></td>
+								<td><select id="onvif_enable_auth">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="onvif_auth_user">Username</label></td>
+								<td><input type="text" id="onvif_auth_user"></td>
+							</tr>
+							<tr>
+								<td><label for="onvif_auth_pass">Password</label></td>
+								<td><input type="password" id="onvif_auth_pass"></td>
+							</tr>
+						</table>
+						<a href="javascript:apiApply('onvif')" class="btn right">Apply</a>
+					</fieldset>
 				</div>
 			</div>
 		</div>
@@ -860,6 +917,7 @@
 		<div class="col">
 			<label for="live-modal" class="lbl-modal ph2 white">Live</label>
 			<label for="media-modal" class="lbl-modal ph2 white">Media</label>
+			<label for="network-modal" class="lbl-modal ph2 white">Network</label>
 			<label for="osd-modal" class="lbl-modal ph2 white">OSD</label>
 			<label for="system-modal" class="lbl-modal ph2 white">System</label>
 			<a href="image.jpg" class="ph2 white" target="_blank">Snapshot</a>
