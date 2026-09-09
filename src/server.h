@@ -21,6 +21,7 @@
 #include "fmt/mp4.h"
 #include "fmt/nal.h"
 #include "hal/globals.h"
+#include "hal/tools.h"
 #include "hal/types.h"
 #include "jpeg.h"
 #include "media.h"

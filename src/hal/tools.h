@@ -73,6 +73,8 @@ char *memstr(char *haystack, char *needle, int size, char needlesize);
 
 unsigned int millis();
 
+int parse_ranged(const char *value, long min, long max, long *out);
+
 void reverse(void *arr, size_t width);
 
 void sha1_init(sha1_context *context);
