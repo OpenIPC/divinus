@@ -36,17 +36,14 @@ struct __transfer_set_t {
     int track_id;
 };
 
-/* 90 kHz video / 8 kHz G.711 timestamps of the frame being sent */
 static unsigned int __frame_ts_video, __frame_ts_audio;
 
-/* Block until the socket can take more data (or 100 ms), instead of spinning */
 static inline void __wait_out(int fd)
 {
     struct pollfd p = { .fd = fd, .events = POLLOUT };
     poll(&p, 1, 100);
 }
 
-/* Write out the staged interleaved data; call with write_mutex held */
 static int __tcp_flush(struct connection_item_t *con)
 {
     unsigned int sent = 0;
@@ -193,8 +190,8 @@ static inline int __transfer_nal_mpga(struct list_head_t *trans_list, unsigned c
     return SUCCESS;
 }
 
-/* One RTP packet per chunk of G.711 A-law bytes (20 ms = 160 bytes at 8 kHz) */
-static inline int __transfer_pcma(struct list_head_t *trans_list, unsigned char *ptr, size_t size)
+/* One RTP packet per 20 ms of 8 kHz G.711 (PT 8 for A-law, 0 for mu-law) */
+static inline int __transfer_g711(struct list_head_t *trans_list, unsigned char *ptr, size_t size, unsigned char pt)
 {
     struct nal_rtp_t rtp;
     rtp_hdr_t *p_header = &(rtp.packet.header);
@@ -203,7 +200,7 @@ static inline int __transfer_pcma(struct list_head_t *trans_list, unsigned char 
     p_header->p = 0;
     p_header->x = 0;
     p_header->cc = 0;
-    p_header->pt = 8;
+    p_header->pt = pt;
     p_header->m = 1;
 
     memcpy(rtp.packet.payload, ptr, size);
@@ -227,10 +224,6 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
     if (!con->trans[track_id].server_port_rtp && !con->trans[track_id].is_tcp) return SUCCESS;
 
     rtp->packet.header.seq = htons(con->trans[track_id].rtp_seq);
-    /* One timestamp per frame, taken when the frame starts (see rtp_send_*):
-     * stamping only the marker packet gave every earlier packet of a frame
-     * the previous frame's time, so receivers saw timestamps run backwards
-     * inside a frame and players stalled and then raced to catch up */
     con->trans[track_id].rtp_timestamp = track_id ? __frame_ts_audio : __frame_ts_video;
     rtp->packet.header.ts = htonl(con->trans[track_id].rtp_timestamp);
     rtp->packet.header.ssrc = htonl(con->ssrc);
@@ -245,7 +238,6 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
 
         pthread_mutex_lock(&con->write_mutex);
         if (con->tx_buf) {
-            /* stage the packet; one send() per frame or per RTSP_TX_BATCH */
             int ok = 1;
             if (con->tx_len + 4 + rtp->rtpsize > RTSP_TX_BATCH)
                 ok = __tcp_flush(con) == SUCCESS;
@@ -552,14 +544,14 @@ error:
     return ret;
 }
 
-int rtp_send_pcma(rtsp_handle h, unsigned char *buf, size_t len)
+static int __rtp_send_g711(rtsp_handle h, unsigned char *buf, size_t len, unsigned char pt)
 {
     /* G.711 is one byte per sample, so the 8 kHz clock advances by exactly the
      * number of samples in the packet. Deriving this from millis() instead let
      * the stamps drift away from the audio actually sent. */
-    static unsigned int pcma_ts;
-    __frame_ts_audio = pcma_ts;
-    pcma_ts += (unsigned int)len;
+    static unsigned int g711_ts;
+    __frame_ts_audio = g711_ts;
+    g711_ts += (unsigned int)len;
     int ret = FAILURE;
     int track_id = 1;
     struct __transfer_set_t trans = {};
@@ -568,7 +560,7 @@ int rtp_send_pcma(rtsp_handle h, unsigned char *buf, size_t len)
     if (gbl_get_quit(h->pool->sharedp->gbl))
         return FAILURE;
 
-    h->audioPt = 8;
+    h->audioPt = pt;
 
     trans.h = h;
     trans.track_id = track_id;
@@ -578,7 +570,7 @@ int rtp_send_pcma(rtsp_handle h, unsigned char *buf, size_t len)
     rtsp_unlock(h);
 
     if (trans.list_head.list) {
-        ASSERT(__transfer_pcma(&(trans.list_head), buf, len) == SUCCESS, goto error);
+        ASSERT(__transfer_g711(&(trans.list_head), buf, len, pt) == SUCCESS, goto error);
         ASSERT(list_map_inline(&(trans.list_head), (__tcp_flush_each), NULL) == SUCCESS, goto error);
         ASSERT(list_map_inline(&(trans.list_head), (__rtcp_poll), &track_id) == SUCCESS, goto error);
     }
@@ -587,6 +579,16 @@ int rtp_send_pcma(rtsp_handle h, unsigned char *buf, size_t len)
 error:
     list_destroy(&(trans.list_head));
     return ret;
+}
+
+int rtp_send_pcma(rtsp_handle h, unsigned char *buf, size_t len)
+{
+    return __rtp_send_g711(h, buf, len, 8);
+}
+
+int rtp_send_pcmu(rtsp_handle h, unsigned char *buf, size_t len)
+{
+    return __rtp_send_g711(h, buf, len, 0);
 }
 
 int rtp_send_mp3(rtsp_handle h, unsigned char *buf, size_t len)
