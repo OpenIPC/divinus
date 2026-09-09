@@ -1,4 +1,3 @@
-#include <errno.h>
 #include "server.h"
 
 #define HTTP_MAX_CLIENTS 50
@@ -217,22 +216,6 @@ void send_h26x_to_client(char index, hal_vidstream *stream) {
         }
         pthread_mutex_unlock(&client_fds_mutex);
     }
-}
-
-/* Accept a query value only when it is a complete number inside the range the
- * config loader enforces. audio_bitrate and audio_srate are unsigned, so a
- * negative value would wrap rather than be rejected, and strtol() alone
- * accepts trailing text and saturates on overflow. */
-static int query_ranged(const char *value, long min, long max, long *out) {
-    char *remain;
-    long result;
-    errno = 0;
-    result = strtol(value, &remain, 10);
-    if (remain == value || (remain && *remain) || errno == ERANGE ||
-        result < min || result > max)
-        return 0;
-    *out = result;
-    return 1;
 }
 
 void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
@@ -890,7 +873,7 @@ void respond_request(http_request_t *req) {
                 if (!key || !*key || !value || !*value) continue;
                 if (EQUALS(key, "bitrate")) {
                     long result;
-                    if (query_ranged(value, 32, 320, &result))
+                    if (parse_ranged(value, 32, 320, &result))
                         app_config.audio_bitrate = (unsigned int)result;
                 } else if (EQUALS(key, "enable")) {
                     if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
@@ -899,11 +882,11 @@ void respond_request(http_request_t *req) {
                         app_config.audio_enable = 0;
                 } else if (EQUALS(key, "gain")) {
                     long result;
-                    if (query_ranged(value, -60, 30, &result))
+                    if (parse_ranged(value, -60, 30, &result))
                         app_config.audio_gain = (int)result;
                 } else if (EQUALS(key, "srate")) {
                     long result;
-                    if (query_ranged(value, 8000, 96000, &result))
+                    if (parse_ranged(value, 8000, 96000, &result))
                         app_config.audio_srate = (unsigned int)result;
                 }
             }

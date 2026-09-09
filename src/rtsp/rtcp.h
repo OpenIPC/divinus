@@ -31,8 +31,7 @@ static inline int __rtcp_send_sr(struct connection_item_t *con, int track_id)
         return FAILURE);
     t = &con->trans[track_id];
 
-    /* A track that was never SETUP has no transport, and its fd is 0 - stdin.
-     * Checked after the bounds assertion so an invalid id cannot index first. */
+    /* Unsetup track has no transport; fd 0 is stdin. */
     if (!t->server_port_rtp && !t->is_tcp) return SUCCESS;
 
     ASSERT(gettimeofday(&tv,NULL) == 0, return FAILURE);

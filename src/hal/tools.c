@@ -517,3 +517,15 @@ void uuid_generate(char *uuid) {
     }
     uuid[36] = '\0';
 }
+
+int parse_ranged(const char *value, long min, long max, long *out) {
+    char *remain;
+    long result;
+    errno = 0;
+    result = strtol(value, &remain, 10);
+    if (remain == value || (remain && *remain) || errno == ERANGE ||
+        result < min || result > max)
+        return 0;
+    *out = result;
+    return 1;
+}
