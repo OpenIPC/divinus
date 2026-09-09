@@ -1,3 +1,4 @@
+#include <errno.h>
 #include "server.h"
 
 #define HTTP_MAX_CLIENTS 50
@@ -216,6 +217,22 @@ void send_h26x_to_client(char index, hal_vidstream *stream) {
         }
         pthread_mutex_unlock(&client_fds_mutex);
     }
+}
+
+/* Accept a query value only when it is a complete number inside the range the
+ * config loader enforces. audio_bitrate and audio_srate are unsigned, so a
+ * negative value would wrap rather than be rejected, and strtol() alone
+ * accepts trailing text and saturates on overflow. */
+static int query_ranged(const char *value, long min, long max, long *out) {
+    char *remain;
+    long result;
+    errno = 0;
+    result = strtol(value, &remain, 10);
+    if (remain == value || (remain && *remain) || errno == ERANGE ||
+        result < min || result > max)
+        return 0;
+    *out = result;
+    return 1;
 }
 
 void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
@@ -865,7 +882,6 @@ void respond_request(http_request_t *req) {
 
     if (EQUALS(req->uri, "/api/audio")) {
         if (req->query) {
-            char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
                 if (!value || !*value) continue;
@@ -873,22 +889,22 @@ void respond_request(http_request_t *req) {
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
                 if (EQUALS(key, "bitrate")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.audio_bitrate = result;
+                    long result;
+                    if (query_ranged(value, 32, 320, &result))
+                        app_config.audio_bitrate = (unsigned int)result;
                 } else if (EQUALS(key, "enable")) {
                     if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
                         app_config.audio_enable = 1;
                     else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
                         app_config.audio_enable = 0;
                 } else if (EQUALS(key, "gain")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.audio_gain = result;
+                    long result;
+                    if (query_ranged(value, -60, 30, &result))
+                        app_config.audio_gain = (int)result;
                 } else if (EQUALS(key, "srate")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.audio_srate = result;
+                    long result;
+                    if (query_ranged(value, 8000, 96000, &result))
+                        app_config.audio_srate = (unsigned int)result;
                 }
             }
 
@@ -1265,7 +1281,7 @@ void respond_request(http_request_t *req) {
         }
         if (EQUALS(req->method, "POST")) {
             char *type = request_header("Content-Type");
-            if (STARTS_WITH(type, "multipart/form-data")) {
+            if (type && STARTS_WITH(type, "multipart/form-data")) {
                 char *bound = strstr(type, "boundary=") + strlen("boundary=");
 
                 char *payloadb = strstr(req->payload, bound);
