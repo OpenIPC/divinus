@@ -372,6 +372,8 @@
 			apiRead('mjpeg');
 			apiRead('night');
 			apiRead('record');
+			apiRead('rtsp');
+			apiRead('onvif');
 			toggleRecord(document.getElementById('record_state'));
 			apiRead('time');
 
@@ -676,6 +678,37 @@
 			</div>
 		</div>
 		<div class="c cont">
+			<h2 class="unl">Network</h2>
+			<div class="row">
+				<div class="col">
+					<fieldset>
+						<legend>RTSP</legend>
+						<table class="tc w-100">
+							<tr><td><label for="rtsp_enable">Enable</label></td><td><select id="rtsp_enable"><option value="false">OFF</option><option value="true">ON</option></select></td></tr>
+							<tr><td><label for="rtsp_port">Port</label></td><td><input type="number" id="rtsp_port" min="1" max="65535"></td></tr>
+							<tr><td><label for="rtsp_enable_auth">Authentication</label></td><td><select id="rtsp_enable_auth"><option value="false">OFF</option><option value="true">ON</option></select></td></tr>
+							<tr><td><label for="rtsp_auth_user">Username</label></td><td><input type="text" id="rtsp_auth_user"></td></tr>
+							<tr><td><label for="rtsp_auth_pass">Password</label></td><td><input type="password" id="rtsp_auth_pass"></td></tr>
+							<tr><td><label for="rtsp_audio_codec">Audio codec</label></td><td><select id="rtsp_audio_codec"><option value="pcma">G.711 A-law (8 kHz)</option><option value="mp3">MP3</option></select></td></tr>
+						</table>
+						<a href="javascript:apiApply('rtsp')" class="btn right">Apply</a>
+						<small>Port and codec changes take effect after a restart; use Save to keep them.</small>
+					</fieldset>
+				</div>
+				<div class="col">
+					<fieldset>
+						<legend>ONVIF</legend>
+						<table class="tc w-100">
+							<tr><td><label for="onvif_enable">Enable</label></td><td><select id="onvif_enable"><option value="false">OFF</option><option value="true">ON</option></select></td></tr>
+							<tr><td><label for="onvif_enable_auth">Authentication</label></td><td><select id="onvif_enable_auth"><option value="false">OFF</option><option value="true">ON</option></select></td></tr>
+							<tr><td><label for="onvif_auth_user">Username</label></td><td><input type="text" id="onvif_auth_user"></td></tr>
+							<tr><td><label for="onvif_auth_pass">Password</label></td><td><input type="password" id="onvif_auth_pass"></td></tr>
+						</table>
+						<a href="javascript:apiApply('onvif')" class="btn right">Apply</a>
+						<small>Applies after a restart; use Save to keep it.</small>
+					</fieldset>
+				</div>
+			</div>
 			<h2 class="unl">OSD</h2>
 			<div id="osd_tpl" style="display:none">
 				<div class="w-100 box osd_sect">

@@ -60,6 +60,10 @@ enum BufError create_header(char is_h265) {
 
 void mp4_set_config(short width, short height, char framerate, char acodec,
     unsigned short bitrate, char channels, unsigned int srate) {
+    /* A new stream configuration (codec, size) invalidates the cached header
+     * and parameter sets; without this a codec switch keeps sending the old one */
+    buf_header.offset = 0;
+    buf_sps_len = buf_pps_len = buf_vps_len = 0;
     vid_width = width;
     vid_height = height;
     vid_framerate = framerate;

@@ -60,6 +60,7 @@ struct AppConfig {
     char rtsp_auth_user[32];
     char rtsp_auth_pass[32];
     int rtsp_port;
+    char rtsp_audio_codec[8];   /* pcma (G.711 A-law, 8 kHz) or mp3 */
 
     // [record]
     bool record_enable;

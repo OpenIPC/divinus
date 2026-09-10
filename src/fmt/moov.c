@@ -607,7 +607,8 @@ enum BufError write_DecoderConfig(struct BitBuf *ptr, const struct MoovInfo *moo
     err = put_u32_be(ptr, 0);
     chk_err;
 
-    err = put_u8(ptr, moov_info->audio_codec);
+    err = put_u8(ptr, (moov_info->audio_codec == ACODEC_ID_MP3 && moov_info->audio_samplerate >= 32000) ?
+        0x6B /* MPEG-1 audio */ : moov_info->audio_codec);
     chk_err; // objectTypeIndication, https://mp4ra.org/#/object_types
     err = put_u8(ptr, 0x15);
     chk_err; // streamType

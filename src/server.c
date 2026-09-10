@@ -218,7 +218,41 @@ void send_h26x_to_client(char index, hal_vidstream *stream) {
     }
 }
 
+/* Escape a string for use inside a JSON string literal. Usernames and codec
+ * names come from a request or the config file, and an unescaped quote or
+ * backslash makes the response unparseable for the web UI's JSON.parse(). */
+static const char *json_str(char *dst, size_t dstsz, const char *src) {
+    size_t o = 0;
+    for (; src && *src && o + 7 < dstsz; src++) {
+        unsigned char c = (unsigned char)*src;
+        if (c == '"' || c == '\\') { dst[o++] = '\\'; dst[o++] = c; }
+        else if (c < 0x20) o += snprintf(dst + o, dstsz - o, "\\u%04x", c);
+        else dst[o++] = c;
+    }
+    dst[o] = 0;
+    return dst;
+}
+
+/* Whether any HTTP client is consuming the MP3 encoder's output (raw MP3 or MP4) */
+char http_audio_clients(void) {
+    char any = 0;
+    pthread_mutex_lock(&client_fds_mutex);
+    for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i)
+        if (client_fds[i].sockFd >= 0 &&
+            (client_fds[i].type == STREAM_MP4 || client_fds[i].type == STREAM_MP3)) { any = 1; break; }
+    pthread_mutex_unlock(&client_fds_mutex);
+    return any;
+}
+
 void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
+    /* Building moof/mdat for every frame is wasted work without a consumer;
+     * the parameter sets are still cached so a header is ready when one connects */
+    char anyClient = 0;
+    pthread_mutex_lock(&client_fds_mutex);
+    for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i)
+        if (client_fds[i].sockFd >= 0 && client_fds[i].type == STREAM_MP4) { anyClient = 1; break; }
+    pthread_mutex_unlock(&client_fds_mutex);
+
     for (unsigned int i = 0; i < stream->count; ++i) {
         hal_vidpack *pack = &stream->pack[i];
         unsigned char *pack_data = pack->data + pack->offset;
@@ -235,11 +269,14 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                 mp4_set_pps(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, isH265);
             else if (pack->nalu[j].type == NalUnitType_VPS_HEVC && pack->nalu[j].length <= UINT16_MAX)
                 mp4_set_vps(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen);
+            else if (!anyClient)
+                continue;
             else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux)
                 mp4_set_slice(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, 1);
             else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr)
                 mp4_set_slice(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, 0);
         }
+        if (!anyClient) continue;
 
         static enum BufError err;
         char len_buf[50];
@@ -1176,6 +1213,83 @@ void respond_request(http_request_t *req) {
         return;
     }
 
+    if (EQUALS(req->uri, "/api/rtsp")) {
+        if (req->query) {
+            char *remain;
+            while (req->query) {
+                char *value = split(&req->query, "&");
+                if (!value || !*value) continue;
+                unescape_uri(value);
+                char *key = split(&value, "=");
+                if (!key || !*key || !value || !*value) continue;
+                if (EQUALS(key, "enable"))
+                    app_config.rtsp_enable = EQUALS_CASE(value, "true") || EQUALS(value, "1");
+                else if (EQUALS(key, "enable_auth"))
+                    app_config.rtsp_enable_auth = EQUALS_CASE(value, "true") || EQUALS(value, "1");
+                else if (EQUALS(key, "port")) {
+                    int result = strtol(value, &remain, 10);
+                    if (remain != value && result > 0 && result < 65536)
+                        app_config.rtsp_port = result;
+                } else if (EQUALS(key, "auth_user"))
+                    strncpy(app_config.rtsp_auth_user, value, sizeof(app_config.rtsp_auth_user) - 1);
+                else if (EQUALS(key, "auth_pass"))
+                    strncpy(app_config.rtsp_auth_pass, value, sizeof(app_config.rtsp_auth_pass) - 1);
+                else if (EQUALS(key, "audio_codec")) {
+                    /* only the codecs the RTP path implements */
+                    if (EQUALS(value, "pcma") || EQUALS(value, "mp3")) {
+                        strncpy(app_config.rtsp_audio_codec, value,
+                            sizeof(app_config.rtsp_audio_codec) - 1);
+                        app_config.rtsp_audio_codec[sizeof(app_config.rtsp_audio_codec) - 1] = 0;
+                    }
+                }
+            }
+        }
+        char escUser[sizeof(app_config.rtsp_auth_user) * 6 + 1];
+        char escCodec[sizeof(app_config.rtsp_audio_codec) * 6 + 1];
+        respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json;charset=UTF-8\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "{\"enable\":%s,\"enable_auth\":%s,\"port\":%d,\"auth_user\":\"%s\",\"audio_codec\":\"%s\","
+            "\"note\":\"port and codec changes apply after restart\"}",
+            app_config.rtsp_enable ? "true" : "false", app_config.rtsp_enable_auth ? "true" : "false",
+            app_config.rtsp_port,
+            json_str(escUser, sizeof(escUser), app_config.rtsp_auth_user),
+            json_str(escCodec, sizeof(escCodec), app_config.rtsp_audio_codec));
+        send_and_close(req->clntFd, response, respLen);
+        return;
+    }
+    if (EQUALS(req->uri, "/api/onvif")) {
+        if (req->query) {
+            while (req->query) {
+                char *value = split(&req->query, "&");
+                if (!value || !*value) continue;
+                unescape_uri(value);
+                char *key = split(&value, "=");
+                if (!key || !*key || !value || !*value) continue;
+                if (EQUALS(key, "enable"))
+                    app_config.onvif_enable = EQUALS_CASE(value, "true") || EQUALS(value, "1");
+                else if (EQUALS(key, "enable_auth"))
+                    app_config.onvif_enable_auth = EQUALS_CASE(value, "true") || EQUALS(value, "1");
+                else if (EQUALS(key, "auth_user"))
+                    strncpy(app_config.onvif_auth_user, value, sizeof(app_config.onvif_auth_user) - 1);
+                else if (EQUALS(key, "auth_pass"))
+                    strncpy(app_config.onvif_auth_pass, value, sizeof(app_config.onvif_auth_pass) - 1);
+            }
+        }
+        char escOnvifUser[sizeof(app_config.onvif_auth_user) * 6 + 1];
+        respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json;charset=UTF-8\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "{\"enable\":%s,\"enable_auth\":%s,\"auth_user\":\"%s\",\"note\":\"applies after restart\"}",
+            app_config.onvif_enable ? "true" : "false", app_config.onvif_enable_auth ? "true" : "false",
+            json_str(escOnvifUser, sizeof(escOnvifUser), app_config.onvif_auth_user));
+        send_and_close(req->clntFd, response, respLen);
+        return;
+    }
     if (EQUALS(req->uri, "/api/night")) {
         if (req->query) {
             char *remain;
@@ -1636,6 +1750,12 @@ void *server_thread(void *vargp) {
                         parse_request(req);
                         if (req->clntFd != -1) {
                             fcntl(req->clntFd, F_SETFL, fcntl(req->clntFd, F_GETFL, 0) & ~O_NONBLOCK);
+                            {
+                                /* A client that stops reading a stream (e.g. a browser that gave
+                                 * up on the MP4) must not block the whole server on send() */
+                                struct timeval tv = { .tv_sec = 5, .tv_usec = 0 };
+                                setsockopt(req->clntFd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+                            }
                             respond_request(req);
                         }
                         fds[i + 1].fd = -1;

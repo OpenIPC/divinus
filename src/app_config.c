@@ -122,6 +122,7 @@ int app_config_save(void) {
     fprintf(file, "rtsp:\n");
     fprintf(file, "  enable: %s\n", app_config.rtsp_enable ? "true" : "false");
     fprintf(file, "  port: %d\n", app_config.rtsp_port);
+    fprintf(file, "  audio_codec: %s\n", app_config.rtsp_audio_codec);
     fprintf(file, "  enable_auth: %s\n", app_config.rtsp_enable_auth ? "true" : "false");
     fprintf(file, "  auth_user: %s\n", app_config.rtsp_auth_user);
     fprintf(file, "  auth_pass: %s\n", app_config.rtsp_auth_pass);
@@ -236,6 +237,7 @@ enum ConfigError app_config_parse(void) {
 
     app_config.rtsp_enable = false;
     app_config.rtsp_port = 554;
+    strcpy(app_config.rtsp_audio_codec, "mp3");   /* upstream default; the Fullhan image ships pcma in its yaml */
     app_config.rtsp_enable_auth = false;
     app_config.rtsp_auth_user[0] = '\0';
     app_config.rtsp_auth_pass[0] = '\0';
@@ -432,6 +434,18 @@ enum ConfigError app_config_parse(void) {
 
     parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
     parse_int(&ini, "rtsp", "port", 0, USHRT_MAX, &app_config.rtsp_port);
+    {
+        /* Bounded, and only the two codecs the RTP path implements: anything
+         * else would advertise a payload type nothing produces. */
+        char codec[16] = {0};
+        if (parse_param_value_n(&ini, "rtsp", "audio_codec", codec, sizeof(codec)) == CONFIG_OK) {
+            if (EQUALS(codec, "pcma") || EQUALS(codec, "mp3")) {
+                strncpy(app_config.rtsp_audio_codec, codec,
+                    sizeof(app_config.rtsp_audio_codec) - 1);
+                app_config.rtsp_audio_codec[sizeof(app_config.rtsp_audio_codec) - 1] = 0;
+            }
+        }
+    }
     if (app_config.rtsp_enable) {
         parse_bool(&ini, "rtsp", "enable_auth", &app_config.rtsp_enable_auth);
         parse_param_value(

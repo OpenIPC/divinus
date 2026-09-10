@@ -39,6 +39,67 @@ int save_audio_stream(hal_audframe *frame) {
     return EXIT_SUCCESS;
 }
 
+static unsigned char pcm_to_alaw(short pcm)
+{
+    int sign = (pcm & 0x8000) >> 8, s = sign ? -pcm - 1 : pcm, exp = 7;
+    if (s > 32635) s = 32635;
+    if (s >= 256) {
+        for (int m = 0x4000; !(s & m) && exp > 0; m >>= 1) exp--;
+        s = ((exp << 4) | ((s >> (exp + 3)) & 0x0f));
+    } else
+        s >>= 4;
+    return (unsigned char)((s ^ (sign ? 0xd5 : 0x55)));
+}
+
+/* RTSP G.711: resample the capture rate to 8 kHz (block average) and A-law
+ * encode, sending one RTP packet per 20 ms; MP3 keeps feeding the MP4/HTTP/RTMP
+ * outputs.
+ *
+ * The ratio is carried in 16.16 fixed point rather than as an integer divisor:
+ * srate is accepted anywhere in 8000..96000, and truncating 44100 / 8000 to 5
+ * emitted 8820 samples a second against an SDP and RTP clock of 8000, so the
+ * stream ran fast and the 160-byte packets were 18.1 ms rather than 20. */
+static void rtsp_pcma_feed(short *pcm, unsigned int samples)
+{
+    static unsigned char alaw[160];
+    static unsigned int fill, phase, step;
+    static int acc, accN;
+    if (!step) {
+        unsigned int srate = app_config.audio_srate > 0 ? app_config.audio_srate : 8000;
+        step = (srate << 16) / 8000;
+        if (!step) step = 1 << 16;
+    }
+    for (unsigned int i = 0; i < samples; i++) {
+        acc += pcm[i];
+        accN++;
+        phase += 1 << 16;
+        if (phase < step) continue;
+        phase -= step;
+        alaw[fill++] = pcm_to_alaw((short)(acc / accN));
+        acc = 0; accN = 0;
+        if (fill == sizeof(alaw)) {
+            rtp_send_pcma(rtspHandle, alaw, sizeof(alaw));
+            fill = 0;
+        }
+    }
+}
+
+/* The codec RTSP sessions were negotiated with.
+ *
+ * app_config.rtsp_audio_codec can be changed at runtime through /api/rtsp, but
+ * switching the payload type and clock under a live session would leave every
+ * client decoding the wrong thing without a new DESCRIBE/SETUP. The value the
+ * media path uses is therefore latched when the server starts, which is what
+ * the API means when it says the change applies after a restart. */
+static char rtspCodec[sizeof(app_config.rtsp_audio_codec)];
+
+void rtsp_latch_audio_codec(void) {
+    strncpy(rtspCodec, app_config.rtsp_audio_codec, sizeof(rtspCodec) - 1);
+    rtspCodec[sizeof(rtspCodec) - 1] = 0;
+}
+
+static char rtsp_pcma_active(void) { return EQUALS(rtspCodec, "pcma"); }
+
 void *aenc_thread(void) {
     static uint8_t frame_buf[AUD_FRAME_MAX + 2];
     const uint32_t mp3FrmSize =
@@ -56,7 +117,7 @@ void *aenc_thread(void) {
             pthread_mutex_lock(&mp4Mtx);
             mp4_ingest_audio(mp3Buf.buf, mp3FrmSize);
             pthread_mutex_unlock(&mp4Mtx);
-            if (app_config.rtsp_enable)
+            if (app_config.rtsp_enable && !rtsp_pcma_active())
                 rtp_send_mp3(rtspHandle, mp3Buf.buf, mp3FrmSize);
             rtmp_ingest_audio(mp3Buf.buf, mp3FrmSize);
             mp3Buf.offset -= mp3FrmSize;
@@ -83,6 +144,18 @@ void *aenc_thread(void) {
         outFrame.seq = seq++;
         outFrame.timestamp = millis();
         send_pcm_to_client(&outFrame);
+        if (app_config.rtsp_enable && rtsp_pcma_active())
+            rtsp_pcma_feed((short *)(frame_buf + 2), flen / 2);
+
+        /* The software MP3 encoder is the single most expensive thing on a
+         * small SoC (24% of an ARM1176 at 48 kHz); skip it while nothing
+         * consumes MP3: no HTTP MP3/MP4 client, no recording, no RTMP, and
+         * RTSP carrying G.711 */
+        if (!recordOn && !app_config.stream_enable && !http_audio_clients() &&
+            !(app_config.rtsp_enable && !rtsp_pcma_active())) {
+            pcmPos = 0;
+            continue;
+        }
 
         unsigned int pcmLen = flen / 2;
         short *pcmPack = (short *)(frame_buf + 2);
