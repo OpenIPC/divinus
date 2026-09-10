@@ -47,6 +47,9 @@ int jpeg_init() {
             case HAL_PLATFORM_V2:  ret = v2_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_V3:  ret = v3_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_V4:  ret = v4_video_create(jpeg_index, &config); break;
+#if __ARM_ARCH == 6
+            case HAL_PLATFORM_FH:  ret = fh_video_create(jpeg_index, &config); break;
+#endif
 #elif defined(__mips__)
             case HAL_PLATFORM_T31: ret = t31_video_create(jpeg_index, &config); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -87,6 +90,11 @@ void jpeg_deinit() {
         case HAL_PLATFORM_V2:  v2_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_V3:  v3_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_V4:  v4_video_destroy(jpeg_index); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:
+            fh_video_destroy(jpeg_index);
+            break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31:
             if (app_config.mjpeg_enable) goto active;
@@ -127,6 +135,9 @@ int jpeg_get(short width, short height, char quality, char grayscale,
         case HAL_PLATFORM_V2:  ret = v2_video_snapshot_grab(jpeg_index, jpeg); break;
         case HAL_PLATFORM_V3:  ret = v3_video_snapshot_grab(jpeg_index, jpeg); break;
         case HAL_PLATFORM_V4:  ret = v4_video_snapshot_grab(jpeg_index, jpeg); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  ret = fh_video_snapshot_grab(jpeg_index, jpeg); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: ret = t31_video_snapshot_grab(app_config.mjpeg_enable ? 
             -1 : jpeg_index, jpeg); break;
