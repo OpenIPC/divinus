@@ -5,6 +5,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 
 #include "rtsp_server.h"
 #include "common.h"
@@ -34,6 +35,43 @@ struct __transfer_set_t {
     rtsp_handle h;
     int track_id;
 };
+
+static unsigned int __frame_ts_video, __frame_ts_audio;
+
+static inline void __wait_out(int fd)
+{
+    struct pollfd p = { .fd = fd, .events = POLLOUT };
+    poll(&p, 1, 100);
+}
+
+static int __tcp_flush(struct connection_item_t *con)
+{
+    unsigned int sent = 0;
+    while (sent < con->tx_len) {
+        int r = send(con->client_fd, con->tx_buf + sent, con->tx_len - sent, 0);
+        if (r > 0) sent += r;
+        else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
+        else { con->tx_len = 0; return FAILURE; }
+    }
+    con->tx_len = 0;
+    return SUCCESS;
+}
+
+static int __tcp_flush_each(struct list_t *e, void *v)
+{
+    struct transfer_item_t *trans;
+    struct connection_item_t *con;
+    list_upcast(trans, e);
+    MUST(con = trans->con, return FAILURE);
+    /* Packets are only ever staged from the interleaved branch below, so
+     * anything in tx_buf came from a TCP transfer whichever track sent it.
+     * Testing track 0 here never flushed a client that set up audio alone. */
+    if (!con->tx_buf || !con->tx_len) return SUCCESS;
+    pthread_mutex_lock(&con->write_mutex);
+    int ret = __tcp_flush(con);
+    pthread_mutex_unlock(&con->write_mutex);
+    return ret;
+}
 
 /******************************************************************************
  *              PRIVATE FUNCTIONS
@@ -152,6 +190,26 @@ static inline int __transfer_nal_mpga(struct list_head_t *trans_list, unsigned c
     return SUCCESS;
 }
 
+/* One RTP packet per 20 ms of 8 kHz G.711 (PT 8 for A-law, 0 for mu-law) */
+static inline int __transfer_g711(struct list_head_t *trans_list, unsigned char *ptr, size_t size, unsigned char pt)
+{
+    struct nal_rtp_t rtp;
+    rtp_hdr_t *p_header = &(rtp.packet.header);
+
+    p_header->version = 2;
+    p_header->p = 0;
+    p_header->x = 0;
+    p_header->cc = 0;
+    p_header->pt = pt;
+    p_header->m = 1;
+
+    memcpy(rtp.packet.payload, ptr, size);
+    rtp.rtpsize = size + sizeof(rtp_hdr_t);
+
+    ASSERT(__rtp_send(&rtp, trans_list) == SUCCESS, return FAILURE);
+    return SUCCESS;
+}
+
 static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
 {
     int send_bytes;
@@ -166,8 +224,7 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
     if (!con->trans[track_id].server_port_rtp && !con->trans[track_id].is_tcp) return SUCCESS;
 
     rtp->packet.header.seq = htons(con->trans[track_id].rtp_seq);
-    if (rtp->packet.header.m)
-        con->trans[track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
+    con->trans[track_id].rtp_timestamp = track_id ? __frame_ts_audio : __frame_ts_video;
     rtp->packet.header.ts = htonl(con->trans[track_id].rtp_timestamp);
     rtp->packet.header.ssrc = htonl(con->ssrc);
     con->trans[track_id].rtp_seq += 1;
@@ -180,11 +237,29 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
         head[3] = rtp->rtpsize & 0xFF;
 
         pthread_mutex_lock(&con->write_mutex);
+        if (con->tx_buf) {
+            int ok = 1;
+            if (con->tx_len + 4 + rtp->rtpsize > RTSP_TX_BATCH)
+                ok = __tcp_flush(con) == SUCCESS;
+            if (ok) {
+                memcpy(con->tx_buf + con->tx_len, head, 4);
+                memcpy(con->tx_buf + con->tx_len + 4, &(rtp->packet), rtp->rtpsize);
+                con->tx_len += 4 + rtp->rtpsize;
+            }
+            pthread_mutex_unlock(&con->write_mutex);
+            if (ok) {
+                con->trans[track_id].rtcp_packet_cnt += 1;
+                con->trans[track_id].rtcp_octet += rtp->rtpsize;
+                return SUCCESS;
+            }
+            ERR("send (staged):%s\n", strerror(errno));
+            return FAILURE;
+        }
         int sent_h = 0;
         while (sent_h < 4) {
             int r = send(con->client_fd, head + sent_h, 4 - sent_h, 0);
             if (r > 0) sent_h += r;
-            else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) usleep(1000);
+            else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
             else { sent_h = -1; break; }
         }
         if (sent_h == 4) {
@@ -192,7 +267,7 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
             while (sent_b < rtp->rtpsize) {
                 int r = send(con->client_fd, (char*)&(rtp->packet) + sent_b, rtp->rtpsize - sent_b, 0);
                 if (r > 0) sent_b += r;
-                else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) usleep(1000);
+                else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
                 else { sent_b = -1; break; }
             }
             send_bytes = sent_b;
@@ -423,6 +498,12 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
     }
 
     h->isH265 = isH265;
+    /* Stamp with the encoder's capture time (pack timestamps are microseconds)
+     * so receivers pace frames correctly even when a large keyframe makes the
+     * sender deliver the following frames in a burst; fall back to the send
+     * time for HALs that leave the timestamp at zero */
+    __frame_ts_video = (stream->count && stream->pack[0].timestamp) ?
+        (unsigned int)(stream->pack[0].timestamp * 9 / 100) : ((millis() * 90) & UINT32_MAX);
 
     for (int i = 0; i < stream->count; i++) {
         ASSERT(__retrieve_sprop(h, stream->pack[i].data + stream->pack[i].offset, 
@@ -436,7 +517,7 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
     rtsp_lock(h);
     ASSERT(list_map_inline(&h->con_list, (__rtp_setup_transfer), &trans) == SUCCESS, ({rtsp_unlock(h); goto error;}));
     rtsp_unlock(h);
-    
+
     if (trans.list_head.list) {
         for (int i = 0; i < stream->count; i++) {
             unsigned char *data = stream->pack[i].data + stream->pack[i].offset;
@@ -451,6 +532,7 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
                 ASSERT(__transfer_nal_h26x(&(trans.list_head), data, length, h->isH265) == SUCCESS, goto error);
             }
         }
+        ASSERT(list_map_inline(&(trans.list_head), (__tcp_flush_each), NULL) == SUCCESS, goto error);
         ASSERT(list_map_inline(&(trans.list_head), (__rtcp_poll), &track_id) == SUCCESS, goto error);
     } 
 
@@ -462,8 +544,56 @@ error:
     return ret;
 }
 
+static int __rtp_send_g711(rtsp_handle h, unsigned char *buf, size_t len, unsigned char pt)
+{
+    /* G.711 is one byte per sample, so the 8 kHz clock advances by exactly the
+     * number of samples in the packet. Deriving this from millis() instead let
+     * the stamps drift away from the audio actually sent. */
+    static unsigned int g711_ts;
+    __frame_ts_audio = g711_ts;
+    g711_ts += (unsigned int)len;
+    int ret = FAILURE;
+    int track_id = 1;
+    struct __transfer_set_t trans = {};
+
+    DASSERT(h, return FAILURE);
+    if (gbl_get_quit(h->pool->sharedp->gbl))
+        return FAILURE;
+
+    h->audioPt = pt;
+
+    trans.h = h;
+    trans.track_id = track_id;
+
+    rtsp_lock(h);
+    ASSERT(list_map_inline(&h->con_list, (__rtp_setup_transfer), &trans) == SUCCESS, ({rtsp_unlock(h); goto error;}));
+    rtsp_unlock(h);
+
+    if (trans.list_head.list) {
+        ASSERT(__transfer_g711(&(trans.list_head), buf, len, pt) == SUCCESS, goto error);
+        ASSERT(list_map_inline(&(trans.list_head), (__tcp_flush_each), NULL) == SUCCESS, goto error);
+        ASSERT(list_map_inline(&(trans.list_head), (__rtcp_poll), &track_id) == SUCCESS, goto error);
+    }
+    ret = SUCCESS;
+
+error:
+    list_destroy(&(trans.list_head));
+    return ret;
+}
+
+int rtp_send_pcma(rtsp_handle h, unsigned char *buf, size_t len)
+{
+    return __rtp_send_g711(h, buf, len, 8);
+}
+
+int rtp_send_pcmu(rtsp_handle h, unsigned char *buf, size_t len)
+{
+    return __rtp_send_g711(h, buf, len, 0);
+}
+
 int rtp_send_mp3(rtsp_handle h, unsigned char *buf, size_t len)
 {
+    __frame_ts_audio = (millis() * 90) & UINT32_MAX;   /* 90 kHz MPEG audio */
     int ret = FAILURE;
     int track_id = 1;
     struct __transfer_set_t trans = {};
@@ -490,6 +620,7 @@ int rtp_send_mp3(rtsp_handle h, unsigned char *buf, size_t len)
     
     if (trans.list_head.list) {
         ASSERT(__transfer_nal_mpga(&(trans.list_head), buf, len) == SUCCESS, goto error);
+        ASSERT(list_map_inline(&(trans.list_head), (__tcp_flush_each), NULL) == SUCCESS, goto error);
         ASSERT(list_map_inline(&(trans.list_head), (__rtcp_poll), &track_id) == SUCCESS, goto error);
     } 
 

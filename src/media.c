@@ -39,6 +39,69 @@ int save_audio_stream(hal_audframe *frame) {
     return EXIT_SUCCESS;
 }
 
+static unsigned char pcm_to_alaw(short pcm)
+{
+    int sign = (pcm & 0x8000) >> 8, s = sign ? -pcm - 1 : pcm, exp = 7;
+    if (s > 32635) s = 32635;
+    if (s >= 256) {
+        for (int m = 0x4000; !(s & m) && exp > 0; m >>= 1) exp--;
+        s = ((exp << 4) | ((s >> (exp + 3)) & 0x0f));
+    } else
+        s >>= 4;
+    return (unsigned char)((s ^ (sign ? 0xd5 : 0x55)));
+}
+
+/* mu-law (G.711 U, PT 0): 4085-step non-uniform compressor. Mirrors the A-law
+ * routine so both stay branch-light for soft-float ARM. */
+static unsigned char pcm_to_ulaw(short pcm)
+{
+    int sign = (pcm >> 8) & 0x80, s = sign ? -pcm : pcm, exp = 7;
+    if (s > 32635) s = 32635;
+    s += 0x84;                         /* bias: mu-law does not encode zero alone */
+    if (s > 0x7FFF) s = 0x7FFF;
+    for (int m = 0x4000; !(s & m) && exp > 0; m >>= 1) exp--;
+    return (unsigned char)~(sign | (exp << 4) | ((s >> (exp + 3)) & 0x0f));
+}
+
+static char rtsp_codec[sizeof(app_config.rtsp_audio_codec)];
+
+/* Any G.711 codec: the 8 kHz sample drop + encode path, versus MP3 */
+static char rtsp_g711_active(void) { return EQUALS(rtsp_codec, "pcma") || EQUALS(rtsp_codec, "pcmu"); }
+
+static void rtsp_pcma_feed(short *pcm, unsigned int samples)
+{
+    static unsigned char alaw[160];
+    static unsigned int fill, phase, step;
+    static int acc, acc_n;
+    char ulaw = EQUALS(rtsp_codec, "pcmu");
+    if (!step) {
+        unsigned int srate = app_config.audio_srate > 0 ? app_config.audio_srate : 8000;
+        step = (srate << 16) / 8000;
+        if (!step) step = 1 << 16;
+    }
+    for (unsigned int i = 0; i < samples; i++) {
+        acc += pcm[i];
+        acc_n++;
+        phase += 1 << 16;
+        if (phase < step) continue;
+        phase -= step;
+        alaw[fill++] = ulaw ? pcm_to_ulaw((short)(acc / acc_n)) : pcm_to_alaw((short)(acc / acc_n));
+        acc = 0; acc_n = 0;
+        if (fill == sizeof(alaw)) {
+            if (ulaw)
+                rtp_send_pcmu(rtspHandle, alaw, sizeof(alaw));
+            else
+                rtp_send_pcma(rtspHandle, alaw, sizeof(alaw));
+            fill = 0;
+        }
+    }
+}
+
+void rtsp_latch_audio_codec(void) {
+    strncpy(rtsp_codec, app_config.rtsp_audio_codec, sizeof(rtsp_codec) - 1);
+    rtsp_codec[sizeof(rtsp_codec) - 1] = 0;
+}
+
 void *aenc_thread(void) {
     static uint8_t frame_buf[AUD_FRAME_MAX + 2];
     const uint32_t mp3FrmSize =
@@ -56,7 +119,7 @@ void *aenc_thread(void) {
             pthread_mutex_lock(&mp4Mtx);
             mp4_ingest_audio(mp3Buf.buf, mp3FrmSize);
             pthread_mutex_unlock(&mp4Mtx);
-            if (app_config.rtsp_enable)
+            if (app_config.rtsp_enable && !rtsp_g711_active())
                 rtp_send_mp3(rtspHandle, mp3Buf.buf, mp3FrmSize);
             rtmp_ingest_audio(mp3Buf.buf, mp3FrmSize);
             mp3Buf.offset -= mp3FrmSize;
@@ -83,6 +146,14 @@ void *aenc_thread(void) {
         outFrame.seq = seq++;
         outFrame.timestamp = millis();
         send_pcm_to_client(&outFrame);
+        if (app_config.rtsp_enable && rtsp_g711_active())
+            rtsp_pcma_feed((short *)(frame_buf + 2), flen / 2);
+
+        if (!recordOn && !app_config.stream_enable && !any_http_audio() &&
+            !(app_config.rtsp_enable && !rtsp_g711_active())) {
+            pcmPos = 0;
+            continue;
+        }
 
         unsigned int pcmLen = flen / 2;
         short *pcmPack = (short *)(frame_buf + 2);

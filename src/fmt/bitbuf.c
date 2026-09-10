@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "bitbuf.h"
 
@@ -57,8 +58,7 @@ enum BufError put_to_offset(
     const uint32_t size) {
     chk_ptr uint32_t pos = offset + size;
     if (pos >= ptr->size)
-        chk_realloc for (uint32_t i = 0; i < size; i++) ptr->buf[offset + i] =
-            data[i];
+        chk_realloc memcpy(ptr->buf + offset, data, size);
     return BUF_OK;
 }
 enum BufError put(struct BitBuf *ptr, const char *data, const uint32_t size) {

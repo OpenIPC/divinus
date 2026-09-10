@@ -47,3 +47,5 @@ int media_mjpeg_disable(void);
 int media_mjpeg_enable(void);
 int media_mp4_disable(void);
 int media_mp4_enable(void);
+
+void rtsp_latch_audio_codec(void);

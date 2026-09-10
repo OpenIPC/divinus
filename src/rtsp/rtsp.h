@@ -113,8 +113,13 @@ struct connection_item_t {
     unsigned long long given_session_id;
     unsigned int ssrc;
     pthread_mutex_t write_mutex;
+    /* Interleaved (TCP) output is staged here and written with one send()
+     * per frame: on small SoCs a send() costs ~100 us whatever its size */
+    unsigned char *tx_buf;
+    unsigned int tx_len;
     struct list_t list_entry;
 };
+#define RTSP_TX_BATCH (64 * 1024)
 
 struct transfer_item_t {
     struct list_t list_entry;

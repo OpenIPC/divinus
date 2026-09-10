@@ -191,8 +191,8 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
             "\r\n"
             "m=audio 0 RTP/AVP %d\r\n"
             "a=control:track=1\r\n"
-            "a=rtpmap:%d %s/90000\r\n",
-            h->audioPt, h->audioPt, audioRtpfmt);
+            "a=rtpmap:%d %s/%d\r\n",
+            h->audioPt, h->audioPt, audioRtpfmt, (h->audioPt == 8 || h->audioPt == 0) ? 8000 : 90000);
     }
 
     if (h->isH265 &&
@@ -563,6 +563,8 @@ __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd,
     ASSERT((p->fp_tcp_read = fdopen(fd, "r")), goto error);
     ASSERT((p->fp_tcp_write = fdopen(fd, "w")), goto error);
 
+    p->tx_len = 0;
+    if (!p->tx_buf) p->tx_buf = malloc(RTSP_TX_BATCH);
     p->con_state = __CON_S_INIT;
 
     return list_add(head, &(p->list_entry));
@@ -655,6 +657,11 @@ static inline int __bind_rtp(struct connection_item_t *con )
 
     tmp = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &tmp, sizeof(tmp));
+    {
+        int sz = 512 * 1024;   /* absorb a whole keyframe, see the TCP accept path */
+        if (setsockopt(server_fd, SOL_SOCKET, SO_SNDBUFFORCE, &sz, sizeof(sz)))
+            setsockopt(server_fd, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz));
+    }
 
     ASSERT(bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) == 0, ({
                 ERR("bind:%s\n", strerror(errno));
@@ -747,6 +754,17 @@ static inline int __accept_proc_sock(rtsp_handle h, int server_fd, struct sock_s
 
         /* set server fd to non-blocking */
         fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+
+        /* A keyframe is a few hundred KB and the kernel's default TCP send
+         * buffer (64 KB on small boards) cannot hold it: the interleaved sender
+         * then spins on partial writes for as long as the link takes to drain,
+         * hundreds of ms of CPU per keyframe. Ask for a buffer that fits one
+         * (SO_SNDBUFFORCE bypasses wmem_max, which needs root). */
+        {
+            int sz = 512 * 1024;
+            if (setsockopt(fd, SOL_SOCKET, SO_SNDBUFFORCE, &sz, sizeof(sz)))
+                setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz));
+        }
 
         /* update connection-list exclusively */
         ASSERT(__connection_list_add(h->con_pool, &h->con_list, fd, from_addr) == SUCCESS,

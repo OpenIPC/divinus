@@ -41,6 +41,12 @@ bool open_config(struct IniConfig *ini, FILE **file);
 enum ConfigError find_sections(struct IniConfig *ini);
 enum ConfigError section_pos(
     struct IniConfig *ini, const char *section, int *start_pos, int *end_pos);
+/* Bounded form of parse_param_value(): the unbounded one sprintf()s the matched
+ * value straight into the caller's buffer, which overflows small fields. */
+enum ConfigError parse_param_value_n(
+    struct IniConfig *ini, const char *section, const char *param_name,
+    char *param_value, size_t param_value_size);
+
 enum ConfigError parse_param_value(
     struct IniConfig *ini, const char *section, const char *param_name,
     char *param_value);
