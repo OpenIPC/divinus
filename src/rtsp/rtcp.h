@@ -31,6 +31,9 @@ static inline int __rtcp_send_sr(struct connection_item_t *con, int track_id)
         return FAILURE);
     t = &con->trans[track_id];
 
+    /* Unsetup track has no transport; fd 0 is stdin. */
+    if (!t->server_port_rtp && !t->is_tcp) return SUCCESS;
+
     ASSERT(gettimeofday(&tv,NULL) == 0, return FAILURE);
 
     ts_h = (unsigned int)tv.tv_sec + 2208988800U;

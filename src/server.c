@@ -884,7 +884,6 @@ void respond_request(http_request_t *req) {
 
     if (EQUALS(req->uri, "/api/audio")) {
         if (req->query) {
-            char *remain;
             while (req->query) {
                 char *value = split(&req->query, "&");
                 if (!value || !*value) continue;
@@ -892,22 +891,22 @@ void respond_request(http_request_t *req) {
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
                 if (EQUALS(key, "bitrate")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.audio_bitrate = result;
+                    long result;
+                    if (parse_ranged(value, 32, 320, &result))
+                        app_config.audio_bitrate = (unsigned int)result;
                 } else if (EQUALS(key, "enable")) {
                     if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
                         app_config.audio_enable = 1;
                     else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
                         app_config.audio_enable = 0;
                 } else if (EQUALS(key, "gain")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.audio_gain = result;
+                    long result;
+                    if (parse_ranged(value, -60, 30, &result))
+                        app_config.audio_gain = (int)result;
                 } else if (EQUALS(key, "srate")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.audio_srate = result;
+                    long result;
+                    if (parse_ranged(value, 8000, 96000, &result))
+                        app_config.audio_srate = (unsigned int)result;
                 }
             }
 
@@ -1360,7 +1359,7 @@ void respond_request(http_request_t *req) {
         }
         if (EQUALS(req->method, "POST")) {
             char *type = request_header("Content-Type");
-            if (STARTS_WITH(type, "multipart/form-data")) {
+            if (type && STARTS_WITH(type, "multipart/form-data")) {
                 char *bound = strstr(type, "boundary=") + strlen("boundary=");
 
                 char *payloadb = strstr(req->payload, bound);

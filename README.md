@@ -103,7 +103,7 @@ Please **_[support our project](https://openipc.org/support-open-source)_** with
 
 
 [firmware]: https://github.com/openipc/firmware
-[logo]: https://openipc.org/assets/openipc-logo-black.svg
+[logo]: https://raw.githubusercontent.com/OpenIPC/.github/refs/heads/main/assets/openipc-logo-black.svg
 [mit]: https://opensource.org/license/mit
 [opencollective]: https://opencollective.com/openipc
 [paypal]: https://www.paypal.com/donate/?hosted_button_id=C6F7UJLA58MBS
