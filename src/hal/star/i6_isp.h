@@ -36,9 +36,9 @@ static int i6_isp_load(i6_isp_impl *isp_lib) {
     if (!(isp_lib->handle = dlopen("libmi_isp.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("i6_isp", "Failed to load library!\nError: %s\n", dlerror());
 
-    if (!(isp_lib->fnDisableUserspace3A = (int(*)(int channel))
-        hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_DisableUserspace3A")))
-        return EXIT_FAILURE;
+    // Not exported by the infinity6 libmi_isp.so shipped by OpenIPC, and never called.
+    isp_lib->fnDisableUserspace3A = (int(*)(int channel))
+        hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_DisableUserspace3A");
 
     if (!(isp_lib->fnEnableUserspace3A = (int(*)(int channel, i6_isp_p3a *params))
         hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_CUS3A_Enable")))
