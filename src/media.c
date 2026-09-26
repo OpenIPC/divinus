@@ -339,6 +339,9 @@ void request_idr(void) {
         case HAL_PLATFORM_V2:  v2_video_request_idr(index); break;
         case HAL_PLATFORM_V3:  v3_video_request_idr(index); break;
         case HAL_PLATFORM_V4:  v4_video_request_idr(index); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  fh_video_request_idr(index); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: t31_video_request_idr(index); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -362,6 +365,9 @@ void set_grayscale(bool active) {
         case HAL_PLATFORM_V2:  v2_channel_grayscale(active); break;
         case HAL_PLATFORM_V3:  v3_channel_grayscale(active); break;
         case HAL_PLATFORM_V4:  v4_channel_grayscale(active); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  fh_channel_grayscale(active); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: t31_channel_grayscale(active); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -403,6 +409,10 @@ int create_channel(char index, short width, short height, char framerate, char j
             app_config.mirror, app_config.flip, framerate);
         case HAL_PLATFORM_V4:  return v4_channel_create(index, app_config.mirror,
             app_config.flip, framerate);
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  return fh_channel_create(index, width, height,
+            framerate, jpeg);
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: return t31_channel_create(index, width, height,
             framerate, jpeg);
@@ -427,6 +437,9 @@ int bind_channel(char index, char framerate, char jpeg) {
         case HAL_PLATFORM_V2:  return v2_channel_bind(index);
         case HAL_PLATFORM_V3:  return v3_channel_bind(index);
         case HAL_PLATFORM_V4:  return v4_channel_bind(index);
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  return fh_channel_bind(index);
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: return t31_channel_bind(index);
 #elif defined(__riscv) || defined(__riscv__)
@@ -449,6 +462,9 @@ int unbind_channel(char index, char jpeg) {
         case HAL_PLATFORM_V2:  return v2_channel_unbind(index);
         case HAL_PLATFORM_V3:  return v3_channel_unbind(index);
         case HAL_PLATFORM_V4:  return v4_channel_unbind(index);
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  return fh_channel_unbind(index);
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: return t31_channel_unbind(index);
 #elif defined(__riscv) || defined(__riscv__)
@@ -471,6 +487,9 @@ int media_video_disable(char index, char jpeg) {
         case HAL_PLATFORM_V2:  return v2_video_destroy(index);
         case HAL_PLATFORM_V3:  return v3_video_destroy(index);
         case HAL_PLATFORM_V4:  return v4_video_destroy(index);
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  return fh_video_destroy(index);
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: return t31_video_destroy(index);
 #elif defined(__riscv) || defined(__riscv__)
@@ -502,6 +521,9 @@ void media_audio_disable(void) {
         case HAL_PLATFORM_V2:  v2_audio_deinit(); break;
         case HAL_PLATFORM_V3:  v3_audio_deinit(); break;
         case HAL_PLATFORM_V4:  v4_audio_deinit(); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  fh_audio_deinit(); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: t31_audio_deinit(); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -530,6 +552,9 @@ int media_audio_enable(void) {
         case HAL_PLATFORM_V2:  ret = v2_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V3:  ret = v3_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V4:  ret = v4_audio_init(app_config.audio_srate); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  ret = fh_audio_init(app_config.audio_srate); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: ret = t31_audio_init(app_config.audio_srate); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -649,6 +674,9 @@ int media_mjpeg_enable(void) {
             case HAL_PLATFORM_V2:  ret = v2_video_create(index, &config); break;
             case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
             case HAL_PLATFORM_V4:  ret = v4_video_create(index, &config); break;
+#if __ARM_ARCH == 6
+            case HAL_PLATFORM_FH:  ret = fh_video_create(index, &config); break;
+#endif
 #elif defined(__mips__)
             case HAL_PLATFORM_T31: ret = t31_video_create(index, &config); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -738,6 +766,9 @@ int media_mp4_enable(void) {
             case HAL_PLATFORM_V2:  ret = v2_video_create(index, &config); break;
             case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
             case HAL_PLATFORM_V4:  ret = v4_video_create(index, &config); break;
+#if __ARM_ARCH == 6
+            case HAL_PLATFORM_FH:  ret = fh_video_create(index, &config); break;
+#endif
 #elif defined(__mips__)
             case HAL_PLATFORM_T31: ret = t31_video_create(index, &config); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -788,6 +819,9 @@ int sdk_start(void) {
         case HAL_PLATFORM_V2:  ret = v2_hal_init(); break;
         case HAL_PLATFORM_V3:  ret = v3_hal_init(); break;
         case HAL_PLATFORM_V4:  ret = v4_hal_init(); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  ret = fh_hal_init(); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: ret = t31_hal_init(); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -837,6 +871,12 @@ int sdk_start(void) {
             v4_aud_cb = save_audio_stream;
             v4_vid_cb = save_video_stream;
             break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:
+            fh_aud_cb = save_audio_stream;
+            fh_vid_cb = save_video_stream;
+            break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31:
             t31_aud_cb = save_audio_stream;
@@ -864,6 +904,9 @@ int sdk_start(void) {
         case HAL_PLATFORM_V2:  ret = v2_system_init(app_config.sensor_config); break;
         case HAL_PLATFORM_V3:  ret = v3_system_init(app_config.sensor_config); break;
         case HAL_PLATFORM_V4:  ret = v4_system_init(app_config.sensor_config); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  ret = fh_system_init(app_config.sensor_config); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: ret = t31_system_init(); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -876,9 +919,18 @@ int sdk_start(void) {
 
     if (app_config.audio_enable) {
         ret = media_audio_enable();
-        if (ret)
+        if (ret) {
+#if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
+            /* Fullhan only: a broken mic/audio config must not abort the SDK start,
+             * which on this watchdog-guarded SoC means a reboot loop */
+            HAL_WARNING("media", "Audio initialization failed with %#x, continuing without audio!\n%s\n",
+                ret, errstr(ret));
+            app_config.audio_enable = false;
+#else
             HAL_ERROR("media", "Audio initialization failed with %#x!\n%s\n",
                 ret, errstr(ret));
+#endif
+        }
     }
 
     short width = MAX(app_config.mp4_width, app_config.mjpeg_width);
@@ -903,6 +955,10 @@ int sdk_start(void) {
         case HAL_PLATFORM_V2:  ret = v2_pipeline_create(); break;
         case HAL_PLATFORM_V3:  ret = v3_pipeline_create(); break;
         case HAL_PLATFORM_V4:  ret = v4_pipeline_create(); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  ret = fh_pipeline_create(width, height,
+            app_config.mirror, app_config.flip, framerate, app_config.antiflicker); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: ret = t31_pipeline_create(app_config.mirror,
             app_config.flip, app_config.antiflicker, framerate); break;
@@ -962,6 +1018,8 @@ int sdk_start(void) {
             case HAL_PLATFORM_I6:  i6_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_I6C: i6c_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_M6:  m6_config_load(app_config.sensor_config); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
+            case HAL_PLATFORM_FH:  fh_config_load(app_config.sensor_config); break;
 #elif defined(__mips__)
             case HAL_PLATFORM_T31: t31_config_load(app_config.sensor_config); break;
 #endif
@@ -991,6 +1049,9 @@ int sdk_stop(void) {
         case HAL_PLATFORM_V2:  v2_video_destroy_all(); break;
         case HAL_PLATFORM_V3:  v3_video_destroy_all(); break;
         case HAL_PLATFORM_V4:  v4_video_destroy_all(); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  fh_video_destroy_all(); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: t31_video_destroy_all(); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -1011,6 +1072,9 @@ int sdk_stop(void) {
         case HAL_PLATFORM_V2:  v2_pipeline_destroy(); break;
         case HAL_PLATFORM_V3:  v3_pipeline_destroy(); break;
         case HAL_PLATFORM_V4:  v4_pipeline_destroy(); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  fh_pipeline_destroy(); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: t31_pipeline_destroy(); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -1038,6 +1102,9 @@ int sdk_stop(void) {
         case HAL_PLATFORM_V2:  v2_system_deinit(); break;
         case HAL_PLATFORM_V3:  v3_system_deinit(); break;
         case HAL_PLATFORM_V4:  v4_system_deinit(); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  fh_system_deinit(); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: t31_system_deinit(); break;
 #elif defined(__riscv) || defined(__riscv__)
@@ -1068,6 +1135,9 @@ int sdk_stop(void) {
         case HAL_PLATFORM_V2:  v2_hal_deinit(); break;
         case HAL_PLATFORM_V3:  v3_hal_deinit(); break;
         case HAL_PLATFORM_V4:  v4_hal_deinit(); break;
+#if __ARM_ARCH == 6
+        case HAL_PLATFORM_FH:  fh_hal_deinit(); break;
+#endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: t31_hal_deinit(); break;
 #elif defined(__riscv) || defined(__riscv__)

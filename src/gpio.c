@@ -72,11 +72,26 @@ int gpio_init(void) {
     return EXIT_SUCCESS;
 }
 
+/* The exported line's sysfs directory is "gpio<n>" on most kernels but
+ * "GPIO<n>" on Fullhan (fh) kernels; probe both and cache the format. */
+static const char *gpio_node(char pin) {
+    static char fmt[24];
+    static char dir[40];
+    if (!fmt[0]) {
+        char probe[40];
+        sprintf(probe, "/sys/class/gpio/GPIO%d", pin);
+        strcpy(fmt, access(probe, F_OK) == 0 ?
+            "/sys/class/gpio/GPIO%d" : "/sys/class/gpio/gpio%d");
+    }
+    sprintf(dir, fmt, pin);
+    return dir;
+}
+
 static inline int gpio_direction(char pin, char *mode) {
-    char path[40];
-    sprintf(path, "/sys/class/gpio/gpio%d/direction", pin);
+    char path[48];
+    sprintf(path, "%s/direction", gpio_node(pin));
     int fd = open(path, O_WRONLY);
-    if (!fd)
+    if (fd < 0)
         HAL_ERROR("gpio", "Unable to control the direction of GPIO pin %d!\n", pin);
     if (write(fd, mode, strlen(mode)) < 0) {
         close(fd);
@@ -91,7 +106,7 @@ static inline int gpio_export(char pin, bool create) {
     char path[40];
     int fd = open(create ? "/sys/class/gpio/export" :
        "/sys/class/gpio/unexport", O_WRONLY);
-    if (!fd)
+    if (fd < 0)
         HAL_ERROR("gpio", "Unable to (un)export a GPIO pin!\n");
 
     char val[4];
@@ -110,10 +125,10 @@ int gpio_read(char pin, bool *value) {
     gpio_export(pin, true);
     if (gpio_direction(pin, "in")) return EXIT_FAILURE;
 
-    char path[40];
-    sprintf(path, "/sys/class/gpio/gpio%d/value", pin);
+    char path[48];
+    sprintf(path, "%s/value", gpio_node(pin));
     int fd = open(path, O_RDONLY);
-    if (!fd)
+    if (fd < 0)
         HAL_ERROR("gpio", "Unable to read from GPIO pin %d!\n", pin);
 
     char val = 0;
@@ -136,10 +151,10 @@ int gpio_write(char pin, bool value) {
     gpio_export(pin, true);
     if (gpio_direction(pin, "out")) return EXIT_FAILURE;
 
-    char path[40];
-    sprintf(path, "/sys/class/gpio/gpio%d/value", pin);
+    char path[48];
+    sprintf(path, "%s/value", gpio_node(pin));
     int fd = open(path, O_WRONLY);
-    if (!fd)
+    if (fd < 0)
         HAL_ERROR("gpio", "Unable to write to GPIO pin %d!\n", pin);
 
     char val = value ? '1' : '0';
