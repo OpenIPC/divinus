@@ -6,7 +6,7 @@
 #define GIT_REV "unknown"
 #endif
 
-extern char graceful, keepRunning;
+extern volatile char graceful, keepRunning;
 extern char audioOn, recordOn;
 
 extern void *aud_thread;
