@@ -14,6 +14,7 @@ void stop_onvif(void);
 void *onvif_thread();
 
 char* onvif_extract_soap_action(const char* soap_data);
+bool onvif_is_preauth_action(const char *action);
 bool onvif_validate_soap_auth(const char *soap_data);
 
 void onvif_respond_capabilities(char *response, int *respLen);

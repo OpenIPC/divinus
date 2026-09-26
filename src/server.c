@@ -622,7 +622,8 @@ void respond_request(http_request_t *req) {
         HAL_INFO("onvif", "\x1b[32mAction: %s\x1b[0m\n", action);
         respLen = sizeof(response);
 
-        if (app_config.onvif_enable_auth && !onvif_validate_soap_auth(req->payload)) {
+        if (app_config.onvif_enable_auth && !onvif_is_preauth_action(action) &&
+            !onvif_validate_soap_auth(req->payload)) {
             respLen = sprintf(response,
                 "HTTP/1.1 401 Unauthorized\r\n"
                 "Content-Type: text/plain\r\n"

@@ -138,34 +138,45 @@ void *onvif_thread(void) {
 char* onvif_extract_soap_action(const char* soap_data) {
     static char action[128];
     char *action_start = NULL;
-    
+
     char *body_start = strstr(soap_data, "Body");
     if (!body_start) return NULL;
-    
+
     body_start = strchr(body_start, '>');
     if (!body_start) return NULL;
     body_start++;
 
     while (*body_start && isspace(*body_start)) body_start++;
-    
+
     if (*body_start != '<') return NULL;
     body_start++;
-    
+
     char *action_end = strchr(body_start, ' ');
     if (!action_end) action_end = strchr(body_start, '>');
     if (!action_end) return NULL;
-    
+
     int action_len = action_end - body_start;
     if (action_len >= sizeof(action)) action_len = sizeof(action) - 1;
-    
+
     strncpy(action, body_start, action_len);
     action[action_len] = '\0';
-    
+
     return action;
 }
 
+bool onvif_is_preauth_action(const char *action) {
+    if (!action || EMPTY(action))
+        return false;
+
+    if (EQUALS(action, "GetCapabilities") ||
+        EQUALS(action, "GetSystemDateAndTime"))
+        return true;
+
+    return false;
+}
+
 bool onvif_validate_soap_auth(const char *soap_data) {
-    const char *created_tag = "Created", *digest_tag = "PasswordDigest", *nonce_tag = "<Nonce", 
+    const char *created_tag = "Created", *digest_tag = "PasswordDigest", *nonce_tag = "<Nonce",
         *pass_tag = "<Password", *type_attr = "Type=\"", *user_tag = "<Username>";
     char *pos, *end, *start;
     char digest = 0, created[64], nonce[64], pass[64], user[64];
