@@ -149,7 +149,7 @@ void *aenc_thread(void) {
         if (app_config.rtsp_enable && rtsp_g711_active())
             rtsp_pcma_feed((short *)(frame_buf + 2), flen / 2);
 
-        if (!recordOn && !app_config.stream_enable && !any_http_audio() &&
+        if (!record_active() && !app_config.stream_enable && !any_http_audio() &&
             !(app_config.rtsp_enable && !rtsp_g711_active())) {
             pcmPos = 0;
             continue;
@@ -190,7 +190,7 @@ int save_video_stream(char index, hal_vidstream *stream) {
             if (app_config.mp4_enable) {
                 pthread_mutex_lock(&mp4Mtx);
                 send_mp4_to_client(index, stream, isH265);
-                if (recordOn) send_mp4_to_record(stream, isH265);
+                if (record_active()) record_ingest_stream(stream, isH265);
                 pthread_mutex_unlock(&mp4Mtx);
 
                 send_h26x_to_client(index, stream);

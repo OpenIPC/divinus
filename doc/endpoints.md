@@ -272,7 +272,7 @@ Manages video recording operations.
 |--------|--------------------|----------------------------------------------------|
 | GET    | `continuous`       | Adjusts the operation mode to be uninterruptible   |
 | GET    | `path`             | Specifies the location of the resulting files      |
-| GET    | `filename`         | Adjusts the output name (extension needed)         |
+| GET    | `filename`         | Sets the base output name (extension needed)       |
 | GET    | `segment_duration` | Sets the maximum segment duration (seconds)        |
 | GET    | `segment_size`     | Sets the maximum segment size (bytes)              |
 | GET    | `start`            | Starts a new recording session                     |

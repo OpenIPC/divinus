@@ -59,8 +59,8 @@ This document describes the fields that can be found within a configuration file
 
 - **enable**: Boolean to allow or block recording operations (default: `false`).
 - **continuous**: Boolean to turn on continuous recording at launch (default: `false`).
-- **path**: Path to save recordings (e.g., `/mnt/sdcard/recordings`).
-- **filename**: String for a fixed destination file, leave empty to use incremental numbering
+- **path**: Path to save recordings (e.g., `/mnt/sdcard/recordings`). Missing directories are created automatically.
+- **filename**: Base name for the resulting files (e.g., `Entrance.mp4`). A `_<timestamp>` suffix is appended before the extension so segments never overwrite each other; leave empty to use `recording`.
 - **segment_duration**: Target duration for a recording in seconds
 - **segment_size**: Target file size for a recording in bytes
 

@@ -1519,9 +1519,12 @@ void respond_request(http_request_t *req) {
                     record_stop();
             }
         }
-        struct tm tm_buf, *tm_info = localtime_r(&recordStartTime, &tm_buf);
-        char start_time[64];
-        strftime(start_time, sizeof(start_time), "%Y-%m-%dT%H:%M:%SZ", tm_info);
+        char start_time[32] = "";
+        time_t startTime = record_start_time();
+        if (startTime) {
+            struct tm tm_buf, *tm_info = localtime_r(&startTime, &tm_buf);
+            strftime(start_time, sizeof(start_time), "%Y-%m-%dT%H:%M:%SZ", tm_info);
+        }
 
         respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
@@ -1530,7 +1533,7 @@ void respond_request(http_request_t *req) {
             "\r\n"
             "{\"recording\":%s,\"start_time\":\"%s\",\"continuous\":%s,\"path\":\"%s\","
             "\"filename\":\"%s\",\"segment_duration\":%d,\"segment_size\":%d}",
-                recordOn ? "true" : "false", start_time, app_config.record_continuous ? "true" : "false",
+                record_active() ? "true" : "false", start_time, app_config.record_continuous ? "true" : "false",
                 app_config.record_path, app_config.record_filename,
                 app_config.record_segment_duration, app_config.record_segment_size);
         send_and_close(req->clntFd, response, respLen);

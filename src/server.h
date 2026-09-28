@@ -31,8 +31,6 @@
 #include "region.h"
 #include "watchdog.h"
 
-extern time_t recordStartTime;
-
 int server_start();
 int server_stop();
 
