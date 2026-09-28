@@ -139,6 +139,26 @@ void hal_identify(void) {
 #endif
     
 #if defined(__arm__) && !defined(__ARM_PCS_VFP)
+#if __ARM_ARCH == 6
+    if (file = fopen("/proc/driver/chip", "r")) {
+        char name[16] = {0};
+        while (fgets(line, 200, file))
+            if (sscanf(line, "chip_name : %15s", name) == 1) break;
+        fclose(file);
+        if (!strncmp(name, "FH", 2)) {
+            plat = HAL_PLATFORM_FH;
+            strncpy(chip, name, sizeof(chip) - 1);
+            strcpy(family, "fullhan");
+            chnCount = FH_VENC_CHN_NUM;
+            chnState = (hal_chnstate*)fh_state;
+            aud_thread = fh_audio_thread;
+            isp_thread = fh_image_thread;
+            vid_thread = fh_video_thread;
+            return;
+        }
+    }
+#endif
+
     if (!access("/dev/vpd", F_OK)) {
         plat = HAL_PLATFORM_GM;
         strcpy(chip, "GM813x");

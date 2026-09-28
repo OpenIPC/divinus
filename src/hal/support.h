@@ -15,6 +15,9 @@
 #include "hisi/v2_hal.h"
 #include "hisi/v3_hal.h"
 #include "hisi/v4_hal.h"
+#if __ARM_ARCH == 6
+#include "fh/fh_hal.h"
+#endif
 #elif defined(__mips__)
 #include "inge/t31_hal.h"
 #elif defined(__riscv) || defined(__riscv__)

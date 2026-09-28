@@ -7,9 +7,13 @@ int   (*fnISP_AlgRegisterDrc)(int);
 int   (*fnISP_AlgRegisterLdci)(int);
 int   (*fnMPI_ISP_IrAutoRunOnce)(int, void*);
 
+/* The Fullhan ISP core library exports its own isp_malloc(); with -rdynamic
+ * this trampoline would shadow it, so leave it out of ARMv6 (Fullhan) builds */
+#if __ARM_ARCH != 6
 void *isp_malloc(unsigned long size) {
     return fnIsp_Malloc(size);
 }
+#endif
 int isp_alg_register_acs(int pipeId) {
     return fnISP_AlgRegisterAcs(pipeId);
 }

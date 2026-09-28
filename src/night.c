@@ -29,6 +29,9 @@ void night_ircut(bool enable) {
 }
 
 void night_irled(bool enable) {
+#if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
+    if (plat == HAL_PLATFORM_FH) fh_irled(enable); /* PWM3 brightness; GPIO7 enable follows */
+#endif
     gpio_write(app_config.ir_led_pin, enable);
     irled = enable;
 }
@@ -37,6 +40,23 @@ void night_manual(bool enable) { manual = enable; }
 
 void night_mode(bool enable) {
     HAL_INFO("night", "Changing mode to %s\n", enable ? "NIGHT" : "DAY");
+#if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
+    if (plat == HAL_PLATFORM_FH && EQUALS(app_config.night_lamp, "white")) {
+        /* Colour night vision: light the scene with the white lamp and keep the
+         * IR-cut filter in and the image in colour; the IR lamp stays off */
+        night_grayscale(false);
+        night_ircut(true);
+        night_irled(false);
+        fh_whitelamp(enable);
+        return;
+    }
+    if (plat == HAL_PLATFORM_FH && EQUALS(app_config.night_lamp, "none")) {
+        night_grayscale(enable);
+        night_ircut(!enable);
+        night_irled(false);
+        return;
+    }
+#endif
     night_grayscale(enable);
     night_ircut(!enable);
     night_irled(enable);
@@ -48,6 +68,24 @@ void *night_thread(void) {
 
     night_mode(night_mode_on());
 
+#if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
+    if (plat == HAL_PLATFORM_FH && fh_night_available()) {
+        HAL_INFO("night", "Using SmartIR (image gain) for day/night switching\n");
+        if (app_config.smartir_gain_night || app_config.smartir_gain_day)
+            fh_night_thresholds(app_config.smartir_gain_night, app_config.smartir_gain_day);
+        while (keepRunning && nightOn) {
+            /* SmartIR is polled; only touch the IR-cut/LED GPIOs when the verdict changes,
+             * otherwise night_mode() pulses the IR-cut solenoid every interval */
+            static int applied = -1;
+            int state = fh_night_status();
+            if (manual) applied = -1;
+            else if (state != applied) { night_mode(state); applied = state; }
+            /* SmartIR's debounce counters are per call and sized for the vendor's
+             * 40 ms polling loop, so don't pace it with check_interval_s */
+            usleep(40000);
+        }
+    } else
+#endif
     if (app_config.adc_device[0]) {
         int adc_fd = -1;
         fd_set adc_fds;
