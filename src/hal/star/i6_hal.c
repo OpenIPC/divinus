@@ -379,6 +379,72 @@ void i6_pipeline_destroy(void)
     i6_snr.fnDisable(_i6_snr_index);
 }
 
+// Port 3 of the SSC323 VPE hands out buffers that are never written
+#define I6_RAW_PORT 2
+
+int i6_raw_create(short width, short height)
+{
+    int ret;
+
+    if (!i6_sys.fnGetBuf || !i6_sys.fnPutBuf)
+        HAL_ERROR("i6_raw", "libmi_sys does not export the buffer functions!\n");
+    if (i6_state[I6_RAW_PORT].enable)
+        HAL_ERROR("i6_raw", "VPE port %d is already used by an encoder!\n", I6_RAW_PORT);
+
+    i6_vpe_port port;
+    port.output.width = width;
+    port.output.height = height;
+    port.mirror = 0;
+    port.flip = 0;
+    port.compress = I6_COMPR_NONE;
+    port.pixFmt = I6_PIXFMT_YUV420SP;
+    if (ret = i6_vpe.fnSetPortConfig(_i6_vpe_chn, I6_RAW_PORT, &port))
+        return ret;
+
+    i6_sys_bind bind = { .module = I6_SYS_MOD_VPE,
+        .device = _i6_vpe_dev, .channel = _i6_vpe_chn, .port = I6_RAW_PORT };
+    if (ret = i6_sys.fnSetOutputDepth(&bind, 1, 3))
+        return ret;
+
+    return i6_vpe.fnEnablePort(_i6_vpe_chn, I6_RAW_PORT);
+}
+
+int i6_raw_get(hal_rawframe *frame)
+{
+    i6_sys_bind bind = { .module = I6_SYS_MOD_VPE,
+        .device = _i6_vpe_dev, .channel = _i6_vpe_chn, .port = I6_RAW_PORT };
+    i6_sys_bufinfo info;
+    int handle;
+
+    if (i6_sys.fnGetBuf(&bind, &info, &handle))
+        return EXIT_FAILURE;
+
+    if (info.frame.pixFmt != I6_PIXFMT_YUV420SP) {
+        i6_sys.fnPutBuf(handle);
+        HAL_ERROR("i6_raw", "Unexpected frame format %d!\n", info.frame.pixFmt);
+    }
+
+    if (i6_sys.fnFlushInvCache)
+        i6_sys.fnFlushInvCache(info.frame.virtAddr[0], info.frame.stride[0] * info.frame.height);
+
+    frame->luma = info.frame.virtAddr[0];
+    frame->stride = info.frame.stride[0];
+    frame->width = info.frame.width;
+    frame->height = info.frame.height;
+    frame->handle = handle;
+    return EXIT_SUCCESS;
+}
+
+int i6_raw_release(hal_rawframe *frame)
+{
+    return i6_sys.fnPutBuf(frame->handle);
+}
+
+void i6_raw_destroy(void)
+{
+    i6_vpe.fnDisablePort(_i6_vpe_chn, I6_RAW_PORT);
+}
+
 int i6_region_create(char handle, hal_rect rect, short opacity)
 {
     int ret;
