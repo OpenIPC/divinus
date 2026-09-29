@@ -6,7 +6,7 @@
 
 typedef struct {
     int id;
-    time_t expires;
+    time_t expires, lastSeen;
     unsigned int generation;
     int head, count;
     onvif_event_msg queue[ONVIF_EVENT_QUEUE];
@@ -34,17 +34,20 @@ static void push_msg(onvif_event_sub *sub, onvif_event_msg msg) {
 }
 
 int onvif_event_subscribe(time_t now, int seconds, time_t *expires) {
-    int id = -1;
+    onvif_event_sub *sub = &subs[0];
 
+    // A free slot, or else the subscription idle for the longest time:
+    // clients that reconnect rarely unsubscribe first
     pthread_mutex_lock(&eventMtx);
-    for (int i = 0; i < ONVIF_EVENT_MAX_SUBS; i++) {
-        if (subs[i].id) continue;
-        memset(&subs[i], 0, sizeof(subs[i]));
-        subs[i].id = id = ++lastId;
-        subs[i].expires = *expires = now + seconds;
-        push_msg(&subs[i], (onvif_event_msg){ .time = now, .initial = true, .state = motionState });
-        break;
-    }
+    for (int i = 0; i < ONVIF_EVENT_MAX_SUBS && sub->id; i++)
+        if (!subs[i].id || subs[i].lastSeen < sub->lastSeen) sub = &subs[i];
+    if (sub->id) pthread_cond_broadcast(&eventCond);
+
+    memset(sub, 0, sizeof(*sub));
+    int id = sub->id = ++lastId;
+    sub->expires = *expires = now + seconds;
+    sub->lastSeen = now;
+    push_msg(sub, (onvif_event_msg){ .time = now, .initial = true, .state = motionState });
     pthread_mutex_unlock(&eventMtx);
 
     return id;
@@ -53,7 +56,10 @@ int onvif_event_subscribe(time_t now, int seconds, time_t *expires) {
 bool onvif_event_renew(int id, time_t now, int seconds, time_t *expires) {
     pthread_mutex_lock(&eventMtx);
     onvif_event_sub *sub = find_sub(id);
-    if (sub) sub->expires = *expires = now + seconds;
+    if (sub) {
+        sub->expires = *expires = now + seconds;
+        sub->lastSeen = now;
+    }
     pthread_mutex_unlock(&eventMtx);
 
     return sub;
@@ -83,7 +89,8 @@ bool onvif_event_sync(int id, time_t now) {
     return sub;
 }
 
-int onvif_event_pull(int id, int timeout_s, int limit, onvif_event_msg *msgs, time_t *expires) {
+int onvif_event_pull(int id, time_t now, int timeout_s, int limit,
+    onvif_event_msg *msgs, time_t *expires) {
     struct timespec deadline;
     clock_gettime(CLOCK_REALTIME, &deadline);
     deadline.tv_sec += timeout_s;
@@ -94,6 +101,7 @@ int onvif_event_pull(int id, int timeout_s, int limit, onvif_event_msg *msgs, ti
 
     // A newer pull on the same subscription releases the one already waiting
     if (sub) {
+        sub->lastSeen = now;
         generation = ++sub->generation;
         pthread_cond_broadcast(&eventCond);
     }
