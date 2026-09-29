@@ -60,6 +60,10 @@ night_mode:
   pin_switch_delay_us: 150
   adc_device: /dev/sar_adc_drv
   adc_threshold: 128
+  night_gain: 8
+  day_gain: 2
+  night_hold_s: 15
+  day_hold_s: 60
 
 motion_detect:
   enable: false

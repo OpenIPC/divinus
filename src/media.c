@@ -439,6 +439,15 @@ void raw_destroy(void) {
     pthread_mutex_unlock(&chnMtx);
 }
 
+int get_isp_gain(unsigned int *gain) {
+    switch (plat) {
+#if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I6:  return i6_isp_gain(gain);
+#endif
+    }
+    return EXIT_FAILURE;
+}
+
 int take_next_free_channel(bool mainLoop) {
     pthread_mutex_lock(&chnMtx);
     for (int i = 0; i < chnCount; i++) {

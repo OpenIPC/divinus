@@ -72,7 +72,30 @@ void *night_thread(void) {
         }
         if (adc_fd) close(adc_fd);
     } else if (app_config.ir_sensor_pin == 999) {
-        while (keepRunning && nightOn) sleep(1);
+        bool night = night_mode_on();
+        unsigned int held = 0, gain;
+
+        while (keepRunning && nightOn) {
+            sleep(1);
+            if (manual || get_isp_gain(&gain)) {
+                held = 0;
+                continue;
+            }
+
+            bool crossing = night ?
+                gain < app_config.day_gain * 1024 : gain >= app_config.night_gain * 1024;
+            if (!crossing) {
+                held = 0;
+                continue;
+            }
+            if (++held < (night ? app_config.day_hold_s : app_config.night_hold_s))
+                continue;
+
+            night = !night;
+            held = 0;
+            motion_pause(3000);
+            night_mode(night);
+        }
     } else {
         while (keepRunning && nightOn) {
             bool state = false;

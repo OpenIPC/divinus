@@ -104,6 +104,10 @@ int app_config_save(void) {
     fprintf(file, "  pin_switch_delay_us: %d\n", app_config.pin_switch_delay_us);
     fprintf(file, "  adc_device: %s\n", app_config.adc_device);
     fprintf(file, "  adc_threshold: %d\n", app_config.adc_threshold);
+    fprintf(file, "  night_gain: %d\n", app_config.night_gain);
+    fprintf(file, "  day_gain: %d\n", app_config.day_gain);
+    fprintf(file, "  night_hold_s: %d\n", app_config.night_hold_s);
+    fprintf(file, "  day_hold_s: %d\n", app_config.day_hold_s);
 
     fprintf(file, "motion_detect:\n");
     fprintf(file, "  enable: %s\n", app_config.motion_detect_enable ? "true" : "false");
@@ -285,6 +289,10 @@ enum ConfigError app_config_parse(void) {
     app_config.check_interval_s = 10;
     app_config.adc_device[0] = 0;
     app_config.adc_threshold = 128;
+    app_config.night_gain = 8;
+    app_config.day_gain = 2;
+    app_config.night_hold_s = 15;
+    app_config.day_hold_s = 60;
 
     app_config.motion_detect_enable = false;
     app_config.motion_detect_sensitivity = 5;
@@ -377,6 +385,10 @@ enum ConfigError app_config_parse(void) {
         parse_int(
             &ini, "night_mode", "adc_threshold", INT_MIN, INT_MAX,
             &app_config.adc_threshold);
+        parse_int(&ini, "night_mode", "night_gain", 1, 1024, &app_config.night_gain);
+        parse_int(&ini, "night_mode", "day_gain", 1, 1024, &app_config.day_gain);
+        parse_int(&ini, "night_mode", "night_hold_s", 1, 3600, &app_config.night_hold_s);
+        parse_int(&ini, "night_mode", "day_hold_s", 1, 3600, &app_config.day_hold_s);
     }
 
     parse_bool(&ini, "motion_detect", "enable", &app_config.motion_detect_enable);
