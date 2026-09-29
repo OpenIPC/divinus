@@ -69,6 +69,31 @@ typedef struct {
 } i6_sys_ver;
 
 typedef struct {
+    unsigned long long pts;
+    int type;
+    unsigned int flags;
+    union {
+        // Layout measured on SSC323 (infinity6), the first five words are unknown
+        struct {
+            int tileMode;
+            unsigned int unknown[4];
+            i6_common_pixfmt pixFmt;
+            i6_common_compr compress;
+            int scanMode;
+            int fieldType;
+            int ispInfoType;
+            unsigned short width;
+            unsigned short height;
+            void *virtAddr[3];
+            unsigned long long physAddr[3];
+            unsigned int stride[3];
+            unsigned int bufSize;
+        } frame;
+        unsigned char reserved[112];
+    };
+} i6_sys_bufinfo;
+
+typedef struct {
     void *handle, *handleCamOsWrapper;
     
     int (*fnExit)(void);
@@ -81,6 +106,10 @@ typedef struct {
         unsigned int dstFps, i6_sys_link link, unsigned int linkParam);
     int (*fnSetOutputDepth)(i6_sys_bind *bind, unsigned int usrDepth, unsigned int bufDepth);
     int (*fnUnbind)(i6_sys_bind *source, i6_sys_bind *dest);
+
+    int (*fnFlushInvCache)(void *address, unsigned int length);
+    int (*fnGetBuf)(i6_sys_bind *bind, i6_sys_bufinfo *info, int *handle);
+    int (*fnPutBuf)(int handle);
 } i6_sys_impl;
 
 static int i6_sys_load(i6_sys_impl *sys_lib) {
@@ -118,6 +147,15 @@ static int i6_sys_load(i6_sys_impl *sys_lib) {
     if (!(sys_lib->fnUnbind = (int(*)(i6_sys_bind *source, i6_sys_bind *dest))
         hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_UnBindChnPort")))
         return EXIT_FAILURE;
+
+    sys_lib->fnFlushInvCache = (int(*)(void *address, unsigned int length))
+        hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_FlushInvCache");
+
+    sys_lib->fnGetBuf = (int(*)(i6_sys_bind *bind, i6_sys_bufinfo *info, int *handle))
+        hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_ChnOutputPortGetBuf");
+
+    sys_lib->fnPutBuf = (int(*)(int handle))
+        hal_symbol_load("i6_sys", sys_lib->handle, "MI_SYS_ChnOutputPortPutBuf");
 
     return EXIT_SUCCESS;
 }
