@@ -399,11 +399,11 @@ void onvif_respond_pullpoint(char *response, int *respLen, const char *request) 
     int seconds = soap_term_seconds(request, "InitialTerminationTime", now,
         ONVIF_SUB_DEFAULT_S, ONVIF_SUB_MAX_S);
 
-    int id = onvif_event_subscribe(now, seconds, &expires);
+    int id = onvif_event_subscribe(onvif_event_clock(), now, seconds, &expires);
     HAL_INFO("onvif", "Subscription #%d created for %d seconds\n", id, seconds);
 
     soap_datetime_format(now, current, sizeof(current));
-    soap_datetime_format(expires, termination, sizeof(termination));
+    soap_datetime_format(now + seconds, termination, sizeof(termination));
     snprintf(body, sizeof(body), pullpointxml,
         netinfo.ipaddr[0], app_config.web_port, id, current, termination);
     onvif_message_id(request, messageId, sizeof(messageId));
@@ -432,7 +432,7 @@ void onvif_respond_pullmessages(char *response, int *respLen, const onvif_pull_r
     time_t expires;
     int notesLen = 0;
 
-    int count = onvif_event_pull(pull->id, time(NULL), pull->timeout, pull->limit,
+    int count = onvif_event_pull(pull->id, onvif_event_clock(), pull->timeout, pull->limit,
         msgs, &expires);
     if (count < 0) {
         onvif_respond_unknown_sub(response, respLen);
@@ -446,8 +446,9 @@ void onvif_respond_pullmessages(char *response, int *respLen, const onvif_pull_r
             msgs[i].state ? "true" : "false");
     }
 
-    soap_datetime_format(time(NULL), current, sizeof(current));
-    soap_datetime_format(expires, termination, sizeof(termination));
+    time_t now = time(NULL);
+    soap_datetime_format(now, current, sizeof(current));
+    soap_datetime_format(now + (expires - onvif_event_clock()), termination, sizeof(termination));
     snprintf(body, sizeof(body), pullmessagesxml, current, termination, notes);
     onvif_reply_event(response, respLen, pull->messageId,
         ONVIF_EVENTS_WSDL "PullPointSubscription/PullMessagesResponse", body);
@@ -459,13 +460,13 @@ void onvif_respond_renew(char *response, int *respLen, int id, const char *reque
     int seconds = soap_term_seconds(request, "TerminationTime", now,
         ONVIF_SUB_DEFAULT_S, ONVIF_SUB_MAX_S);
 
-    if (!onvif_event_renew(id, now, seconds, &expires)) {
+    if (!onvif_event_renew(id, onvif_event_clock(), seconds, &expires)) {
         onvif_respond_unknown_sub(response, respLen);
         return;
     }
 
     soap_datetime_format(now, current, sizeof(current));
-    soap_datetime_format(expires, termination, sizeof(termination));
+    soap_datetime_format(now + seconds, termination, sizeof(termination));
     snprintf(body, sizeof(body), renewxml, termination, current);
     onvif_message_id(request, messageId, sizeof(messageId));
     onvif_reply_event(response, respLen, messageId,

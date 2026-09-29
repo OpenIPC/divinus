@@ -24,7 +24,7 @@ int main(void) {
     time_t expires, now = 1000, start;
     pthread_t thread;
 
-    int id = onvif_event_subscribe(now, 60, &expires);
+    int id = onvif_event_subscribe(now, now, 60, &expires);
     CHECK(id > 0 && expires == 1060);
 
     // The first pull gets the Initialized message with the current state
@@ -74,17 +74,17 @@ int main(void) {
     // Expired subscriptions free their slot
     int ids[ONVIF_EVENT_MAX_SUBS];
     for (int i = 0; i < ONVIF_EVENT_MAX_SUBS; i++)
-        CHECK((ids[i] = onvif_event_subscribe(3000, 10 + i, &expires)) > 0);
+        CHECK((ids[i] = onvif_event_subscribe(3000, 3000, 10 + i, &expires)) > 0);
     onvif_event_expire(3010);
     CHECK(onvif_event_pull(ids[0], 3010, 0, 8, msgs, &expires) == -1);
     CHECK(onvif_event_pull(ids[1], 3010, 0, 8, msgs, &expires) == 1);
 
     // When full, a new subscription replaces the one idle for the longest time
-    CHECK((ids[0] = onvif_event_subscribe(3010, 60, &expires)) > 0);
+    CHECK((ids[0] = onvif_event_subscribe(3010, 3010, 60, &expires)) > 0);
     CHECK(onvif_event_pull(ids[2], 3011, 0, 8, msgs, &expires) == 1);
     CHECK(onvif_event_pull(ids[3], 3012, 0, 8, msgs, &expires) == 1);
     CHECK(onvif_event_pull(ids[0], 3013, 0, 8, msgs, &expires) == 1);
-    int newest = onvif_event_subscribe(3014, 60, &expires);
+    int newest = onvif_event_subscribe(3014, 3014, 60, &expires);
     CHECK(newest > 0);
     CHECK(onvif_event_pull(ids[1], 3014, 0, 8, msgs, &expires) == -1);
     CHECK(onvif_event_pull(ids[2], 3014, 0, 8, msgs, &expires) == 0);
