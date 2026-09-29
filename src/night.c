@@ -72,14 +72,15 @@ void *night_thread(void) {
         }
         if (adc_fd) close(adc_fd);
     } else if (app_config.ir_sensor_pin == 999) {
-        while (keepRunning) sleep(1);
+        while (keepRunning && nightOn) sleep(1);
     } else {
-        while (keepRunning) {
+        while (keepRunning && nightOn) {
             bool state = false;
             if (!gpio_read(app_config.ir_sensor_pin, &state))
                 if (!manual) night_mode(state);
 
-            sleep(app_config.check_interval_s);
+            for (int i = 0; i < app_config.check_interval_s && keepRunning && nightOn; i++)
+                sleep(1);
         }
     }
 

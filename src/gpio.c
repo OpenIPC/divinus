@@ -118,8 +118,7 @@ int gpio_read(char pin, bool *value) {
 
     char val = 0;
     lseek(fd, 0, SEEK_SET);
-    read(fd, &val, 0);
-    if (!val) {
+    if (read(fd, &val, 1) != 1) {
         close(fd);
         HAL_ERROR("gpio", "Unable to read from GPIO pin %d!\n", pin);
     }
