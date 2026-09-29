@@ -371,6 +371,42 @@ void set_grayscale(bool active) {
     pthread_mutex_unlock(&chnMtx);
 }
 
+int raw_create(short width, short height) {
+    switch (plat) {
+#if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I6:  return i6_raw_create(width, height);
+#endif
+    }
+    HAL_WARNING("media", "Raw frames are not supported on this platform!\n");
+    return EXIT_FAILURE;
+}
+
+int raw_get(hal_rawframe *frame) {
+    switch (plat) {
+#if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I6:  return i6_raw_get(frame);
+#endif
+    }
+    return EXIT_FAILURE;
+}
+
+int raw_release(hal_rawframe *frame) {
+    switch (plat) {
+#if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I6:  return i6_raw_release(frame);
+#endif
+    }
+    return EXIT_FAILURE;
+}
+
+void raw_destroy(void) {
+    switch (plat) {
+#if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I6:  i6_raw_destroy(); break;
+#endif
+    }
+}
+
 int take_next_free_channel(bool mainLoop) {
     pthread_mutex_lock(&chnMtx);
     for (int i = 0; i < chnCount; i++) {

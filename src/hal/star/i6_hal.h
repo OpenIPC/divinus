@@ -38,6 +38,11 @@ int i6_config_load(char *path);
 int i6_pipeline_create(char index, short width, short height, char mirror, char flip, char framerate);
 void i6_pipeline_destroy(void);
 
+int i6_raw_create(short width, short height);
+int i6_raw_get(hal_rawframe *frame);
+int i6_raw_release(hal_rawframe *frame);
+void i6_raw_destroy(void);
+
 int i6_region_create(char handle, hal_rect rect, short opacity);
 void i6_region_deinit(void);
 void i6_region_destroy(char handle);
