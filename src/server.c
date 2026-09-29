@@ -619,6 +619,10 @@ void respond_request(http_request_t *req) {
         }
 
         char *action = onvif_extract_soap_action(req->payload);
+        if (!action) {
+            send_http_error(req->clntFd, 400);
+            return;
+        }
         HAL_INFO("onvif", "\x1b[32mAction: %s\x1b[0m\n", action);
         respLen = sizeof(response);
 
