@@ -213,6 +213,16 @@ int i6_config_load(char *path)
     return i6_isp.fnLoadChannelConfig(_i6_isp_chn, path, 1234);
 }
 
+static i6_common_pixfmt i6_bayer_pixfmt(void)
+{
+    if (_i6_snr_plane.bayer >= I6_BAYER_END)
+        return _i6_snr_plane.pixFmt;
+
+    // mi_vpe on SSC32x (0xEF) numbers the Bayer formats from 16, not 20
+    int base = series == 0xEF ? 16 : I6_PIXFMT_RGB_BAYER;
+    return (i6_common_pixfmt)(base + _i6_snr_plane.precision * I6_BAYER_END + _i6_snr_plane.bayer);
+}
+
 int i6_pipeline_create(char index, short width, short height, char mirror, char flip, char framerate)
 {
     int ret;
@@ -287,8 +297,7 @@ int i6_pipeline_create(char index, short width, short height, char mirror, char 
         port.dest.width = _i6_snr_plane.capt.width;
         port.field = 0;
         port.interlaceOn = 0;
-        port.pixFmt = (i6_common_pixfmt)(_i6_snr_plane.bayer > I6_BAYER_END ?
-            _i6_snr_plane.pixFmt : (I6_PIXFMT_RGB_BAYER + _i6_snr_plane.precision * I6_BAYER_END + _i6_snr_plane.bayer));
+        port.pixFmt = i6_bayer_pixfmt();
         port.frate = I6_VIF_FRATE_FULL;
         port.frameLineCnt = 0;
         if (ret = i6_vif.fnSetPortConfig(_i6_vif_chn, _i6_vif_port, &port))
@@ -302,8 +311,7 @@ int i6_pipeline_create(char index, short width, short height, char mirror, char 
         memset(&channel, 0, sizeof(channel));
         channel.capt.height = _i6_snr_plane.capt.height;
         channel.capt.width = _i6_snr_plane.capt.width;
-        channel.pixFmt = (i6_common_pixfmt)(_i6_snr_plane.bayer > I6_BAYER_END ?
-            _i6_snr_plane.pixFmt : (I6_PIXFMT_RGB_BAYER + _i6_snr_plane.precision * I6_BAYER_END + _i6_snr_plane.bayer));
+        channel.pixFmt = i6_bayer_pixfmt();
         channel.hdr = I6_HDR_OFF;
         channel.sensor = (i6_vpe_sens)(_i6_snr_index + 1);
         channel.mode = I6_VPE_MODE_REALTIME;
@@ -324,8 +332,7 @@ int i6_pipeline_create(char index, short width, short height, char mirror, char 
         memset(&channel, 0, sizeof(channel));
         channel.capt.height = _i6_snr_plane.capt.height;
         channel.capt.width = _i6_snr_plane.capt.width;
-        channel.pixFmt = (i6_common_pixfmt)(_i6_snr_plane.bayer > I6_BAYER_END ?
-            _i6_snr_plane.pixFmt : (I6_PIXFMT_RGB_BAYER + _i6_snr_plane.precision * I6_BAYER_END + _i6_snr_plane.bayer));
+        channel.pixFmt = i6_bayer_pixfmt();
         channel.hdr = I6_HDR_OFF;
         channel.sensor = (i6_vpe_sens)(_i6_snr_index + 1);
         channel.mode = I6_VPE_MODE_REALTIME;
