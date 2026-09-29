@@ -7,6 +7,7 @@
 
 #include "app_config.h"
 #include "network.h"
+#include "soap.h"
 
 int start_onvif(void);
 void stop_onvif(void);
