@@ -137,31 +137,8 @@ void *onvif_thread(void) {
 
 char* onvif_extract_soap_action(const char* soap_data) {
     static char action[128];
-    char *action_start = NULL;
 
-    char *body_start = strstr(soap_data, "Body");
-    if (!body_start) return NULL;
-
-    body_start = strchr(body_start, '>');
-    if (!body_start) return NULL;
-    body_start++;
-
-    while (*body_start && isspace(*body_start)) body_start++;
-
-    if (*body_start != '<') return NULL;
-    body_start++;
-
-    char *action_end = strchr(body_start, ' ');
-    if (!action_end) action_end = strchr(body_start, '>');
-    if (!action_end) return NULL;
-
-    int action_len = action_end - body_start;
-    if (action_len >= sizeof(action)) action_len = sizeof(action) - 1;
-
-    strncpy(action, body_start, action_len);
-    action[action_len] = '\0';
-
-    return action;
+    return soap_action(soap_data, action, sizeof(action)) ? action : NULL;
 }
 
 bool onvif_is_preauth_action(const char *action) {
@@ -176,73 +153,31 @@ bool onvif_is_preauth_action(const char *action) {
 }
 
 bool onvif_validate_soap_auth(const char *soap_data) {
-    const char *created_tag = "Created", *digest_tag = "PasswordDigest", *nonce_tag = "<Nonce",
-        *pass_tag = "<Password", *type_attr = "Type=\"", *user_tag = "<Username>";
-    char *pos, *end, *start;
-    char digest = 0, created[64], nonce[64], pass[64], user[64];
+    char created[64], nonce[64], pass[64], user[64];
+    const char *token = soap_tag(soap_data, "UsernameToken");
 
-    if (!(start = strstr(soap_data, user_tag)) ||
-        !(start += strlen(user_tag))) return false;
-    if (!(end = strstr(start, "</Username>"))) return false;
-    memcpy(user, start, end - start);
-    user[end - start] = '\0';
+    if (!token ||
+        !soap_tag_text(token, "Username", user, sizeof(user)) ||
+        !soap_tag_text(token, "Password", pass, sizeof(pass))) return false;
 
     if (!EQUALS(user, app_config.onvif_auth_user)) {
         HAL_WARNING("onvif", "Invalid username: %s\n", user);
         return false;
     }
 
-    if (!(start = strstr(soap_data, pass_tag)) ||
-        !(start += strlen(pass_tag))) return false;
-    if ((pos = strstr(start, type_attr)) < (start = strchr(start, '>')) &&
-        (pos += strlen(type_attr)) && strstr(pos, digest_tag)) digest = 1;
-    if (!(end = strstr(start, "</Password>"))) return false;
-    memcpy(pass, ++start, end - start);
-    pass[end - start] = '\0';
+    bool valid;
+    if (soap_tag_attr_has(token, "Password", "PasswordDigest"))
+        valid = soap_tag_text(token, "Nonce", nonce, sizeof(nonce)) &&
+            soap_tag_text(token, "Created", created, sizeof(created)) &&
+            soap_digest_valid(nonce, created, app_config.onvif_auth_pass, pass);
+    else
+        valid = EQUALS(pass, app_config.onvif_auth_pass);
 
-    if (digest) {
-        char digest_comp[SHA1_DIGEST_SIZE] = {0}, nonce_dec[64], pass_dec[64];
-        sha1_context ctx;
-
-        if (!(start = strstr(soap_data, nonce_tag)) ||
-            !(start = strchr(start, '>'))) return false;
-        if (!(end = strstr(++start, "</Nonce>"))) return false;
-        memcpy(nonce, start, end - start);
-        nonce[end - start] = '\0';
-
-        if (!(start = strstr(soap_data, created_tag)) ||
-            !(start = strchr(start, '>'))) return false;
-        if (!(end = strstr(++start, "</Created>"))) return false;
-        memcpy(created, start, end - start);
-        created[end - start] = '\0';
-
-        int nonce_len = base64_decode(nonce_dec, nonce, sizeof(nonce_dec));
-        if (nonce_len < 0) return false;
-
-        sha1_init(&ctx);
-        sha1_update(&ctx, (unsigned char *)nonce_dec, nonce_len - 1);
-        sha1_update(&ctx, (unsigned char *)created, strlen(created));
-        sha1_update(&ctx, (unsigned char *)app_config.onvif_auth_pass, strlen(app_config.onvif_auth_pass));
-        sha1_final(digest_comp, &ctx);
-
-        int pass_len = base64_encode(pass_dec, digest_comp, SHA1_DIGEST_SIZE);
-        if (pass_len < 0) return false;
-        pass_dec[pass_len] = '\0';
-
-        bool valid = !memcmp(pass, pass_dec, pass_len);
-        if (valid)
-            HAL_INFO("onvif", "Valid password digest!\n");
-        else
-            HAL_WARNING("onvif", "Invalid password digest!\n");
-        return valid;
-    } else {
-        bool valid = EQUALS(pass, app_config.onvif_auth_pass);
-        if (valid)
-            HAL_INFO("onvif", "Valid password provided!\n");
-        else
-            HAL_WARNING("onvif", "Invalid password provided!\n");
-        return valid;
-    }
+    if (valid)
+        HAL_INFO("onvif", "Valid credentials provided!\n");
+    else
+        HAL_WARNING("onvif", "Invalid credentials provided!\n");
+    return valid;
 }
 
 void onvif_respond_capabilities(char *response, int *respLen) {
