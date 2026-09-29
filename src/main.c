@@ -2,6 +2,7 @@
 #include "hal/macros.h"
 #include "http_post.h"
 #include "media.h"
+#include "motion.h"
 #include "network.h"
 #include "night.h"
 #include "onvif_event.h"
@@ -95,6 +96,9 @@ int main(int argc, char *argv[]) {
     if (app_config.night_mode_enable)
         night_enable();
 
+    if (app_config.motion_detect_enable)
+        motion_start();
+
     if (app_config.http_post_enable)
         http_post_start();
 
@@ -122,6 +126,9 @@ int main(int argc, char *argv[]) {
 
     if (app_config.night_mode_enable)
         night_disable();
+
+    if (app_config.motion_detect_enable)
+        motion_stop();
 
     sdk_stop();
 
