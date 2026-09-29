@@ -20,6 +20,26 @@ IMPORT_STR(.rodata, "../res/onvif/systemtime.xml", systemtimexml);
 extern const char systemtimexml[];
 IMPORT_STR(.rodata, "../res/onvif/videosources.xml", videosourcesxml);
 extern const char videosourcesxml[];
+IMPORT_STR(.rodata, "../res/onvif/event.xml", eventxml);
+extern const char eventxml[];
+IMPORT_STR(.rodata, "../res/onvif/eventcaps.xml", eventcapsxml);
+extern const char eventcapsxml[];
+IMPORT_STR(.rodata, "../res/onvif/eventprops.xml", eventpropsxml);
+extern const char eventpropsxml[];
+IMPORT_STR(.rodata, "../res/onvif/notification.xml", notificationxml);
+extern const char notificationxml[];
+IMPORT_STR(.rodata, "../res/onvif/pullmessages.xml", pullmessagesxml);
+extern const char pullmessagesxml[];
+IMPORT_STR(.rodata, "../res/onvif/pullpoint.xml", pullpointxml);
+extern const char pullpointxml[];
+IMPORT_STR(.rodata, "../res/onvif/renew.xml", renewxml);
+extern const char renewxml[];
+IMPORT_STR(.rodata, "../res/onvif/services.xml", servicesxml);
+extern const char servicesxml[];
+IMPORT_STR(.rodata, "../res/onvif/syncpoint.xml", syncpointxml);
+extern const char syncpointxml[];
+IMPORT_STR(.rodata, "../res/onvif/unsubscribe.xml", unsubscribexml);
+extern const char unsubscribexml[];
 
 static void onvif_reply(char *response, int *respLen, const char *status, const char *xml, ...) {
     int maxLen = *respLen;
@@ -322,4 +342,163 @@ void onvif_respond_videosources(char *response, int *respLen) {
 
     onvif_reply(response, respLen, "200 OK", videosourcesxml,
         framerate, width, height);
+}
+
+#define ONVIF_EVENTS_WSDL "http://www.onvif.org/ver10/events/wsdl/"
+#define ONVIF_WSN_BW2 "http://docs.oasis-open.org/wsn/bw-2/"
+#define ONVIF_SOURCE_TOKEN "VideoSource_1"
+#define ONVIF_SUB_DEFAULT_S 3600
+#define ONVIF_SUB_MAX_S 86400
+#define ONVIF_PULL_MAX_S 60
+
+static void onvif_message_id(const char *request, char *messageId, size_t size) {
+    if (!soap_tag_text(request, "MessageID", messageId, size))
+        *messageId = '\0';
+}
+
+static void onvif_reply_event(char *response, int *respLen, const char *messageId,
+    const char *action, const char *body) {
+    char relates[160] = "";
+
+    if (*messageId)
+        snprintf(relates, sizeof(relates), "\n    <wsa:RelatesTo>%s</wsa:RelatesTo>", messageId);
+    onvif_reply(response, respLen, "200 OK", eventxml, action, relates, body);
+}
+
+static void onvif_respond_unknown_sub(char *response, int *respLen) {
+    onvif_respond_fault(response, respLen, true, "wsrf-rw:ResourceUnknownFault",
+        "Unknown or expired subscription");
+}
+
+void onvif_respond_services(char *response, int *respLen) {
+    onvif_reply(response, respLen, "200 OK", servicesxml,
+        netinfo.ipaddr[0], app_config.web_port,
+        netinfo.ipaddr[0], app_config.web_port,
+        netinfo.ipaddr[0], app_config.web_port);
+}
+
+void onvif_respond_eventcaps(char *response, int *respLen, const char *request) {
+    char messageId[128];
+
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_EVENTS_WSDL "EventPortType/GetServiceCapabilitiesResponse", eventcapsxml);
+}
+
+void onvif_respond_eventprops(char *response, int *respLen, const char *request) {
+    char messageId[128];
+
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_EVENTS_WSDL "EventPortType/GetEventPropertiesResponse", eventpropsxml);
+}
+
+void onvif_respond_pullpoint(char *response, int *respLen, const char *request) {
+    char body[1024], messageId[128], current[32], termination[32];
+    time_t now = time(NULL), expires;
+    int seconds = soap_term_seconds(request, "InitialTerminationTime", now,
+        ONVIF_SUB_DEFAULT_S, ONVIF_SUB_MAX_S);
+
+    int id = onvif_event_subscribe(now, seconds, &expires);
+    if (id < 0) {
+        onvif_respond_fault(response, respLen, false, "ter:OutofMemory",
+            "Too many subscriptions");
+        return;
+    }
+    HAL_INFO("onvif", "Subscription #%d created for %d seconds\n", id, seconds);
+
+    soap_datetime_format(now, current, sizeof(current));
+    soap_datetime_format(expires, termination, sizeof(termination));
+    snprintf(body, sizeof(body), pullpointxml,
+        netinfo.ipaddr[0], app_config.web_port, id, current, termination);
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_EVENTS_WSDL "EventPortType/CreatePullPointSubscriptionResponse", body);
+}
+
+void onvif_pull_parse(const char *request, int id, onvif_pull_req *pull) {
+    char text[32];
+
+    pull->id = id;
+    pull->timeout = soap_tag_text(request, "Timeout", text, sizeof(text)) ?
+        soap_duration(text) : 0;
+    if (pull->timeout < 0) pull->timeout = 0;
+    if (pull->timeout > ONVIF_PULL_MAX_S) pull->timeout = ONVIF_PULL_MAX_S;
+    pull->limit = soap_tag_text(request, "MessageLimit", text, sizeof(text)) ?
+        atoi(text) : ONVIF_EVENT_QUEUE;
+    if (pull->limit < 1) pull->limit = 1;
+    if (pull->limit > ONVIF_EVENT_QUEUE) pull->limit = ONVIF_EVENT_QUEUE;
+    onvif_message_id(request, pull->messageId, sizeof(pull->messageId));
+}
+
+void onvif_respond_pullmessages(char *response, int *respLen, const onvif_pull_req *pull) {
+    onvif_event_msg msgs[ONVIF_EVENT_QUEUE];
+    char body[6656], notes[5632] = "", current[32], termination[32], when[32];
+    time_t expires;
+    int notesLen = 0;
+
+    int count = onvif_event_pull(pull->id, pull->timeout, pull->limit, msgs, &expires);
+    if (count < 0) {
+        onvif_respond_unknown_sub(response, respLen);
+        return;
+    }
+
+    for (int i = 0; i < count && notesLen < sizeof(notes); i++) {
+        soap_datetime_format(msgs[i].time, when, sizeof(when));
+        notesLen += snprintf(notes + notesLen, sizeof(notes) - notesLen, notificationxml,
+            when, msgs[i].initial ? "Initialized" : "Changed", ONVIF_SOURCE_TOKEN,
+            msgs[i].state ? "true" : "false");
+    }
+
+    soap_datetime_format(time(NULL), current, sizeof(current));
+    soap_datetime_format(expires, termination, sizeof(termination));
+    snprintf(body, sizeof(body), pullmessagesxml, current, termination, notes);
+    onvif_reply_event(response, respLen, pull->messageId,
+        ONVIF_EVENTS_WSDL "PullPointSubscription/PullMessagesResponse", body);
+}
+
+void onvif_respond_renew(char *response, int *respLen, int id, const char *request) {
+    char body[512], messageId[128], current[32], termination[32];
+    time_t now = time(NULL), expires;
+    int seconds = soap_term_seconds(request, "TerminationTime", now,
+        ONVIF_SUB_DEFAULT_S, ONVIF_SUB_MAX_S);
+
+    if (!onvif_event_renew(id, now, seconds, &expires)) {
+        onvif_respond_unknown_sub(response, respLen);
+        return;
+    }
+
+    soap_datetime_format(now, current, sizeof(current));
+    soap_datetime_format(expires, termination, sizeof(termination));
+    snprintf(body, sizeof(body), renewxml, termination, current);
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_WSN_BW2 "SubscriptionManager/RenewResponse", body);
+}
+
+void onvif_respond_unsubscribe(char *response, int *respLen, int id, const char *request) {
+    char messageId[128];
+
+    if (!onvif_event_unsubscribe(id)) {
+        onvif_respond_unknown_sub(response, respLen);
+        return;
+    }
+    HAL_INFO("onvif", "Subscription #%d removed\n", id);
+
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_WSN_BW2 "SubscriptionManager/UnsubscribeResponse", unsubscribexml);
+}
+
+void onvif_respond_syncpoint(char *response, int *respLen, int id, const char *request) {
+    char messageId[128];
+
+    if (!onvif_event_sync(id, time(NULL))) {
+        onvif_respond_unknown_sub(response, respLen);
+        return;
+    }
+
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_EVENTS_WSDL "PullPointSubscription/SetSynchronizationPointResponse", syncpointxml);
 }
