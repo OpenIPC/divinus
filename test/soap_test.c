@@ -37,6 +37,8 @@ int main(void) {
     CHECK(soap_duration("30") == -1);
     CHECK(soap_duration("PT5X") == -1);
     CHECK(soap_duration("P5H") == -1);
+    CHECK(soap_duration("P30000D") == -1);
+    CHECK(soap_duration("PT9999999999S") == -1);
 
     CHECK(soap_datetime("2026-09-28T10:00:00Z") == 1790589600);
     CHECK(soap_datetime("2026-09-28T10:00:00.123Z") == 1790589600);

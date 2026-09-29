@@ -358,7 +358,7 @@ static void onvif_message_id(const char *request, char *messageId, size_t size) 
 
 static void onvif_reply_event(char *response, int *respLen, const char *messageId,
     const char *action, const char *body) {
-    char relates[160] = "";
+    char relates[176] = "";
 
     if (*messageId)
         snprintf(relates, sizeof(relates), "\n    <wsa:RelatesTo>%s</wsa:RelatesTo>", messageId);

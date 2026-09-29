@@ -72,7 +72,7 @@ bool soap_action(const char *xml, char *action, size_t size) {
 }
 
 int soap_duration(const char *text) {
-    long total = 0, value;
+    long long total = 0, value;
     bool clock = false;
     char *end;
 
@@ -84,7 +84,7 @@ int soap_duration(const char *text) {
             text++;
             continue;
         }
-        value = strtol(text, &end, 10);
+        value = strtoll(text, &end, 10);
         if (end == text || value < 0) return -1;
         if (*end == '.')
             while (isdigit((unsigned char)*++end));

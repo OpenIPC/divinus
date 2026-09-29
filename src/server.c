@@ -471,6 +471,10 @@ void *send_pullmessages_thread(void *vargp) {
 
 static void start_pullmessages(int client_fd, int id, const char *payload) {
     struct pulltask *task = malloc(sizeof(struct pulltask));
+    if (!task) {
+        send_http_error(client_fd, 500);
+        return;
+    }
     task->client_fd = client_fd;
     onvif_pull_parse(payload, id, &task->pull);
 
