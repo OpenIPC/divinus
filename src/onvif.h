@@ -8,6 +8,7 @@
 
 #include "app_config.h"
 #include "network.h"
+#include "onvif_event.h"
 #include "soap.h"
 
 int start_onvif(void);
@@ -29,3 +30,18 @@ void onvif_respond_snapshot(char *response, int *respLen);
 void onvif_respond_stream(char *response, int *respLen);
 void onvif_respond_systemtime(char *response, int *respLen);
 void onvif_respond_videosources(char *response, int *respLen);
+
+typedef struct {
+    int id, timeout, limit;
+    char messageId[128];
+} onvif_pull_req;
+
+void onvif_respond_services(char *response, int *respLen);
+void onvif_respond_eventcaps(char *response, int *respLen, const char *request);
+void onvif_respond_eventprops(char *response, int *respLen, const char *request);
+void onvif_respond_pullpoint(char *response, int *respLen, const char *request);
+void onvif_pull_parse(const char *request, int id, onvif_pull_req *pull);
+void onvif_respond_pullmessages(char *response, int *respLen, const onvif_pull_req *pull);
+void onvif_respond_renew(char *response, int *respLen, int id, const char *request);
+void onvif_respond_unsubscribe(char *response, int *respLen, int id, const char *request);
+void onvif_respond_syncpoint(char *response, int *respLen, int id, const char *request);

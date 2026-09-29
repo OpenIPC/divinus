@@ -1,0 +1,4 @@
+    <tev:PullMessagesResponse>
+      <tev:CurrentTime>%s</tev:CurrentTime>
+      <tev:TerminationTime>%s</tev:TerminationTime>%s
+    </tev:PullMessagesResponse>
