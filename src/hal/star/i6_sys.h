@@ -89,7 +89,7 @@ typedef struct {
             unsigned int stride[3];
             unsigned int bufSize;
         } frame;
-        unsigned char reserved[112];
+        unsigned char reserved[240];
     };
 } i6_sys_bufinfo;
 

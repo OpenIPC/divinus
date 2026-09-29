@@ -371,14 +371,25 @@ void set_grayscale(bool active) {
     pthread_mutex_unlock(&chnMtx);
 }
 
+static int rawChannel = -1;
+
 int raw_create(short width, short height) {
+    int ret = EXIT_FAILURE;
+
+    pthread_mutex_lock(&chnMtx);
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
-        case HAL_PLATFORM_I6:  return i6_raw_create(width, height);
+        case HAL_PLATFORM_I6:
+            if (!(ret = i6_raw_create(width, height)))
+                rawChannel = I6_RAW_PORT;
+            break;
 #endif
+        default:
+            HAL_WARNING("media", "Raw frames are not supported on this platform!\n");
     }
-    HAL_WARNING("media", "Raw frames are not supported on this platform!\n");
-    return EXIT_FAILURE;
+    pthread_mutex_unlock(&chnMtx);
+
+    return ret;
 }
 
 int raw_get(hal_rawframe *frame) {
@@ -400,17 +411,20 @@ int raw_release(hal_rawframe *frame) {
 }
 
 void raw_destroy(void) {
+    pthread_mutex_lock(&chnMtx);
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_raw_destroy(); break;
 #endif
     }
+    rawChannel = -1;
+    pthread_mutex_unlock(&chnMtx);
 }
 
 int take_next_free_channel(bool mainLoop) {
     pthread_mutex_lock(&chnMtx);
     for (int i = 0; i < chnCount; i++) {
-        if (chnState[i].enable) continue;
+        if (chnState[i].enable || i == rawChannel) continue;
         chnState[i].enable = true;
         chnState[i].mainLoop = mainLoop;
         pthread_mutex_unlock(&chnMtx);

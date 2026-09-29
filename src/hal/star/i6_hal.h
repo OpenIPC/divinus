@@ -38,6 +38,9 @@ int i6_config_load(char *path);
 int i6_pipeline_create(char index, short width, short height, char mirror, char flip, char framerate);
 void i6_pipeline_destroy(void);
 
+// Port 3 of the SSC323 VPE hands out buffers that are never written
+#define I6_RAW_PORT 2
+
 int i6_raw_create(short width, short height);
 int i6_raw_get(hal_rawframe *frame);
 int i6_raw_release(hal_rawframe *frame);

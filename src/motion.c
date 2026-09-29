@@ -61,6 +61,12 @@ static void *motion_thread(void) {
         }
         missed = 0;
 
+        if (frame.width < MOTION_WIDTH || frame.height < MOTION_HEIGHT ||
+            frame.stride < MOTION_WIDTH) {
+            raw_release(&frame);
+            continue;
+        }
+
         int change = motion_core_feed(&core, frame.luma, frame.stride);
         raw_release(&frame);
         motion_report(change);
