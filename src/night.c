@@ -77,9 +77,13 @@ void *night_thread(void) {
 
         while (keepRunning && nightOn) {
             sleep(1);
-            if (manual || get_isp_gain(&gain)) {
+            if (manual) {
                 held = 0;
                 continue;
+            }
+            if (get_isp_gain(&gain)) {
+                HAL_WARNING("night", "No ISP gain on this platform, automatic switching disabled!\n");
+                break;
             }
 
             bool crossing = night ?
@@ -110,7 +114,6 @@ void *night_thread(void) {
     usleep(10000);
     gpio_deinit();
     HAL_INFO("night", "Night mode thread is closing...\n");
-    nightOn = 0;
 }
 
 int night_enable(void) {
@@ -125,12 +128,15 @@ int night_enable(void) {
     size_t new_stacksize = 16 * 1024;
     if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
         HAL_DANGER("night", "Error:  Can't set stack size %zu\n", new_stacksize);
-    pthread_create(&nightPid, &thread_attr, (void *(*)(void *))night_thread, NULL);
+    nightOn = 1;
+    if (pthread_create(&nightPid, &thread_attr, (void *(*)(void *))night_thread, NULL)) {
+        HAL_DANGER("night", "Can't create thread\n");
+        nightOn = 0;
+        ret = EXIT_FAILURE;
+    }
     if (pthread_attr_setstacksize(&thread_attr, stacksize))
         HAL_DANGER("night", "Error:  Can't set stack size %zu\n", stacksize);
     pthread_attr_destroy(&thread_attr);
-
-    nightOn = 1;
 
     return ret;
 }
