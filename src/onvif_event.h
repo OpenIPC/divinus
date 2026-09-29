@@ -13,7 +13,10 @@ typedef struct {
     bool state;
 } onvif_event_msg;
 
-int onvif_event_subscribe(time_t now, int seconds, time_t *expires);
+// Subscription lifetimes use this monotonic clock, immune to NTP setting the date
+time_t onvif_event_clock(void);
+
+int onvif_event_subscribe(time_t now, time_t when, int seconds, time_t *expires);
 bool onvif_event_renew(int id, time_t now, int seconds, time_t *expires);
 bool onvif_event_unsubscribe(int id);
 bool onvif_event_sync(int id, time_t now);

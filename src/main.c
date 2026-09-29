@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 
     while (keepRunning) {
         if (app_config.rtsp_enable) rtsp_tick(rtspHandle);
-        if (app_config.onvif_enable) onvif_event_expire(time(NULL));
+        if (app_config.onvif_enable) onvif_event_expire(onvif_event_clock());
         watchdog_reset();
         sleep(1);
     }
