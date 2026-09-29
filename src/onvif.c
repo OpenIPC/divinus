@@ -400,11 +400,6 @@ void onvif_respond_pullpoint(char *response, int *respLen, const char *request) 
         ONVIF_SUB_DEFAULT_S, ONVIF_SUB_MAX_S);
 
     int id = onvif_event_subscribe(now, seconds, &expires);
-    if (id < 0) {
-        onvif_respond_fault(response, respLen, false, "ter:OutofMemory",
-            "Too many subscriptions");
-        return;
-    }
     HAL_INFO("onvif", "Subscription #%d created for %d seconds\n", id, seconds);
 
     soap_datetime_format(now, current, sizeof(current));
@@ -437,7 +432,8 @@ void onvif_respond_pullmessages(char *response, int *respLen, const onvif_pull_r
     time_t expires;
     int notesLen = 0;
 
-    int count = onvif_event_pull(pull->id, pull->timeout, pull->limit, msgs, &expires);
+    int count = onvif_event_pull(pull->id, time(NULL), pull->timeout, pull->limit,
+        msgs, &expires);
     if (count < 0) {
         onvif_respond_unknown_sub(response, respLen);
         return;
