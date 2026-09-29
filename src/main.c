@@ -4,6 +4,7 @@
 #include "media.h"
 #include "network.h"
 #include "night.h"
+#include "onvif_event.h"
 #include "rtsp/rtsp_server.h"
 #include "server.h"
 #include "watchdog.h"
@@ -105,6 +106,7 @@ int main(int argc, char *argv[]) {
 
     while (keepRunning) {
         if (app_config.rtsp_enable) rtsp_tick(rtspHandle);
+        if (app_config.onvif_enable) onvif_event_expire(time(NULL));
         watchdog_reset();
         sleep(1);
     }
