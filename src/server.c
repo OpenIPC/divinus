@@ -608,7 +608,10 @@ void respond_request(http_request_t *req) {
 
         char *action = onvif_extract_soap_action(req->payload);
         if (!action) {
-            send_http_error(req->clntFd, 400);
+            respLen = sizeof(response);
+            onvif_respond_fault(response, &respLen, true, "ter:InvalidArgVal",
+                "No action found in the SOAP body");
+            send_and_close(req->clntFd, response, respLen);
             return;
         }
         HAL_INFO("onvif", "%sAction: %s%s\n",
@@ -661,9 +664,11 @@ void respond_request(http_request_t *req) {
             }
         }
 
-        if (!EMPTY(action))
-            HAL_WARNING("server", "Unknown ONVIF request: %s->%s\n", path, action);
-        send_http_error(req->clntFd, 501);
+        HAL_WARNING("server", "Unknown ONVIF request: %s->%s\n", path, action);
+        respLen = sizeof(response);
+        onvif_respond_fault(response, &respLen, false, "ter:ActionNotSupported",
+            "The requested action is not supported");
+        send_and_close(req->clntFd, response, respLen);
         return;
     }
 
