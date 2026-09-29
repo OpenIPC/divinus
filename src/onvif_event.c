@@ -18,6 +18,12 @@ static pthread_cond_t eventCond = PTHREAD_COND_INITIALIZER;
 static bool motionState = false;
 static int lastId = 0, waits = 0;
 
+time_t onvif_event_clock(void) {
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return now.tv_sec;
+}
+
 static onvif_event_sub *find_sub(int id) {
     for (int i = 0; i < ONVIF_EVENT_MAX_SUBS; i++)
         if (id > 0 && subs[i].id == id) return &subs[i];
@@ -33,7 +39,7 @@ static void push_msg(onvif_event_sub *sub, onvif_event_msg msg) {
     sub->count++;
 }
 
-int onvif_event_subscribe(time_t now, int seconds, time_t *expires) {
+int onvif_event_subscribe(time_t now, time_t when, int seconds, time_t *expires) {
     onvif_event_sub *sub = &subs[0];
 
     // A free slot, or else the subscription idle for the longest time:
@@ -47,7 +53,7 @@ int onvif_event_subscribe(time_t now, int seconds, time_t *expires) {
     int id = sub->id = ++lastId;
     sub->expires = *expires = now + seconds;
     sub->lastSeen = now;
-    push_msg(sub, (onvif_event_msg){ .time = now, .initial = true, .state = motionState });
+    push_msg(sub, (onvif_event_msg){ .time = when, .initial = true, .state = motionState });
     pthread_mutex_unlock(&eventMtx);
 
     return id;
