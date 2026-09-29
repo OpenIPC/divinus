@@ -556,6 +556,20 @@ int i6_sensor_exposure(unsigned int micros)
     return ret;
 }
 
+int i6_isp_gain(unsigned int *gain)
+{
+    i6_isp_expinfo exp;
+    int ret;
+
+    if (!i6_isp.fnQueryExposureInfo)
+        return EXIT_FAILURE;
+    if (ret = i6_isp.fnQueryExposureInfo(_i6_isp_chn, &exp))
+        return ret;
+
+    *gain = (unsigned long long)exp.info.longExp.sensorGain * exp.info.longExp.ispGain / 1024;
+    return EXIT_SUCCESS;
+}
+
 int i6_video_create(char index, hal_vidconfig *config)
 {
     int ret;
