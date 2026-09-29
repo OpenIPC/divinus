@@ -18,6 +18,29 @@ typedef struct {
 } i6_isp_p3a;
 
 typedef struct {
+    unsigned int fNx10;
+    unsigned int sensorGain;
+    unsigned int ispGain;
+    unsigned int shutterUs;
+} i6_isp_expval;
+
+typedef union {
+    struct {
+        unsigned int stable;
+        unsigned int reachBoundary;
+        i6_isp_expval longExp;
+        i6_isp_expval shortExp;
+        unsigned int lumY;
+        unsigned int avgY;
+        unsigned int hits[128];
+        unsigned int lvX10;
+        int bv;
+        unsigned int sceneTarget;
+    } info;
+    unsigned char reserved[1024];
+} i6_isp_expinfo;
+
+typedef struct {
     void *handle, *handleCus3a, *handleIspAlgo;
 
     int (*fnDisableUserspace3A)(int channel);
@@ -26,6 +49,7 @@ typedef struct {
     int (*fnSetColorToGray)(int channel, int *enable);
     int (*fnGetExposureLimit)(int channel, i6_isp_exp *config);
     int (*fnSetExposureLimit)(int channel, i6_isp_exp *config);
+    int (*fnQueryExposureInfo)(int channel, i6_isp_expinfo *info);
 } i6_isp_impl;
 
 static int i6_isp_load(i6_isp_impl *isp_lib) {
@@ -59,6 +83,9 @@ static int i6_isp_load(i6_isp_impl *isp_lib) {
     if (!(isp_lib->fnSetExposureLimit = (int(*)(int channel, i6_isp_exp *config))
         hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_AE_SetExposureLimit")))
         return EXIT_FAILURE;
+
+    isp_lib->fnQueryExposureInfo = (int(*)(int channel, i6_isp_expinfo *info))
+        hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_AE_QueryExposureInfo");
 
     return EXIT_SUCCESS;
 }
