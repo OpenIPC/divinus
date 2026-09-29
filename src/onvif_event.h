@@ -17,7 +17,7 @@ int onvif_event_subscribe(time_t now, int seconds, time_t *expires);
 bool onvif_event_renew(int id, time_t now, int seconds, time_t *expires);
 bool onvif_event_unsubscribe(int id);
 bool onvif_event_sync(int id, time_t now);
-int onvif_event_pull(int id, int timeout_s, int limit,
+int onvif_event_pull(int id, time_t now, int timeout_s, int limit,
     onvif_event_msg *msgs, time_t *expires);
 void onvif_event_expire(time_t now);
 void onvif_motion_notify(bool state, time_t when);
