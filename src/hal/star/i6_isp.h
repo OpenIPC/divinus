@@ -23,7 +23,7 @@ typedef struct {
     int (*fnDisableUserspace3A)(int channel);
     int (*fnEnableUserspace3A)(int channel, i6_isp_p3a *params);
     int (*fnLoadChannelConfig)(int channel, char *path, unsigned int key);
-    int (*fnSetColorToGray)(int channel, char *enable);
+    int (*fnSetColorToGray)(int channel, int *enable);
     int (*fnGetExposureLimit)(int channel, i6_isp_exp *config);
     int (*fnSetExposureLimit)(int channel, i6_isp_exp *config);
 } i6_isp_impl;
@@ -48,7 +48,7 @@ static int i6_isp_load(i6_isp_impl *isp_lib) {
         hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_API_CmdLoadBinFile")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnSetColorToGray = (int(*)(int channel, char *enable))
+    if (!(isp_lib->fnSetColorToGray = (int(*)(int channel, int *enable))
         hal_symbol_load("i6_isp", isp_lib->handle, "MI_ISP_IQ_SetColorToGray")))
         return EXIT_FAILURE;
 

@@ -183,7 +183,8 @@ int i6_channel_create(char index, short width, short height, char jpeg)
 
 int i6_channel_grayscale(char enable)
 {
-    return i6_isp.fnSetColorToGray(0, &enable);
+    int active = enable;
+    return i6_isp.fnSetColorToGray(0, &active);
 }
 
 int i6_channel_unbind(char index)
