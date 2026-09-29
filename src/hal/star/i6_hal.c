@@ -379,9 +379,6 @@ void i6_pipeline_destroy(void)
     i6_snr.fnDisable(_i6_snr_index);
 }
 
-// Port 3 of the SSC323 VPE hands out buffers that are never written
-#define I6_RAW_PORT 2
-
 int i6_raw_create(short width, short height)
 {
     int ret;
