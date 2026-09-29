@@ -35,9 +35,9 @@ int base64_decode(char *decoded, const char *string, int maxLen) {
         }
     }
 
-    if (buflen > 0 && i + buflen <= maxLen) {
-        memcpy(decoded + i, buf, buflen);
-        i += buflen;
+    if (buflen > 1 && i + buflen - 1 <= maxLen) {
+        memcpy(decoded + i, buf, buflen - 1);
+        i += buflen - 1;
     }
 
     return i;
