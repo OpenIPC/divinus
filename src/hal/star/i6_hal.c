@@ -177,6 +177,10 @@ int i6_channel_create(char index, short width, short height, char jpeg)
     port.flip = 0;
     port.compress = I6_COMPR_NONE;
     port.pixFmt = jpeg ? I6_PIXFMT_YUV422_YUYV : I6_PIXFMT_YUV420SP;
+    // The SSC32x JPE also takes 4:2:0 when the height is 16-aligned,
+    // a quarter less MMA than YUYV for the snapshot port
+    if (jpeg && series == 0xEF && !(height & 15))
+        port.pixFmt = I6_PIXFMT_YUV420SP;
 
     return i6_vpe.fnSetPortConfig(_i6_vpe_chn, index, &port);
 }
