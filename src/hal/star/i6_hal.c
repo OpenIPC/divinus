@@ -155,17 +155,21 @@ int i6_channel_bind(char index, char framerate)
     {
         unsigned int device;
         if (ret = i6_venc.fnGetChannelDeviceId(index, &device))
-            return ret;
+            goto disable;
         i6_sys_bind source = { .module = I6_SYS_MOD_VPE,
             .device = _i6_vpe_dev, .channel = _i6_vpe_chn, .port = index };
         i6_sys_bind dest = { .module = I6_SYS_MOD_VENC,
             .device = device, .channel = index, .port = _i6_venc_port };
         if (ret = i6_sys.fnBindExt(&source, &dest, framerate, framerate,
             I6_SYS_LINK_FRAMEBASE, 0))
-            return ret;
+            goto disable;
     }
 
     return EXIT_SUCCESS;
+
+disable:
+    i6_vpe.fnDisablePort(_i6_vpe_chn, index);
+    return ret;
 }
 
 int i6_channel_create(char index, short width, short height, char jpeg)
