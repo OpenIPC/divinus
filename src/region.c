@@ -336,12 +336,21 @@ void region_defaults(void) {
         osds[id].posx = DEF_POSX;
         osds[id].posy = DEF_POSY + (DEF_SIZE * 3 / 2) * id;
         osds[id].outl = DEF_OUTL;
+        osds[id].bgcolor = 0;
         osds[id].thick = DEF_THICK;
         osds[id].updt = 0;
         strncpy(osds[id].font, DEF_FONT, sizeof(osds[id].font) - 1);
         osds[id].text[0] = '\0';
         osds[id].img[0] = '\0';
     }
+}
+
+// A negative X centers the region on the main stream
+static short region_posx(char id, short width) {
+    if (osds[id].posx >= 0) return osds[id].posx;
+
+    short frame = app_config.mp4_enable ? app_config.mp4_width : app_config.mjpeg_width;
+    return MAX(frame - width, 0) / 2 & ~1;
 }
 
 static int region_font(const char *name, char *path) {
@@ -378,7 +387,7 @@ void region_prepare(void) {
         strncpy(out, osds[id].text, sizeof(out) - 1);
         region_fill_formatted(out);
         hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color,
-            osds[id].outl, osds[id].thick);
+            osds[id].outl, osds[id].thick, osds[id].bgcolor);
         i6_region_prepare(id, bitmap.dim.width, bitmap.dim.height);
         free(bitmap.data);
     }
@@ -413,9 +422,9 @@ void *region_thread(void) {
                         continue;
                     }
                     hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color,
-                        osds[id].outl, osds[id].thick);
+                        osds[id].outl, osds[id].thick, osds[id].bgcolor);
                     hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
-                        .x = osds[id].posx, .y = osds[id].posy };
+                        .x = region_posx(id, bitmap.dim.width), .y = osds[id].posy };
                     switch (plat) {
 #if defined(__ARM_PCS_VFP)
                         case HAL_PLATFORM_I6:
@@ -482,7 +491,7 @@ void *region_thread(void) {
                     if (!ret)
                     {
                         hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
-                            .x = osds[id].posx, .y = osds[id].posy };
+                            .x = region_posx(id, bitmap.dim.width), .y = osds[id].posy };
                         switch (plat) {
 #if defined(__ARM_PCS_VFP)
                             case HAL_PLATFORM_I6:

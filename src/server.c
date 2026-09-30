@@ -1454,12 +1454,20 @@ void respond_request(http_request_t *req) {
                     if (remain == value) continue;
                         osds[id].thick = result;
                 }
+                else if (EQUALS(key, "bgcolor"))
+                    osds[id].bgcolor = EQUALS(value, "none") ? 0 : color_parse(value);
             }
             osds[id].updt = 1;
         }
         int color = (((osds[id].color >> 10) & 0x1F) * 255 / 31) << 16 |
                     (((osds[id].color >> 5) & 0x1F) * 255 / 31) << 8 |
                     ((osds[id].color & 0x1F) * 255 / 31);
+        char bgcolor[8] = "none";
+        if (osds[id].bgcolor & 0x8000)
+            sprintf(bgcolor, "#%06x",
+                (((osds[id].bgcolor >> 10) & 0x1F) * 255 / 31) << 16 |
+                (((osds[id].bgcolor >> 5) & 0x1F) * 255 / 31) << 8 |
+                ((osds[id].bgcolor & 0x1F) * 255 / 31));
         respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
@@ -1467,10 +1475,10 @@ void respond_request(http_request_t *req) {
             "\r\n"
             "{\"id\":%d,\"color\":\"#%x\",\"opal\":%d,\"pos\":[%d,%d],"
             "\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\",\"img\":\"%s\","
-            "\"outl\":\"#%x\",\"thick\":%.1f}",
+            "\"outl\":\"#%x\",\"thick\":%.1f,\"bgcolor\":\"%s\"}",
             id, color, osds[id].opal, osds[id].posx, osds[id].posy,
             osds[id].font, osds[id].size, osds[id].text, osds[id].img,
-            osds[id].outl, osds[id].thick);
+            osds[id].outl, osds[id].thick, bgcolor);
         send_and_close(req->clntFd, response, respLen);
         return;
     }

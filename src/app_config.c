@@ -180,6 +180,7 @@ int app_config_save(void) {
         fprintf(file, "    reg%d_size: %.1f\n", i, osds[i].size);
         fprintf(file, "    reg%d_color: %#04x\n", i, osds[i].color);
         fprintf(file, "    reg%d_outl: %#04x\n", i, osds[i].outl);
+        fprintf(file, "    reg%d_bgcolor: %#04x\n", i, osds[i].bgcolor);
         fprintf(file, "    reg%d_thick: %.1f\n", i, osds[i].thick);
     }
 
@@ -396,7 +397,7 @@ enum ConfigError app_config_parse(void) {
             err = parse_int(&ini, "osd", param, 0, UCHAR_MAX, &val);
             if (err == CONFIG_OK) osds[i].opal = (unsigned char)val;
             sprintf(param, "reg%d_posx", i);
-            err = parse_int(&ini, "osd", param, 0, SHRT_MAX, &val);
+            err = parse_int(&ini, "osd", param, -1, SHRT_MAX, &val);
             if (err == CONFIG_OK) osds[i].posx = (short)val;
             sprintf(param, "reg%d_posy", i);
             err = parse_int(&ini, "osd", param, 0, SHRT_MAX, &val);
@@ -407,6 +408,8 @@ enum ConfigError app_config_parse(void) {
             parse_int(&ini, "osd", param, 0, USHRT_MAX, &osds[i].color);
             sprintf(param, "reg%d_outl", i);
             parse_int(&ini, "osd", param, 0, USHRT_MAX, &osds[i].outl);
+            sprintf(param, "reg%d_bgcolor", i);
+            parse_int(&ini, "osd", param, 0, USHRT_MAX, &osds[i].bgcolor);
             sprintf(param, "reg%d_thick", i);
             parse_double(&ini, "osd", param, 0, UCHAR_MAX, &osds[i].thick);
             osds[i].updt = !EMPTY(osds[i].text) || !EMPTY(osds[i].img);
