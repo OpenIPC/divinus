@@ -45,6 +45,13 @@ int main(void) {
 
     CHECK(soap_datetime("2026-09-28T10:00:00Z") == 1790589600);
     CHECK(soap_datetime("2026-09-28T10:00:00.123Z") == 1790589600);
+    CHECK(soap_datetime("2026-09-28T10:00:00") == 1790589600);
+    CHECK(soap_datetime("2026-09-28T12:00:00+02:00") == 1790589600);
+    CHECK(soap_datetime("2026-09-28T04:30:00.5-05:30") == 1790589600);
+    CHECK(soap_datetime("2026-09-28T10:00:00+02") == -1);
+    CHECK(soap_datetime("2026-09-28T10:00:00+-2:00") == -1);
+    CHECK(soap_datetime("2026-09-28T10:00:00+02:-5") == -1);
+    CHECK(soap_datetime("2026-09-28T10:00:00Zjunk") == -1);
     CHECK(soap_datetime("yesterday") == -1);
     soap_datetime_format(1790589600, text, sizeof(text));
     CHECK(!strcmp(text, "2026-09-28T10:00:00Z"));
