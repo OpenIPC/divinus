@@ -11,6 +11,15 @@
 #define SO_SNDBUFFORCE SO_SNDBUF
 #endif
 
+/* Counts explicit close() calls on the client socket made by rtsp.c */
+static int watched_fd = -1, watched_closes;
+static int counted_close(int fd)
+{
+    if (fd == watched_fd) watched_closes++;
+    return (close)(fd);
+}
+#define close(fd) counted_close(fd)
+
 #include "check.h"
 #undef CHECK
 #include "../src/rtsp/rtsp.c"
@@ -160,10 +169,34 @@ static void test_response_on_full_socket(void)
     close(drain.fd);
 }
 
+/* fclose() on the read stream already closes the client fd: closing it again
+ * would hit whichever socket the kernel has given that number meanwhile */
+static void test_client_fd_closed_once(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    int peer = connect_client(h, &con);
+    int fd = con->client_fd;
+
+    CHECK(peer >= 0 && con);
+    watched_fd = fd;
+    watched_closes = 0;
+    shutdown(peer, SHUT_WR);
+    serve_once(h);
+
+    CHECK(con->con_state == __CON_S_DISCONNECTED);
+    CHECK(fcntl(fd, F_GETFD) == -1);
+    CHECK(watched_closes == 0);
+    CHECK(con->client_fd == 0 && con->fp_tcp_read == NULL);
+    watched_fd = -1;
+    close(peer);
+}
+
 int main(void)
 {
     signal(SIGPIPE, SIG_IGN);
     test_truncated_request();
     test_response_on_full_socket();
+    test_client_fd_closed_once();
     CHECK_DONE();
 }
