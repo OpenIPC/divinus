@@ -389,7 +389,7 @@ void i6_pipeline_destroy(void)
 
 int i6_region_create(char handle, hal_rect rect, short opacity)
 {
-    int ret, attach = 0;
+    int ret;
 
     i6_sys_bind dest = { .module = 0,
         .device = _i6_vpe_dev, .channel = _i6_vpe_chn };
@@ -421,24 +421,6 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
             return ret;
     }
 
-    if (i6_rgn.fnGetChannelConfig(handle, &dest, &attribCurr)) {
-        HAL_INFO("i6_rgn", "Attaching region %d...\n", handle);
-        attach = 1;
-    } else if (attribCurr.point.x != rect.x || attribCurr.point.y != rect.y ||
-        attribCurr.osd.bgFgAlpha[1] != opacity) {
-        HAL_INFO("i6_rgn", "Parameters are different, reattaching "
-            "region %d...\n", handle);
-        for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
-            if (!i6_state[i].enable) continue;
-            dest.port = i;
-            i6_rgn.fnDetachChannel(handle, &dest);
-        }
-        attach = 1;
-    }
-
-    if (!attach)
-        return EXIT_SUCCESS;
-
     memset(&attrib, 0, sizeof(attrib));
     attrib.show = 1;
     attrib.point.x = rect.x;
@@ -448,10 +430,21 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
     attrib.osd.bgFgAlpha[0] = 0;
     attrib.osd.bgFgAlpha[1] = opacity;
 
+    // Each port is checked on its own, so one enabled after the region was
+    // attached still gets it
     ret = EXIT_SUCCESS;
     for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
         if (!i6_state[i].enable) continue;
         dest.port = i;
+        if (!i6_rgn.fnGetChannelConfig(handle, &dest, &attribCurr)) {
+            if (attribCurr.point.x == rect.x && attribCurr.point.y == rect.y &&
+                attribCurr.osd.bgFgAlpha[1] == opacity)
+                continue;
+            HAL_INFO("i6_rgn", "Parameters are different, reattaching "
+                "region %d to VPE port %d...\n", handle, i);
+            i6_rgn.fnDetachChannel(handle, &dest);
+        } else
+            HAL_INFO("i6_rgn", "Attaching region %d to VPE port %d...\n", handle, i);
         int err = i6_rgn.fnAttachChannel(handle, &dest, &attrib);
         if (err) {
             HAL_DANGER("i6_rgn", "Attaching region %d to VPE port %d failed "
