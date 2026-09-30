@@ -188,7 +188,10 @@ bool onvif_is_preauth_action(const char *action) {
     if (!action || EMPTY(action))
         return false;
 
+    // PRE_AUTH access class in ONVIF Core
     if (EQUALS(action, "GetCapabilities") ||
+        EQUALS(action, "GetServiceCapabilities") ||
+        EQUALS(action, "GetServices") ||
         EQUALS(action, "GetSystemDateAndTime"))
         return true;
 
