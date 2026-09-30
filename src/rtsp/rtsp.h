@@ -194,8 +194,9 @@ static inline int __read_line(struct connection_item_t *p, char *buf)
             ERR("message end before delimiter\n");
         }
 
+        /* the caller detaches: doing it here may reset the connection
+         * under its feet */
         p->con_state = __CON_S_DISCONNECTED;
-        ASSERT(bufpool_detach(p->pool, p) == SUCCESS, ERR("connection detach failed\n"));
         return FALSE;
     }
 
