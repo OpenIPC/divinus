@@ -387,7 +387,15 @@ void i6_pipeline_destroy(void)
 #define I6_RGN_CANVAS_W 32
 #define I6_RGN_CANVAS_H 16
 
-int i6_region_create(char handle, hal_rect rect, short opacity)
+// The padding stays within the room left to the frame's right edge, a
+// bitmap that does not fit there on its own keeps its exact width
+static unsigned int i6_region_width(unsigned int canvas, short width, short room)
+{
+    if (room < width) room = width;
+    return MIN(canvas, (unsigned int)room);
+}
+
+int i6_region_create(char handle, hal_rect rect, short opacity, short room)
 {
     int ret;
 
@@ -398,7 +406,8 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
 
     region.type = I6_RGN_TYPE_OSD;
     region.pixFmt = I6_RGN_PIXFMT_ARGB1555;
-    region.size.width = (rect.width + I6_RGN_CANVAS_W - 1) & ~(I6_RGN_CANVAS_W - 1);
+    region.size.width = i6_region_width(
+        (rect.width + I6_RGN_CANVAS_W - 1) & ~(I6_RGN_CANVAS_W - 1), rect.width, room);
     region.size.height = (rect.height + I6_RGN_CANVAS_H - 1) & ~(I6_RGN_CANVAS_H - 1);
 
     if (i6_rgn.fnGetRegionConfig(handle, &regionCurr)) {
@@ -408,7 +417,8 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
             return ret;
     } else if (regionCurr.type != region.type ||
         regionCurr.size.height != region.size.height ||
-        regionCurr.size.width < region.size.width) {
+        regionCurr.size.width < region.size.width ||
+        regionCurr.size.width > i6_region_width(regionCurr.size.width, rect.width, room)) {
         HAL_INFO("i6_rgn", "Parameters are different, recreating "
             "region %d (%ux%u)...\n", handle, region.size.width, region.size.height);
         for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
@@ -486,7 +496,7 @@ void i6_region_init(void)
     _i6_rgn_ready = 1;
 }
 
-int i6_region_prepare(char handle, short width, short height)
+int i6_region_prepare(char handle, short width, short height, short room)
 {
     i6_rgn_cnf region;
 
@@ -496,7 +506,8 @@ int i6_region_prepare(char handle, short width, short height)
     region.type = I6_RGN_TYPE_OSD;
     region.pixFmt = I6_RGN_PIXFMT_ARGB1555;
     // A quarter more than the text needs, so a clock or a counter can grow
-    region.size.width = (width + width / 4 + I6_RGN_CANVAS_W - 1) & ~(I6_RGN_CANVAS_W - 1);
+    region.size.width = i6_region_width(
+        (width + width / 4 + I6_RGN_CANVAS_W - 1) & ~(I6_RGN_CANVAS_W - 1), width, room);
     region.size.height = (height + I6_RGN_CANVAS_H - 1) & ~(I6_RGN_CANVAS_H - 1);
 
     HAL_INFO("i6_rgn", "Reserving region %d (%ux%u)...\n", handle,

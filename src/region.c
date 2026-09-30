@@ -345,13 +345,16 @@ void region_defaults(void) {
     }
 }
 
+static short region_frame(void) {
+    return app_config.mp4_enable ? app_config.mp4_width : app_config.mjpeg_width;
+}
+
 // A negative X centers the region on the main stream, the width is rounded
 // so a clock does not move, and get reattached, every second
 static short region_posx(char id, short width) {
     if (osds[id].posx >= 0) return osds[id].posx;
 
-    short frame = app_config.mp4_enable ? app_config.mp4_width : app_config.mjpeg_width;
-    return MAX(frame - ((width + 31) & ~31), 0) / 2 & ~1;
+    return MAX(region_frame() - ((width + 31) & ~31), 0) / 2 & ~1;
 }
 
 static int region_font(const char *name, char *path) {
@@ -389,7 +392,8 @@ void region_prepare(void) {
         region_fill_formatted(out);
         hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color,
             osds[id].outl, osds[id].thick, osds[id].bgcolor);
-        i6_region_prepare(id, bitmap.dim.width, bitmap.dim.height);
+        i6_region_prepare(id, bitmap.dim.width, bitmap.dim.height,
+            region_frame() - region_posx(id, bitmap.dim.width));
         free(bitmap.data);
     }
 #endif
@@ -429,7 +433,7 @@ void *region_thread(void) {
                     switch (plat) {
 #if defined(__ARM_PCS_VFP)
                         case HAL_PLATFORM_I6:
-                            i6_region_create(id, rect, osds[id].opal);
+                            i6_region_create(id, rect, osds[id].opal, region_frame() - rect.x);
                             i6_region_setbitmap(id, &bitmap);
                             break;
                         case HAL_PLATFORM_I6C:
@@ -496,7 +500,7 @@ void *region_thread(void) {
                         switch (plat) {
 #if defined(__ARM_PCS_VFP)
                             case HAL_PLATFORM_I6:
-                                i6_region_create(id, rect, osds[id].opal);
+                                i6_region_create(id, rect, osds[id].opal, region_frame() - rect.x);
                                 i6_region_setbitmap(id, &bitmap);
                                 break;
                             case HAL_PLATFORM_I6C:

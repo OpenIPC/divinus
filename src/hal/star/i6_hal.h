@@ -38,11 +38,11 @@ int i6_config_load(char *path);
 int i6_pipeline_create(char index, short width, short height, char mirror, char flip, char framerate);
 void i6_pipeline_destroy(void);
 
-int i6_region_create(char handle, hal_rect rect, short opacity);
+int i6_region_create(char handle, hal_rect rect, short opacity, short room);
 void i6_region_deinit(void);
 void i6_region_destroy(char handle);
 void i6_region_init(void);
-int i6_region_prepare(char handle, short width, short height);
+int i6_region_prepare(char handle, short width, short height, short room);
 int i6_region_setbitmap(int handle, hal_bitmap *bitmap);
 
 int i6_sensor_exposure(unsigned int micros);
