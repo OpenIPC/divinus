@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <string.h>
+#include <unistd.h>
 
 typedef struct {
     int id;
@@ -17,6 +18,33 @@ static pthread_mutex_t eventMtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t eventCond = PTHREAD_COND_INITIALIZER;
 static bool motionState = false;
 static int lastId = 0, waits = 0;
+
+// Pull deadlines follow the monotonic clock where the condition variable can
+// (not on macOS, where the tests also run), so setting the date cannot stretch them
+#if defined(_POSIX_CLOCK_SELECTION) && _POSIX_CLOCK_SELECTION >= 0
+#define EVENT_WAIT_CLOCK CLOCK_MONOTONIC
+static pthread_once_t eventOnce = PTHREAD_ONCE_INIT;
+
+static void event_cond_init(void) {
+    pthread_condattr_t attr;
+
+    pthread_condattr_init(&attr);
+    pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&eventCond, &attr);
+    pthread_condattr_destroy(&attr);
+}
+
+static void event_lock(void) {
+    pthread_once(&eventOnce, event_cond_init);
+    pthread_mutex_lock(&eventMtx);
+}
+#else
+#define EVENT_WAIT_CLOCK CLOCK_REALTIME
+
+static void event_lock(void) {
+    pthread_mutex_lock(&eventMtx);
+}
+#endif
 
 time_t onvif_event_clock(void) {
     struct timespec now;
@@ -45,7 +73,7 @@ int onvif_event_subscribe(time_t now, time_t when, int seconds, time_t *expires)
     // A free slot, or else the subscription idle for the longest time:
     // clients that reconnect rarely unsubscribe first, and one with a pull
     // waiting is in use however long ago that pull started
-    pthread_mutex_lock(&eventMtx);
+    event_lock();
     for (int i = 0; i < ONVIF_EVENT_MAX_SUBS && sub->id; i++)
         if (!subs[i].id || (!subs[i].waiting && sub->waiting) ||
             (!subs[i].waiting == !sub->waiting && subs[i].lastSeen < sub->lastSeen))
@@ -63,7 +91,7 @@ int onvif_event_subscribe(time_t now, time_t when, int seconds, time_t *expires)
 }
 
 bool onvif_event_renew(int id, time_t now, int seconds, time_t *expires) {
-    pthread_mutex_lock(&eventMtx);
+    event_lock();
     onvif_event_sub *sub = find_sub(id);
     if (sub) {
         sub->expires = *expires = now + seconds;
@@ -75,7 +103,7 @@ bool onvif_event_renew(int id, time_t now, int seconds, time_t *expires) {
 }
 
 bool onvif_event_unsubscribe(int id) {
-    pthread_mutex_lock(&eventMtx);
+    event_lock();
     onvif_event_sub *sub = find_sub(id);
     if (sub) {
         sub->id = 0;
@@ -87,7 +115,7 @@ bool onvif_event_unsubscribe(int id) {
 }
 
 bool onvif_event_sync(int id, time_t now) {
-    pthread_mutex_lock(&eventMtx);
+    event_lock();
     onvif_event_sub *sub = find_sub(id);
     if (sub) {
         push_msg(sub, (onvif_event_msg){ .time = now, .initial = true, .state = motionState });
@@ -101,10 +129,10 @@ bool onvif_event_sync(int id, time_t now) {
 int onvif_event_pull(int id, time_t now, int timeout_s, int limit,
     onvif_event_msg *msgs, time_t *expires) {
     struct timespec deadline;
-    clock_gettime(CLOCK_REALTIME, &deadline);
+    clock_gettime(EVENT_WAIT_CLOCK, &deadline);
     deadline.tv_sec += timeout_s;
 
-    pthread_mutex_lock(&eventMtx);
+    event_lock();
     onvif_event_sub *sub = find_sub(id);
     unsigned int generation = 0;
 
@@ -139,7 +167,7 @@ int onvif_event_pull(int id, time_t now, int timeout_s, int limit,
 }
 
 void onvif_event_expire(time_t now) {
-    pthread_mutex_lock(&eventMtx);
+    event_lock();
     for (int i = 0; i < ONVIF_EVENT_MAX_SUBS; i++)
         if (subs[i].id && subs[i].expires <= now) {
             subs[i].id = 0;
@@ -149,7 +177,7 @@ void onvif_event_expire(time_t now) {
 }
 
 void onvif_motion_notify(bool state, time_t when) {
-    pthread_mutex_lock(&eventMtx);
+    event_lock();
     motionState = state;
     for (int i = 0; i < ONVIF_EVENT_MAX_SUBS; i++)
         if (subs[i].id)
