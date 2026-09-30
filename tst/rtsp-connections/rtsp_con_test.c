@@ -2,6 +2,8 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include <fcntl.h>
+#include <poll.h>
+#include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
 
@@ -97,8 +99,71 @@ static void test_truncated_request(void)
     }
 }
 
+struct drain_t {
+    int fd;
+    char tail[256];
+    int found;
+};
+
+/* Waits for the server to hit EAGAIN, then reads everything it sent */
+static void *drain_peer(void *v)
+{
+    struct drain_t *d = v;
+    char chunk[4096];
+    size_t tail_len = 0;
+
+    usleep(100 * 1000);
+    for (;;) {
+        struct pollfd pfd = { .fd = d->fd, .events = POLLIN };
+        if (poll(&pfd, 1, 1000) <= 0) break;
+        ssize_t r = read(d->fd, chunk, sizeof(chunk));
+        if (r <= 0) break;
+        for (ssize_t i = 0; i < r; i++) {
+            if (tail_len == sizeof(d->tail) - 1) {
+                memmove(d->tail, d->tail + 1, tail_len - 1);
+                tail_len--;
+            }
+            d->tail[tail_len++] = chunk[i];
+        }
+        d->tail[tail_len] = 0;
+        if (strstr(d->tail, "CSeq: 3\r\nPublic: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n\r\n")) {
+            d->found = 1;
+            break;
+        }
+    }
+    return NULL;
+}
+
+/* A response must go out whole even when the socket buffer is full */
+static void test_response_on_full_socket(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    struct drain_t drain = {};
+    pthread_t thread;
+    char junk[1024];
+    int size = 4096;
+
+    drain.fd = connect_client(h, &con);
+    CHECK(drain.fd >= 0 && con);
+    setsockopt(con->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+    memset(junk, 'x', sizeof(junk));
+    while (write(con->client_fd, junk, sizeof(junk)) > 0);
+
+    send_str(drain.fd, "OPTIONS rtsp://cam/ RTSP/1.0\r\nCSeq: 3\r\n\r\n");
+    pthread_create(&thread, NULL, drain_peer, &drain);
+    serve_once(h);
+    pthread_join(thread, NULL);
+
+    CHECK(drain.found);
+    CHECK(con->con_state == __CON_S_INIT);
+    close(drain.fd);
+}
+
 int main(void)
 {
+    signal(SIGPIPE, SIG_IGN);
     test_truncated_request();
+    test_response_on_full_socket();
     CHECK_DONE();
 }
