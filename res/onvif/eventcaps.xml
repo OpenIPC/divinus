@@ -1,0 +1,3 @@
+    <tev:GetServiceCapabilitiesResponse>
+      <tev:Capabilities WSSubscriptionPolicySupport="false" WSPullPointSupport="true" WSPausableSubscriptionManagerInterfaceSupport="false" MaxNotificationProducers="0" MaxPullPoints="4" PersistentNotificationStorage="false"/>
+    </tev:GetServiceCapabilitiesResponse>
