@@ -36,6 +36,7 @@ extern void request_idr();
 #define __STR_INTERLEAVED "interleaved"
 #define __STR_RTP_AVP_TCP "RTP/AVP/TCP"
 #define __STR_SESSION  "SESSION"
+#define __STR_CONTENT_LENGTH "CONTENT-LENGTH"
 #define __STR_PAUSE "PAUSE"
 #define __STR_RECORDING "RECORDING"
 #define __STR_GET_PARAMETER "GET_PARAMETER"
@@ -383,10 +384,11 @@ static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
  *              METHOD IMPLEMENTATIONS
  ******************************************************************************/
 
-/* Interleaved frames from the client (RTCP receiver reports) may arrive split
- * and the socket is non-blocking: wait briefly for the rest instead of leaving
- * it to be parsed as a request. The wait budget is shared by the whole packet */
-static int __read_interleaved(struct connection_item_t *con, void *dst, size_t len, int *waits)
+/* Interleaved frames from the client (RTCP receiver reports) and request
+ * bodies may arrive split and the socket is non-blocking: wait briefly for the
+ * rest instead of leaving it to be parsed as a request. The wait budget is
+ * shared by the whole packet or body */
+static int __read_client_data(struct connection_item_t *con, void *dst, size_t len, int *waits)
 {
     size_t got = 0;
 
@@ -423,9 +425,9 @@ static int __message_proc_sock(struct list_t *e, void *p)
         if (first_char == '$') {
             unsigned char head[3];
             int len = -1, waits = 0;
-            if (__read_interleaved(con, head, 3, &waits) == SUCCESS) {
+            if (__read_client_data(con, head, 3, &waits) == SUCCESS) {
                 len = (head[1] << 8) | head[2];
-                while (len > 0 && __read_interleaved(con, buf, min(len, sizeof(buf)), &waits) == SUCCESS)
+                while (len > 0 && __read_client_data(con, buf, min(len, sizeof(buf)), &waits) == SUCCESS)
                     len -= min(len, sizeof(buf));
             }
             if (len != 0) {
@@ -448,6 +450,7 @@ static int __message_proc_sock(struct list_t *e, void *p)
         con->method = __METHOD_NONE;
 
         char header = 0, isAuthValid = 0, *tok, *last;
+        int body_len = 0;
         unsigned long long session_id;
         /* parse line by line. hereafter parser is switched according to the finite state machine */
         while (__read_line(con, buf)) {
@@ -484,6 +487,10 @@ static int __message_proc_sock(struct list_t *e, void *p)
                 ASSERT(sscanf(tok, "%llx", &session_id) > 0, goto error);
                 con->given_session_id = session_id;
                 con->parser_state = __PARSER_S_SESSION;
+            } else if (SCMP(__STR_CONTENT_LENGTH, buf)) {
+                /* without a length the next request cannot be found */
+                ASSERT(sscanf(buf + strlen(__STR_CONTENT_LENGTH), " : %d", &body_len) == 1 &&
+                    body_len >= 0 && body_len <= 0xFFFF, con->con_state = __CON_S_DISCONNECTED);
             } else if (SCMP(__STR_TRANSPORT, buf)) {
                 if (strstr(buf, __STR_RTP_AVP_TCP)) {
                     con->trans[con->track_id].is_tcp = 1;
@@ -509,6 +516,17 @@ static int __message_proc_sock(struct list_t *e, void *p)
             continue;
 error:
             __PARSE_ERROR(con);
+        }
+
+        /* no method takes a body: skip it so it is not read as the next request */
+        if (body_len > 0 && con->con_state != __CON_S_DISCONNECTED) {
+            int waits = 0;
+            while (body_len > 0 && __read_client_data(con, buf, min(body_len, sizeof(buf)), &waits) == SUCCESS)
+                body_len -= min(body_len, sizeof(buf));
+            if (body_len != 0) {
+                ERR("request body cut short, dropping connection\n");
+                con->con_state = __CON_S_DISCONNECTED;
+            }
         }
 
         if (con->con_state == __CON_S_DISCONNECTED) {
