@@ -463,9 +463,12 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
     return ret;
 }
 
+static char _i6_rgn_ready = 0;
+
 void i6_region_deinit(void)
 {
     i6_rgn.fnDeinit();
+    _i6_rgn_ready = 0;
 }
 
 void i6_region_destroy(char handle)
@@ -483,8 +486,29 @@ void i6_region_destroy(char handle)
 
 void i6_region_init(void)
 {
+    if (_i6_rgn_ready) return;
+
     i6_rgn_pal palette = {{{0, 0, 0, 0}}};
     i6_rgn.fnInit(&palette);
+    _i6_rgn_ready = 1;
+}
+
+int i6_region_prepare(char handle, short width, short height)
+{
+    i6_rgn_cnf region;
+
+    i6_region_init();
+
+    memset(&region, 0, sizeof(region));
+    region.type = I6_RGN_TYPE_OSD;
+    region.pixFmt = I6_RGN_PIXFMT_ARGB1555;
+    // A quarter more than the text needs, so a clock or a counter can grow
+    region.size.width = (width + width / 4 + I6_RGN_CANVAS_W - 1) & ~(I6_RGN_CANVAS_W - 1);
+    region.size.height = (height + I6_RGN_CANVAS_H - 1) & ~(I6_RGN_CANVAS_H - 1);
+
+    HAL_INFO("i6_rgn", "Reserving region %d (%ux%u)...\n", handle,
+        region.size.width, region.size.height);
+    return i6_rgn.fnCreateRegion(handle, &region);
 }
 
 int i6_region_setbitmap(int handle, hal_bitmap *bitmap)
