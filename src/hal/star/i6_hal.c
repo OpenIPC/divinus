@@ -445,6 +445,9 @@ int i6_region_create(char handle, hal_rect rect, short opacity, short room)
     ret = EXIT_SUCCESS;
     for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
         if (!i6_state[i].enable) continue;
+        // On SSC32x the snapshot port is YUYV, where a region comes out
+        // stretched with every glyph doubled
+        if (series == 0xEF && i6_state[i].payload == HAL_VIDCODEC_JPG) continue;
         dest.port = i;
         if (!i6_rgn.fnGetChannelConfig(handle, &dest, &attribCurr)) {
             if (attribCurr.point.x == rect.x && attribCurr.point.y == rect.y &&
