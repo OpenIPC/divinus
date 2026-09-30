@@ -20,6 +20,12 @@ curl http://192.168.1.17/api/osd/1?color=%23FFFF&outl=%238000&thick=1.0
 ```
 N.B. Hashtags have to be espaced with %23 in curl URL syntaxes
 
+A box behind the text keeps it readable over bright scenes, and a negative X centers a region:
+```
+curl "http://192.168.1.17/api/osd/1?text=Backyard&bgcolor=%23000000&posx=-1&posy=0"
+curl http://192.168.1.17/api/osd/1?bgcolor=none
+```
+
 Empty strings are used to clear the regions:
 ```
 curl http://192.168.1.17/api/osd/1?text=
