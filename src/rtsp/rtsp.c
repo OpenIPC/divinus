@@ -38,6 +38,7 @@ extern void request_idr();
 #define __STR_SESSION  "SESSION"
 #define __STR_PAUSE "PAUSE"
 #define __STR_RECORDING "RECORDING"
+#define __STR_GET_PARAMETER "GET_PARAMETER"
 #define __STR_RANGE  "RANGE"
 #define __SPACE " "
 
@@ -65,6 +66,7 @@ static void __method_setup(struct connection_item_t *p, rtsp_handle h);
 static void __method_play(struct connection_item_t *p, rtsp_handle h);
 static void __method_pause(struct connection_item_t *p, rtsp_handle h);
 static void __method_record(struct connection_item_t *p, rtsp_handle h);
+static void __method_get_parameter(struct connection_item_t *p, rtsp_handle h);
 static void __method_error(struct connection_item_t *p, rtsp_handle h);
 
 static void *rtspThrFxn(void *v);
@@ -168,7 +170,7 @@ static void __method_options(struct connection_item_t *p, rtsp_handle h)
 {
     __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
             "CSeq: %d\r\n"
-            "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n"
+            "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, GET_PARAMETER\r\n"
             "\r\n", p->cseq);
 }
 
@@ -319,6 +321,14 @@ static void __method_record(struct connection_item_t *p, rtsp_handle h)
         "RTSP/1.0 " __RESPONCE_STR_METHODNOTALLOWED "\r\n");
 }
 
+/* Clients send it empty as a keepalive */
+static void __method_get_parameter(struct connection_item_t *p, rtsp_handle h)
+{
+    __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
+            "CSeq: %d\r\n"
+            "\r\n", p->cseq);
+}
+
 static void __method_error(struct connection_item_t *p, rtsp_handle h)
 {
     __rtsp_write(p,
@@ -452,6 +462,7 @@ static int __message_proc_sock(struct list_t *e, void *p)
                 } else if (SCMP(__STR_RECORDING, buf))   { con->method = __METHOD_RECORDING;
                 } else if (SCMP(__STR_PAUSE, buf))       { con->method = __METHOD_PAUSE;
                 } else if (SCMP(__STR_TEARDOWN, buf))    { con->method = __METHOD_TEARDOWN;
+                } else if (SCMP(__STR_GET_PARAMETER, buf)) { con->method = __METHOD_GET_PARAMETER;
                 } header++;
             }
 
@@ -517,6 +528,7 @@ error:
                 case __METHOD_PAUSE: __method_pause(con, h); break;
                 case __METHOD_RECORDING: __method_record(con, h); break;
                 case __METHOD_TEARDOWN: __method_teardown(con, h); break;
+                case __METHOD_GET_PARAMETER: __method_get_parameter(con, h); break;
                 case __METHOD_NONE:
                     ERR("unexpected empty request, forcing disconnect\n");
                     con->con_state = __CON_S_DISCONNECTED;
