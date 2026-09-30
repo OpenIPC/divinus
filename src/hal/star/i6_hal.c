@@ -381,7 +381,7 @@ void i6_pipeline_destroy(void)
 
 int i6_region_create(char handle, hal_rect rect, short opacity)
 {
-    int ret;
+    int ret, attach = 0;
 
     i6_sys_bind dest = { .module = 0,
         .device = _i6_vpe_dev, .channel = _i6_vpe_chn };
@@ -412,9 +412,10 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
             return ret;
     }
 
-    if (i6_rgn.fnGetChannelConfig(handle, &dest, &attribCurr))
+    if (i6_rgn.fnGetChannelConfig(handle, &dest, &attribCurr)) {
         HAL_INFO("i6_rgn", "Attaching region %d...\n", handle);
-    else if (attribCurr.point.x != rect.x || attribCurr.point.y != rect.y ||
+        attach = 1;
+    } else if (attribCurr.point.x != rect.x || attribCurr.point.y != rect.y ||
         attribCurr.osd.bgFgAlpha[1] != opacity) {
         HAL_INFO("i6_rgn", "Parameters are different, reattaching "
             "region %d...\n", handle);
@@ -423,7 +424,11 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
             dest.port = i;
             i6_rgn.fnDetachChannel(handle, &dest);
         }
+        attach = 1;
     }
+
+    if (!attach)
+        return EXIT_SUCCESS;
 
     memset(&attrib, 0, sizeof(attrib));
     attrib.show = 1;
@@ -434,13 +439,19 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
     attrib.osd.bgFgAlpha[0] = 0;
     attrib.osd.bgFgAlpha[1] = opacity;
 
+    ret = EXIT_SUCCESS;
     for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
         if (!i6_state[i].enable) continue;
         dest.port = i;
-        i6_rgn.fnAttachChannel(handle, &dest, &attrib);
+        int err = i6_rgn.fnAttachChannel(handle, &dest, &attrib);
+        if (err) {
+            HAL_DANGER("i6_rgn", "Attaching region %d to VPE port %d failed "
+                "with %#x!\n", handle, i, err);
+            ret = err;
+        }
     }
 
-    return EXIT_SUCCESS;
+    return ret;
 }
 
 void i6_region_deinit(void)
@@ -472,7 +483,13 @@ int i6_region_setbitmap(int handle, hal_bitmap *bitmap)
     i6_rgn_bmp nativeBmp = { .data = bitmap->data, .pixFmt = I6_RGN_PIXFMT_ARGB1555,
         .size.height = bitmap->dim.height, .size.width = bitmap->dim.width };
 
-    return i6_rgn.fnSetBitmap(handle, &nativeBmp);
+    int ret = i6_rgn.fnSetBitmap(handle, &nativeBmp);
+    if (ret)
+        HAL_DANGER("i6_rgn", "Setting the bitmap of region %d (%ux%u) "
+            "failed with %#x!\n", handle, nativeBmp.size.width,
+            nativeBmp.size.height, ret);
+
+    return ret;
 }
 
 int i6_sensor_exposure(unsigned int micros)
