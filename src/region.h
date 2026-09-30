@@ -74,5 +74,6 @@ extern osd osds[MAX_OSD];
 extern char timefmt[64];
 
 void region_defaults(void);
+void region_prepare(void);
 int region_start();
 void region_stop();

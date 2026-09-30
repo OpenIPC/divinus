@@ -1,4 +1,5 @@
 #include "media.h"
+#include "region.h"
 
 char audioOn = 0, udpOn = 0;
 pthread_mutex_t aencMtx, chnMtx, mp4Mtx;
@@ -873,6 +874,8 @@ int sdk_start(void) {
     if (ret)
         HAL_ERROR("media", "System initialization failed with %#x!\n%s\n",
             ret, errstr(ret));
+
+    region_prepare();
 
     if (app_config.audio_enable) {
         ret = media_audio_enable();
