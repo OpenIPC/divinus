@@ -72,7 +72,7 @@ bool soap_action(const char *xml, char *action, size_t size) {
 }
 
 int soap_duration(const char *text) {
-    long long total = 0, value;
+    long long total = 0, value, unit;
     bool clock = false;
     char *end;
 
@@ -89,13 +89,15 @@ int soap_duration(const char *text) {
         if (*end == '.')
             while (isdigit((unsigned char)*++end));
         switch (*end) {
-            case 'D': if (clock) return -1; total += value * 86400; break;
-            case 'H': if (!clock) return -1; total += value * 3600; break;
-            case 'M': if (!clock) return -1; total += value * 60; break;
-            case 'S': if (!clock) return -1; total += value; break;
+            case 'D': if (clock) return -1; unit = 86400; break;
+            case 'H': if (!clock) return -1; unit = 3600; break;
+            case 'M': if (!clock) return -1; unit = 60; break;
+            case 'S': if (!clock) return -1; unit = 1; break;
             default: return -1;
         }
-        if (total > INT_MAX) return -1;
+        // Checked before multiplying so a huge value cannot wrap around
+        if (value > (INT_MAX - total) / unit) return -1;
+        total += value * unit;
         text = end + 1;
     }
 
