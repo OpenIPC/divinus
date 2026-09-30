@@ -518,10 +518,14 @@ static int __connection_reset(void *v)
         DBG("force connection to close\n");
     }
 
-    FCLOSE(p->fp_tcp_read);
+    /* the stream owns client_fd: close it once, as another connection may
+     * already have been given the same number */
+    if (p->fp_tcp_read) {
+        FCLOSE(p->fp_tcp_read);
+        p->client_fd = 0;
+    }
     CLOSE(p->client_fd);
 
-    p->client_fd = 0;
     p->con_state = __CON_S_DISCONNECTED;
 
     for (int i = 0; i < sizeof(p->trans) / sizeof(*p->trans); i++) {
@@ -572,7 +576,7 @@ __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd,
 
     return list_add(head, &(p->list_entry));
 error:
-    __connection_reset(&p->list_entry);
+    ASSERT(bufpool_detach(con_pool, p) == SUCCESS, ERR("connection detach failed\n"));
     return FAILURE;
 }
 
