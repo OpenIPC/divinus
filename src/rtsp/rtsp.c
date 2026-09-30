@@ -896,7 +896,9 @@ static void *rtspThrFxn(void *v)
 
         ASSERT(list_map_inline(&rh->con_list, (__set_select_sock), &socks) == SUCCESS, goto error);
 
-        ASSERT((ret_select = select(socks.nfds, &(socks.rfds), NULL, NULL, &(socks.timeout))) >= 0, ({
+        ret_select = select(socks.nfds, &(socks.rfds), NULL, NULL, &(socks.timeout));
+        if (ret_select < 0 && errno == EINTR) continue;
+        ASSERT(ret_select >= 0, ({
                     ERR("select:%s\n", strerror(errno));
                     goto error;}));
 
