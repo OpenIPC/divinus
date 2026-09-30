@@ -625,6 +625,17 @@ attach:
         (ret = i6_venc.fnStartReceiving(index)))
         return ret;
 
+    // The SSC32x MI_VENC maps the output ring in StartRecvPic only, not in
+    // StartRecvPicEx, so GetStream on a snapshot channel fails with
+    // ILLEGAL_PARAM unless it was started once; the mapping lasts until
+    // DestroyChn. The channel is not bound yet, nothing gets encoded
+    if (config->codec == HAL_VIDCODEC_JPG && series == 0xEF) {
+        if (ret = i6_venc.fnStartReceiving(index))
+            return ret;
+        if (ret = i6_venc.fnStopReceiving(index))
+            return ret;
+    }
+
     i6_state[index].payload = config->codec;
 
     return EXIT_SUCCESS;
