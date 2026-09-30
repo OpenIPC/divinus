@@ -19,6 +19,14 @@ static void *late_notify(void *arg) {
     return NULL;
 }
 
+static void *waiting_pull(void *arg) {
+    onvif_event_msg msgs[ONVIF_EVENT_QUEUE];
+    time_t expires;
+
+    *(int *)arg = onvif_event_pull(*(int *)arg, 4001, 1, 8, msgs, &expires);
+    return NULL;
+}
+
 int main(void) {
     onvif_event_msg msgs[ONVIF_EVENT_QUEUE];
     time_t expires, now = 1000, start;
@@ -89,6 +97,21 @@ int main(void) {
     CHECK(onvif_event_pull(ids[1], 3014, 0, 8, msgs, &expires) == -1);
     CHECK(onvif_event_pull(ids[2], 3014, 0, 8, msgs, &expires) == 0);
     CHECK(onvif_event_pull(newest, 3014, 0, 8, msgs, &expires) == 1);
+
+    // A subscription with a pull waiting is not idle, even if seen the longest ago
+    for (int i = 0; i < ONVIF_EVENT_MAX_SUBS; i++) {
+        CHECK((ids[i] = onvif_event_subscribe(4000, 4000, 60, &expires)) > 0);
+        CHECK(onvif_event_pull(ids[i], 4000, 0, 8, msgs, &expires) == 1);
+    }
+    int waiter = ids[0];
+    pthread_create(&thread, NULL, waiting_pull, &waiter);
+    usleep(200000);
+    for (int i = 1; i < ONVIF_EVENT_MAX_SUBS; i++)
+        CHECK(onvif_event_pull(ids[i], 4002, 0, 8, msgs, &expires) == 0);
+    CHECK(onvif_event_subscribe(4003, 4003, 60, &expires) > 0);
+    pthread_join(thread, NULL);
+    CHECK(waiter == 0);
+    CHECK(onvif_event_pull(ids[1], 4003, 0, 8, msgs, &expires) == -1);
 
     CHECK_DONE();
 }
