@@ -5,7 +5,6 @@
 #include <netdb.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <poll.h>
 
 #include "rtsp_server.h"
 #include "common.h"
@@ -38,23 +37,11 @@ struct __transfer_set_t {
 
 static unsigned int __frame_ts_video, __frame_ts_audio;
 
-static inline void __wait_out(int fd)
-{
-    struct pollfd p = { .fd = fd, .events = POLLOUT };
-    poll(&p, 1, 100);
-}
-
 static int __tcp_flush(struct connection_item_t *con)
 {
-    unsigned int sent = 0;
-    while (sent < con->tx_len) {
-        int r = send(con->client_fd, con->tx_buf + sent, con->tx_len - sent, 0);
-        if (r > 0) sent += r;
-        else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
-        else { con->tx_len = 0; return FAILURE; }
-    }
+    int ret = __tcp_send_all(con->client_fd, con->tx_buf, con->tx_len);
     con->tx_len = 0;
-    return SUCCESS;
+    return ret;
 }
 
 static int __tcp_flush_each(struct list_t *e, void *v)
