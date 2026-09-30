@@ -6,6 +6,8 @@
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <netinet/in.h>
+#include <sys/resource.h>
 
 #ifndef SO_SNDBUFFORCE
 #define SO_SNDBUFFORCE SO_SNDBUF
@@ -258,6 +260,101 @@ static void test_split_interleaved_packet(void)
     close(peer);
 }
 
+static int tcp_connect(int port)
+{
+    struct sockaddr_in addr = { .sin_family = AF_INET, .sin_port = htons(port) };
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    if (fd < 0 || connect(fd, (struct sockaddr *)&addr, sizeof(addr))) return -1;
+    return fd;
+}
+
+static int accept_once(rtsp_handle h, int server_fd)
+{
+    struct sock_select_t socks = {};
+    struct timeval tv = { .tv_sec = 1 };
+
+    FD_ZERO(&socks.rfds);
+    FD_SET(server_fd, &socks.rfds);
+    select(server_fd + 1, &socks.rfds, NULL, NULL, &tv);
+    return __accept_proc_sock(h, server_fd, &socks);
+}
+
+/* 1 when the server closed its end, 0 when the connection stays open */
+static int peer_closed(int fd)
+{
+    struct pollfd pfd = { .fd = fd, .events = POLLIN };
+    char c;
+
+    return poll(&pfd, 1, 500) == 1 && read(fd, &c, 1) == 0;
+}
+
+/* Clients beyond the pool, or beyond the fd limit, are turned away while
+ * the server keeps serving; a freed slot is taken by the next client */
+static void test_connection_overflow(void)
+{
+    rtsp_handle h = make_server(RTSP_MAXIMUM_CONNECTIONS);
+    int server_fd = __bind_tcp(0);
+    struct sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+    int peers[RTSP_MAXIMUM_CONNECTIONS], extra, port;
+    struct rlimit old_lim, lim;
+    char reply[1024] = {};
+
+    CHECK(server_fd > 0);
+    getsockname(server_fd, (struct sockaddr *)&addr, &len);
+    port = ntohs(addr.sin_port);
+
+    for (int i = 0; i < RTSP_MAXIMUM_CONNECTIONS; i++) {
+        peers[i] = tcp_connect(port);
+        CHECK(peers[i] >= 0);
+        CHECK(accept_once(h, server_fd) == SUCCESS);
+    }
+    CHECK(list_length(&h->con_list) == RTSP_MAXIMUM_CONNECTIONS);
+    CHECK(h->con_pool->free_list.list == NULL);
+
+    extra = tcp_connect(port);
+    CHECK(extra >= 0);
+    CHECK(accept_once(h, server_fd) == SUCCESS);
+    CHECK(peer_closed(extra));
+    CHECK(list_length(&h->con_list) == RTSP_MAXIMUM_CONNECTIONS);
+    close(extra);
+
+    close(peers[0]);
+    serve_once(h);
+    CHECK(list_length(&h->con_list) == RTSP_MAXIMUM_CONNECTIONS - 1);
+
+    /* with no descriptor left the pending client is still accepted and dropped */
+    getrlimit(RLIMIT_NOFILE, &old_lim);
+    extra = tcp_connect(port);
+    CHECK(extra >= 0);
+    lim = old_lim;
+    lim.rlim_cur = dup(0);
+    close(lim.rlim_cur);
+    setrlimit(RLIMIT_NOFILE, &lim);
+    CHECK(accept_once(h, server_fd) == SUCCESS);
+    setrlimit(RLIMIT_NOFILE, &old_lim);
+    CHECK(peer_closed(extra));
+    CHECK(list_length(&h->con_list) == RTSP_MAXIMUM_CONNECTIONS - 1);
+    close(extra);
+
+    peers[0] = tcp_connect(port);
+    CHECK(peers[0] >= 0);
+    CHECK(accept_once(h, server_fd) == SUCCESS);
+    CHECK(list_length(&h->con_list) == RTSP_MAXIMUM_CONNECTIONS);
+    CHECK(!peer_closed(peers[0]));
+    send_str(peers[0], "OPTIONS rtsp://cam/ RTSP/1.0\r\nCSeq: 5\r\n\r\n");
+    serve_once(h);
+    CHECK(read(peers[0], reply, sizeof(reply) - 1) > 0);
+    CHECK(strstr(reply, "RTSP/1.0 200 OK\r\nCSeq: 5\r\n"));
+
+    for (int i = 0; i < RTSP_MAXIMUM_CONNECTIONS; i++) close(peers[i]);
+    for (int i = 0; i < 10 && h->con_list.list; i++) serve_once(h);
+    CHECK(h->con_list.list == NULL);
+    close(server_fd);
+}
+
 int main(void)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -266,5 +363,6 @@ int main(void)
     test_client_fd_closed_once();
     test_tcp_play_and_reuse();
     test_split_interleaved_packet();
+    test_connection_overflow();
     CHECK_DONE();
 }

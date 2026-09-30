@@ -765,45 +765,93 @@ error:
     return FAILURE;
 }
 
+/* Refused clients come in bursts: one line per burst, not per client */
+static void __accept_warn(const char *reason)
+{
+    static unsigned int last_ms, dropped;
+    static char warned;
+    unsigned int now = millis();
+
+    if (warned && now - last_ms < 10000) {
+        dropped++;
+        return;
+    }
+    ERR("refusing RTSP client: %s (%u more refused since last notice)\n", reason, dropped);
+    warned = 1;
+    last_ms = now;
+    dropped = 0;
+}
+
 static inline int __accept_proc_sock(rtsp_handle h, int server_fd, struct sock_select_t *p_socks)
 {
+    /* kept open to be given up when out of descriptors, so the pending
+     * client can still be accepted and closed instead of spinning select */
+    static int spare_fd = -1;
     unsigned int len;
-    int fd;
+    int fd, full;
     struct sockaddr_in from_addr;
 
-    if (FD_ISSET(server_fd, &p_socks->rfds) != 0) {
-        /* accept new connection */
-        len = sizeof(from_addr);
+    if (FD_ISSET(server_fd, &p_socks->rfds) == 0)
+        return SUCCESS;
 
-        fd = accept(server_fd, (struct sockaddr *)&from_addr,
-                &len);
+    if (spare_fd < 0)
+        spare_fd = open("/dev/null", O_RDONLY | O_CLOEXEC);
 
-        /* we have selected this fd, but still EAGAIN may occur */
-        if (fd < 0){
-            ASSERT(errno == EAGAIN, ({
-                        ERR("accept:%s\n",strerror(errno));
-                        return FAILURE;}));
-            return SUCCESS;
+    len = sizeof(from_addr);
+    fd = accept(server_fd, (struct sockaddr *)&from_addr, &len);
+
+    if (fd < 0) {
+        int err = errno;
+        switch (err) {
+            case EBADF: case EINVAL: case ENOTSOCK: case EFAULT:
+                ERR("accept:%s\n", strerror(err));
+                return FAILURE;
+            case EMFILE: case ENFILE:
+                if (spare_fd >= 0) {
+                    close(spare_fd);
+                    fd = accept(server_fd, NULL, NULL);
+                    if (fd >= 0) close(fd);
+                    spare_fd = open("/dev/null", O_RDONLY | O_CLOEXEC);
+                }
+                __accept_warn(strerror(err));
+                return SUCCESS;
+            case EAGAIN:
+#if EWOULDBLOCK != EAGAIN
+            case EWOULDBLOCK:
+#endif
+            case EINTR:
+                return SUCCESS;
+            default:
+                __accept_warn(strerror(err));
+                return SUCCESS;
         }
-
-        /* set server fd to non-blocking */
-        fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
-
-        /* A keyframe is a few hundred KB and the kernel's default TCP send
-         * buffer (64 KB on small boards) cannot hold it: the interleaved sender
-         * then spins on partial writes for as long as the link takes to drain,
-         * hundreds of ms of CPU per keyframe. Ask for a buffer that fits one
-         * (SO_SNDBUFFORCE bypasses wmem_max, which needs root). */
-        {
-            int sz = 512 * 1024;
-            if (setsockopt(fd, SOL_SOCKET, SO_SNDBUFFORCE, &sz, sizeof(sz)))
-                setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz));
-        }
-
-        /* update connection-list exclusively */
-        ASSERT(__connection_list_add(h->con_pool, &h->con_list, fd, from_addr) == SUCCESS,
-                return FAILURE);
     }
+
+    pthread_mutex_lock(&h->con_pool->mutex);
+    full = h->con_pool->free_list.list == NULL;
+    pthread_mutex_unlock(&h->con_pool->mutex);
+    if (full) {
+        close(fd);
+        __accept_warn("all connection slots in use");
+        return SUCCESS;
+    }
+
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+
+    /* A keyframe is a few hundred KB and the kernel's default TCP send
+     * buffer (64 KB on small boards) cannot hold it: the interleaved sender
+     * then spins on partial writes for as long as the link takes to drain,
+     * hundreds of ms of CPU per keyframe. Ask for a buffer that fits one
+     * (SO_SNDBUFFORCE bypasses wmem_max, which needs root). */
+    {
+        int sz = 512 * 1024;
+        if (setsockopt(fd, SOL_SOCKET, SO_SNDBUFFORCE, &sz, sizeof(sz)))
+            setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz));
+    }
+
+    /* on failure the slot reset has already closed fd */
+    if (__connection_list_add(h->con_pool, &h->con_list, fd, from_addr) != SUCCESS)
+        __accept_warn("cannot set up the connection");
 
     return SUCCESS;
 }
