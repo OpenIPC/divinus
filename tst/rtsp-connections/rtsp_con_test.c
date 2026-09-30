@@ -226,6 +226,38 @@ static void test_tcp_play_and_reuse(void)
     CHECK(con->ssrc != 0x12345678);
 }
 
+static void *send_rest_later(void *v)
+{
+    usleep(30 * 1000);
+    send_str(*(int *)v, "defgh");
+    return NULL;
+}
+
+/* An interleaved packet from the client split across segments is skipped
+ * whole, and the request after it still gets its answer */
+static void test_split_interleaved_packet(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    pthread_t thread;
+    char reply[1024] = {};
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    CHECK(write(peer, "$\x01\x00\x08" "abc", 7) == 7);
+    pthread_create(&thread, NULL, send_rest_later, &peer);
+    serve_once(h);
+    pthread_join(thread, NULL);
+
+    send_str(peer, "OPTIONS rtsp://cam/ RTSP/1.0\r\nCSeq: 4\r\n\r\n");
+    serve_once(h);
+
+    CHECK(con->con_state == __CON_S_INIT);
+    CHECK(read(peer, reply, sizeof(reply) - 1) > 0);
+    CHECK(strstr(reply, "CSeq: 4\r\n"));
+    close(peer);
+}
+
 int main(void)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -233,5 +265,6 @@ int main(void)
     test_response_on_full_socket();
     test_client_fd_closed_once();
     test_tcp_play_and_reuse();
+    test_split_interleaved_packet();
     CHECK_DONE();
 }

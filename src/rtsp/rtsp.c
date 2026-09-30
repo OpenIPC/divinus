@@ -373,6 +373,25 @@ static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
  *              METHOD IMPLEMENTATIONS
  ******************************************************************************/
 
+/* Interleaved frames from the client (RTCP receiver reports) may arrive split
+ * and the socket is non-blocking: wait briefly for the rest instead of leaving
+ * it to be parsed as a request */
+static int __read_interleaved(struct connection_item_t *con, void *dst, size_t len)
+{
+    size_t got = 0;
+    int waits = 0;
+
+    while ((got += fread((char *)dst + got, 1, len - got, con->fp_tcp_read)) < len) {
+        struct pollfd pfd = { .fd = con->client_fd, .events = POLLIN };
+        if (!ferror(con->fp_tcp_read) || errno != EAGAIN || ++waits > 10)
+            return FAILURE;
+        clearerr(con->fp_tcp_read);
+        poll(&pfd, 1, 20);
+    }
+
+    return SUCCESS;
+}
+
 static int __message_proc_sock(struct list_t *e, void *p)
 {
     struct connection_item_t *con;
@@ -394,15 +413,19 @@ static int __message_proc_sock(struct list_t *e, void *p)
         int first_char = fgetc(con->fp_tcp_read);
         if (first_char == '$') {
             unsigned char head[3];
-            if (fread(head, 1, 3, con->fp_tcp_read) == 3) {
-                int len = (head[1] << 8) | head[2];
-                while (len > 0) {
-                    int r = fread(buf, 1, min(len, sizeof(buf)), con->fp_tcp_read);
-                    if (r <= 0) break;
-                    len -= r;
-                }
-                DBG("discarded interleaved packet (%d bytes)\n", (head[1] << 8) | head[2]);
+            int len = -1;
+            if (__read_interleaved(con, head, 3) == SUCCESS) {
+                len = (head[1] << 8) | head[2];
+                while (len > 0 && __read_interleaved(con, buf, min(len, sizeof(buf))) == SUCCESS)
+                    len -= min(len, sizeof(buf));
             }
+            if (len != 0) {
+                ERR("interleaved packet cut short, dropping connection\n");
+                con->con_state = __CON_S_DISCONNECTED;
+                ASSERT(bufpool_detach(con->pool, con) == SUCCESS, ERR("connection detach failed\n"));
+                return SUCCESS;
+            }
+            DBG("discarded interleaved packet (%d bytes)\n", (head[1] << 8) | head[2]);
             return SUCCESS;
         } else if (first_char != EOF) {
             ungetc(first_char, con->fp_tcp_read);
