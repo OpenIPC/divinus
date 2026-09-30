@@ -137,7 +137,7 @@ static void *drain_peer(void *v)
             d->tail[tail_len++] = chunk[i];
         }
         d->tail[tail_len] = 0;
-        if (strstr(d->tail, "CSeq: 3\r\nPublic: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n\r\n")) {
+        if (strstr(d->tail, "CSeq: 3\r\nPublic: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, GET_PARAMETER\r\n\r\n")) {
             d->found = 1;
             break;
         }
@@ -355,6 +355,26 @@ static void test_connection_overflow(void)
     close(server_fd);
 }
 
+/* An empty GET_PARAMETER is a keepalive: answer it and keep the client */
+static void test_get_parameter_keepalive(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    char reply[256] = {};
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    send_str(peer, "GET_PARAMETER rtsp://cam/ RTSP/1.0\r\nCSeq: 6\r\n"
+        "Session: 1234abcd\r\n\r\n");
+    serve_once(h);
+
+    CHECK(con->con_state == __CON_S_INIT);
+    CHECK(h->con_list.list != NULL);
+    CHECK(read(peer, reply, sizeof(reply) - 1) > 0);
+    CHECK(!strcmp(reply, "RTSP/1.0 200 OK\r\nCSeq: 6\r\n\r\n"));
+    close(peer);
+}
+
 int main(void)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -364,5 +384,6 @@ int main(void)
     test_tcp_play_and_reuse();
     test_split_interleaved_packet();
     test_connection_overflow();
+    test_get_parameter_keepalive();
     CHECK_DONE();
 }
