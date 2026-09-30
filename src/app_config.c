@@ -444,7 +444,7 @@ enum ConfigError app_config_parse(void) {
             parse_int(&ini, "osd", param, 0, USHRT_MAX, &osds[i].outl);
             sprintf(param, "reg%d_thick", i);
             parse_double(&ini, "osd", param, 0, UCHAR_MAX, &osds[i].thick);
-            osds[i].updt = 1;
+            osds[i].updt = !EMPTY(osds[i].text) || !EMPTY(osds[i].img);
         }
     }
 
