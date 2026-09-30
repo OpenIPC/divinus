@@ -171,6 +171,31 @@ static void test_response_on_full_socket(void)
     close(drain.fd);
 }
 
+/* A client that stops reading is given up on instead of holding the RTSP
+ * thread, and every stream with it, forever */
+static void test_response_to_stalled_client(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    char junk[1024];
+    int size = 4096;
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    setsockopt(con->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+    memset(junk, 'x', sizeof(junk));
+    while (write(con->client_fd, junk, sizeof(junk)) > 0);
+
+    send_str(peer, "OPTIONS rtsp://cam/ RTSP/1.0\r\nCSeq: 9\r\n\r\n");
+    serve_once(h);
+    CHECK(h->con_list.list != NULL);
+    serve_once(h);
+
+    CHECK(con->con_state == __CON_S_DISCONNECTED);
+    CHECK(h->con_list.list == NULL);
+    close(peer);
+}
+
 /* fclose() on the read stream already closes the client fd: closing it again
  * would hit whichever socket the kernel has given that number meanwhile */
 static void test_client_fd_closed_once(void)
@@ -434,6 +459,7 @@ int main(void)
     signal(SIGPIPE, SIG_IGN);
     test_truncated_request();
     test_response_on_full_socket();
+    test_response_to_stalled_client();
     test_client_fd_closed_once();
     test_tcp_play_and_reuse();
     test_split_interleaved_packet();
