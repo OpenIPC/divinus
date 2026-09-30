@@ -106,12 +106,32 @@ int soap_duration(const char *text) {
 
 time_t soap_datetime(const char *text) {
     struct tm tm = {0};
+    int len, offset = 0, hours, minutes;
 
-    if (sscanf(text, "%4d-%2d-%2dT%2d:%2d:%2d", &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
-        &tm.tm_hour, &tm.tm_min, &tm.tm_sec) != 6) return -1;
+    if (sscanf(text, "%4d-%2d-%2dT%2d:%2d:%2d%n", &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+        &tm.tm_hour, &tm.tm_min, &tm.tm_sec, &len) != 6) return -1;
+    text += len;
+    if (*text == '.')
+        while (isdigit((unsigned char)*++text));
+
+    // xs:dateTime ends in Z, a +hh:mm/-hh:mm offset, or nothing (taken as UTC)
+    if (*text == 'Z')
+        text++;
+    else if (*text == '+' || *text == '-') {
+        for (int i = 1; i <= 5; i++)
+            if (i == 3 ? text[i] != ':' : !isdigit((unsigned char)text[i])) return -1;
+        hours = (text[1] - '0') * 10 + text[2] - '0';
+        minutes = (text[4] - '0') * 10 + text[5] - '0';
+        if (hours > 14 || minutes > 59) return -1;
+        offset = (hours * 3600 + minutes * 60) * (*text == '-' ? -1 : 1);
+        text += 6;
+    }
+    while (isspace((unsigned char)*text)) text++;
+    if (*text) return -1;
+
     tm.tm_year -= 1900;
     tm.tm_mon -= 1;
-    return timegm(&tm);
+    return timegm(&tm) - offset;
 }
 
 void soap_datetime_format(time_t when, char *text, size_t size) {
