@@ -66,7 +66,7 @@ typedef struct {
     char font[32];
     char text[80];
     char img[64];
-    int outl;
+    int outl, bgcolor;
     double thick;
 } osd;
 
