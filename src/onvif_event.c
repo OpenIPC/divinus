@@ -8,7 +8,7 @@ typedef struct {
     int id;
     time_t expires, lastSeen;
     unsigned int generation;
-    int head, count;
+    int head, count, waiting;
     onvif_event_msg queue[ONVIF_EVENT_QUEUE];
 } onvif_event_sub;
 
@@ -43,10 +43,13 @@ int onvif_event_subscribe(time_t now, time_t when, int seconds, time_t *expires)
     onvif_event_sub *sub = &subs[0];
 
     // A free slot, or else the subscription idle for the longest time:
-    // clients that reconnect rarely unsubscribe first
+    // clients that reconnect rarely unsubscribe first, and one with a pull
+    // waiting is in use however long ago that pull started
     pthread_mutex_lock(&eventMtx);
     for (int i = 0; i < ONVIF_EVENT_MAX_SUBS && sub->id; i++)
-        if (!subs[i].id || subs[i].lastSeen < sub->lastSeen) sub = &subs[i];
+        if (!subs[i].id || (!subs[i].waiting && sub->waiting) ||
+            (!subs[i].waiting == !sub->waiting && subs[i].lastSeen < sub->lastSeen))
+            sub = &subs[i];
     if (sub->id) pthread_cond_broadcast(&eventCond);
 
     memset(sub, 0, sizeof(*sub));
@@ -114,10 +117,11 @@ int onvif_event_pull(int id, time_t now, int timeout_s, int limit,
 
     if (sub && !sub->count && timeout_s > 0 && waits < ONVIF_EVENT_MAX_WAITS) {
         waits++;
+        sub->waiting++;
         while ((sub = find_sub(id)) && !sub->count && sub->generation == generation &&
             pthread_cond_timedwait(&eventCond, &eventMtx, &deadline) != ETIMEDOUT);
         waits--;
-        sub = find_sub(id);
+        if ((sub = find_sub(id))) sub->waiting--;
     }
 
     int count = -1;
