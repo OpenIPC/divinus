@@ -468,7 +468,9 @@ error:
             __PARSE_ERROR(con);
         }
 
-        if (con->parser_state == __PARSER_S_ERROR) {
+        if (con->con_state == __CON_S_DISCONNECTED) {
+            ASSERT(bufpool_detach(con->pool, con) == SUCCESS, ERR("connection detach failed\n"));
+        } else if (con->parser_state == __PARSER_S_ERROR) {
             __method_error(con, h);
         } else {
             if (con->method != __METHOD_NONE && h->isAuthOn && !isAuthValid)
@@ -483,13 +485,8 @@ error:
                 case __METHOD_RECORDING: __method_record(con, h); break;
                 case __METHOD_TEARDOWN: __method_teardown(con, h); break;
                 case __METHOD_NONE:
-                    /* state DISCONNECTED connections should be garbage collected immediately.
-                       but sending thread might watches the connection right now.
-                       so the connection might live at here */
-                    if (con->con_state != __CON_S_DISCONNECTED) {
-                        ERR("unexpected empty request, forcing disconnect\n");
-                        con->con_state = __CON_S_DISCONNECTED;
-                    }
+                    ERR("unexpected empty request, forcing disconnect\n");
+                    con->con_state = __CON_S_DISCONNECTED;
                     ASSERT(bufpool_detach(con->pool, con) == SUCCESS, ERR("connection detach failed\n"));
                     break;
                 default: ERR("unexpected method state\n"); return FAILURE;
