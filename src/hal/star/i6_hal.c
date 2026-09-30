@@ -379,6 +379,14 @@ void i6_pipeline_destroy(void)
     i6_snr.fnDisable(_i6_snr_index);
 }
 
+// A text rendered with a proportional font, like a clock, changes its width
+// from one second to the next. Recreating the region each time frees and
+// reallocates its MMA blocks between the VPE frame buffers, which cycle
+// through the heap, until a port buffer no longer fits and frames drop.
+// The canvas is rounded up and only grows, the bitmap is padded to it
+#define I6_RGN_CANVAS_W 32
+#define I6_RGN_CANVAS_H 16
+
 int i6_region_create(char handle, hal_rect rect, short opacity)
 {
     int ret, attach = 0;
@@ -390,18 +398,19 @@ int i6_region_create(char handle, hal_rect rect, short opacity)
 
     region.type = I6_RGN_TYPE_OSD;
     region.pixFmt = I6_RGN_PIXFMT_ARGB1555;
-    region.size.width = rect.width;
-    region.size.height = rect.height;
+    region.size.width = (rect.width + I6_RGN_CANVAS_W - 1) & ~(I6_RGN_CANVAS_W - 1);
+    region.size.height = (rect.height + I6_RGN_CANVAS_H - 1) & ~(I6_RGN_CANVAS_H - 1);
 
     if (i6_rgn.fnGetRegionConfig(handle, &regionCurr)) {
-        HAL_INFO("i6_rgn", "Creating region %d...\n", handle);
+        HAL_INFO("i6_rgn", "Creating region %d (%ux%u)...\n", handle,
+            region.size.width, region.size.height);
         if (ret = i6_rgn.fnCreateRegion(handle, &region))
             return ret;
     } else if (regionCurr.type != region.type ||
         regionCurr.size.height != region.size.height ||
-        regionCurr.size.width != region.size.width) {
+        regionCurr.size.width < region.size.width) {
         HAL_INFO("i6_rgn", "Parameters are different, recreating "
-            "region %d...\n", handle);
+            "region %d (%ux%u)...\n", handle, region.size.width, region.size.height);
         for (char i = 0; i < I6_VENC_CHN_NUM; i++) {
             if (!i6_state[i].enable) continue;
             dest.port = i;
@@ -480,14 +489,48 @@ void i6_region_init(void)
 
 int i6_region_setbitmap(int handle, hal_bitmap *bitmap)
 {
-    i6_rgn_bmp nativeBmp = { .data = bitmap->data, .pixFmt = I6_RGN_PIXFMT_ARGB1555,
-        .size.height = bitmap->dim.height, .size.width = bitmap->dim.width };
+    int ret;
+    i6_rgn_cnf region;
 
-    int ret = i6_rgn.fnSetBitmap(handle, &nativeBmp);
+    if (ret = i6_rgn.fnGetRegionConfig(handle, &region)) {
+        HAL_DANGER("i6_rgn", "Reading the size of region %d failed "
+            "with %#x!\n", handle, ret);
+        return ret;
+    }
+    if (bitmap->dim.width > region.size.width ||
+        bitmap->dim.height > region.size.height) {
+        HAL_DANGER("i6_rgn", "Bitmap %ux%u exceeds the %ux%u canvas "
+            "of region %d!\n", bitmap->dim.width, bitmap->dim.height,
+            region.size.width, region.size.height, handle);
+        return EXIT_FAILURE;
+    }
+
+    // ARGB1555 zero is a transparent pixel, the margin stays invisible
+    unsigned short *canvas = bitmap->data;
+    if (bitmap->dim.width != region.size.width ||
+        bitmap->dim.height != region.size.height) {
+        canvas = calloc(region.size.width * region.size.height, sizeof(*canvas));
+        if (!canvas) {
+            HAL_DANGER("i6_rgn", "Allocating the canvas of region %d failed!\n", handle);
+            return EXIT_FAILURE;
+        }
+        for (unsigned int y = 0; y < bitmap->dim.height; y++)
+            memcpy(canvas + y * region.size.width,
+                (unsigned short*)bitmap->data + y * bitmap->dim.width,
+                bitmap->dim.width * sizeof(*canvas));
+    }
+
+    i6_rgn_bmp nativeBmp = { .data = canvas, .pixFmt = I6_RGN_PIXFMT_ARGB1555,
+        .size.height = region.size.height, .size.width = region.size.width };
+
+    ret = i6_rgn.fnSetBitmap(handle, &nativeBmp);
     if (ret)
         HAL_DANGER("i6_rgn", "Setting the bitmap of region %d (%ux%u) "
             "failed with %#x!\n", handle, nativeBmp.size.width,
             nativeBmp.size.height, ret);
+
+    if (canvas != bitmap->data)
+        free(canvas);
 
     return ret;
 }
