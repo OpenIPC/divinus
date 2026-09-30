@@ -385,15 +385,14 @@ static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
 
 /* Interleaved frames from the client (RTCP receiver reports) may arrive split
  * and the socket is non-blocking: wait briefly for the rest instead of leaving
- * it to be parsed as a request */
-static int __read_interleaved(struct connection_item_t *con, void *dst, size_t len)
+ * it to be parsed as a request. The wait budget is shared by the whole packet */
+static int __read_interleaved(struct connection_item_t *con, void *dst, size_t len, int *waits)
 {
     size_t got = 0;
-    int waits = 0;
 
     while ((got += fread((char *)dst + got, 1, len - got, con->fp_tcp_read)) < len) {
         struct pollfd pfd = { .fd = con->client_fd, .events = POLLIN };
-        if (!ferror(con->fp_tcp_read) || errno != EAGAIN || ++waits > 10)
+        if (!ferror(con->fp_tcp_read) || errno != EAGAIN || ++*waits > 10)
             return FAILURE;
         clearerr(con->fp_tcp_read);
         poll(&pfd, 1, 20);
@@ -423,10 +422,10 @@ static int __message_proc_sock(struct list_t *e, void *p)
         int first_char = fgetc(con->fp_tcp_read);
         if (first_char == '$') {
             unsigned char head[3];
-            int len = -1;
-            if (__read_interleaved(con, head, 3) == SUCCESS) {
+            int len = -1, waits = 0;
+            if (__read_interleaved(con, head, 3, &waits) == SUCCESS) {
                 len = (head[1] << 8) | head[2];
-                while (len > 0 && __read_interleaved(con, buf, min(len, sizeof(buf))) == SUCCESS)
+                while (len > 0 && __read_interleaved(con, buf, min(len, sizeof(buf)), &waits) == SUCCESS)
                     len -= min(len, sizeof(buf));
             }
             if (len != 0) {
