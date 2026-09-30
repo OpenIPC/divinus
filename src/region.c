@@ -326,18 +326,9 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap) {
     return EXIT_SUCCESS;
 }
 
-void *region_thread(void) {
-    switch (plat) {
-#if defined(__ARM_PCS_VFP)
-        case HAL_PLATFORM_I6:  i6_region_init(); break;
-        case HAL_PLATFORM_I6C: i6c_region_init(); break;
-        case HAL_PLATFORM_M6:  m6_region_init(); break;
-#endif
-    }
-
+void region_defaults(void) {
     for (char id = 0; id < MAX_OSD; id++)
     {
-        if (!EMPTY(osds[id].text) || !EMPTY(osds[id].img)) continue;
         osds[id].hand = -1;
         osds[id].color = DEF_COLOR;
         osds[id].opal = DEF_OPAL;
@@ -350,6 +341,16 @@ void *region_thread(void) {
         strncpy(osds[id].font, DEF_FONT, sizeof(osds[id].font) - 1);
         osds[id].text[0] = '\0';
         osds[id].img[0] = '\0';
+    }
+}
+
+void *region_thread(void) {
+    switch (plat) {
+#if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I6:  i6_region_init(); break;
+        case HAL_PLATFORM_I6C: i6c_region_init(); break;
+        case HAL_PLATFORM_M6:  m6_region_init(); break;
+#endif
     }
 
     while (keepRunning) {

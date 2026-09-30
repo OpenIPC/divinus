@@ -380,6 +380,7 @@ enum ConfigError app_config_parse(void) {
 
     parse_bool(&ini, "mdns", "enable", &app_config.mdns_enable);
 
+    region_defaults();
     parse_bool(&ini, "osd", "enable", &app_config.osd_enable);
     if (app_config.osd_enable) {
         for (char i = 0; i < MAX_OSD; i++) {
@@ -408,7 +409,7 @@ enum ConfigError app_config_parse(void) {
             parse_int(&ini, "osd", param, 0, USHRT_MAX, &osds[i].outl);
             sprintf(param, "reg%d_thick", i);
             parse_double(&ini, "osd", param, 0, UCHAR_MAX, &osds[i].thick);
-            osds[i].updt = 1;
+            osds[i].updt = !EMPTY(osds[i].text) || !EMPTY(osds[i].img);
         }
     }
 
