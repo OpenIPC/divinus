@@ -345,12 +345,13 @@ void region_defaults(void) {
     }
 }
 
-// A negative X centers the region on the main stream
+// A negative X centers the region on the main stream, the width is rounded
+// so a clock does not move, and get reattached, every second
 static short region_posx(char id, short width) {
     if (osds[id].posx >= 0) return osds[id].posx;
 
     short frame = app_config.mp4_enable ? app_config.mp4_width : app_config.mjpeg_width;
-    return MAX(frame - width, 0) / 2 & ~1;
+    return MAX(frame - ((width + 31) & ~31), 0) / 2 & ~1;
 }
 
 static int region_font(const char *name, char *path) {
