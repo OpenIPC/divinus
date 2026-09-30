@@ -133,17 +133,25 @@ static inline bufpool_handle __transpool_create(int num)
 /******************************************************************************
  *              RESPONSE IMPLEMENTATIONS
  ******************************************************************************/
+/* Formatted locally and sent like the interleaved packets: stdio on a
+ * non-blocking socket drops what it cannot write, leaving a truncated
+ * response between RTP frames */
 static int __rtsp_write(struct connection_item_t *p, const char *fmt, ...)
 {
+    char msg[__RTSP_TCP_BUF_SIZE + 256];
     va_list args;
-    int ret;
+    int len, ret;
+
+    va_start(args, fmt);
+    len = vsnprintf(msg, sizeof(msg), fmt, args);
+    va_end(args);
+    ASSERT(len >= 0 && len < (int)sizeof(msg), return FAILURE);
 
     pthread_mutex_lock(&p->write_mutex);
-    va_start(args, fmt);
-    ret = vfprintf(p->fp_tcp_write, fmt, args);
-    va_end(args);
-    fflush(p->fp_tcp_write);
+    ret = __tcp_send_all(p->client_fd, (unsigned char *)msg, len);
     pthread_mutex_unlock(&p->write_mutex);
+
+    if (ret != SUCCESS) ERR("send:%s\n", strerror(errno));
 
     return ret;
 }
@@ -511,7 +519,6 @@ static int __connection_reset(void *v)
     }
 
     FCLOSE(p->fp_tcp_read);
-    FCLOSE(p->fp_tcp_write);
     CLOSE(p->client_fd);
 
     p->client_fd = 0;
@@ -558,7 +565,6 @@ __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd,
     p->client_fd=fd;
 
     ASSERT((p->fp_tcp_read = fdopen(fd, "r")), goto error);
-    ASSERT((p->fp_tcp_write = fdopen(fd, "w")), goto error);
 
     p->tx_len = 0;
     if (!p->tx_buf) p->tx_buf = malloc(RTSP_TX_BATCH);
