@@ -260,6 +260,35 @@ static void test_split_interleaved_packet(void)
     close(peer);
 }
 
+static void *trickle_packet(void *v)
+{
+    usleep(150 * 1000);
+    if (write(*(int *)v, "\x01\x00\x08", 3) != 3) perror("write");
+    usleep(150 * 1000);
+    /* fails once the server has given up on the packet */
+    send(*(int *)v, "abcdefgh", 8, 0);
+    return NULL;
+}
+
+/* A packet trickled in piece by piece gets one wait budget, not one per read */
+static void test_trickled_interleaved_packet(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    pthread_t thread;
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    CHECK(write(peer, "$", 1) == 1);
+    pthread_create(&thread, NULL, trickle_packet, &peer);
+    serve_once(h);
+    pthread_join(thread, NULL);
+
+    CHECK(con->con_state == __CON_S_DISCONNECTED);
+    CHECK(h->con_list.list == NULL);
+    close(peer);
+}
+
 static int tcp_connect(int port)
 {
     struct sockaddr_in addr = { .sin_family = AF_INET, .sin_port = htons(port) };
@@ -383,6 +412,7 @@ int main(void)
     test_client_fd_closed_once();
     test_tcp_play_and_reuse();
     test_split_interleaved_packet();
+    test_trickled_interleaved_packet();
     test_connection_overflow();
     test_get_parameter_keepalive();
     CHECK_DONE();
