@@ -1454,8 +1454,14 @@ void respond_request(http_request_t *req) {
                     if (remain == value) continue;
                         osds[id].thick = result;
                 }
-                else if (EQUALS(key, "bgcolor"))
-                    osds[id].bgcolor = EQUALS(value, "none") ? 0 : color_parse(value);
+                else if (EQUALS(key, "bgcolor")) {
+                    size_t len = strlen(value);
+                    if (EMPTY(value) || EQUALS(value, "none") || EQUALS(value, "0"))
+                        osds[id].bgcolor = 0;
+                    else if (value[0] == '#' && (len == 4 || len == 7) &&
+                        strspn(value + 1, "0123456789abcdefABCDEF") == len - 1)
+                        osds[id].bgcolor = color_parse(value);
+                }
             }
             osds[id].updt = 1;
         }

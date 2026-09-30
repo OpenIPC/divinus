@@ -102,7 +102,7 @@ This document describes the fields that can be found within a configuration file
 - **regX_color**: Color of the text or image in OSD region X.
 - **regX_outl**: Outline color of the text in OSD region X.
 - **regX_thick**: Thickness of the text outline in OSD region X.
-- **regX_bgcolor**: Background of the text in OSD region X, in the same 15-bit format as the colors with the top bit set to show it: `0x8000` is an opaque black box, `0` none (default: `0`). Through `/api/osd/X`, `bgcolor=#RRGGBB` or `none`.
+- **regX_bgcolor**: Background of the text in OSD region X, in the same 15-bit format as the colors with the top bit set to show it: `0x8000` is an opaque black box, `0` none (default: `0`). Through `/api/osd/X`, `bgcolor=#RGB`, `#RRGGBB` or `none`, other values leave it unchanged.
 
 ## JPEG section
 
