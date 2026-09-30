@@ -192,11 +192,46 @@ static void test_client_fd_closed_once(void)
     close(peer);
 }
 
+/* Interleaved tracks get the same RTCP pacing as UDP ones, and a reused
+ * connection slot starts with no transport left from the previous client */
+static void test_tcp_play_and_reuse(void)
+{
+    static const transport_t clean;
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    char reply[1024];
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    send_str(peer, "SETUP rtsp://cam/track=0 RTSP/1.0\r\nCSeq: 1\r\n"
+        "Transport: RTP/AVP/TCP;unicast;interleaved=0-1\r\n\r\n");
+    serve_once(h);
+    send_str(peer, "PLAY rtsp://cam/ RTSP/1.0\r\nCSeq: 2\r\n\r\n");
+    serve_once(h);
+    CHECK(read(peer, reply, sizeof(reply)) > 0);
+
+    CHECK(con->con_state == __CON_S_PLAYING);
+    CHECK(con->trans[0].is_tcp);
+    CHECK(con->trans[0].rtcp_tick_org == 150);
+    CHECK(con->trans[0].rtcp_tick == 150);
+
+    con->ssrc = 0x12345678;
+    shutdown(peer, SHUT_WR);
+    serve_once(h);
+    close(peer);
+
+    CHECK(con->con_state == __CON_S_DISCONNECTED);
+    CHECK(!memcmp(&con->trans[0], &clean, sizeof(clean)));
+    CHECK(!memcmp(&con->trans[1], &clean, sizeof(clean)));
+    CHECK(con->ssrc != 0x12345678);
+}
+
 int main(void)
 {
     signal(SIGPIPE, SIG_IGN);
     test_truncated_request();
     test_response_on_full_socket();
     test_client_fd_closed_once();
+    test_tcp_play_and_reuse();
     CHECK_DONE();
 }
