@@ -404,6 +404,31 @@ static void test_get_parameter_keepalive(void)
     close(peer);
 }
 
+/* A body declared by Content-Length is consumed with its request instead of
+ * being read as the start of the next one */
+static void test_request_body_skipped(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    char reply[256] = {};
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    send_str(peer, "GET_PARAMETER rtsp://cam/ RTSP/1.0\r\nCSeq: 7\r\n"
+        "Content-Type: text/parameters\r\nContent-Length: 10\r\n\r\nposition\r\n");
+    serve_once(h);
+    CHECK(read(peer, reply, sizeof(reply) - 1) > 0);
+    CHECK(!strcmp(reply, "RTSP/1.0 200 OK\r\nCSeq: 7\r\n\r\n"));
+
+    memset(reply, 0, sizeof(reply));
+    send_str(peer, "OPTIONS rtsp://cam/ RTSP/1.0\r\nCSeq: 8\r\n\r\n");
+    serve_once(h);
+    CHECK(con->con_state == __CON_S_INIT);
+    CHECK(read(peer, reply, sizeof(reply) - 1) > 0);
+    CHECK(strstr(reply, "RTSP/1.0 200 OK\r\nCSeq: 8\r\n"));
+    close(peer);
+}
+
 int main(void)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -415,5 +440,6 @@ int main(void)
     test_trickled_interleaved_packet();
     test_connection_overflow();
     test_get_parameter_keepalive();
+    test_request_body_skipped();
     CHECK_DONE();
 }
