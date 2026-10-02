@@ -66,6 +66,9 @@ static int __tcp_flush_each(struct list_t *e, void *v)
 
 static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned char *nalptr, size_t nalsize, char isH265)
 {
+    /* Checked before the header is read: an empty pack comes with no data */
+    if (nalsize < 4) return SUCCESS;
+
     struct nal_rtp_t rtp;
     unsigned int nri = isH265 ? (nalptr[0] & 0x81) : (nalptr[0] & 0x60);
     unsigned int pt  = isH265 ? (nalptr[0] >> 1 & 0x3F) : (nalptr[0] & 0x1F);
@@ -80,8 +83,6 @@ static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned c
     p_header->x = 0;
     p_header->cc = 0;
     p_header->pt = 96 & 0x7F;
-
-    if (nalsize < 4) return SUCCESS;
 
     if (nalsize <= __RTP_MAXPAYLOADSIZE) {
         /* single packet */
