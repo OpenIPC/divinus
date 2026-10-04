@@ -73,13 +73,19 @@ void *night_thread(void) {
         if (adc_fd) close(adc_fd);
     } else if (app_config.ir_sensor_pin == 999) {
         bool night = night_mode_on();
-        unsigned int held = 0, gain;
+        unsigned int held = 0, since_pulse = 0, gain;
 
         while (keepRunning && nightOn) {
             sleep(1);
             if (manual) {
                 held = 0;
                 continue;
+            }
+            // A missed pulse leaves the filter out by day, which lowers the gain
+            // so no crossing ever corrects it: pulse the current position again
+            if (++since_pulse >= 600) {
+                night_ircut(!night);
+                since_pulse = 0;
             }
             if (get_isp_gain(&gain)) {
                 HAL_WARNING("night", "No ISP gain on this platform, automatic switching disabled!\n");
