@@ -392,6 +392,24 @@ int raw_create(short width, short height) {
     return ret;
 }
 
+// Keeps the port reserved, so no encoder can take it while it is closed
+int raw_reopen(short width, short height) {
+    int ret = EXIT_FAILURE;
+
+    pthread_mutex_lock(&chnMtx);
+    switch (plat) {
+#if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I6:
+            i6_raw_destroy();
+            ret = i6_raw_create(width, height);
+            break;
+#endif
+    }
+    pthread_mutex_unlock(&chnMtx);
+
+    return ret;
+}
+
 int raw_get(hal_rawframe *frame) {
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
