@@ -71,10 +71,12 @@ void night_mode(bool enable) {
 }
 
 void *night_thread(void) {
+    unsigned int gain;
+
     gpio_init();
     usleep(10000);
 
-    night_mode(night_mode_on());
+    if (!manual) night_mode(night_mode_on());
 
 #if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
     if (plat == HAL_PLATFORM_F1 && f1_night_available() &&
@@ -112,9 +114,11 @@ void *night_thread(void) {
             usleep(app_config.check_interval_s * 1000000 / 12);
         }
         if (adc_fd) close(adc_fd);
+    } else if (app_config.ir_sensor_pin == 999 && get_isp_gain(&gain)) {
+        HAL_WARNING("night", "No ISP gain on this platform, automatic switching disabled!\n");
     } else if (app_config.ir_sensor_pin == 999) {
-        bool night = night_mode_on();
-        unsigned int held = 0, since_pulse = 0, gain;
+        bool night = night_mode_on(), gain_lost = false;
+        unsigned int held = 0, since_pulse = 0;
 
         while (keepRunning && nightOn) {
             sleep(1);
@@ -129,9 +133,13 @@ void *night_thread(void) {
                 since_pulse = 0;
             }
             if (get_isp_gain(&gain)) {
-                HAL_WARNING("night", "No ISP gain on this platform, automatic switching disabled!\n");
-                break;
+                if (!gain_lost)
+                    HAL_WARNING("night", "Could not read the ISP gain, retrying...\n");
+                gain_lost = true;
+                held = 0;
+                continue;
             }
+            gain_lost = false;
 
             bool crossing = night ?
                 gain < app_config.day_gain * 1024 : gain >= app_config.night_gain * 1024;
