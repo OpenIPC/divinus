@@ -26,7 +26,7 @@ static void *motion_thread(void) {
     motion_core core;
     hal_rawframe frame;
     int missed = 0;
-    bool reopened = false;
+    bool stalled = false;
 
     if (motion_core_init(&core, MOTION_WIDTH, MOTION_HEIGHT)) {
         HAL_DANGER("motion", "Can't allocate the detector!\n");
@@ -47,18 +47,18 @@ static void *motion_thread(void) {
 
         if (raw_get(&frame)) {
             if (++missed < MOTION_STALL_S * MOTION_FPS) continue;
-            HAL_WARNING("motion", "No frames for %d seconds!\n", MOTION_STALL_S);
+            if (!stalled)
+                HAL_WARNING("motion", "No frames for %d seconds, reopening the port...\n", MOTION_STALL_S);
             if (motion_core_reset(&core)) motion_report(MOTION_END);
-            if (reopened) {
-                HAL_DANGER("motion", "Frames did not come back, detection stopped!\n");
-                break;
-            }
-            raw_destroy();
-            if (raw_create(MOTION_WIDTH, MOTION_HEIGHT)) break;
-            reopened = true;
+            if (raw_reopen(MOTION_WIDTH, MOTION_HEIGHT) && !stalled)
+                HAL_DANGER("motion", "Could not reopen the port, retrying...\n");
+            stalled = true;
             missed = 0;
             continue;
         }
+        if (stalled)
+            HAL_INFO("motion", "Frames are back\n");
+        stalled = false;
         missed = 0;
 
         if (frame.width < MOTION_WIDTH || frame.height < MOTION_HEIGHT ||
