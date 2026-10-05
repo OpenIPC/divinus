@@ -389,6 +389,12 @@ enum ConfigError app_config_parse(void) {
         parse_int(&ini, "night_mode", "day_gain", 1, 1024, &app_config.day_gain);
         parse_int(&ini, "night_mode", "night_hold_s", 1, 3600, &app_config.night_hold_s);
         parse_int(&ini, "night_mode", "day_hold_s", 1, 3600, &app_config.day_hold_s);
+        if (!app_config.adc_device[0] && app_config.ir_sensor_pin == 999 &&
+            app_config.day_gain >= app_config.night_gain) {
+            HAL_DANGER("app_config", "night_mode.day_gain must be lower than night_gain!\n");
+            err = CONFIG_PARAM_ISNT_IN_RANGE;
+            goto RET_ERR;
+        }
     }
 
     parse_bool(&ini, "motion_detect", "enable", &app_config.motion_detect_enable);

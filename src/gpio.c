@@ -125,7 +125,6 @@ int gpio_read(char pin, bool *value) {
     *value = val - 0x30;
     close(fd);
 
-    if (gpio_direction(pin, "out")) return EXIT_FAILURE;
     if (gpio_export(pin, false)) return EXIT_FAILURE;
 
     return EXIT_SUCCESS;
