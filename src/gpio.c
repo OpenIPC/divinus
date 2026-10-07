@@ -12,7 +12,7 @@ void gpio_deinit(void) {
 }
 
 int gpio_init(void) {
-    const char *paths[] = {"/dev/gpiochip0", "/sys/class/gpio/gpiochip0"};
+    const char *paths[] = {"/dev/gpiochip0", "/sys/class/gpio/gpiochip0", NULL};
     const char **path = paths;
     while (*path) {
         if (access(*path++, F_OK)) continue;
