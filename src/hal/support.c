@@ -34,16 +34,21 @@ void hal_identify(void) {
         vid_thread = i6_video_thread;
 
         if (file = fopen("/proc/cmdline", "r")) {
-            fgets(line, 200, file);
-            char *remain, *capacity = strstr(line, "LX_MEM=");
-            memory = (short)(strtol(capacity + 7, &remain, 16) >> 20);
+            char *remain, *capacity = NULL;
+            if (fgets(line, 200, file))
+                capacity = strstr(line, "LX_MEM=");
+            if (capacity)
+                memory = (short)(strtol(capacity + 7, &remain, 16) >> 20);
             fclose(file);
         }
 
         if (file = fopen("/sys/devices/soc0/machine", "r")) {
-            fgets(line, 200, file);
-            char *board = strstr(line, "SSC");
-            strncpy(package, board + 4, 3);
+            char *board = NULL;
+            if (fgets(line, 200, file))
+                board = strstr(line, "SSC");
+            /* package takes board[4..6], so the match must be that long */
+            if (board && strlen(board) >= 7)
+                strncpy(package, board + 4, 3);
             fclose(file);
         }
 
@@ -338,9 +343,11 @@ float hal_temperature_read(void) {
             FILE* file;
             char line[20] = {0};
             if (file = fopen("/sys/class/mstar/msys/TEMP_R", "r")) {
-                fgets(line, 20, file);
-                char *remain, *parsed = strstr(line, "Temperature ");
-                lastReadTemp = strtof(parsed + 12, &remain);
+                char *remain, *parsed = NULL;
+                if (fgets(line, 20, file))
+                    parsed = strstr(line, "Temperature ");
+                if (parsed)
+                    lastReadTemp = strtof(parsed + 12, &remain);
                 fclose(file);
             }
             break;
