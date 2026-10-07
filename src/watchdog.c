@@ -21,6 +21,11 @@ int watchdog_start(int timeout) {
 
     ioctl(fd, WDIOC_SETTIMEOUT, &timeout);
 
+    /* Disarm on any exit from here on, including the error returns out of
+       main() and the exit() in handle_error(), so the board is not reset
+       by a watchdog nobody feeds.  watchdog_stop() is safe to call twice. */
+    atexit(watchdog_stop);
+
     HAL_INFO("watchdog", "Watchdog started!\n");
     return EXIT_SUCCESS;
 }
