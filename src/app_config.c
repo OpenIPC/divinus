@@ -1,6 +1,6 @@
 #include "app_config.h"
 
-const char *appconf_paths[] = {"./divinus.yaml", "/etc/divinus.yaml"};
+const char *appconf_paths[] = {"./divinus.yaml", "/etc/divinus.yaml", NULL};
 
 struct AppConfig app_config;
 
