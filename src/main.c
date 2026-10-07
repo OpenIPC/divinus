@@ -23,7 +23,10 @@ void handle_error(int signo) {
     sprintf(msg, "Error occured (%d)! Quitting...\n", signo);
     write(STDERR_FILENO, msg, strlen(msg));
     keepRunning = 0;
-    exit(EXIT_FAILURE);
+    /* _exit(), not exit(): from a signal handler only async-signal-safe
+       calls are allowed, and skipping the atexit handlers leaves the
+       watchdog armed so a crash still ends in a reset */
+    _exit(EXIT_FAILURE);
 }
 
 void handle_exit(int signo) {
