@@ -43,10 +43,12 @@ void night_mode(bool enable) {
 }
 
 void *night_thread(void) {
+    unsigned int gain;
+
     gpio_init();
     usleep(10000);
 
-    night_mode(night_mode_on());
+    if (!manual) night_mode(night_mode_on());
 
     if (app_config.adc_device[0]) {
         int adc_fd = -1;
@@ -71,22 +73,61 @@ void *night_thread(void) {
             usleep(app_config.check_interval_s * 1000000 / 12);
         }
         if (adc_fd) close(adc_fd);
+    } else if (app_config.ir_sensor_pin == 999 && get_isp_gain(&gain)) {
+        HAL_WARNING("night", "No ISP gain on this platform, automatic switching disabled!\n");
     } else if (app_config.ir_sensor_pin == 999) {
-        while (keepRunning) sleep(1);
+        bool night = night_mode_on(), gain_lost = false;
+        unsigned int held = 0, since_pulse = 0;
+
+        while (keepRunning && nightOn) {
+            sleep(1);
+            if (manual) {
+                held = 0;
+                continue;
+            }
+            // A missed pulse leaves the filter out by day, which lowers the gain
+            // so no crossing ever corrects it: pulse the current position again
+            if (++since_pulse >= 600) {
+                night_ircut(!night);
+                since_pulse = 0;
+            }
+            if (get_isp_gain(&gain)) {
+                if (!gain_lost)
+                    HAL_WARNING("night", "Could not read the ISP gain, retrying...\n");
+                gain_lost = true;
+                held = 0;
+                continue;
+            }
+            gain_lost = false;
+
+            bool crossing = night ?
+                gain < app_config.day_gain * 1024 : gain >= app_config.night_gain * 1024;
+            if (!crossing) {
+                held = 0;
+                continue;
+            }
+            if (++held < (night ? app_config.day_hold_s : app_config.night_hold_s))
+                continue;
+
+            night = !night;
+            held = 0;
+            motion_pause(3000);
+            night_mode(night);
+        }
     } else {
-        while (keepRunning) {
+        while (keepRunning && nightOn) {
             bool state = false;
             if (!gpio_read(app_config.ir_sensor_pin, &state))
                 if (!manual) night_mode(state);
 
-            sleep(app_config.check_interval_s);
+            for (int i = 0; i < app_config.check_interval_s && keepRunning && nightOn; i++)
+                sleep(1);
         }
     }
 
     usleep(10000);
     gpio_deinit();
     HAL_INFO("night", "Night mode thread is closing...\n");
-    nightOn = 0;
 }
 
 int night_enable(void) {
@@ -101,12 +142,15 @@ int night_enable(void) {
     size_t new_stacksize = 16 * 1024;
     if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
         HAL_DANGER("night", "Error:  Can't set stack size %zu\n", new_stacksize);
-    pthread_create(&nightPid, &thread_attr, (void *(*)(void *))night_thread, NULL);
+    nightOn = 1;
+    if (pthread_create(&nightPid, &thread_attr, (void *(*)(void *))night_thread, NULL)) {
+        HAL_DANGER("night", "Can't create thread\n");
+        nightOn = 0;
+        ret = EXIT_FAILURE;
+    }
     if (pthread_attr_setstacksize(&thread_attr, stacksize))
         HAL_DANGER("night", "Error:  Can't set stack size %zu\n", stacksize);
     pthread_attr_destroy(&thread_attr);
-
-    nightOn = 1;
 
     return ret;
 }
