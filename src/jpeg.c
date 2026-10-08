@@ -137,6 +137,7 @@ int jpeg_get(short width, short height, char quality, char grayscale,
     if (ret && jpeg->data) { 
         free(jpeg->data);
         jpeg->data = NULL;
+        jpeg->length = 0;
     }
 
     pthread_mutex_unlock(&jpeg_mutex);
