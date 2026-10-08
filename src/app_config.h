@@ -37,6 +37,11 @@ struct AppConfig {
     char adc_device[128];
     int adc_threshold;
 
+    // [motion_detect]
+    bool motion_detect_enable;
+    int motion_detect_sensitivity;
+    int motion_detect_hold_s;
+
     // [isp]
     bool mirror;
     bool flip;

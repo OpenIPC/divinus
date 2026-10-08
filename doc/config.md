@@ -30,6 +30,15 @@ This document describes the fields that can be found within a configuration file
 - **adc_device**: Path to the ADC device used for night mode.
 - **adc_threshold**: Threshold raw value to trigger night mode, depends on the bitness of the given ADC device.
 
+## Motion detection section
+
+Software motion detection, published as ONVIF `tns1:VideoSource/MotionAlarm` events
+(PullPoint). Only available on infinity6 for now.
+
+- **enable**: Boolean to activate motion detection (default: `false`).
+- **sensitivity**: From 1 (only large movements) to 10 (small movements) (default: `5`).
+- **hold_s**: Seconds without movement before the motion state goes back to false (default: `5`).
+
 ## ISP section
 
 - **mirror**: Boolean to turn on image mirroring (default: `false`).
