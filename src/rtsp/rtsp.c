@@ -36,8 +36,10 @@ extern void request_idr();
 #define __STR_INTERLEAVED "interleaved"
 #define __STR_RTP_AVP_TCP "RTP/AVP/TCP"
 #define __STR_SESSION  "SESSION"
+#define __STR_CONTENT_LENGTH "CONTENT-LENGTH"
 #define __STR_PAUSE "PAUSE"
 #define __STR_RECORDING "RECORDING"
+#define __STR_GET_PARAMETER "GET_PARAMETER"
 #define __STR_RANGE  "RANGE"
 #define __SPACE " "
 
@@ -65,6 +67,7 @@ static void __method_setup(struct connection_item_t *p, rtsp_handle h);
 static void __method_play(struct connection_item_t *p, rtsp_handle h);
 static void __method_pause(struct connection_item_t *p, rtsp_handle h);
 static void __method_record(struct connection_item_t *p, rtsp_handle h);
+static void __method_get_parameter(struct connection_item_t *p, rtsp_handle h);
 static void __method_error(struct connection_item_t *p, rtsp_handle h);
 
 static void *rtspThrFxn(void *v);
@@ -133,17 +136,25 @@ static inline bufpool_handle __transpool_create(int num)
 /******************************************************************************
  *              RESPONSE IMPLEMENTATIONS
  ******************************************************************************/
+/* Formatted locally and sent like the interleaved packets: stdio on a
+ * non-blocking socket drops what it cannot write, leaving a truncated
+ * response between RTP frames */
 static int __rtsp_write(struct connection_item_t *p, const char *fmt, ...)
 {
+    char msg[__RTSP_TCP_BUF_SIZE + 256];
     va_list args;
-    int ret;
+    int len, ret;
+
+    va_start(args, fmt);
+    len = vsnprintf(msg, sizeof(msg), fmt, args);
+    va_end(args);
+    ASSERT(len >= 0 && len < (int)sizeof(msg), return FAILURE);
 
     pthread_mutex_lock(&p->write_mutex);
-    va_start(args, fmt);
-    ret = vfprintf(p->fp_tcp_write, fmt, args);
-    va_end(args);
-    fflush(p->fp_tcp_write);
+    ret = __tcp_send_all(p->client_fd, (unsigned char *)msg, len);
     pthread_mutex_unlock(&p->write_mutex);
+
+    if (ret != SUCCESS) ERR("send:%s\n", strerror(errno));
 
     return ret;
 }
@@ -160,7 +171,7 @@ static void __method_options(struct connection_item_t *p, rtsp_handle h)
 {
     __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
             "CSeq: %d\r\n"
-            "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n"
+            "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, GET_PARAMETER\r\n"
             "\r\n", p->cseq);
 }
 
@@ -311,6 +322,14 @@ static void __method_record(struct connection_item_t *p, rtsp_handle h)
         "RTSP/1.0 " __RESPONCE_STR_METHODNOTALLOWED "\r\n");
 }
 
+/* Clients send it empty as a keepalive */
+static void __method_get_parameter(struct connection_item_t *p, rtsp_handle h)
+{
+    __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
+            "CSeq: %d\r\n"
+            "\r\n", p->cseq);
+}
+
 static void __method_error(struct connection_item_t *p, rtsp_handle h)
 {
     __rtsp_write(p,
@@ -326,11 +345,13 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
         "\r\n" , p->cseq);
 
     for (int i = 0; i < sizeof(p->trans) / sizeof(*p->trans); i++) {
-        if (!p->trans[i].server_port_rtp) continue;
+        if (!p->trans[i].server_port_rtp && !p->trans[i].is_tcp) continue;
         p->track_id = i;
 
-        ASSERT(__bind_rtcp(p) == SUCCESS, return);
-        ASSERT(__bind_rtp(p) == SUCCESS, return);
+        if (!p->trans[i].is_tcp) {
+            ASSERT(__bind_rtcp(p) == SUCCESS, return);
+            ASSERT(__bind_rtp(p) == SUCCESS, return);
+        }
         p->trans[p->track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
         p->trans[p->track_id].rtp_seq = rand_r(&h->ctx);
         p->trans[p->track_id].rtcp_octet = 0;
@@ -363,6 +384,25 @@ static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
  *              METHOD IMPLEMENTATIONS
  ******************************************************************************/
 
+/* Interleaved frames from the client (RTCP receiver reports) and request
+ * bodies may arrive split and the socket is non-blocking: wait briefly for the
+ * rest instead of leaving it to be parsed as a request. The wait budget is
+ * shared by the whole packet or body */
+static int __read_client_data(struct connection_item_t *con, void *dst, size_t len, int *waits)
+{
+    size_t got = 0;
+
+    while ((got += fread((char *)dst + got, 1, len - got, con->fp_tcp_read)) < len) {
+        struct pollfd pfd = { .fd = con->client_fd, .events = POLLIN };
+        if (!ferror(con->fp_tcp_read) || errno != EAGAIN || ++*waits > 10)
+            return FAILURE;
+        clearerr(con->fp_tcp_read);
+        poll(&pfd, 1, 20);
+    }
+
+    return SUCCESS;
+}
+
 static int __message_proc_sock(struct list_t *e, void *p)
 {
     struct connection_item_t *con;
@@ -384,15 +424,19 @@ static int __message_proc_sock(struct list_t *e, void *p)
         int first_char = fgetc(con->fp_tcp_read);
         if (first_char == '$') {
             unsigned char head[3];
-            if (fread(head, 1, 3, con->fp_tcp_read) == 3) {
-                int len = (head[1] << 8) | head[2];
-                while (len > 0) {
-                    int r = fread(buf, 1, min(len, sizeof(buf)), con->fp_tcp_read);
-                    if (r <= 0) break;
-                    len -= r;
-                }
-                DBG("discarded interleaved packet (%d bytes)\n", (head[1] << 8) | head[2]);
+            int len = -1, waits = 0;
+            if (__read_client_data(con, head, 3, &waits) == SUCCESS) {
+                len = (head[1] << 8) | head[2];
+                while (len > 0 && __read_client_data(con, buf, min(len, sizeof(buf)), &waits) == SUCCESS)
+                    len -= min(len, sizeof(buf));
             }
+            if (len != 0) {
+                ERR("interleaved packet cut short, dropping connection\n");
+                con->con_state = __CON_S_DISCONNECTED;
+                ASSERT(bufpool_detach(con->pool, con) == SUCCESS, ERR("connection detach failed\n"));
+                return SUCCESS;
+            }
+            DBG("discarded interleaved packet (%d bytes)\n", (head[1] << 8) | head[2]);
             return SUCCESS;
         } else if (first_char != EOF) {
             ungetc(first_char, con->fp_tcp_read);
@@ -406,6 +450,7 @@ static int __message_proc_sock(struct list_t *e, void *p)
         con->method = __METHOD_NONE;
 
         char header = 0, isAuthValid = 0, *tok, *last;
+        int body_len = 0;
         unsigned long long session_id;
         /* parse line by line. hereafter parser is switched according to the finite state machine */
         while (__read_line(con, buf)) {
@@ -419,6 +464,7 @@ static int __message_proc_sock(struct list_t *e, void *p)
                 } else if (SCMP(__STR_RECORDING, buf))   { con->method = __METHOD_RECORDING;
                 } else if (SCMP(__STR_PAUSE, buf))       { con->method = __METHOD_PAUSE;
                 } else if (SCMP(__STR_TEARDOWN, buf))    { con->method = __METHOD_TEARDOWN;
+                } else if (SCMP(__STR_GET_PARAMETER, buf)) { con->method = __METHOD_GET_PARAMETER;
                 } header++;
             }
 
@@ -441,6 +487,10 @@ static int __message_proc_sock(struct list_t *e, void *p)
                 ASSERT(sscanf(tok, "%llx", &session_id) > 0, goto error);
                 con->given_session_id = session_id;
                 con->parser_state = __PARSER_S_SESSION;
+            } else if (SCMP(__STR_CONTENT_LENGTH, buf)) {
+                /* without a length the next request cannot be found */
+                ASSERT(sscanf(buf + strlen(__STR_CONTENT_LENGTH), " : %d", &body_len) == 1 &&
+                    body_len >= 0 && body_len <= 0xFFFF, con->con_state = __CON_S_DISCONNECTED);
             } else if (SCMP(__STR_TRANSPORT, buf)) {
                 if (strstr(buf, __STR_RTP_AVP_TCP)) {
                     con->trans[con->track_id].is_tcp = 1;
@@ -468,7 +518,20 @@ error:
             __PARSE_ERROR(con);
         }
 
-        if (con->parser_state == __PARSER_S_ERROR) {
+        /* no method takes a body: skip it so it is not read as the next request */
+        if (body_len > 0 && con->con_state != __CON_S_DISCONNECTED) {
+            int waits = 0;
+            while (body_len > 0 && __read_client_data(con, buf, min(body_len, sizeof(buf)), &waits) == SUCCESS)
+                body_len -= min(body_len, sizeof(buf));
+            if (body_len != 0) {
+                ERR("request body cut short, dropping connection\n");
+                con->con_state = __CON_S_DISCONNECTED;
+            }
+        }
+
+        if (con->con_state == __CON_S_DISCONNECTED) {
+            ASSERT(bufpool_detach(con->pool, con) == SUCCESS, ERR("connection detach failed\n"));
+        } else if (con->parser_state == __PARSER_S_ERROR) {
             __method_error(con, h);
         } else {
             if (con->method != __METHOD_NONE && h->isAuthOn && !isAuthValid)
@@ -482,14 +545,10 @@ error:
                 case __METHOD_PAUSE: __method_pause(con, h); break;
                 case __METHOD_RECORDING: __method_record(con, h); break;
                 case __METHOD_TEARDOWN: __method_teardown(con, h); break;
+                case __METHOD_GET_PARAMETER: __method_get_parameter(con, h); break;
                 case __METHOD_NONE:
-                    /* state DISCONNECTED connections should be garbage collected immediately.
-                       but sending thread might watches the connection right now.
-                       so the connection might live at here */
-                    if (con->con_state != __CON_S_DISCONNECTED) {
-                        ERR("unexpected empty request, forcing disconnect\n");
-                        con->con_state = __CON_S_DISCONNECTED;
-                    }
+                    ERR("unexpected empty request, forcing disconnect\n");
+                    con->con_state = __CON_S_DISCONNECTED;
                     ASSERT(bufpool_detach(con->pool, con) == SUCCESS, ERR("connection detach failed\n"));
                     break;
                 default: ERR("unexpected method state\n"); return FAILURE;
@@ -513,11 +572,14 @@ static int __connection_reset(void *v)
         DBG("force connection to close\n");
     }
 
-    FCLOSE(p->fp_tcp_read);
-    FCLOSE(p->fp_tcp_write);
+    /* the stream owns client_fd: close it once, as another connection may
+     * already have been given the same number */
+    if (p->fp_tcp_read) {
+        FCLOSE(p->fp_tcp_read);
+        p->client_fd = 0;
+    }
     CLOSE(p->client_fd);
 
-    p->client_fd = 0;
     p->con_state = __CON_S_DISCONNECTED;
 
     for (int i = 0; i < sizeof(p->trans) / sizeof(*p->trans); i++) {
@@ -536,9 +598,11 @@ static int __connection_reset(void *v)
     p->cseq = 0;
 
     ctx = p->trans[0].rtp_timestamp;
+    memset(p->trans, 0, sizeof(p->trans));
 
     /* randomize session id to avoid conflict */
     p->session_id = __get_random_llu(&ctx);
+    p->ssrc = (unsigned int)__get_random_llu(&ctx);
 
     return SUCCESS;
 }
@@ -561,7 +625,6 @@ __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd,
     p->client_fd=fd;
 
     ASSERT((p->fp_tcp_read = fdopen(fd, "r")), goto error);
-    ASSERT((p->fp_tcp_write = fdopen(fd, "w")), goto error);
 
     p->tx_len = 0;
     if (!p->tx_buf) p->tx_buf = malloc(RTSP_TX_BATCH);
@@ -569,7 +632,7 @@ __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd,
 
     return list_add(head, &(p->list_entry));
 error:
-    __connection_reset(&p->list_entry);
+    ASSERT(bufpool_detach(con_pool, p) == SUCCESS, ERR("connection detach failed\n"));
     return FAILURE;
 }
 
@@ -731,45 +794,93 @@ error:
     return FAILURE;
 }
 
+/* Refused clients come in bursts: one line per burst, not per client */
+static void __accept_warn(const char *reason)
+{
+    static unsigned int last_ms, dropped;
+    static char warned;
+    unsigned int now = millis();
+
+    if (warned && now - last_ms < 10000) {
+        dropped++;
+        return;
+    }
+    ERR("refusing RTSP client: %s (%u more refused since last notice)\n", reason, dropped);
+    warned = 1;
+    last_ms = now;
+    dropped = 0;
+}
+
 static inline int __accept_proc_sock(rtsp_handle h, int server_fd, struct sock_select_t *p_socks)
 {
+    /* kept open to be given up when out of descriptors, so the pending
+     * client can still be accepted and closed instead of spinning select */
+    static int spare_fd = -1;
     unsigned int len;
-    int fd;
+    int fd, full;
     struct sockaddr_in from_addr;
 
-    if (FD_ISSET(server_fd, &p_socks->rfds) != 0) {
-        /* accept new connection */
-        len = sizeof(from_addr);
+    if (FD_ISSET(server_fd, &p_socks->rfds) == 0)
+        return SUCCESS;
 
-        fd = accept(server_fd, (struct sockaddr *)&from_addr,
-                &len);
+    if (spare_fd < 0)
+        spare_fd = open("/dev/null", O_RDONLY | O_CLOEXEC);
 
-        /* we have selected this fd, but still EAGAIN may occur */
-        if (fd < 0){
-            ASSERT(errno == EAGAIN, ({
-                        ERR("accept:%s\n",strerror(errno));
-                        return FAILURE;}));
-            return SUCCESS;
+    len = sizeof(from_addr);
+    fd = accept(server_fd, (struct sockaddr *)&from_addr, &len);
+
+    if (fd < 0) {
+        int err = errno;
+        switch (err) {
+            case EBADF: case EINVAL: case ENOTSOCK: case EFAULT:
+                ERR("accept:%s\n", strerror(err));
+                return FAILURE;
+            case EMFILE: case ENFILE:
+                if (spare_fd >= 0) {
+                    close(spare_fd);
+                    fd = accept(server_fd, NULL, NULL);
+                    if (fd >= 0) close(fd);
+                    spare_fd = open("/dev/null", O_RDONLY | O_CLOEXEC);
+                }
+                __accept_warn(strerror(err));
+                return SUCCESS;
+            case EAGAIN:
+#if EWOULDBLOCK != EAGAIN
+            case EWOULDBLOCK:
+#endif
+            case EINTR:
+                return SUCCESS;
+            default:
+                __accept_warn(strerror(err));
+                return SUCCESS;
         }
-
-        /* set server fd to non-blocking */
-        fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
-
-        /* A keyframe is a few hundred KB and the kernel's default TCP send
-         * buffer (64 KB on small boards) cannot hold it: the interleaved sender
-         * then spins on partial writes for as long as the link takes to drain,
-         * hundreds of ms of CPU per keyframe. Ask for a buffer that fits one
-         * (SO_SNDBUFFORCE bypasses wmem_max, which needs root). */
-        {
-            int sz = 512 * 1024;
-            if (setsockopt(fd, SOL_SOCKET, SO_SNDBUFFORCE, &sz, sizeof(sz)))
-                setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz));
-        }
-
-        /* update connection-list exclusively */
-        ASSERT(__connection_list_add(h->con_pool, &h->con_list, fd, from_addr) == SUCCESS,
-                return FAILURE);
     }
+
+    pthread_mutex_lock(&h->con_pool->mutex);
+    full = h->con_pool->free_list.list == NULL;
+    pthread_mutex_unlock(&h->con_pool->mutex);
+    if (full) {
+        close(fd);
+        __accept_warn("all connection slots in use");
+        return SUCCESS;
+    }
+
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+
+    /* A keyframe is a few hundred KB and the kernel's default TCP send
+     * buffer (64 KB on small boards) cannot hold it: the interleaved sender
+     * then spins on partial writes for as long as the link takes to drain,
+     * hundreds of ms of CPU per keyframe. Ask for a buffer that fits one
+     * (SO_SNDBUFFORCE bypasses wmem_max, which needs root). */
+    {
+        int sz = 512 * 1024;
+        if (setsockopt(fd, SOL_SOCKET, SO_SNDBUFFORCE, &sz, sizeof(sz)))
+            setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz));
+    }
+
+    /* on failure the slot reset has already closed fd */
+    if (__connection_list_add(h->con_pool, &h->con_list, fd, from_addr) != SUCCESS)
+        __accept_warn("cannot set up the connection");
 
     return SUCCESS;
 }
@@ -814,7 +925,9 @@ static void *rtspThrFxn(void *v)
 
         ASSERT(list_map_inline(&rh->con_list, (__set_select_sock), &socks) == SUCCESS, goto error);
 
-        ASSERT((ret_select = select(socks.nfds, &(socks.rfds), NULL, NULL, &(socks.timeout))) >= 0, ({
+        ret_select = select(socks.nfds, &(socks.rfds), NULL, NULL, &(socks.timeout));
+        if (ret_select < 0 && errno == EINTR) continue;
+        ASSERT(ret_select >= 0, ({
                     ERR("select:%s\n", strerror(errno));
                     goto error;}));
 
