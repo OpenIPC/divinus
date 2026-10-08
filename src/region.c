@@ -426,6 +426,12 @@ found_font:;
                             v4_region_create(id, rect, osds[id].opal);
                             v4_region_setbitmap(id, &bitmap);
                             break;
+#if __ARM_ARCH == 6
+                        case HAL_PLATFORM_FH:
+                            fh_region_create(&osds[id].hand, rect, osds[id].opal);
+                            fh_region_setbitmap(&osds[id].hand, &bitmap);
+                            break;
+#endif
 #elif defined(__mips__)
                         case HAL_PLATFORM_T31:
                             t31_region_create(&osds[id].hand, rect, osds[id].opal);
@@ -493,6 +499,12 @@ found_font:;
                                 v4_region_create(id, rect, osds[id].opal);
                                 v4_region_setbitmap(id, &bitmap);
                                 break;
+#if __ARM_ARCH == 6
+                            case HAL_PLATFORM_FH:
+                                fh_region_create(&osds[id].hand, rect, osds[id].opal);
+                                fh_region_setbitmap(&osds[id].hand, &bitmap);
+                                break;
+#endif
 #elif defined(__mips__)
                             case HAL_PLATFORM_T31:
                                 t31_region_create(&osds[id].hand, rect, osds[id].opal);
@@ -516,6 +528,9 @@ found_font:;
                         case HAL_PLATFORM_V2:  v2_region_destroy(id); break;
                         case HAL_PLATFORM_V3:  v3_region_destroy(id); break;
                         case HAL_PLATFORM_V4:  v4_region_destroy(id); break;
+#if __ARM_ARCH == 6
+                        case HAL_PLATFORM_FH:  fh_region_destroy(&osds[id].hand); break;
+#endif
 #elif defined(__mips__)
                         case HAL_PLATFORM_T31: t31_region_destroy(&osds[id].hand); break;
 #endif
