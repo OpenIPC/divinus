@@ -6,6 +6,7 @@ typedef enum {
     HAL_PLATFORM_UNK,
     HAL_PLATFORM_AK,
     HAL_PLATFORM_CVI,
+    HAL_PLATFORM_F2,
     HAL_PLATFORM_GM,
     HAL_PLATFORM_I3,
     HAL_PLATFORM_I6,
@@ -53,6 +54,12 @@ typedef enum {
     HAL_VIDPROFILE_MAIN,
     HAL_VIDPROFILE_HIGH
 } hal_vidprofile;
+
+typedef enum {
+    HAL_LIGHT_NONE  = 0b00,
+    HAL_LIGHT_IR    = 0b01,
+    HAL_LIGHT_WHITE = 0b10
+} hal_light;
 
 typedef struct {
     unsigned char *data[8];

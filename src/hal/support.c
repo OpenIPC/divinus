@@ -22,7 +22,7 @@ void hal_identify(void) {
     char *endMark, line[200] = {0};
 
 #if defined(__ARM_PCS_VFP)
-    if (!access("/proc/mi_modules", F_OK) && 
+    if (!access("/proc/mi_modules", F_OK) &&
         hal_registry(0x1F003C00, &series, OP_READ)) {
         char package[4] = {0};
         short memory = 0;
@@ -56,9 +56,9 @@ void hal_identify(void) {
             case 0xEF:
                 if (memory > 128)
                     strcpy(chip, "SSC327Q");
-                else if (memory > 64) 
+                else if (memory > 64)
                     strcpy(chip, "SSC32[5/7]D");
-                else 
+                else
                     strcpy(chip, "SSC32[3/5/7]");
                 if (package[2] == 'B' && chip[strlen(chip) - 1] != 'Q')
                     strcat(chip, "E");
@@ -79,7 +79,7 @@ void hal_identify(void) {
                 }
                 strcpy(family, "infinity6e");
                 break;
-            case 0xF2: 
+            case 0xF2:
                 strcpy(chip, "SSC33[3/5/7]");
                 if (memory > 64)
                     strcat(chip, "D");
@@ -115,7 +115,7 @@ void hal_identify(void) {
                 plat = HAL_PLATFORM_UNK;
                 break;
         }
-    } else if (!access("/proc/mstar/kernel", 0) && 
+    } else if (!access("/proc/mstar/kernel", 0) &&
         hal_registry(0x1F2025A4, &val, OP_READ)) {
         plat = HAL_PLATFORM_I3;
         switch (val & 0xF000) {
@@ -142,8 +142,37 @@ void hal_identify(void) {
         return;
     }
 #endif
-    
+
 #if defined(__arm__) && !defined(__ARM_PCS_VFP)
+#if __ARM_ARCH == 6
+    {
+        char name[16] = {0};
+        const char *sources[] = {"/proc/cpuinfo", "/proc/driver/chip"};
+        for (int i = 0; i < 2 && !name[0]; i++) {
+            if (!(file = fopen(sources[i], "r"))) continue;
+            while (fgets(line, 200, file)) {
+                char *part = strstr(line, "FH8");
+                if (part) {
+                    sscanf(part, "%15s", name);
+                    break;
+                }
+            }
+            fclose(file);
+        }
+        if (name[0]) {
+            plat = HAL_PLATFORM_F2;
+            strncpy(chip, name, sizeof(chip) - 1);
+            strcpy(family, "fullhan");
+            chnCount = F2_VENC_CHN_NUM;
+            chnState = (hal_chnstate*)f2_state;
+            aud_thread = f2_audio_thread;
+            isp_thread = f2_image_thread;
+            vid_thread = f2_video_thread;
+            return;
+        }
+    }
+#endif
+
     if (!access("/dev/vpd", F_OK)) {
         plat = HAL_PLATFORM_GM;
         strcpy(chip, "GM813x");
@@ -183,7 +212,7 @@ void hal_identify(void) {
 #endif
 
 #ifdef __mips__
-    if (!access("/proc/jz", F_OK) && 
+    if (!access("/proc/jz", F_OK) &&
         hal_registry(0x1300002C, &val, OP_READ)) {
         unsigned int type;
         hal_registry(0x13540238, &type, OP_READ);
@@ -276,7 +305,7 @@ void hal_identify(void) {
             }
     }
 
-    sprintf(chip, "%s%X", 
+    sprintf(chip, "%s%X",
         ((out >> 28) == 0x7) ? "GK" : "Hi", out);
     if (chip[6] == '0') {
         chip[6] = 'V';
@@ -296,7 +325,7 @@ void hal_identify(void) {
         aud_thread = v1_audio_thread;
         isp_thread = v1_image_thread;
         vid_thread = v1_video_thread;
-        return;    
+        return;
     } else if (series == 2) {
         plat = HAL_PLATFORM_V2;
         strcpy(family, "hisi-gen2");
@@ -305,7 +334,7 @@ void hal_identify(void) {
         aud_thread = v2_audio_thread;
         isp_thread = v2_image_thread;
         vid_thread = v2_video_thread;
-        return;    
+        return;
     } else if (series == 3) {
         plat = HAL_PLATFORM_V3;
         strcpy(family, "hisi-gen3");
