@@ -1,0 +1,354 @@
+{
+  "source": "FFmpeg lavfi testsrc2; generated locally, not captured or vendor data",
+  "ffmpeg_version": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers\nbuilt with Apple clang version 17.0.0 (clang-1700.6.3.2)\nconfiguration: --prefix=/opt/homebrew/Cellar/ffmpeg/8.0.1_4 --enable-shared --enable-pthreads --enable-version3 --cc=clang --host-cflags= --host-ldflags= --enable-ffplay --enable-gpl --enable-libsvtav1 --enable-libopus --enable-libx264 --enable-libmp3lame --enable-libdav1d --enable-libvpx --enable-libx265 --enable-openssl --enable-videotoolbox --enable-audiotoolbox --enable-neon\nlibavutil      60.  8.100 / 60.  8.100\nlibavcodec     62. 11.100 / 62. 11.100\nlibavformat    62.  3.100 / 62.  3.100\nlibavdevice    62.  1.100 / 62.  1.100\nlibavfilter    11.  4.100 / 11.  4.100\nlibswscale      9.  1.100 /  9.  1.100\nlibswresample   6.  1.100 /  6.  1.100\n\nExiting with exit code 0\n",
+  "ffmpeg_executable_sha256": "0a96da2735695308d964e25fa6f4a0db2e9d24031390360f4c5ff96a4f8938e5",
+  "frames": [
+    {
+      "name": "h264_small",
+      "codec": "h264",
+      "width": 32,
+      "height": 32,
+      "bytes": 1149,
+      "sha256": "3bc8c92537c8932ccb4df48c3be679c7bd912f89bdd89d33c39e377a71656433",
+      "nals": [
+        {
+          "offset": 4,
+          "length": 20,
+          "type": 7,
+          "sha256": "1f70b27fd8d40bcef76f908adfb0ce3d79eeee05e0760f5225ee7466e3052540"
+        },
+        {
+          "offset": 28,
+          "length": 6,
+          "type": 8,
+          "sha256": "17031f38531a95bbb24037854cc8cca7015039a47750c66d52a6c7b579eb7a7d"
+        },
+        {
+          "offset": 37,
+          "length": 605,
+          "type": 6,
+          "sha256": "690cb246eba4de60996ad03d42740652a56a67737ffc5f02026f180836c7cea3"
+        },
+        {
+          "offset": 645,
+          "length": 504,
+          "type": 5,
+          "sha256": "c23cecfd085d9797f41498d53839b2a30c56264918fd37d9e46782016f8a9872"
+        }
+      ],
+      "decoded_framemd5_sha256": "c38d3ca811410cdb7bb94511181ddfae26348add757a8c45941862025b520dfa",
+      "decoded_frame": "0,          0,          0,        1,     1536, 43350dbd97b161ceda70ae943d1a4a73"
+    },
+    {
+      "name": "h264_large",
+      "codec": "h264",
+      "width": 512,
+      "height": 512,
+      "bytes": 15129,
+      "sha256": "77a0d3ac1e674bc68c70640c7ce291d2a154ed131110bd1ebd1a627cc3c7fc2b",
+      "nals": [
+        {
+          "offset": 4,
+          "length": 22,
+          "type": 7,
+          "sha256": "b9ea87c40734f045810610dbd7435947ecb1c445e0f153809ce1c2c4096c56dd"
+        },
+        {
+          "offset": 30,
+          "length": 6,
+          "type": 8,
+          "sha256": "17031f38531a95bbb24037854cc8cca7015039a47750c66d52a6c7b579eb7a7d"
+        },
+        {
+          "offset": 39,
+          "length": 605,
+          "type": 6,
+          "sha256": "690cb246eba4de60996ad03d42740652a56a67737ffc5f02026f180836c7cea3"
+        },
+        {
+          "offset": 647,
+          "length": 14482,
+          "type": 5,
+          "sha256": "be284e15eceebc5fac4ba33436b196214d280481011a134706492d9efb957314"
+        }
+      ],
+      "decoded_framemd5_sha256": "db8e6b9b59d73edf2956b71170a06e4c4a99d75bde62aac0ffc581cf3b1f1728",
+      "decoded_frame": "0,          0,          0,        1,   393216, e6494adb14609824bd9d16f66ba19e5b"
+    },
+    {
+      "name": "hevc_small",
+      "codec": "hevc",
+      "width": 32,
+      "height": 32,
+      "bytes": 662,
+      "sha256": "9ee064c85f7a16142be8dd88bf8808a513e9356a2cba44c063874f85cd152839",
+      "nals": [
+        {
+          "offset": 4,
+          "length": 23,
+          "type": 32,
+          "sha256": "322d8cdb2fa7d226a76b658fad4cb7e9b8be933a7c12821f26a5b9f4bda1780d"
+        },
+        {
+          "offset": 31,
+          "length": 39,
+          "type": 33,
+          "sha256": "d9109a3aca828bb2eb85996e118e5053d0a6a8a5c93fe55f316b62f8c035d541"
+        },
+        {
+          "offset": 74,
+          "length": 6,
+          "type": 34,
+          "sha256": "91e15bff8a05b49aaaac4ab64307f709d149b7a52731390e3febf3bb8bc8c933"
+        },
+        {
+          "offset": 83,
+          "length": 579,
+          "type": 20,
+          "sha256": "c332896063b0dcb25233559a1e7b6401d09fec01db70a061fa071f6fb51441e8"
+        }
+      ],
+      "decoded_framemd5_sha256": "9b58fc839c7ea91d45453aae9b61d937f2c2d9bb1a8f1545338f14661d18a6ce",
+      "decoded_frame": "0,          0,          0,        1,     1536, b2acd78d82a8a8ca84a51b4b3498631d"
+    },
+    {
+      "name": "hevc_large",
+      "codec": "hevc",
+      "width": 512,
+      "height": 512,
+      "bytes": 16916,
+      "sha256": "eeff90708076b5420dcdfcf2fb72a372599a7b89a3a9eb902df15350287fe19b",
+      "nals": [
+        {
+          "offset": 4,
+          "length": 23,
+          "type": 32,
+          "sha256": "4190593c46462c7d23734137a099e1ffc84a165bc5b7b45a5fdedd8d6bd5a354"
+        },
+        {
+          "offset": 31,
+          "length": 41,
+          "type": 33,
+          "sha256": "fa78a705cc7e72fe0fa00bb91ea32abf27ac19dedc5fca2357784a1dfd802f98"
+        },
+        {
+          "offset": 76,
+          "length": 7,
+          "type": 34,
+          "sha256": "634789edf921729e6118f1cc8ada36c31cfc378d6db1d305e20ce3de92cdfe62"
+        },
+        {
+          "offset": 86,
+          "length": 16830,
+          "type": 20,
+          "sha256": "5db30336ae048b7c876b3ad59aec582aa371dce42fe2d2be036004db8963dbba"
+        }
+      ],
+      "decoded_framemd5_sha256": "fb3af2f92cee2884a92c2d6fc3aaa2df6051a1951843510cb7e75ef7763c5617",
+      "decoded_frame": "0,          0,          0,        1,   393216, cbbdf7c8f83217bb4f3bfeea236f211a"
+    }
+  ],
+  "header_sha256": "7b72402169874b7d32523b44967f907bb906b59ce42d11cda75a49e266aec03e",
+  "generation_commands": [
+    {
+      "argv": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=32x32:rate=1",
+        "-frames:v",
+        "1",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "18",
+        "-threads",
+        "1",
+        "-x264-params",
+        "threads=1:keyint=1:min-keyint=1:scenecut=0:bframes=0:repeat-headers=1",
+        "-f",
+        "h264",
+        "<out>/h264_small.h264"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        "<out>/h264_small.h264",
+        "-f",
+        "framemd5",
+        "<out>/h264_small.framemd5"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=512x512:rate=1",
+        "-frames:v",
+        "1",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "18",
+        "-threads",
+        "1",
+        "-x264-params",
+        "threads=1:keyint=1:min-keyint=1:scenecut=0:bframes=0:repeat-headers=1",
+        "-f",
+        "h264",
+        "<out>/h264_large.h264"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        "<out>/h264_large.h264",
+        "-f",
+        "framemd5",
+        "<out>/h264_large.framemd5"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=32x32:rate=1",
+        "-frames:v",
+        "1",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:v",
+        "libx265",
+        "-preset",
+        "fast",
+        "-crf",
+        "18",
+        "-threads",
+        "1",
+        "-x265-params",
+        "pools=none:frame-threads=1:wpp=0:info=0:keyint=1:min-keyint=1:scenecut=0:bframes=0:repeat-headers=1",
+        "-f",
+        "hevc",
+        "<out>/hevc_small.hevc"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "x265 [info]: HEVC encoder version 4.1+1-1d117be\nx265 [info]: build info [Mac OS X][clang 17.0.0][64 bit] 8bit+10bit+12bit\nx265 [info]: using cpu capabilities: NEON Neon_DotProd Neon_I8MM\nx265 [info]: Main Intra profile, Level-1 (Main tier)\nx265 [warning]: Too few rows/columns, --wpp disabled\nx265 [warning]: No thread pool allocated, --lookahead-slices disabled\nx265 [info]: Slices                              : 1\nx265 [info]: frame threads / pool features       : 1 / none\nx265 [info]: Coding QT: max CU size, min CU size : 32 / 8\nx265 [info]: Residual QT: max TU size, max depth : 32 / 1 inter / 1 intra\nx265 [info]: ME / range / subpel / merge         : hex / 57 / 2 / 2\nx265 [info]: Lookahead / bframes / badapt        : 0 / 0 / 0\nx265 [info]: b-pyramid / weightp / weightb       : 0 / 0 / 0\nx265 [info]: References / ref-limit  cu / depth  : 1 / on / on\nx265 [info]: AQ: mode / str / qg-size / cu-tree  : 2 / 1.0 / 32 / 0\nx265 [info]: Rate Control / qCompress            : CRF-18.0 / 0.60\nx265 [info]: tools: rd=2 psy-rd=2.00 rskip mode=1 signhide tmvp fast-intra\nx265 [info]: tools: strong-intra-smoothing deblock sao\nx265 [info]: frame I:      1, Avg QP:16.00  kb/s: 5.18    \n\nencoded 1 frames in 0.00s (952.38 fps), 5.18 kb/s, Avg QP:16.00\n"
+    },
+    {
+      "argv": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        "<out>/hevc_small.hevc",
+        "-f",
+        "framemd5",
+        "<out>/hevc_small.framemd5"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=512x512:rate=1",
+        "-frames:v",
+        "1",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:v",
+        "libx265",
+        "-preset",
+        "fast",
+        "-crf",
+        "18",
+        "-threads",
+        "1",
+        "-x265-params",
+        "pools=none:frame-threads=1:wpp=0:info=0:keyint=1:min-keyint=1:scenecut=0:bframes=0:repeat-headers=1",
+        "-f",
+        "hevc",
+        "<out>/hevc_large.hevc"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "x265 [info]: HEVC encoder version 4.1+1-1d117be\nx265 [info]: build info [Mac OS X][clang 17.0.0][64 bit] 8bit+10bit+12bit\nx265 [info]: using cpu capabilities: NEON Neon_DotProd Neon_I8MM\nx265 [info]: Main Intra profile, Level-3 (Main tier)\nx265 [warning]: No thread pool allocated, --lookahead-slices disabled\nx265 [info]: Slices                              : 1\nx265 [info]: frame threads / pool features       : 1 / none\nx265 [info]: Coding QT: max CU size, min CU size : 64 / 8\nx265 [info]: Residual QT: max TU size, max depth : 32 / 1 inter / 1 intra\nx265 [info]: ME / range / subpel / merge         : hex / 57 / 2 / 2\nx265 [info]: Lookahead / bframes / badapt        : 0 / 0 / 0\nx265 [info]: b-pyramid / weightp / weightb       : 0 / 0 / 0\nx265 [info]: References / ref-limit  cu / depth  : 1 / on / on\nx265 [info]: AQ: mode / str / qg-size / cu-tree  : 2 / 1.0 / 32 / 0\nx265 [info]: Rate Control / qCompress            : CRF-18.0 / 0.60\nx265 [info]: tools: rd=2 psy-rd=2.00 rskip mode=1 signhide tmvp fast-intra\nx265 [info]: tools: strong-intra-smoothing deblock sao\nx265 [info]: frame I:      1, Avg QP:12.85  kb/s: 135.21  \n\nencoded 1 frames in 0.05s (18.62 fps), 135.21 kb/s, Avg QP:12.85\n"
+    },
+    {
+      "argv": [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        "<out>/hevc_large.hevc",
+        "-f",
+        "framemd5",
+        "<out>/hevc_large.framemd5"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

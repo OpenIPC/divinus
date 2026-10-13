@@ -523,8 +523,12 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
         for (int i = 0; i < stream->count; i++) {
             unsigned char *data = stream->pack[i].data + stream->pack[i].offset;
             size_t length = stream->pack[i].length - stream->pack[i].offset;
-            if (length >= 4 && data[0] == 0 && data[1] == 0 && data[2] == 0 && data[3] == 1) {
-                unsigned char *nalptr = data;
+            size_t leading_zeros = 0;
+            while (leading_zeros < length && data[leading_zeros] == 0)
+                leading_zeros++;
+            if (leading_zeros >= 2 && leading_zeros < length && data[leading_zeros] == 1) {
+                /* Accept either Annex-B prefix and skip any leading_zero_8bits. */
+                unsigned char *nalptr = data + leading_zeros - 2;
                 size_t single_len = 0;
                 while (nal_split(data, &nalptr, &single_len, length) == SUCCESS) {
                     ASSERT(__transfer_nal_h26x(&(trans.list_head), nalptr, single_len, h->isH265) == SUCCESS, goto error);
