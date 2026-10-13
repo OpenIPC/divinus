@@ -363,7 +363,8 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
         nalptr = buf;
         single_len = 0;
         while (nal_split(buf, &nalptr, &single_len, len) == SUCCESS) {
-            if (nalptr[0] >> 1 & 0x3F == H265_NAL_TYPE_VPS) {
+            if ((nalptr[0] >> 1 & 0x3F) == H265_NAL_TYPE_VPS) {
+                ASSERT(single_len >= 4, return FAILURE);
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]), single_len), return FAILURE);
 
                 DASSERT(base64->base == 64, return FAILURE);
