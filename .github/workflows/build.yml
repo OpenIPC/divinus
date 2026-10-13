@@ -9,6 +9,18 @@ on:
   workflow_dispatch:
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test RTSP cache and RTP framing
+        run: make -C tests test
+
   build:
     runs-on: ubuntu-latest
     steps:
