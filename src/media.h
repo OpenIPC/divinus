@@ -20,7 +20,7 @@
 #include "jpeg.h"
 #include "lib/shine/layer3.h"
 #include "rtmp.h"
-#include "rtsp/rtsp_server.h"
+#include "rtsp.h"
 #include "server.h"
 #include "stream.h"
 

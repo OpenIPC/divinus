@@ -28,6 +28,8 @@ previous=$(cat .previous 2>/dev/null)
 if [ "$1" != "$previous" ]; then
 	echo "$1" > .previous
 	make -C src clean
+	git submodule init
+	git submodule update
 fi
 
 if [ "$1" = "arm-glibc" ] || [ "$1" = "hisi-v4a" ]; then
