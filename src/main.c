@@ -4,7 +4,7 @@
 #include "media.h"
 #include "network.h"
 #include "night.h"
-#include "rtsp/rtsp_server.h"
+#include "rtsp.h"
 #include "server.h"
 #include "watchdog.h"
 
@@ -107,7 +107,6 @@ int main(int argc, char *argv[]) {
         record_start();
 
     while (keepRunning) {
-        if (app_config.rtsp_enable) rtsp_tick(rtspHandle);
         watchdog_reset();
         sleep(1);
     }
