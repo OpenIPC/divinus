@@ -1,0 +1,5 @@
+-std=c11
+-D__arm__
+-D__ARM_PCS
+-D__ARM_ARCH=6
+-I.

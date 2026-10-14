@@ -61,6 +61,12 @@
         "compilerPath": "toolchain/toolchain.rockchip-rv11xx/bin/arm-rockchip830-linux-uclibcgnueabihf-gcc",
         "cStandard": "c11"
       },{
+        "name": "armv6-musl",
+        "includePath": ["${workspaceFolder}/**"],
+        "defines": ["__arm__", "__ARM_PCS", "__ARM_ARCH=6"],
+        "compilerPath": "toolchain/toolchain.fullhan-fh8852v200/bin/arm-openipc-linux-musleabi-gcc",
+        "cStandard": "c11"
+      },{
         "name": "mips-musl",
         "includePath": ["${workspaceFolder}/**"],
         "defines": ["__mips__"],

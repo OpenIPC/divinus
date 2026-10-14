@@ -60,6 +60,12 @@
         "use_new_terminal": false
     },
     {
+        "label": "Config: armv6-musl",
+        "command": "cp .zed/profiles/armv6-musl.txt compile_flags.txt",
+        "hide": "always",
+        "use_new_terminal": false
+    },
+    {
         "label": "Config: mips-musl",
         "command": "cp .zed/profiles/mips-musl.txt compile_flags.txt",
         "hide": "always",
