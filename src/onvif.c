@@ -4,6 +4,8 @@ IMPORT_STR(.rodata, "../res/onvif/capabilities.xml", capabilitiesxml);
 extern const char capabilitiesxml[];
 IMPORT_STR(.rodata, "../res/onvif/deviceinfo.xml", deviceinfoxml);
 extern const char deviceinfoxml[];
+IMPORT_STR(.rodata, "../res/onvif/fault.xml", faultxml);
+extern const char faultxml[];
 IMPORT_STR(.rodata, "../res/onvif/discovery.xml", discoveryxml);
 extern const char discoveryxml[];
 IMPORT_STR(.rodata, "../res/onvif/mediaprofile.xml", mediaprofilexml);
@@ -18,11 +20,52 @@ IMPORT_STR(.rodata, "../res/onvif/systemtime.xml", systemtimexml);
 extern const char systemtimexml[];
 IMPORT_STR(.rodata, "../res/onvif/videosources.xml", videosourcesxml);
 extern const char videosourcesxml[];
+IMPORT_STR(.rodata, "../res/onvif/event.xml", eventxml);
+extern const char eventxml[];
+IMPORT_STR(.rodata, "../res/onvif/eventcaps.xml", eventcapsxml);
+extern const char eventcapsxml[];
+IMPORT_STR(.rodata, "../res/onvif/eventprops.xml", eventpropsxml);
+extern const char eventpropsxml[];
+IMPORT_STR(.rodata, "../res/onvif/notification.xml", notificationxml);
+extern const char notificationxml[];
+IMPORT_STR(.rodata, "../res/onvif/pullmessages.xml", pullmessagesxml);
+extern const char pullmessagesxml[];
+IMPORT_STR(.rodata, "../res/onvif/pullpoint.xml", pullpointxml);
+extern const char pullpointxml[];
+IMPORT_STR(.rodata, "../res/onvif/renew.xml", renewxml);
+extern const char renewxml[];
+IMPORT_STR(.rodata, "../res/onvif/services.xml", servicesxml);
+extern const char servicesxml[];
+IMPORT_STR(.rodata, "../res/onvif/syncpoint.xml", syncpointxml);
+extern const char syncpointxml[];
+IMPORT_STR(.rodata, "../res/onvif/unsubscribe.xml", unsubscribexml);
+extern const char unsubscribexml[];
 
-const char onvifgood[] = "HTTP/1.1 200 OK\r\n" \
-                         "Content-Type: application/soap+xml; charset=utf-8\r\n" \
-                         "Connection: close\r\n" \
-                         "\r\n";
+static void onvif_reply(char *response, int *respLen, const char *status, const char *xml, ...) {
+    int maxLen = *respLen;
+    int headerLen = snprintf(response, maxLen,
+        "HTTP/1.1 %s\r\n"
+        "Content-Type: application/soap+xml; charset=utf-8\r\n"
+        "Connection: close\r\n"
+        "\r\n", status);
+
+    va_list args;
+    va_start(args, xml);
+    int bodyLen = vsnprintf(response + headerLen, maxLen - headerLen, xml, args);
+    va_end(args);
+
+    if (bodyLen >= maxLen - headerLen) {
+        HAL_WARNING("onvif", "Response truncated to %d bytes!\n", maxLen - 1);
+        bodyLen = maxLen - headerLen - 1;
+    }
+    *respLen = headerLen + bodyLen;
+}
+
+void onvif_respond_fault(char *response, int *respLen, bool sender,
+    const char *subcode, const char *reason) {
+    onvif_reply(response, respLen, sender ? "400 Bad Request" : "500 Internal Server Error",
+        faultxml, sender ? "Sender" : "Receiver", subcode, reason);
+}
 
 extern NetInfo netinfo;
 pthread_t onvifPid = 0;
@@ -137,38 +180,18 @@ void *onvif_thread(void) {
 
 char* onvif_extract_soap_action(const char* soap_data) {
     static char action[128];
-    char *action_start = NULL;
 
-    char *body_start = strstr(soap_data, "Body");
-    if (!body_start) return NULL;
-
-    body_start = strchr(body_start, '>');
-    if (!body_start) return NULL;
-    body_start++;
-
-    while (*body_start && isspace(*body_start)) body_start++;
-
-    if (*body_start != '<') return NULL;
-    body_start++;
-
-    char *action_end = strchr(body_start, ' ');
-    if (!action_end) action_end = strchr(body_start, '>');
-    if (!action_end) return NULL;
-
-    int action_len = action_end - body_start;
-    if (action_len >= sizeof(action)) action_len = sizeof(action) - 1;
-
-    strncpy(action, body_start, action_len);
-    action[action_len] = '\0';
-
-    return action;
+    return soap_action(soap_data, action, sizeof(action)) ? action : NULL;
 }
 
 bool onvif_is_preauth_action(const char *action) {
     if (!action || EMPTY(action))
         return false;
 
+    // PRE_AUTH access class in ONVIF Core
     if (EQUALS(action, "GetCapabilities") ||
+        EQUALS(action, "GetServiceCapabilities") ||
+        EQUALS(action, "GetServices") ||
         EQUALS(action, "GetSystemDateAndTime"))
         return true;
 
@@ -176,85 +199,37 @@ bool onvif_is_preauth_action(const char *action) {
 }
 
 bool onvif_validate_soap_auth(const char *soap_data) {
-    const char *created_tag = "Created", *digest_tag = "PasswordDigest", *nonce_tag = "<Nonce",
-        *pass_tag = "<Password", *type_attr = "Type=\"", *user_tag = "<Username>";
-    char *pos, *end, *start;
-    char digest = 0, created[64], nonce[64], pass[64], user[64];
+    char created[64], nonce[64], pass[64], user[64];
+    const char *token = soap_tag(soap_data, "UsernameToken");
 
-    if (!(start = strstr(soap_data, user_tag)) ||
-        !(start += strlen(user_tag))) return false;
-    if (!(end = strstr(start, "</Username>"))) return false;
-    memcpy(user, start, end - start);
-    user[end - start] = '\0';
+    if (!token ||
+        !soap_tag_text(token, "Username", user, sizeof(user)) ||
+        !soap_tag_text(token, "Password", pass, sizeof(pass))) return false;
 
     if (!EQUALS(user, app_config.onvif_auth_user)) {
         HAL_WARNING("onvif", "Invalid username: %s\n", user);
         return false;
     }
 
-    if (!(start = strstr(soap_data, pass_tag)) ||
-        !(start += strlen(pass_tag))) return false;
-    if ((pos = strstr(start, type_attr)) < (start = strchr(start, '>')) &&
-        (pos += strlen(type_attr)) && strstr(pos, digest_tag)) digest = 1;
-    if (!(end = strstr(start, "</Password>"))) return false;
-    memcpy(pass, ++start, end - start);
-    pass[end - start] = '\0';
+    bool valid;
+    if (soap_tag_attr_has(token, "Password", "PasswordDigest"))
+        valid = soap_tag_text(token, "Nonce", nonce, sizeof(nonce)) &&
+            soap_tag_text(token, "Created", created, sizeof(created)) &&
+            soap_digest_valid(nonce, created, app_config.onvif_auth_pass, pass);
+    else
+        valid = EQUALS(pass, app_config.onvif_auth_pass);
 
-    if (digest) {
-        char digest_comp[SHA1_DIGEST_SIZE] = {0}, nonce_dec[64], pass_dec[64];
-        sha1_context ctx;
-
-        if (!(start = strstr(soap_data, nonce_tag)) ||
-            !(start = strchr(start, '>'))) return false;
-        if (!(end = strstr(++start, "</Nonce>"))) return false;
-        memcpy(nonce, start, end - start);
-        nonce[end - start] = '\0';
-
-        if (!(start = strstr(soap_data, created_tag)) ||
-            !(start = strchr(start, '>'))) return false;
-        if (!(end = strstr(++start, "</Created>"))) return false;
-        memcpy(created, start, end - start);
-        created[end - start] = '\0';
-
-        int nonce_len = base64_decode(nonce_dec, nonce, sizeof(nonce_dec));
-        if (nonce_len < 0) return false;
-
-        sha1_init(&ctx);
-        sha1_update(&ctx, (unsigned char *)nonce_dec, nonce_len - 1);
-        sha1_update(&ctx, (unsigned char *)created, strlen(created));
-        sha1_update(&ctx, (unsigned char *)app_config.onvif_auth_pass, strlen(app_config.onvif_auth_pass));
-        sha1_final(digest_comp, &ctx);
-
-        int pass_len = base64_encode(pass_dec, digest_comp, SHA1_DIGEST_SIZE);
-        if (pass_len < 0) return false;
-        pass_dec[pass_len] = '\0';
-
-        bool valid = !memcmp(pass, pass_dec, pass_len);
-        if (valid)
-            HAL_INFO("onvif", "Valid password digest!\n");
-        else
-            HAL_WARNING("onvif", "Invalid password digest!\n");
-        return valid;
-    } else {
-        bool valid = EQUALS(pass, app_config.onvif_auth_pass);
-        if (valid)
-            HAL_INFO("onvif", "Valid password provided!\n");
-        else
-            HAL_WARNING("onvif", "Invalid password provided!\n");
-        return valid;
-    }
+    if (valid)
+        HAL_INFO("onvif", "Valid credentials provided!\n");
+    else
+        HAL_WARNING("onvif", "Invalid credentials provided!\n");
+    return valid;
 }
 
 void onvif_respond_capabilities(char *response, int *respLen) {
     if (!response || !respLen) return;
 
-    int maxLen = *respLen;
-    int headerLen = strlen(onvifgood);
-    memcpy(response, onvifgood, headerLen);
-    *respLen = headerLen;
-
-    *respLen += snprintf(response + headerLen, maxLen - headerLen,
-        capabilitiesxml,
+    onvif_reply(response, respLen, "200 OK", capabilitiesxml,
         netinfo.ipaddr[0], app_config.web_port,    // Analytics
         netinfo.ipaddr[0], app_config.web_port,    // Device
         netinfo.ipaddr[0], app_config.web_port,    // Events
@@ -266,13 +241,7 @@ void onvif_respond_capabilities(char *response, int *respLen) {
 void onvif_respond_deviceinfo(char *response, int *respLen) {
     if (!response || !respLen) return;
 
-    int maxLen = *respLen;
-    int headerLen = strlen(onvifgood);
-    memcpy(response, onvifgood, headerLen);
-    *respLen = headerLen;
-
-    *respLen += snprintf(response + headerLen, maxLen - headerLen,
-        deviceinfoxml,
+    onvif_reply(response, respLen, "200 OK", deviceinfoxml,
         "OpenIPC", "IP Camera", "1.0", "To be replaced", chip);
 }
 
@@ -306,13 +275,7 @@ void onvif_respond_mediaprofiles(char *response, int *respLen) {
         profileCnt++;
     }
 
-    int maxLen = *respLen;
-    int headerLen = strlen(onvifgood);
-    memcpy(response, onvifgood, headerLen);
-    *respLen = headerLen;
-
-    *respLen += snprintf(response + headerLen, maxLen - headerLen,
-        mediaprofilesxml,
+    onvif_reply(response, respLen, "200 OK", mediaprofilesxml,
         profile);
 }
 
@@ -332,13 +295,7 @@ void onvif_respond_snapshot(char *response, int *respLen) {
         snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%d/image.jpg",
             netinfo.ipaddr[0], app_config.web_port);
 
-    int maxLen = *respLen;
-    int headerLen = strlen(onvifgood);
-    memcpy(response, onvifgood, headerLen);
-    *respLen = headerLen;
-
-    *respLen += snprintf(response + headerLen, maxLen - headerLen,
-        snapshotxml,
+    onvif_reply(response, respLen, "200 OK", snapshotxml,
         snapshot_url);
 }
 
@@ -358,13 +315,7 @@ void onvif_respond_stream(char *response, int *respLen) {
         snprintf(stream_url, sizeof(stream_url), "rtsp://%s:%d/",
             netinfo.ipaddr[0], app_config.rtsp_port);
 
-    int maxLen = *respLen;
-    int headerLen = strlen(onvifgood);
-    memcpy(response, onvifgood, headerLen);
-    *respLen = headerLen;
-
-    *respLen += snprintf(response + headerLen, maxLen - headerLen,
-        streamxml,
+    onvif_reply(response, respLen, "200 OK", streamxml,
         stream_url);
 }
 
@@ -377,13 +328,7 @@ void onvif_respond_systemtime(char *response, int *respLen) {
     time(&now);
     tm_info = gmtime(&now);
 
-    int maxLen = *respLen;
-    int headerLen = strlen(onvifgood);
-    memcpy(response, onvifgood, headerLen);
-    *respLen = headerLen;
-
-    *respLen += snprintf(response + headerLen, maxLen - headerLen,
-        systemtimexml,
+    onvif_reply(response, respLen, "200 OK", systemtimexml,
         tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec,
         tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday);
 }
@@ -398,12 +343,162 @@ void onvif_respond_videosources(char *response, int *respLen) {
     int framerate = app_config.mp4_enable ?
         app_config.mp4_fps : app_config.mjpeg_fps;
 
-    int maxLen = *respLen;
-    int headerLen = strlen(onvifgood);
-    memcpy(response, onvifgood, headerLen);
-    *respLen = headerLen;
-
-    *respLen += snprintf(response + headerLen, maxLen - headerLen,
-        videosourcesxml,
+    onvif_reply(response, respLen, "200 OK", videosourcesxml,
         framerate, width, height);
+}
+
+#define ONVIF_EVENTS_WSDL "http://www.onvif.org/ver10/events/wsdl/"
+#define ONVIF_WSN_BW2 "http://docs.oasis-open.org/wsn/bw-2/"
+#define ONVIF_SOURCE_TOKEN "VideoSource_1"
+#define ONVIF_SUB_DEFAULT_S 3600
+#define ONVIF_SUB_MAX_S 86400
+#define ONVIF_PULL_MAX_S 60
+
+static void onvif_message_id(const char *request, char *messageId, size_t size) {
+    if (!soap_tag_text(request, "MessageID", messageId, size))
+        *messageId = '\0';
+}
+
+static void onvif_reply_event(char *response, int *respLen, const char *messageId,
+    const char *action, const char *body) {
+    char relates[176] = "";
+
+    if (*messageId)
+        snprintf(relates, sizeof(relates), "\n    <wsa:RelatesTo>%s</wsa:RelatesTo>", messageId);
+    onvif_reply(response, respLen, "200 OK", eventxml, action, relates, body);
+}
+
+static void onvif_respond_unknown_sub(char *response, int *respLen) {
+    onvif_respond_fault(response, respLen, true, "wsrf-rw:ResourceUnknownFault",
+        "Unknown or expired subscription");
+}
+
+void onvif_respond_services(char *response, int *respLen) {
+    onvif_reply(response, respLen, "200 OK", servicesxml,
+        netinfo.ipaddr[0], app_config.web_port,
+        netinfo.ipaddr[0], app_config.web_port,
+        netinfo.ipaddr[0], app_config.web_port);
+}
+
+void onvif_respond_eventcaps(char *response, int *respLen, const char *request) {
+    char messageId[128];
+
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_EVENTS_WSDL "EventPortType/GetServiceCapabilitiesResponse", eventcapsxml);
+}
+
+void onvif_respond_eventprops(char *response, int *respLen, const char *request) {
+    char messageId[128];
+
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_EVENTS_WSDL "EventPortType/GetEventPropertiesResponse", eventpropsxml);
+}
+
+void onvif_respond_pullpoint(char *response, int *respLen, const char *request) {
+    char body[1024], messageId[128], current[32], termination[32];
+    time_t now = time(NULL), expires;
+    int seconds = soap_term_seconds(request, "InitialTerminationTime", now,
+        ONVIF_SUB_DEFAULT_S, ONVIF_SUB_MAX_S);
+
+    int id = onvif_event_subscribe(onvif_event_clock(), now, seconds, &expires);
+    HAL_INFO("onvif", "Subscription #%d created for %d seconds\n", id, seconds);
+
+    soap_datetime_format(now, current, sizeof(current));
+    soap_datetime_format(now + seconds, termination, sizeof(termination));
+    snprintf(body, sizeof(body), pullpointxml,
+        netinfo.ipaddr[0], app_config.web_port, id, current, termination);
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_EVENTS_WSDL "EventPortType/CreatePullPointSubscriptionResponse", body);
+}
+
+void onvif_pull_parse(const char *request, int id, onvif_pull_req *pull) {
+    char text[32];
+
+    pull->id = id;
+    pull->timeout = soap_tag_text(request, "Timeout", text, sizeof(text)) ?
+        soap_duration(text) : 0;
+    if (pull->timeout < 0) pull->timeout = 0;
+    if (pull->timeout > ONVIF_PULL_MAX_S) pull->timeout = ONVIF_PULL_MAX_S;
+    pull->limit = soap_tag_text(request, "MessageLimit", text, sizeof(text)) ?
+        atoi(text) : ONVIF_EVENT_QUEUE;
+    if (pull->limit < 1) pull->limit = 1;
+    if (pull->limit > ONVIF_EVENT_QUEUE) pull->limit = ONVIF_EVENT_QUEUE;
+    onvif_message_id(request, pull->messageId, sizeof(pull->messageId));
+}
+
+void onvif_respond_pullmessages(char *response, int *respLen, const onvif_pull_req *pull) {
+    onvif_event_msg msgs[ONVIF_EVENT_QUEUE];
+    char body[6656], notes[5632] = "", current[32], termination[32], when[32];
+    time_t expires;
+    int notesLen = 0;
+
+    int count = onvif_event_pull(pull->id, onvif_event_clock(), pull->timeout, pull->limit,
+        msgs, &expires);
+    if (count < 0) {
+        onvif_respond_unknown_sub(response, respLen);
+        return;
+    }
+
+    for (int i = 0; i < count && notesLen < sizeof(notes); i++) {
+        soap_datetime_format(msgs[i].time, when, sizeof(when));
+        notesLen += snprintf(notes + notesLen, sizeof(notes) - notesLen, notificationxml,
+            when, msgs[i].initial ? "Initialized" : "Changed", ONVIF_SOURCE_TOKEN,
+            msgs[i].state ? "true" : "false");
+    }
+
+    time_t now = time(NULL);
+    soap_datetime_format(now, current, sizeof(current));
+    soap_datetime_format(now + (expires - onvif_event_clock()), termination, sizeof(termination));
+    snprintf(body, sizeof(body), pullmessagesxml, current, termination, notes);
+    onvif_reply_event(response, respLen, pull->messageId,
+        ONVIF_EVENTS_WSDL "PullPointSubscription/PullMessagesResponse", body);
+}
+
+void onvif_respond_renew(char *response, int *respLen, int id, const char *request) {
+    char body[512], messageId[128], current[32], termination[32];
+    time_t now = time(NULL), expires;
+    int seconds = soap_term_seconds(request, "TerminationTime", now,
+        ONVIF_SUB_DEFAULT_S, ONVIF_SUB_MAX_S);
+
+    if (!onvif_event_renew(id, onvif_event_clock(), seconds, &expires)) {
+        onvif_respond_unknown_sub(response, respLen);
+        return;
+    }
+
+    soap_datetime_format(now, current, sizeof(current));
+    soap_datetime_format(now + seconds, termination, sizeof(termination));
+    snprintf(body, sizeof(body), renewxml, termination, current);
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_WSN_BW2 "SubscriptionManager/RenewResponse", body);
+}
+
+void onvif_respond_unsubscribe(char *response, int *respLen, int id, const char *request) {
+    char messageId[128];
+
+    if (!onvif_event_unsubscribe(id)) {
+        onvif_respond_unknown_sub(response, respLen);
+        return;
+    }
+    HAL_INFO("onvif", "Subscription #%d removed\n", id);
+
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_WSN_BW2 "SubscriptionManager/UnsubscribeResponse", unsubscribexml);
+}
+
+void onvif_respond_syncpoint(char *response, int *respLen, int id, const char *request) {
+    char messageId[128];
+
+    if (!onvif_event_sync(id, time(NULL))) {
+        onvif_respond_unknown_sub(response, respLen);
+        return;
+    }
+
+    onvif_message_id(request, messageId, sizeof(messageId));
+    onvif_reply_event(response, respLen, messageId,
+        ONVIF_EVENTS_WSDL "PullPointSubscription/SetSynchronizationPointResponse", syncpointxml);
 }

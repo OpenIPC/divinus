@@ -29,6 +29,19 @@ This document describes the fields that can be found within a configuration file
 - **pin_switch_delay_us**: Delay in microseconds before switching GPIO pins, must be used to protect cut filter coils from burning.
 - **adc_device**: Path to the ADC device used for night mode.
 - **adc_threshold**: Threshold raw value to trigger night mode, depends on the bitness of the given ADC device.
+- **night_gain**: Without a light sensor or ADC, total ISP gain (×) that switches to night mode (default: `8`).
+- **day_gain**: Without a light sensor or ADC, total ISP gain (×) below which night mode switches back to day; keep it under the gain reached with the IR LED on (default: `2`).
+- **night_hold_s**: Seconds the gain must stay above `night_gain` before switching to night (default: `15`).
+- **day_hold_s**: Seconds the gain must stay below `day_gain` before switching back to day (default: `60`).
+
+## Motion detection section
+
+Software motion detection, published as ONVIF `tns1:VideoSource/MotionAlarm` events
+(PullPoint). Only available on infinity6 for now.
+
+- **enable**: Boolean to activate motion detection (default: `false`).
+- **sensitivity**: From 1 (only large movements) to 10 (small movements) (default: `5`).
+- **hold_s**: Seconds without movement before the motion state goes back to false (default: `5`).
 
 ## ISP section
 
