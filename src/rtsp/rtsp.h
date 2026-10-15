@@ -4,6 +4,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
+#include <errno.h>
+#include <poll.h>
 
 #include "rtsp_server.h"
 
@@ -58,6 +60,7 @@ enum __method_e {
     __METHOD_TEARDOWN,
     __METHOD_PAUSE,
     __METHOD_RECORDING,
+    __METHOD_GET_PARAMETER,
     __METHOD_AUTH,
     __METHOD_NONE,
     __METHOD_COUNT
@@ -98,7 +101,6 @@ typedef struct {
 struct connection_item_t {
     struct sockaddr_in addr;
     FILE *fp_tcp_read;
-    FILE *fp_tcp_write;
     int client_fd;
     int track_id;
     int cseq;
@@ -194,8 +196,9 @@ static inline int __read_line(struct connection_item_t *p, char *buf)
             ERR("message end before delimiter\n");
         }
 
+        /* the caller detaches: doing it here may reset the connection
+         * under its feet */
         p->con_state = __CON_S_DISCONNECTED;
-        ASSERT(bufpool_detach(p->pool, p) == SUCCESS, ERR("connection detach failed\n"));
         return FALSE;
     }
 
@@ -203,6 +206,34 @@ static inline int __read_line(struct connection_item_t *p, char *buf)
 
     /* check end of request */
     return !(SCMP(__TERM, buf));
+}
+
+static inline int __wait_out(int fd)
+{
+    struct pollfd p = { .fd = fd, .events = POLLOUT };
+    return poll(&p, 1, 100);
+}
+
+/* The client socket is non-blocking: retry until everything is queued. A peer
+ * that takes nothing for 5 s is shut down, as a partial write has already
+ * broken its stream, and the RTSP thread then sees EOF and drops it */
+static inline int __tcp_send_all(int fd, const unsigned char *buf, unsigned int len)
+{
+    unsigned int sent = 0;
+    int stalls = 0;
+    while (sent < len) {
+        int r = send(fd, buf + sent, len - sent, 0);
+        if (r > 0) { sent += r; stalls = 0; }
+        else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            if (__wait_out(fd) == 0 && ++stalls >= 50) {
+                shutdown(fd, SHUT_RDWR);
+                errno = ETIMEDOUT;
+                return FAILURE;
+            }
+        }
+        else return FAILURE;
+    }
+    return SUCCESS;
 }
 
 static inline unsigned long long __get_random_byte(unsigned *ctx)
