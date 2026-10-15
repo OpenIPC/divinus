@@ -1,0 +1,7 @@
+    <tev:CreatePullPointSubscriptionResponse>
+      <tev:SubscriptionReference>
+        <wsa:Address>http://%s:%d/onvif/subscription?id=%d</wsa:Address>
+      </tev:SubscriptionReference>
+      <wsnt:CurrentTime>%s</wsnt:CurrentTime>
+      <wsnt:TerminationTime>%s</wsnt:TerminationTime>
+    </tev:CreatePullPointSubscriptionResponse>

@@ -453,6 +453,46 @@ void *send_jpeg_thread(void *vargp) {
     return NULL;
 }
 
+struct pulltask {
+    int client_fd;
+    onvif_pull_req pull;
+};
+
+void *send_pullmessages_thread(void *vargp) {
+    struct pulltask *task = (struct pulltask *)vargp;
+    char response[8192];
+    int respLen = sizeof(response);
+
+    onvif_respond_pullmessages(response, &respLen, &task->pull);
+    send_and_close(task->client_fd, response, respLen);
+    free(task);
+    return NULL;
+}
+
+static void start_pullmessages(int client_fd, int id, const char *payload) {
+    struct pulltask *task = malloc(sizeof(struct pulltask));
+    if (!task) {
+        send_http_error(client_fd, 500);
+        return;
+    }
+    task->client_fd = client_fd;
+    onvif_pull_parse(payload, id, &task->pull);
+
+    pthread_t thread_id;
+    pthread_attr_t thread_attr;
+    pthread_attr_init(&thread_attr);
+    size_t new_stacksize = 32 * 1024;
+    if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+        HAL_DANGER("onvif", "Can't set stack size %zu\n", new_stacksize);
+    if (pthread_create(&thread_id, &thread_attr, send_pullmessages_thread, (void *)task)) {
+        HAL_DANGER("onvif", "Can't create thread\n");
+        send_http_error(client_fd, 500);
+        free(task);
+    } else
+        pthread_detach(thread_id);
+    pthread_attr_destroy(&thread_attr);
+}
+
 int send_file(const int client_fd, const char *path) {
     if (!access(path, F_OK)) {
         const char *mime = (path);
@@ -619,6 +659,13 @@ void respond_request(http_request_t *req) {
         }
 
         char *action = onvif_extract_soap_action(req->payload);
+        if (!action) {
+            respLen = sizeof(response);
+            onvif_respond_fault(response, &respLen, true, "ter:InvalidArgVal",
+                "No action found in the SOAP body");
+            send_and_close(req->clntFd, response, respLen);
+            return;
+        }
         HAL_INFO("onvif", "\x1b[32mAction: %s\x1b[0m\n", action);
         respLen = sizeof(response);
 
@@ -647,6 +694,10 @@ void respond_request(http_request_t *req) {
                 onvif_respond_systemtime((char*)response, &respLen);
                 send_and_close(req->clntFd, response, respLen);
                 return;
+            } else if (EQUALS(action, "GetServices")) {
+                onvif_respond_services((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
             }
         } else if (EQUALS(path, "media_service")) {
             if (EQUALS(action, "GetProfiles")) {
@@ -666,11 +717,46 @@ void respond_request(http_request_t *req) {
                 send_and_close(req->clntFd, response, respLen);
                 return;
             }
+        } else if (EQUALS(path, "event_service")) {
+            if (EQUALS(action, "GetServiceCapabilities")) {
+                onvif_respond_eventcaps((char*)response, &respLen, req->payload);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetEventProperties")) {
+                onvif_respond_eventprops((char*)response, &respLen, req->payload);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "CreatePullPointSubscription")) {
+                onvif_respond_pullpoint((char*)response, &respLen, req->payload);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            }
+        } else if (EQUALS(path, "subscription")) {
+            int id = req->query && STARTS_WITH(req->query, "id=") ?
+                atoi(req->query + 3) : 0;
+            if (EQUALS(action, "PullMessages")) {
+                start_pullmessages(req->clntFd, id, req->payload);
+                return;
+            } else if (EQUALS(action, "Renew")) {
+                onvif_respond_renew((char*)response, &respLen, id, req->payload);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "Unsubscribe")) {
+                onvif_respond_unsubscribe((char*)response, &respLen, id, req->payload);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "SetSynchronizationPoint")) {
+                onvif_respond_syncpoint((char*)response, &respLen, id, req->payload);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            }
         }
 
-        if (!EMPTY(action))
-            HAL_WARNING("server", "Unknown ONVIF request: %s->%s\n", path, action);
-        send_http_error(req->clntFd, 501);
+        HAL_WARNING("server", "Unknown ONVIF request: %s->%s\n", path, action);
+        respLen = sizeof(response);
+        onvif_respond_fault(response, &respLen, false, "ter:ActionNotSupported",
+            "The requested action is not supported");
+        send_and_close(req->clntFd, response, respLen);
         return;
     }
 
