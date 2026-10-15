@@ -97,7 +97,7 @@ int color_parse(const char *str) {
         int b = hex_to_int(str[3]);
 
         if (r >= 0 && g >= 0 && b >= 0)
-            return (1 << 16) | (r << 11) | (g << 6) | (b << 1);
+            return (1 << 15) | (r << 11) | (g << 6) | (b << 1);
     }
 
     // 8-bit hex format "#RRGGBB"
