@@ -61,6 +61,11 @@ night_mode:
   adc_device: /dev/sar_adc_drv
   adc_threshold: 128
 
+motion_detect:
+  enable: false
+  sensitivity: 5
+  hold_s: 5
+
 http_post:
   enable: false
   host: <your host>

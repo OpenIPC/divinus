@@ -78,6 +78,13 @@ typedef struct {
 } hal_chnstate;
 
 typedef struct {
+    unsigned char *luma;
+    int stride;
+    short width, height;
+    int handle;
+} hal_rawframe;
+
+typedef struct {
     unsigned short width, height;
 } hal_dim;
 
