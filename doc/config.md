@@ -43,7 +43,7 @@ This document describes the fields that can be found within a configuration file
 ## ONVIF section
 
 - **enable**: Boolean to activate ONVIF services (default: `false`).
-- **enable_auth**: Boolean to turn on ONVIF authentication (default: `false`).
+- **enable_auth**: Boolean to turn on ONVIF authentication (default: `false`). When this is off, a client may still attach a username token and the request is answered without checking it.
 - **auth_user**: Username for ONVIF authentication (default: `admin`).
 - **auth_pass**: Password for ONVIF authentication (default: `12345`).
 

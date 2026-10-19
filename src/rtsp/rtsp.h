@@ -59,6 +59,7 @@ enum __method_e {
     __METHOD_PAUSE,
     __METHOD_RECORDING,
     __METHOD_AUTH,
+    __METHOD_PARAMETER,
     __METHOD_NONE,
     __METHOD_COUNT
 };
@@ -102,6 +103,7 @@ struct connection_item_t {
     int client_fd;
     int track_id;
     int cseq;
+    unsigned char stream_slot;
 
     transport_t trans[2];
 
@@ -135,12 +137,12 @@ struct __rtsp_obj_t {
     bufpool_handle transfer_pool;
     unsigned short port;
     struct __time_stat_t stat;
-    char isH265;
+    char isH265[2];
     unsigned char audioPt;
-    mime_encoded_handle sprop_vps_b64;
-    mime_encoded_handle sprop_sps_b64;
-    mime_encoded_handle sprop_pps_b64;
-    mime_encoded_handle sprop_sps_b16;
+    mime_encoded_handle sprop_vps_b64[2];
+    mime_encoded_handle sprop_sps_b64[2];
+    mime_encoded_handle sprop_pps_b64[2];
+    mime_encoded_handle sprop_sps_b16[2];
     unsigned ctx; /* for rand_r */
     int con_num;
     unsigned char max_con;
@@ -201,8 +203,7 @@ static inline int __read_line(struct connection_item_t *p, char *buf)
 
     DBG(">%s", buf);
 
-    /* check end of request */
-    return !(SCMP(__TERM, buf));
+    return !(buf[0] == '\0' || buf[0] == '\r' || buf[0] == '\n');
 }
 
 static inline unsigned long long __get_random_byte(unsigned *ctx)

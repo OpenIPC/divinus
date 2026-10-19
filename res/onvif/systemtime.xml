@@ -1,25 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope" xmlns:tds="http://www.onvif.org/ver10/device/wsdl">
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema">
   <SOAP-ENV:Body>
     <tds:GetSystemDateAndTimeResponse>
       <tds:SystemDateAndTime>
-        <tds:DateTimeType>NTP</tds:DateTimeType>
-        <tds:DaylightSavings>false</tds:DaylightSavings>
-        <tds:TimeZone>
-          <tds:TZ>UTC</tds:TZ>
-        </tds:TimeZone>
-        <tds:UTCDateTime>
-          <tds:Time>
-            <tds:Hour>%02d</tds:Hour>
-            <tds:Minute>%02d</tds:Minute>
-            <tds:Second>%02d</tds:Second>
-          </tds:Time>
-          <tds:Date>
-            <tds:Year>%d</tds:Year>
-            <tds:Month>%02d</tds:Month>
-            <tds:Day>%02d</tds:Day>
-          </tds:Date>
-        </tds:UTCDateTime>
+        <tt:DateTimeType>Manual</tt:DateTimeType>
+        <tt:DaylightSavings>false</tt:DaylightSavings>
+        <tt:TimeZone>
+          <tt:TZ>UTC</tt:TZ>
+        </tt:TimeZone>
+        <tt:UTCDateTime>
+          <tt:Time>
+            <tt:Hour>%02d</tt:Hour>
+            <tt:Minute>%02d</tt:Minute>
+            <tt:Second>%02d</tt:Second>
+          </tt:Time>
+          <tt:Date>
+            <tt:Year>%d</tt:Year>
+            <tt:Month>%02d</tt:Month>
+            <tt:Day>%02d</tt:Day>
+          </tt:Date>
+        </tt:UTCDateTime>
       </tds:SystemDateAndTime>
     </tds:GetSystemDateAndTimeResponse>
   </SOAP-ENV:Body>

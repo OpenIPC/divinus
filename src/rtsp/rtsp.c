@@ -38,6 +38,8 @@ extern void request_idr();
 #define __STR_SESSION  "SESSION"
 #define __STR_PAUSE "PAUSE"
 #define __STR_RECORDING "RECORDING"
+#define __STR_GET_PARAMETER "GET_PARAMETER"
+#define __STR_SET_PARAMETER "SET_PARAMETER"
 #define __STR_RANGE  "RANGE"
 #define __SPACE " "
 
@@ -160,7 +162,7 @@ static void __method_options(struct connection_item_t *p, rtsp_handle h)
 {
     __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
             "CSeq: %d\r\n"
-            "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n"
+            "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, GET_PARAMETER, SET_PARAMETER\r\n"
             "\r\n", p->cseq);
 }
 
@@ -177,6 +179,13 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
         "a=range:npt=0-\r\n";
     char audioRtp[256] = "\r\n";
     char audioRtpfmt[16];
+
+    int slot = p->stream_slot > 1 ? 0 : p->stream_slot;
+    mime_encoded_handle vps = h->sprop_vps_b64[slot];
+    mime_encoded_handle sps = h->sprop_sps_b64[slot];
+    mime_encoded_handle pps = h->sprop_pps_b64[slot];
+    mime_encoded_handle sps16 = h->sprop_sps_b16[slot];
+    char hevc = h->isH265[slot];
 
     if (h->audioPt != 255) {
         switch (h->audioPt) {
@@ -195,17 +204,16 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
             h->audioPt, h->audioPt, audioRtpfmt, (h->audioPt == 8 || h->audioPt == 0) ? 8000 : 90000);
     }
 
-    if (h->isH265 &&
-        h->sprop_vps_b64 && h->sprop_sps_b64 && h->sprop_sps_b16 && h->sprop_pps_b64) {
-        DASSERT(h->sprop_vps_b64->result, return);
-        DASSERT(h->sprop_sps_b64->result, return);
-        DASSERT(h->sprop_sps_b16->result, return);
-        DASSERT(h->sprop_pps_b64->result, return);
+    if (hevc && vps && sps && sps16 && pps) {
+        DASSERT(vps->result, return);
+        DASSERT(sps->result, return);
+        DASSERT(sps16->result, return);
+        DASSERT(pps->result, return);
 
-        DBG("VPS BASE64:%s\n", h->sprop_vps_b64->result);
-        DBG("SPS BASE64:%s\n", h->sprop_sps_b64->result);
-        DBG("SPS BASE16:%s\n", h->sprop_sps_b16->result);
-        DBG("PPS BASE64:%s\n", h->sprop_pps_b64->result);
+        DBG("VPS BASE64:%s\n", vps->result);
+        DBG("SPS BASE64:%s\n", sps->result);
+        DBG("SPS BASE16:%s\n", sps16->result);
+        DBG("PPS BASE64:%s\n", pps->result);
 
         snprintf(sdp, __RTSP_TCP_BUF_SIZE- 1,
                 "%sm=video 0 RTP/AVP 96\r\n"
@@ -215,20 +223,19 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
                 " packetization-mode=1;"
                 " sprop-parameter-sets=%s,%s,%s;%s",
                 baseRtp,
-                h->sprop_sps_b16->result,
-                h->sprop_vps_b64->result,
-                h->sprop_sps_b64->result,
-                h->sprop_pps_b64->result,
+                sps16->result,
+                vps->result,
+                sps->result,
+                pps->result,
                 audioRtp);
-    } else if (!h->isH265 &&
-        h->sprop_sps_b64 && h->sprop_sps_b16 && h->sprop_pps_b64) {
-        DASSERT(h->sprop_sps_b64->result, return);
-        DASSERT(h->sprop_sps_b16->result, return);
-        DASSERT(h->sprop_pps_b64->result, return);
+    } else if (!hevc && sps && sps16 && pps) {
+        DASSERT(sps->result, return);
+        DASSERT(sps16->result, return);
+        DASSERT(pps->result, return);
 
-        DBG("SPS BASE64:%s\n", h->sprop_sps_b64->result);
-        DBG("SPS BASE16:%s\n", h->sprop_sps_b16->result);
-        DBG("PPS BASE64:%s\n", h->sprop_pps_b64->result);
+        DBG("SPS BASE64:%s\n", sps->result);
+        DBG("SPS BASE16:%s\n", sps16->result);
+        DBG("PPS BASE64:%s\n", pps->result);
 
         snprintf(sdp, __RTSP_TCP_BUF_SIZE - 1,
                 "%sm=video 0 RTP/AVP 96\r\n"
@@ -238,9 +245,9 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
                 " packetization-mode=1;"
                 " sprop-parameter-sets=%s,%s;%s",
                 baseRtp,
-                h->sprop_sps_b16->result,
-                h->sprop_sps_b64->result,
-                h->sprop_pps_b64->result,
+                sps16->result,
+                sps->result,
+                pps->result,
                 audioRtp);
     } else {
         snprintf(sdp, __RTSP_TCP_BUF_SIZE - 1,
@@ -249,7 +256,7 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
                 "a=rtpmap:96 %s/90000\r\n"
                 "a=fmtp:96 packetization-mode=1;%s",
                 baseRtp,
-                h->isH265 ? "H265" : "H264",
+                hevc ? "H265" : "H264",
                 audioRtp);
     }
 
@@ -265,8 +272,14 @@ static void __method_setup(struct connection_item_t *p, rtsp_handle h)
 {
     /* make randomized session id */
 	if (!p->session_id) {
+        if (!h->ctx)
+            h->ctx = (unsigned)millis() | 1u;
     	p->session_id = __get_random_llu(&h->ctx);
-    	p->ssrc = (unsigned int)(__get_random_llu(&h->ctx));
+        if (!p->session_id)
+            p->session_id = 0x4e5652ull;
+    	p->ssrc = (unsigned int)__get_random_llu(&h->ctx);
+        if (!p->ssrc)
+            p->ssrc = 0x44560001u;
 	}
 
     DBG("created session id %llx\n", p->session_id);
@@ -314,7 +327,18 @@ static void __method_record(struct connection_item_t *p, rtsp_handle h)
 static void __method_error(struct connection_item_t *p, rtsp_handle h)
 {
     __rtsp_write(p,
-        "RTSP/1.0 " __RESPONCE_STR_SERVERERROR "\r\n");
+        "RTSP/1.0 " __RESPONCE_STR_BADREQUEST "\r\n"
+        "CSeq: %d\r\n"
+        "\r\n", p->cseq);
+}
+
+static void __method_parameter(struct connection_item_t *p, rtsp_handle h)
+{
+    __rtsp_write(p,
+        "RTSP/1.0 200 OK\r\n"
+        "CSeq: %d\r\n"
+        "Session: %llx\r\n"
+        "\r\n", p->cseq, p->session_id);
 }
 
 static void __method_play(struct connection_item_t *p, rtsp_handle h)
@@ -325,20 +349,22 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
         "Range: npt=now-\r\n"
         "\r\n" , p->cseq);
 
-    for (int i = 0; i < sizeof(p->trans) / sizeof(*p->trans); i++) {
-        if (!p->trans[i].server_port_rtp) continue;
+    for (int i = 0; i < (int)(sizeof(p->trans) / sizeof(*p->trans)); i++) {
+        if (!p->trans[i].server_port_rtp && !p->trans[i].is_tcp) continue;
         p->track_id = i;
 
-        ASSERT(__bind_rtcp(p) == SUCCESS, return);
-        ASSERT(__bind_rtp(p) == SUCCESS, return);
-        p->trans[p->track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
-        p->trans[p->track_id].rtp_seq = rand_r(&h->ctx);
-        p->trans[p->track_id].rtcp_octet = 0;
-        p->trans[p->track_id].rtcp_packet_cnt = 0;
-        p->trans[p->track_id].rtcp_tick_org = 150; // TODO: must be variant
-        p->trans[p->track_id].rtcp_tick = p->trans[p->track_id].rtcp_tick_org;
+        if (!p->trans[i].is_tcp) {
+            ASSERT(__bind_rtcp(p) == SUCCESS, return);
+            ASSERT(__bind_rtp(p) == SUCCESS, return);
+        }
+        p->trans[i].rtp_timestamp = (millis() * 90) & UINT32_MAX;
+        p->trans[i].rtp_seq = rand_r(&h->ctx);
+        p->trans[i].rtcp_octet = 0;
+        p->trans[i].rtcp_packet_cnt = 0;
+        p->trans[i].rtcp_tick_org = 150;
+        p->trans[i].rtcp_tick = p->trans[i].rtcp_tick_org;
 
-        ASSERT(__rtcp_send_sr(p, p->track_id) == SUCCESS, return);
+        ASSERT(__rtcp_send_sr(p, i) == SUCCESS, return);
     }
 
     p->con_state = __CON_S_PLAYING;
@@ -419,7 +445,16 @@ static int __message_proc_sock(struct list_t *e, void *p)
                 } else if (SCMP(__STR_RECORDING, buf))   { con->method = __METHOD_RECORDING;
                 } else if (SCMP(__STR_PAUSE, buf))       { con->method = __METHOD_PAUSE;
                 } else if (SCMP(__STR_TEARDOWN, buf))    { con->method = __METHOD_TEARDOWN;
+                } else if (SCMP(__STR_GET_PARAMETER, buf) ||
+                    SCMP(__STR_SET_PARAMETER, buf))      { con->method = __METHOD_PARAMETER;
                 } header++;
+                if (strstr(buf, "rtsp:")) {
+                    const char *stream = strstr(buf, "stream=");
+                    con->stream_slot = (stream && stream[7] == '1' &&
+                        (stream[8] < '0' || stream[8] > '9')) ? 1 : 0;
+                }
+                if (strstr(buf, "trackID="))
+                    STR_KEY_NUM(buf, "trackID=", con->track_id);
             }
 
             if (SCMP(__STR_AUTH, buf) && h->isAuthOn) {
@@ -429,9 +464,12 @@ static int __message_proc_sock(struct list_t *e, void *p)
                     base64_encode(valid + 6, cred, strlen(cred));
                     isAuthValid = !strncmp(buf + strlen(__STR_AUTH) + 2, valid, strlen(valid));
              } else if (SCMP(__STR_CSEQ, buf)) {
-                ASSERT(tok = strtok_r(buf, ": ", &last), goto error);
-                ASSERT(tok = strtok_r(NULL, ": ", &last), goto error);
-                ASSERT((con->cseq = atoi(tok)) > 0, goto error);
+                char *value = strchr(buf, ':');
+                int seq;
+                if (!value) goto error;
+                seq = atoi(value + 1);
+                if (seq < 0) goto error;
+                con->cseq = seq;
                 con->parser_state = __PARSER_S_CSEQ;
             } else if (SCMP(__STR_RANGE, buf)) {
                 con->parser_state = __PARSER_S_RANGE;
@@ -482,10 +520,15 @@ error:
                 case __METHOD_PAUSE: __method_pause(con, h); break;
                 case __METHOD_RECORDING: __method_record(con, h); break;
                 case __METHOD_TEARDOWN: __method_teardown(con, h); break;
+                case __METHOD_PARAMETER: __method_parameter(con, h); break;
                 case __METHOD_NONE:
-                    /* state DISCONNECTED connections should be garbage collected immediately.
-                       but sending thread might watches the connection right now.
-                       so the connection might live at here */
+                    if (con->parser_state != __PARSER_S_INIT &&
+                        con->con_state != __CON_S_DISCONNECTED) {
+                        __rtsp_write(con, "RTSP/1.0 " __RESPONCE_STR_METHODNOTALLOWED "\r\n"
+                            "CSeq: %d\r\n"
+                            "\r\n", con->cseq);
+                        break;
+                    }
                     if (con->con_state != __CON_S_DISCONNECTED) {
                         ERR("unexpected empty request, forcing disconnect\n");
                         con->con_state = __CON_S_DISCONNECTED;
@@ -534,6 +577,7 @@ static int __connection_reset(void *v)
 
     p->given_session_id = 0;
     p->cseq = 0;
+    p->stream_slot = 0;
 
     ctx = p->trans[0].rtp_timestamp;
 
@@ -866,10 +910,12 @@ void rtsp_finish(rtsp_handle h)
             bufpool_delete(h->con_pool);
             bufpool_delete(h->transfer_pool);
 
-            mime_encoded_delete(h->sprop_vps_b64);
-            mime_encoded_delete(h->sprop_sps_b64);
-            mime_encoded_delete(h->sprop_sps_b16);
-            mime_encoded_delete(h->sprop_pps_b64);
+            for (int s = 0; s < 2; s++) {
+                mime_encoded_delete(h->sprop_vps_b64[s]);
+                mime_encoded_delete(h->sprop_sps_b64[s]);
+                mime_encoded_delete(h->sprop_sps_b16[s]);
+                mime_encoded_delete(h->sprop_pps_b64[s]);
+            }
 
             threadpool_delete(h->pool);
         }
