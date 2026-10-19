@@ -71,21 +71,25 @@ typedef struct {
     unsigned int overflow;
 } f2_isp_vistate;
 
-/* Native sensor output sizes, used to size the VI and the OSD plane. */
 typedef struct {
     const char *name;
     f2_common_dim dim;
-} f2_snr_info;
+    unsigned char fps;
+    unsigned int format;
+} f2_snr_mode;
 
-static const f2_snr_info f2_snrs[] = {
-    { "gc4653_mipi",    { .width = 1920, .height = 1080 } },
-    { "gc5603_mipi",    { .width = 2880, .height = 1616 } },
-    { "jxf32_mipi",     { .width = 1920, .height = 1080 } },
-    { "mn34425_mipi",   { .width = 1920, .height = 1080 } },
-    { "ovos02k_mipi",   { .width = 1920, .height = 1080 } },
-    { "ovos04c10_mipi", { .width = 2560, .height = 1440 } },
-    { "ovos05_mipi",    { .width = 2592, .height = 1944 } },
-    { "ovos08_mipi",    { .width = 3840, .height = 2160 } },
+static const f2_snr_mode f2_snr_modes[] = {
+    { "gc4653_mipi",    { .width = 1920, .height = 1080 }, 25, 0x203 },
+    { "gc4653_mipi",    { .width = 1920, .height = 1080 }, 30, 0x204 },
+    { "gc4653_mipi",    { .width = 2560, .height = 1440 }, 20, 0x602 },
+    { "gc4653_mipi",    { .width = 2560, .height = 1440 }, 25, 0x603 },
+    { "gc5603_mipi",    { .width = 2880, .height = 1616 },  0, F2_SNR_FMT },
+    { "jxf32_mipi",     { .width = 1920, .height = 1080 },  0, F2_SNR_FMT },
+    { "mn34425_mipi",   { .width = 1920, .height = 1080 },  0, F2_SNR_FMT },
+    { "ovos02k_mipi",   { .width = 1920, .height = 1080 },  0, F2_SNR_FMT },
+    { "ovos04c10_mipi", { .width = 2560, .height = 1440 },  0, F2_SNR_FMT },
+    { "ovos05_mipi",    { .width = 2592, .height = 1944 },  0, F2_SNR_FMT },
+    { "ovos08_mipi",    { .width = 3840, .height = 2160 },  0, F2_SNR_FMT },
 };
 
 typedef struct {

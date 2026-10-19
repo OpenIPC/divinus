@@ -89,6 +89,10 @@ This document describes the fields that can be found within a configuration file
 - **profile**: Encoding profile.
 - **bitrate**: Bitrate in kbps.
 
+On FH8852 the H.264 rate controller ignores that target and stays at its highest quantizer, so the value is turned into a fixed quantizer: 38 at 1024 kbps, 36 at 2048 kbps, 34 at 4096 kbps, and 32 at 8192 kbps. It never goes below 30. A higher bitrate is a lower quantizer and a larger stream. H.265 keeps the driver's constant-bitrate control.
+
+On FH8852, `gc4653_mipi` follows this size and frame rate. The library accepts 1920×1080 at 25 or 30 fps, and 2560×1440 at 20 or 25 fps. An exact size selects that mode and the nearest listed rate. A smaller picture uses the smallest mode that covers it, at the nearest listed rate. Anything larger uses 2560×1440 at the nearest listed rate. The sensor mode is chosen when the pipeline starts, so a resolution change needs a restart. Other sensors in this HAL keep a single mode.
+
 ## OSD section
 
 - **enable**: Boolean to turn on On-Screen Display regions globally, used to reduce resource usage or let another app manage the functionality (default: `true`).
@@ -119,6 +123,8 @@ This document describes the fields that can be found within a configuration file
 - **fps**: Frames per second.
 - **bitrate**: Bitrate in kbps.
 - **qfactor**: JPEG compression quality factor.
+
+On FH8852 a higher quality selects a lower encoder quantizer: quality 1 is quantizer 98 and quality 99 is quantizer 0. The encoder does not use the bitrate field.
 
 ## HTTP POST section
 
