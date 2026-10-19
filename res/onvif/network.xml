@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema">
+  <SOAP-ENV:Body>
+    <tds:GetNetworkInterfacesResponse>
+      <tds:NetworkInterfaces token="%s">
+        <tt:Enabled>true</tt:Enabled>
+        <tt:Info>
+          <tt:Name>%s</tt:Name>
+          <tt:HwAddress>%s</tt:HwAddress>
+        </tt:Info>
+        <tt:IPv4>
+          <tt:Enabled>true</tt:Enabled>
+          <tt:Config>
+            <tt:Manual>
+              <tt:Address>%s</tt:Address>
+              <tt:PrefixLength>%d</tt:PrefixLength>
+            </tt:Manual>
+            <tt:DHCP>true</tt:DHCP>
+          </tt:Config>
+        </tt:IPv4>
+      </tds:NetworkInterfaces>
+    </tds:GetNetworkInterfacesResponse>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

@@ -2,6 +2,8 @@
 
 #include "f2_hal.h"
 
+#include <stdio.h>
+
 f2_sys_impl  f2_sys;
 f2_isp_impl  f2_isp;
 f2_vpss_impl f2_vpss;
@@ -192,22 +194,35 @@ int f2_channel_create(char index, short width, short height, char framerate, cha
     if (index >= F2_VENC_CHN_NUM)
         HAL_ERROR("f2_venc", "Only %d encoder channels are available!\n", F2_VENC_CHN_NUM);
 
-    _f2_want_dim[index].width = width;
-    _f2_want_dim[index].height = height;
-    if (jpeg || index >= _f2_vpss_count) {
-        _f2_vpss_src[index] = -1;
-        return EXIT_SUCCESS;
-    }
-    _f2_vpss_src[index] = index;
-
     if (width > _f2_snr_dim.width || height > _f2_snr_dim.height) {
         HAL_WARNING("f2_hal", "Channel %d: requested %dx%d too large, using sensor %dx%d\n",
             index, width, height, _f2_snr_dim.width, _f2_snr_dim.height);
         width = _f2_snr_dim.width;
         height = _f2_snr_dim.height;
     }
+    _f2_want_dim[index].width = width;
+    _f2_want_dim[index].height = height;
+    if (!jpeg && index < _f2_vpss_count) {
+        _f2_vpss_src[index] = index;
+        return f2_vpss_setup(index, width, height, framerate);
+    }
 
-    return f2_vpss_setup(index, width, height, framerate);
+    for (char i = 0; i < _f2_vpss_count; i++) {
+        if (_f2_vpss_open[i] && _f2_vpss_dim[i].width == (unsigned int)width &&
+            _f2_vpss_dim[i].height == (unsigned int)height) {
+            _f2_vpss_src[index] = -1;
+            return EXIT_SUCCESS;
+        }
+    }
+    for (char i = 0; i < _f2_vpss_count; i++) {
+        if (_f2_vpss_open[i]) continue;
+        _f2_vpss_src[index] = i;
+        return f2_vpss_setup(i, width, height, framerate);
+    }
+    _f2_vpss_src[index] = -1;
+    HAL_WARNING("f2_vpss", "No free channel for %dx%d, sharing the main picture\n",
+        width, height);
+    return EXIT_SUCCESS;
 }
 
 static void f2_grayscale_apply(void) {
@@ -309,10 +324,74 @@ int f2_night_thresholds(unsigned short night, unsigned short day) {
 }
 
 
+static const f2_snr_mode *f2_snr_largest(const char *name) {
+    const f2_snr_mode *best = NULL;
+    unsigned int bestArea = 0;
+
+    for (unsigned int i = 0; i < sizeof(f2_snr_modes) / sizeof(*f2_snr_modes); i++) {
+        unsigned int area;
+        if (strcmp(f2_snr_modes[i].name, name)) continue;
+        area = f2_snr_modes[i].dim.width * f2_snr_modes[i].dim.height;
+        if (!best || area > bestArea) {
+            best = &f2_snr_modes[i];
+            bestArea = area;
+        }
+    }
+    return best;
+}
+
+static const f2_snr_mode *f2_snr_match(const char *name, unsigned int width,
+    unsigned int height, unsigned int fps) {
+    const f2_snr_mode *exact = NULL, *cover = NULL, *largest = NULL;
+    unsigned int exactDiff = ~0u, coverArea = ~0u, coverDiff = ~0u;
+    unsigned int largeArea = 0, largeDiff = ~0u;
+
+    for (unsigned int i = 0; i < sizeof(f2_snr_modes) / sizeof(*f2_snr_modes); i++) {
+        const f2_snr_mode *mode = &f2_snr_modes[i];
+        unsigned int area, diff;
+        if (strcmp(mode->name, name)) continue;
+        area = mode->dim.width * mode->dim.height;
+        diff = mode->fps ? (fps > mode->fps ? fps - mode->fps : mode->fps - fps) : 0;
+        if (!largest || area > largeArea || (area == largeArea && diff < largeDiff)) {
+            largest = mode;
+            largeArea = area;
+            largeDiff = diff;
+        }
+        if (mode->dim.width == width && mode->dim.height == height &&
+            (!exact || diff < exactDiff)) {
+            exact = mode;
+            exactDiff = diff;
+        }
+        if (mode->dim.width >= width && mode->dim.height >= height &&
+            (!cover || area < coverArea || (area == coverArea && diff < coverDiff))) {
+            cover = mode;
+            coverArea = area;
+            coverDiff = diff;
+        }
+    }
+    if (exact) return exact;
+    if (cover) return cover;
+    return largest;
+}
+
 int f2_pipeline_create(short width, short height, char mirror, char flip, char framerate, char antiflicker) {
-    int snrFmt;
+    const f2_snr_mode *mode;
+    unsigned int snrFmt;
     int ret;
     char path[128];
+
+    mode = f2_snr_match(f2_snr.name, (unsigned int)width, (unsigned int)height,
+        (unsigned int)(unsigned char)framerate);
+    snrFmt = mode ? mode->format : F2_SNR_FMT;
+    if (mode) {
+        _f2_snr_dim = mode->dim;
+        if (mode->fps)
+            HAL_INFO("f2_snr", "Using %s %ux%u at %u fps (format %#x)\n",
+                f2_snr.name, mode->dim.width, mode->dim.height, mode->fps, mode->format);
+        else
+            HAL_INFO("f2_snr", "Using %s %ux%u (format %#x)\n",
+                f2_snr.name, mode->dim.width, mode->dim.height, mode->format);
+    }
 
     /* The drivers take their buffer sizes before the SDK starts. */
     {
@@ -367,13 +446,6 @@ int f2_pipeline_create(short width, short height, char mirror, char flip, char f
 
     f2_snr.fnCreate();
 
-    if (f2_isp.fnAdvInit) {
-        int ar = f2_isp.fnAdvInit();
-    }
-    if (f2_isp.fnAdvSensorInit) {
-        int sr = f2_isp.fnAdvSensorInit();
-    }
-
     if (ret = f2_isp.fnMemInit(_f2_snr_dim.width, _f2_snr_dim.height)) {
         HAL_DANGER("f2_isp", "Operation failed with %#x!\n", ret);
         return ret;
@@ -389,7 +461,6 @@ int f2_pipeline_create(short width, short height, char mirror, char flip, char f
         return ret;
     }
 
-    snrFmt = F2_SNR_FMT;
     if (ret = f2_isp.fnSetSensorFormat(snrFmt)) {
         HAL_DANGER("f2_isp", "Operation failed with %#x!\n", ret);
         return ret;
@@ -406,6 +477,26 @@ int f2_pipeline_create(short width, short height, char mirror, char flip, char f
         snprintf(path, sizeof(path), "/usr/lib/sensors/params/%s_attr.hex", f2_snr.name);
         if (f2_config_load(path))
             HAL_WARNING("f2_isp", "Can't load the ISP config for %s\n", f2_snr.name);
+    }
+
+    if (f2_isp.fnAdvSensorInit && f2_snr.ops) {
+        int sr = f2_isp.fnAdvSensorInit(f2_snr.ops);
+        if (sr)
+            HAL_WARNING("f2_isp", "Sensor helper init failed with %#x\n", sr);
+    }
+    if (f2_isp.fnAdvInit) {
+        int ar = f2_isp.fnAdvInit();
+        if (ar)
+            HAL_WARNING("f2_isp", "ISP helper init failed with %#x\n", ar);
+    }
+    if (!strcmp(f2_snr.name, "gc4653_mipi")) {
+        int (*setMode)(int) = dlsym(f2_isp.handleAdv, "FHAdv_Isp_SetAwbGain");
+        int (*setGain)(void *) = dlsym(f2_isp.handle, "API_ISP_SetAwbGain");
+        unsigned short neutral[3] = { 256, 256, 256 };
+        if (setMode)
+            setMode(1);
+        if (setGain && !setGain(neutral))
+            HAL_INFO("f2_isp", "GC4653 white balance held at neutral gains\n");
     }
 
     if (mirror || flip)
@@ -575,8 +666,9 @@ int f2_video_create(char index, hal_vidconfig *config) {
     }
 
     if (_f2_vpss_src[index] >= 0) {
-        if (ret = f2_vpss.fnSetOutputMode(index, type == F2_VENC_CODEC_H265 ? 1 : 0))
-            HAL_DANGER("f2_vpss", "Setting output mode on channel %d failed with %#x!\n", index, ret);
+        if (ret = f2_vpss.fnSetOutputMode(_f2_vpss_src[index], type == F2_VENC_CODEC_H265 ? 1 : 0))
+            HAL_DANGER("f2_vpss", "Setting output mode on channel %d failed with %#x!\n",
+                _f2_vpss_src[index], ret);
     } else {
         char src = f2_vpss_pick(index);
         config->width = _f2_vpss_dim[src].width;
@@ -616,9 +708,18 @@ int f2_video_create(char index, hal_vidconfig *config) {
         attr.encSpeed = 4;
         attr.rotate = 0;
         attr.mode = 0;
-        attr.qp = MAX(config->maxQual, 1);
-        attr.frameNum = 1;
-        attr.frameTime = config->framerate ? config->framerate : 25;
+        {
+            unsigned int quality = config->maxQual ? config->maxQual : 50;
+            if (quality > 99)
+                quality = 99;
+            attr.qp = 99 - quality;
+            if (attr.qp > 98)
+                attr.qp = 98;
+            HAL_INFO("f2_venc", "Channel %d MJPEG %ux%u uses quantizer %u for quality %u\n",
+                index, config->width, config->height, attr.qp, quality);
+        }
+        attr.frameNum = config->framerate ? config->framerate : 25;
+        attr.frameTime = 1;
         if (ret = f2_venc.fnSetChannelConfig(index, &attr)) {
             HAL_DANGER("f2_venc", "Configuring MJPEG channel %d failed with %#x!\n", index, ret);
             return ret;
@@ -658,20 +759,43 @@ int f2_video_create(char index, hal_vidconfig *config) {
                 rate->param[0] = 35;
                 rate->param[1] = (unsigned int)MAX(config->bitrate, config->maxBitrate) << 10;
                 rate->param[2] = (unsigned int)config->framerate | (1u << 16);
-                rate->param[3] = 120;
+                rate->param[3] = 51;
                 rate->param[6] = 5;
                 rate->param[7] = 1;
                 break;
             default:
 cbr:
-                rate->mode = h265 ? F2_VENC_RATEMODE_H265CBR : F2_VENC_RATEMODE_H264CBR;
+                if (!h265) {
+                    unsigned int kbps = config->bitrate ? config->bitrate : 1024;
+                    if (kbps < 256)
+                        kbps = 256;
+                    unsigned int log = 0;
+                    for (unsigned int x = kbps; x > 1; x >>= 1)
+                        log++;
+                    int qp = 42;
+                    if (log > 8) {
+                        qp -= 2 * (int)(log - 8);
+                        if (kbps & (1u << (log - 1)))
+                            qp--;
+                    }
+                    if (qp < 30)
+                        qp = 30;
+                    rate->mode = F2_VENC_RATEMODE_H264FIXQP;
+                    rate->param[0] = qp;
+                    rate->param[1] = qp;
+                    rate->param[2] = (unsigned int)(config->framerate ? config->framerate : 25) | (1u << 16);
+                    HAL_INFO("f2_venc", "Channel %d uses H.264 quantizer %u for %u kbps\n",
+                        index, qp, kbps);
+                    break;
+                }
+                rate->mode = F2_VENC_RATEMODE_H265CBR;
                 rate->param[0] = 35;
                 rate->param[1] = (unsigned int)config->bitrate << 10;
-                rate->param[2] = 28;
+                rate->param[2] = (unsigned int)(config->framerate ? config->framerate : 25) | (1u << 16);
                 rate->param[3] = 50;
                 rate->param[4] = 35;
                 rate->param[5] = 50;
-                rate->param[6] = (unsigned int)config->framerate | (1u << 16);
+                rate->param[6] = rate->param[2];
                 rate->param[7] = 120;
                 rate->param[10] = 5;
                 rate->param[11] = 1;
@@ -680,6 +804,10 @@ cbr:
 
         if (ret = f2_venc.fnSetChannelConfig(index, &attr))
             return ret;
+        if (ret = f2_venc.fnSetRateControl(index, &attr.rate)) {
+            HAL_DANGER("f2_venc", "Setting the rate on channel %d failed with %#x!\n", index, ret);
+            return ret;
+        }
     }
 
 
@@ -831,6 +959,8 @@ void *f2_video_thread(void) {
             strm.naluCnt = 1;
         }
         unsigned int count = strm.naluCnt;
+        if (count > 28)
+            count = 28;
 
         if (!logged) {
             logged = 1;
@@ -838,19 +968,66 @@ void *f2_video_thread(void) {
 
         int copied = 0;
         {
-            static unsigned char *vbuf; static unsigned int vcap;
+            static unsigned char *vbuf;
+            static unsigned int vcap;
+            static struct { unsigned long a, b; } maps[48];
+            static int nmaps, mapfresh;
+            unsigned int span[28];
             unsigned int need = 0, off = 0;
-            for (unsigned int i = 0; i < count && i < 28; i++) need += strm.nalu[i].length;
+
+            if (--mapfresh <= 0) {
+                FILE *mf = fopen("/proc/self/maps", "r");
+                char line[192];
+                mapfresh = 64;
+                nmaps = 0;
+                if (mf) {
+                    while (nmaps < 48 && fgets(line, sizeof line, mf)) {
+                        unsigned long a, b;
+                        if (sscanf(line, "%lx-%lx", &a, &b) == 2) {
+                            maps[nmaps].a = a;
+                            maps[nmaps].b = b;
+                            nmaps++;
+                        }
+                    }
+                    fclose(mf);
+                }
+            }
+            for (unsigned int i = 0; i < count; i++) {
+                unsigned long addr = strm.nalu[i].addr;
+                unsigned long len = strm.nalu[i].length;
+                int fits = 0;
+                span[i] = 0;
+                if (!addr || !len || len > 2ul * 1024ul * 1024ul)
+                    continue;
+                for (int m = 0; m < nmaps; m++) {
+                    if (addr < maps[m].a || addr >= maps[m].b)
+                        continue;
+                    if (addr + len + 64 < addr)
+                        break;
+                    if (addr + len + 64 <= maps[m].b)
+                        fits = 1;
+                    break;
+                }
+                if (!fits)
+                    continue;
+                span[i] = (unsigned int)len;
+                need += span[i];
+            }
             if (need) {
                 if (need > vcap) {
                     unsigned char *n = realloc(vbuf, need + 4096);
                     if (n) { vbuf = n; vcap = need + 4096; }
                 }
                 if (vbuf && need <= vcap) {
-                    for (unsigned int i = 0; i < count && i < 28; i++) {
-                        memcpy(vbuf + off, (void*)strm.nalu[i].addr, strm.nalu[i].length);
+                    for (unsigned int i = 0; i < count; i++) {
+                        if (!span[i]) {
+                            strm.nalu[i].length = 0;
+                            continue;
+                        }
+                        memcpy(vbuf + off, (void*)strm.nalu[i].addr, span[i]);
                         strm.nalu[i].addr = (unsigned int)(vbuf + off);
-                        off += strm.nalu[i].length;
+                        strm.nalu[i].length = span[i];
+                        off += span[i];
                     }
                     copied = 1;
                 }
@@ -861,21 +1038,25 @@ void *f2_video_thread(void) {
         if (copied && index < F2_VENC_CHN_NUM && f2_state[index].enable && f2_vid_cb) {
             hal_vidstream outStrm;
             hal_vidpack outPack[28];
-            unsigned int n = count > 28 ? 28 : count;
+            unsigned int n = 0;
             memset(outPack, 0, sizeof(outPack));
-            outStrm.count = n;
             outStrm.seq = 0;
             outStrm.pack = outPack;
-            for (unsigned int i = 0; i < n; i++) {
-                outPack[i].data = (unsigned char*)strm.nalu[i].addr;
-                outPack[i].length = strm.nalu[i].length;
-                outPack[i].timestamp = 0;
-                outPack[i].nalu[0].type = strm.nalu[i].type;
-                outPack[i].nalu[0].offset = 0;
-                outPack[i].nalu[0].length = strm.nalu[i].length;
-                outPack[i].naluCnt = 1;
+            for (unsigned int i = 0; i < count; i++) {
+                if (!strm.nalu[i].length)
+                    continue;
+                outPack[n].data = (unsigned char*)strm.nalu[i].addr;
+                outPack[n].length = strm.nalu[i].length;
+                outPack[n].timestamp = 0;
+                outPack[n].nalu[0].type = strm.nalu[i].type;
+                outPack[n].nalu[0].offset = 0;
+                outPack[n].nalu[0].length = strm.nalu[i].length;
+                outPack[n].naluCnt = 1;
+                n++;
             }
-            (*f2_vid_cb)(index, &outStrm);
+            outStrm.count = n;
+            if (n)
+                (*f2_vid_cb)(index, &outStrm);
         }
     }
     HAL_INFO("f2_venc", "Shutting down encoding thread...\n");
@@ -919,14 +1100,14 @@ static int f2_sensor_select(void) {
             return EXIT_FAILURE;
     }
 
-    for (unsigned int i = 0; i < sizeof(f2_snrs) / sizeof(*f2_snrs); i++) {
-        if (strcmp(f2_snrs[i].name, f2_snr.name)) continue;
-        _f2_snr_dim = f2_snrs[i].dim;
+    {
+        const f2_snr_mode *mode = f2_snr_largest(f2_snr.name);
+        if (!mode)
+            HAL_ERROR("f2_hal", "Unknown sensor %s, please update the app!\n", f2_snr.name);
+        _f2_snr_dim = mode->dim;
         strncpy(sensor, f2_snr.name, sizeof(sensor) - 1);
         return EXIT_SUCCESS;
     }
-
-    HAL_ERROR("f2_hal", "Unknown sensor %s, please update the app!\n", f2_snr.name);
 }
 
 int f2_system_init(void) {

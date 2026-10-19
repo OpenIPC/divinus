@@ -28,12 +28,13 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v);
 static inline int __rtp_setup_transfer(struct list_t *e, void *v);
 static inline int __transfer_nal_h26x(struct list_head_t *trans_list, unsigned char *nalptr, size_t nalsize, char isH265);
 static inline int __transfer_nal_mpga(struct list_head_t *trans_list, unsigned char *ptr, size_t size);
-static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len);
+static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len, int slot);
 
 struct __transfer_set_t {
     struct list_head_t list_head;
     rtsp_handle h;
     int track_id;
+    int slot;
 };
 
 static unsigned int __frame_ts_video, __frame_ts_audio;
@@ -323,7 +324,8 @@ static inline int __rtp_setup_transfer(struct list_t *e, void *v)
     MUST(bufpool_attach(con->pool, con) == SUCCESS,
         return FAILURE);
 
-    if (con->con_state == __CON_S_PLAYING) {
+    if (con->con_state == __CON_S_PLAYING &&
+        (trans_set->track_id != 0 || con->stream_slot == trans_set->slot)) {
 
         ASSERT(bufpool_get_free(trans_set->h->transfer_pool, &trans) == SUCCESS, ({
             ERR("transfer object resource starvation detected. possibly connection limits are wrongfully setup\n");
@@ -351,7 +353,7 @@ error:
     return ret;
 }
 
-static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len)
+static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len, int slot)
 {
     unsigned char *nalptr;
     size_t single_len;
@@ -359,7 +361,7 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
     mime_encoded_handle base16 = NULL;
 
     /* check VPS is set */
-    if (h->isH265 && !(h->sprop_vps_b64)) {
+    if (h->isH265[slot] && !(h->sprop_vps_b64[slot])) {
         nalptr = buf;
         single_len = 0;
         while (nal_split(buf, &nalptr, &single_len, len) == SUCCESS) {
@@ -371,11 +373,11 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
 
                 /* optimistic lock */
                 rtsp_lock(h);
-                if (h->sprop_vps_b64) {
+                if (h->sprop_vps_b64[slot]) {
                     DBG("vps is set by another thread?\n");
                     mime_encoded_delete(base64);
                 } else {
-                    h->sprop_vps_b64 = base64;
+                    h->sprop_vps_b64[slot] = base64;
                 }
                 rtsp_unlock(h);
             }
@@ -386,13 +388,13 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
     }
 
     /* check SPS is set */
-    if (!(h->sprop_sps_b64)) {
+    if (!(h->sprop_sps_b64[slot])) {
         nalptr = buf;
         single_len = 0;
 
         while (nal_split(buf, &nalptr, &single_len, len) == SUCCESS) {
-            if ((!(h->isH265) && (nalptr[0] & 0x1F) == H264_NAL_TYPE_SPS) ||
-                (h->isH265 && (nalptr[0] >> 1 & 0x3F) == H265_NAL_TYPE_SPS)) {
+            if ((!(h->isH265[slot]) && (nalptr[0] & 0x1F) == H264_NAL_TYPE_SPS) ||
+                (h->isH265[slot] && (nalptr[0] >> 1 & 0x3F) == H265_NAL_TYPE_SPS)) {
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]), single_len), return FAILURE);
                 ASSERT(base16 = mime_base16_create((char *)&(nalptr[1]), 3), return FAILURE);
 
@@ -401,18 +403,18 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
 
                 /* optimistic lock */
                 rtsp_lock(h);
-                if (h->sprop_sps_b64) {
+                if (h->sprop_sps_b64[slot]) {
                     DBG("sps is set by another thread?\n");
                     mime_encoded_delete(base64);
                 } else {
-                    h->sprop_sps_b64 = base64;
+                    h->sprop_sps_b64[slot] = base64;
                 }
                 
-                if (h->sprop_sps_b16) {
+                if (h->sprop_sps_b16[slot]) {
                     DBG("sps is set by another thread?\n");
                     mime_encoded_delete(base16);
                 } else {
-                    h->sprop_sps_b16 = base16;
+                    h->sprop_sps_b16[slot] = base16;
                 }
                 rtsp_unlock(h);
             }
@@ -423,12 +425,12 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
     }
 
     /* check PPS is set */
-    if (!(h->sprop_pps_b64)) {
+    if (!(h->sprop_pps_b64[slot])) {
         nalptr = buf;
         single_len = 0;
         while (nal_split(buf, &nalptr, &single_len, len) == SUCCESS) {
-            if ((!(h->isH265) && (nalptr[0] & 0x1F) == H264_NAL_TYPE_PPS) ||
-                (h->isH265 && (nalptr[0] >> 1 & 0x3F) == H265_NAL_TYPE_PPS)) {
+            if ((!(h->isH265[slot]) && (nalptr[0] & 0x1F) == H264_NAL_TYPE_PPS) ||
+                (h->isH265[slot] && (nalptr[0] >> 1 & 0x3F) == H265_NAL_TYPE_PPS)) {
                 ASSERT(single_len >= 4, return FAILURE);
                 ASSERT(base64 = mime_base64_create((char *)&(nalptr[0]), single_len), return FAILURE);
 
@@ -436,11 +438,11 @@ static inline int __retrieve_sprop(rtsp_handle h, unsigned char *buf, size_t len
 
                 /* optimistic lock */
                 rtsp_lock(h);
-                if (h->sprop_pps_b64) {
+                if (h->sprop_pps_b64[slot]) {
                     DBG("pps is set by another thread?\n");
                     mime_encoded_delete(base64);
                 } else {
-                    h->sprop_pps_b64 = base64;
+                    h->sprop_pps_b64[slot] = base64;
                 }
                 rtsp_unlock(h);
             }
@@ -482,11 +484,13 @@ void rtp_disable_audio(rtsp_handle h)
     h->audioPt = 255;
 }
 
-int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
+int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265, int slot)
 {
     int ret = FAILURE;
     int track_id = 0;
     struct __transfer_set_t trans = {};
+
+    if (slot < 0 || slot > 1) slot = 0;
 
     /* checkout RTP packet */
     DASSERT(h, return FAILURE);
@@ -498,7 +502,7 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
         return FAILURE;
     }
 
-    h->isH265 = isH265;
+    h->isH265[slot] = isH265;
     /* Stamp with the encoder's capture time (pack timestamps are microseconds)
      * so receivers pace frames correctly even when a large keyframe makes the
      * sender deliver the following frames in a burst; fall back to the send
@@ -508,11 +512,12 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
 
     for (int i = 0; i < stream->count; i++) {
         ASSERT(__retrieve_sprop(h, stream->pack[i].data + stream->pack[i].offset, 
-            stream->pack[i].length - stream->pack[i].offset) == SUCCESS, goto error);
+            stream->pack[i].length - stream->pack[i].offset, slot) == SUCCESS, goto error);
     }
 
     trans.h = h;
     trans.track_id = track_id;
+    trans.slot = slot;
 
     /* setup transmission object */
     rtsp_lock(h);
@@ -526,7 +531,7 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
             unsigned char *nalptr = data;
             size_t single_len = 0;
             while (nal_split(data, &nalptr, &single_len, length) == SUCCESS) {
-                ASSERT(__transfer_nal_h26x(&(trans.list_head), nalptr, single_len, h->isH265) == SUCCESS, goto error);
+                ASSERT(__transfer_nal_h26x(&(trans.list_head), nalptr, single_len, h->isH265[slot]) == SUCCESS, goto error);
             }
         }
         ASSERT(list_map_inline(&(trans.list_head), (__tcp_flush_each), NULL) == SUCCESS, goto error);

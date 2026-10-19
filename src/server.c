@@ -618,7 +618,10 @@ void respond_request(http_request_t *req) {
             return;
         }
 
+        if (req->input)
+            req->input[req->total] = '\0';
         char *action = onvif_extract_soap_action(req->payload);
+        if (!action) action = "";
         HAL_INFO("onvif", "\x1b[32mAction: %s\x1b[0m\n", action);
         respLen = sizeof(response);
 
@@ -647,10 +650,50 @@ void respond_request(http_request_t *req) {
                 onvif_respond_systemtime((char*)response, &respLen);
                 send_and_close(req->clntFd, response, respLen);
                 return;
+            } else if (EQUALS(action, "SetSystemDateAndTime")) {
+                onvif_respond_settime((char*)response, &respLen, req->payload);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetServices")) {
+                onvif_respond_services((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetScopes")) {
+                onvif_respond_scopes((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetNetworkInterfaces")) {
+                onvif_respond_network((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetNetworkDefaultGateway")) {
+                onvif_respond_gateway((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetHostname")) {
+                onvif_respond_hostname((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetDNS")) {
+                onvif_respond_dns((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetNetworkProtocols")) {
+                onvif_respond_protocols((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetServiceCapabilities")) {
+                onvif_respond_device_caps((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
             }
         } else if (EQUALS(path, "media_service")) {
             if (EQUALS(action, "GetProfiles")) {
                 onvif_respond_mediaprofiles((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetProfile")) {
+                onvif_respond_profile((char*)response, &respLen, req->payload);
                 send_and_close(req->clntFd, response, respLen);
                 return;
             } else if (EQUALS(action, "GetSnapshotUri")) {
@@ -658,14 +701,35 @@ void respond_request(http_request_t *req) {
                 send_and_close(req->clntFd, response, respLen);
                 return;
             } else if (EQUALS(action, "GetStreamUri")) {
-                onvif_respond_stream((char*)response, &respLen);
+                onvif_respond_stream((char*)response, &respLen, req->payload);
                 send_and_close(req->clntFd, response, respLen);
                 return;
             } else if (EQUALS(action, "GetVideoSources")) {
                 onvif_respond_videosources((char*)response, &respLen);
                 send_and_close(req->clntFd, response, respLen);
                 return;
+            } else if (EQUALS(action, "GetVideoSourceConfigurations")) {
+                onvif_respond_source_configs((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetVideoEncoderConfigurations")) {
+                onvif_respond_encoders((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetVideoEncoderConfigurationOptions")) {
+                onvif_respond_encoder_options((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
+            } else if (EQUALS(action, "GetServiceCapabilities")) {
+                onvif_respond_media_caps((char*)response, &respLen);
+                send_and_close(req->clntFd, response, respLen);
+                return;
             }
+        }
+
+        if (onvif_dispatch_extra(path, action, (char*)response, &respLen, req->payload)) {
+            send_and_close(req->clntFd, response, respLen);
+            return;
         }
 
         if (!EMPTY(action))
@@ -1065,13 +1129,13 @@ void respond_request(http_request_t *req) {
                     if (remain != value)
                         app_config.mjpeg_fps = result;
                 } else if (EQUALS(key, "bitrate")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.mjpeg_bitrate = result;
+                    long result = strtol(value, &remain, 10);
+                    if (remain != value && result > 0)
+                        app_config.mjpeg_bitrate = (unsigned int)result;
                 } else if (EQUALS(key, "qfactor")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.mjpeg_qfactor = result;
+                    long result = strtol(value, &remain, 10);
+                    if (remain != value && result > 0 && result <= 99)
+                        app_config.mjpeg_qfactor = (unsigned int)result;
                 } else if (EQUALS(key, "mode")) {
                     if (EQUALS_CASE(value, "CBR"))
                         app_config.mjpeg_mode = HAL_VIDMODE_CBR;
@@ -1133,9 +1197,9 @@ void respond_request(http_request_t *req) {
                     if (remain != value)
                         app_config.mp4_fps = result;
                 } else if (EQUALS(key, "bitrate")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.mp4_bitrate = result;
+                    long result = strtol(value, &remain, 10);
+                    if (remain != value && result > 0)
+                        app_config.mp4_bitrate = (unsigned int)result;
                 } else if (EQUALS(key, "h265")) {
                     if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
                         app_config.mp4_codecH265 = 1;
@@ -1163,7 +1227,10 @@ void respond_request(http_request_t *req) {
             }
 
             media_mp4_disable();
-            if (app_config.mp4_enable) media_mp4_enable();
+            if (app_config.mp4_enable) {
+                media_mp4_enable();
+                media_sub_enable();
+            }
         }
 
         char h265[6] = "false";

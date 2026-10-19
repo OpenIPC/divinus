@@ -1,6 +1,8 @@
 #include "media.h"
 
 char audioOn = 0, udpOn = 0;
+int media_main_ch = -1;
+int media_sub_ch = -1;
 pthread_mutex_t aencMtx, chnMtx, mp4Mtx;
 pthread_t aencPid = 0, audPid = 0, ispPid = 0, vidPid = 0;
 
@@ -186,8 +188,10 @@ int save_video_stream(char index, hal_vidstream *stream) {
         case HAL_VIDCODEC_H265:
         {
             char isH265 = chnState[index].payload == HAL_VIDCODEC_H265 ? 1 : 0;
+            int is_sub = media_sub_ch >= 0 && index == media_sub_ch;
+            int is_main = !is_sub && (media_main_ch < 0 || index == media_main_ch);
 
-            if (app_config.mp4_enable) {
+            if (is_main && app_config.mp4_enable) {
                 pthread_mutex_lock(&mp4Mtx);
                 send_mp4_to_client(index, stream, isH265);
                 if (record_active()) record_ingest_stream(stream, isH265);
@@ -195,10 +199,10 @@ int save_video_stream(char index, hal_vidstream *stream) {
 
                 send_h26x_to_client(index, stream);
             }
-            if (app_config.rtsp_enable)
-                rtp_send_h26x(rtspHandle, stream, isH265);
+            if (app_config.rtsp_enable && (is_main || is_sub))
+                rtp_send_h26x(rtspHandle, stream, isH265, is_sub ? 1 : 0);
 
-            if (app_config.stream_enable) {
+            if (is_main && app_config.stream_enable) {
                 for (int i = 0; i < stream->count; i++) {
                     udp_stream_send_nal(stream->pack[i].data + stream->pack[i].offset,
                         stream->pack[i].length - stream->pack[i].offset,
@@ -317,16 +321,14 @@ void media_stop(void) {
 }
 
 void request_idr(void) {
-    signed char index = -1;
     pthread_mutex_lock(&chnMtx);
     for (int i = 0; i < chnCount; i++) {
+        signed char index;
         if (!chnState[i].enable) continue;
         if (chnState[i].payload != HAL_VIDCODEC_H264 &&
             chnState[i].payload != HAL_VIDCODEC_H265) continue;
         index = i;
-        break;
-    }
-    if (index != -1) switch (plat) {
+        switch (plat) {
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_video_request_idr(index); break;
         case HAL_PLATFORM_I6C: i6c_video_request_idr(index); break;
@@ -347,6 +349,7 @@ void request_idr(void) {
 #elif defined(__riscv) || defined(__riscv__)
         case HAL_PLATFORM_CVI: cvi_video_request_idr(index); break;
 #endif
+        }
     }
     pthread_mutex_unlock(&chnMtx);
 }
@@ -652,6 +655,10 @@ int media_mjpeg_enable(void) {
 
     {
         hal_vidconfig config;
+        unsigned int quality = app_config.mjpeg_qfactor ? app_config.mjpeg_qfactor : 50;
+        if (quality > 99)
+            quality = 99;
+        memset(&config, 0, sizeof(config));
         config.width = app_config.mjpeg_width;
         config.height = app_config.mjpeg_height;
         config.codec = HAL_VIDCODEC_MJPG;
@@ -659,6 +666,7 @@ int media_mjpeg_enable(void) {
         config.framerate = app_config.mjpeg_fps;
         config.bitrate = app_config.mjpeg_bitrate;
         config.maxBitrate = app_config.mjpeg_bitrate * 5 / 4;
+        config.minQual = config.maxQual = quality;
 
         switch (plat) {
 #if defined(__ARM_PCS_VFP)
@@ -707,6 +715,9 @@ int media_mjpeg_enable(void) {
 
 int media_mp4_disable(void) {
     int ret;
+
+    media_main_ch = -1;
+    media_sub_ch = -1;
 
     for (char i = 0; i < chnCount; i++) {
         if (!chnState[i].enable) continue;
@@ -798,6 +809,80 @@ int media_mp4_enable(void) {
             index, ret, errstr(ret));
     }
 
+    media_main_ch = index;
+    return EXIT_SUCCESS;
+}
+
+int media_sub_enable(void) {
+    int ret;
+    int index;
+    hal_vidconfig config;
+
+    if (media_sub_ch >= 0)
+        return EXIT_SUCCESS;
+
+    index = take_next_free_channel(true);
+    if (index < 0)
+        HAL_ERROR("media", "No free channel for the sub stream!\n");
+
+    if (ret = create_channel(index, MEDIA_SUB_WIDTH, MEDIA_SUB_HEIGHT, MEDIA_SUB_FPS, 0)) {
+        chnState[index].enable = false;
+        HAL_ERROR("media", "Creating sub channel %d failed with %#x!\n%s\n",
+            index, ret, errstr(ret));
+    }
+
+    memset(&config, 0, sizeof(config));
+    config.width = MEDIA_SUB_WIDTH;
+    config.height = MEDIA_SUB_HEIGHT;
+    config.codec = HAL_VIDCODEC_H264;
+    config.mode = app_config.mp4_mode;
+    config.profile = app_config.mp4_profile;
+    config.gop = MEDIA_SUB_GOP;
+    config.framerate = MEDIA_SUB_FPS;
+    config.bitrate = MEDIA_SUB_BITRATE;
+    config.maxBitrate = MEDIA_SUB_BITRATE * 5 / 4;
+    ret = 0;
+
+    switch (plat) {
+#if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
+        case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
+        case HAL_PLATFORM_M6:  ret = m6_video_create(index, &config); break;
+        case HAL_PLATFORM_RK:  ret = rk_video_create(index, &config); break;
+#elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ret = ak_video_create(index, &config); break;
+        case HAL_PLATFORM_GM:  ret = gm_video_create(index, &config); break;
+        case HAL_PLATFORM_V1:  ret = v1_video_create(index, &config); break;
+        case HAL_PLATFORM_V2:  ret = v2_video_create(index, &config); break;
+        case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
+        case HAL_PLATFORM_V4:  ret = v4_video_create(index, &config); break;
+        #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F2:  ret = f2_video_create(index, &config); break;
+        #endif
+#elif defined(__mips__)
+        case HAL_PLATFORM_T31: ret = t31_video_create(index, &config); break;
+#elif defined(__riscv) || defined(__riscv__)
+        case HAL_PLATFORM_CVI: ret = cvi_video_create(index, &config); break;
+#endif
+    }
+
+    if (ret) {
+        media_video_disable(index, 0);
+        chnState[index].enable = false;
+        HAL_ERROR("media", "Creating sub encoder %d failed with %#x!\n%s\n",
+            index, ret, errstr(ret));
+    }
+
+    if (ret = bind_channel(index, MEDIA_SUB_FPS, 0)) {
+        media_video_disable(index, 0);
+        chnState[index].enable = false;
+        HAL_ERROR("media", "Binding sub channel %d failed with %#x!\n%s\n",
+            index, ret, errstr(ret));
+    }
+
+    media_sub_ch = index;
+    HAL_INFO("media", "Sub stream H.264 %dx%d on channel %d\n",
+        MEDIA_SUB_WIDTH, MEDIA_SUB_HEIGHT, index);
     return EXIT_SUCCESS;
 }
 
@@ -980,6 +1065,9 @@ int sdk_start(void) {
 
     if (app_config.mjpeg_enable && (ret = media_mjpeg_enable()))
         HAL_ERROR("media", "MJPEG initialization failed with %#x!\n", ret);
+
+    if (app_config.mp4_enable && (ret = media_sub_enable()))
+        HAL_WARNING("media", "Sub stream was not created\n");
 
     if (app_config.jpeg_enable && (ret = jpeg_init()))
         HAL_ERROR("media", "JPEG initialization failed with %#x!\n", ret);
