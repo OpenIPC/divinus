@@ -652,6 +652,10 @@ int media_mjpeg_enable(void) {
 
     {
         hal_vidconfig config;
+        unsigned int quality = app_config.mjpeg_qfactor ? app_config.mjpeg_qfactor : 50;
+        if (quality > 99)
+            quality = 99;
+        memset(&config, 0, sizeof(config));
         config.width = app_config.mjpeg_width;
         config.height = app_config.mjpeg_height;
         config.codec = HAL_VIDCODEC_MJPG;
@@ -659,6 +663,7 @@ int media_mjpeg_enable(void) {
         config.framerate = app_config.mjpeg_fps;
         config.bitrate = app_config.mjpeg_bitrate;
         config.maxBitrate = app_config.mjpeg_bitrate * 5 / 4;
+        config.minQual = config.maxQual = quality;
 
         switch (plat) {
 #if defined(__ARM_PCS_VFP)

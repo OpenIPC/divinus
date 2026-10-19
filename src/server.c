@@ -1065,13 +1065,13 @@ void respond_request(http_request_t *req) {
                     if (remain != value)
                         app_config.mjpeg_fps = result;
                 } else if (EQUALS(key, "bitrate")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.mjpeg_bitrate = result;
+                    long result = strtol(value, &remain, 10);
+                    if (remain != value && result > 0)
+                        app_config.mjpeg_bitrate = (unsigned int)result;
                 } else if (EQUALS(key, "qfactor")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.mjpeg_qfactor = result;
+                    long result = strtol(value, &remain, 10);
+                    if (remain != value && result > 0 && result <= 99)
+                        app_config.mjpeg_qfactor = (unsigned int)result;
                 } else if (EQUALS(key, "mode")) {
                     if (EQUALS_CASE(value, "CBR"))
                         app_config.mjpeg_mode = HAL_VIDMODE_CBR;
@@ -1133,9 +1133,9 @@ void respond_request(http_request_t *req) {
                     if (remain != value)
                         app_config.mp4_fps = result;
                 } else if (EQUALS(key, "bitrate")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
-                        app_config.mp4_bitrate = result;
+                    long result = strtol(value, &remain, 10);
+                    if (remain != value && result > 0)
+                        app_config.mp4_bitrate = (unsigned int)result;
                 } else if (EQUALS(key, "h265")) {
                     if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
                         app_config.mp4_codecH265 = 1;
