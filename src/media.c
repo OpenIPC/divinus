@@ -340,6 +340,7 @@ void request_idr(void) {
         case HAL_PLATFORM_V3:  v3_video_request_idr(index); break;
         case HAL_PLATFORM_V4:  v4_video_request_idr(index); break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  f1_video_request_idr(index); break;
         case HAL_PLATFORM_F2:  f2_video_request_idr(index); break;
         #endif
 #elif defined(__mips__)
@@ -366,6 +367,7 @@ void set_grayscale(bool active) {
         case HAL_PLATFORM_V3:  v3_channel_grayscale(active); break;
         case HAL_PLATFORM_V4:  v4_channel_grayscale(active); break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  f1_channel_grayscale(active); break;
         case HAL_PLATFORM_F2:  f2_channel_grayscale(active); break;
         #endif
 #elif defined(__mips__)
@@ -410,6 +412,7 @@ int create_channel(char index, short width, short height, char framerate, char j
         case HAL_PLATFORM_V4:  return v4_channel_create(index, app_config.mirror,
             app_config.flip, framerate);
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  return f1_channel_create(index, width, height, framerate, jpeg);
         case HAL_PLATFORM_F2:  return f2_channel_create(index, width, height, framerate, jpeg);
         #endif
 #elif defined(__mips__)
@@ -437,6 +440,7 @@ int bind_channel(char index, char framerate, char jpeg) {
         case HAL_PLATFORM_V3:  return v3_channel_bind(index);
         case HAL_PLATFORM_V4:  return v4_channel_bind(index);
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  return f1_channel_bind(index);
         case HAL_PLATFORM_F2:  return f2_channel_bind(index);
         #endif
 #elif defined(__mips__)
@@ -462,6 +466,7 @@ int unbind_channel(char index, char jpeg) {
         case HAL_PLATFORM_V3:  return v3_channel_unbind(index);
         case HAL_PLATFORM_V4:  return v4_channel_unbind(index);
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  return f1_channel_unbind(index);
         case HAL_PLATFORM_F2:  return f2_channel_unbind(index);
         #endif
 #elif defined(__mips__)
@@ -487,6 +492,7 @@ int media_video_disable(char index, char jpeg) {
         case HAL_PLATFORM_V3:  return v3_video_destroy(index);
         case HAL_PLATFORM_V4:  return v4_video_destroy(index);
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  return f1_video_destroy(index);
         case HAL_PLATFORM_F2:  return f2_video_destroy(index);
         #endif
 #elif defined(__mips__)
@@ -521,6 +527,7 @@ void media_audio_disable(void) {
         case HAL_PLATFORM_V3:  v3_audio_deinit(); break;
         case HAL_PLATFORM_V4:  v4_audio_deinit(); break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  f1_audio_deinit(); break;
         case HAL_PLATFORM_F2:  f2_audio_deinit(); break;
         #endif
 #elif defined(__mips__)
@@ -552,6 +559,7 @@ int media_audio_enable(void) {
         case HAL_PLATFORM_V3:  ret = v3_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V4:  ret = v4_audio_init(app_config.audio_srate); break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  ret = f1_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_F2:  ret = f2_audio_init(app_config.audio_srate); break;
         #endif
 #elif defined(__mips__)
@@ -674,6 +682,7 @@ int media_mjpeg_enable(void) {
             case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
             case HAL_PLATFORM_V4:  ret = v4_video_create(index, &config); break;
             #if __ARM_ARCH == 6
+            case HAL_PLATFORM_F1:  ret = f1_video_create(index, &config); break;
             case HAL_PLATFORM_F2:  ret = f2_video_create(index, &config); break;
             #endif
 #elif defined(__mips__)
@@ -766,6 +775,7 @@ int media_mp4_enable(void) {
             case HAL_PLATFORM_V3:  ret = v3_video_create(index, &config); break;
             case HAL_PLATFORM_V4:  ret = v4_video_create(index, &config); break;
             #if __ARM_ARCH == 6
+            case HAL_PLATFORM_F1:  ret = f1_video_create(index, &config); break;
             case HAL_PLATFORM_F2:  ret = f2_video_create(index, &config); break;
             #endif
 #elif defined(__mips__)
@@ -819,6 +829,7 @@ int sdk_start(void) {
         case HAL_PLATFORM_V3:  ret = v3_hal_init(); break;
         case HAL_PLATFORM_V4:  ret = v4_hal_init(); break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  ret = f1_hal_init(); break;
         case HAL_PLATFORM_F2:  ret = f2_hal_init(); break;
         #endif
 #elif defined(__mips__)
@@ -871,6 +882,10 @@ int sdk_start(void) {
             v4_vid_cb = save_video_stream;
             break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:
+            f1_aud_cb = save_audio_stream;
+            f1_vid_cb = save_video_stream;
+            break;
         case HAL_PLATFORM_F2:
             f2_aud_cb = save_audio_stream;
             f2_vid_cb = save_video_stream;
@@ -904,6 +919,7 @@ int sdk_start(void) {
         case HAL_PLATFORM_V3:  ret = v3_system_init(app_config.sensor_config); break;
         case HAL_PLATFORM_V4:  ret = v4_system_init(app_config.sensor_config); break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  ret = f1_system_init(); break;
         case HAL_PLATFORM_F2:  ret = f2_system_init(); break;
         #endif
 #elif defined(__mips__)
@@ -946,6 +962,7 @@ int sdk_start(void) {
         case HAL_PLATFORM_V3:  ret = v3_pipeline_create(); break;
         case HAL_PLATFORM_V4:  ret = v4_pipeline_create(); break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  ret = f1_pipeline_create(width, height, app_config.mirror, app_config.flip, framerate, app_config.antiflicker); break;
         case HAL_PLATFORM_F2:  ret = f2_pipeline_create(width, height, app_config.mirror, app_config.flip, framerate, app_config.antiflicker); break;
         #endif
 #elif defined(__mips__)
@@ -1039,6 +1056,7 @@ int sdk_stop(void) {
         case HAL_PLATFORM_V3:  v3_video_destroy_all(); break;
         case HAL_PLATFORM_V4:  v4_video_destroy_all(); break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  f1_video_destroy_all(); break;
         case HAL_PLATFORM_F2:  f2_video_destroy_all(); break;
         #endif
 #elif defined(__mips__)
@@ -1062,6 +1080,7 @@ int sdk_stop(void) {
         case HAL_PLATFORM_V3:  v3_pipeline_destroy(); break;
         case HAL_PLATFORM_V4:  v4_pipeline_destroy(); break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  f1_pipeline_destroy(); break;
         case HAL_PLATFORM_F2:  f2_pipeline_destroy(); break;
         #endif
 #elif defined(__mips__)
@@ -1092,6 +1111,7 @@ int sdk_stop(void) {
         case HAL_PLATFORM_V3:  v3_system_deinit(); break;
         case HAL_PLATFORM_V4:  v4_system_deinit(); break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  f1_system_deinit(); break;
         case HAL_PLATFORM_F2:  f2_system_deinit(); break;
         #endif
 #elif defined(__mips__)
@@ -1125,6 +1145,7 @@ int sdk_stop(void) {
         case HAL_PLATFORM_V3:  v3_hal_deinit(); break;
         case HAL_PLATFORM_V4:  v4_hal_deinit(); break;
         #if __ARM_ARCH == 6
+        case HAL_PLATFORM_F1:  f1_hal_deinit(); break;
         case HAL_PLATFORM_F2:  f2_hal_deinit(); break;
         #endif
 #elif defined(__mips__)

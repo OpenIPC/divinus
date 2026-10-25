@@ -427,6 +427,10 @@ found_font:;
                             v4_region_setbitmap(id, &bitmap);
                             break;
                         #if __ARM_ARCH == 6
+                        case HAL_PLATFORM_F1:
+                            f1_region_create(&osds[id].hand, rect, osds[id].opal);
+                            f1_region_setbitmap(&osds[id].hand, &bitmap);
+                            break;
                         case HAL_PLATFORM_F2:
                             f2_region_create(&osds[id].hand, rect, osds[id].opal);
                             f2_region_setbitmap(&osds[id].hand, &bitmap);
@@ -500,6 +504,10 @@ found_font:;
                                 v4_region_setbitmap(id, &bitmap);
                                 break;
                             #if __ARM_ARCH == 6
+                            case HAL_PLATFORM_F1:
+                                f1_region_create(&osds[id].hand, rect, osds[id].opal);
+                                f1_region_setbitmap(&osds[id].hand, &bitmap);
+                                break;
                             case HAL_PLATFORM_F2:
                                 f2_region_create(&osds[id].hand, rect, osds[id].opal);
                                 f2_region_setbitmap(&osds[id].hand, &bitmap);
@@ -529,6 +537,7 @@ found_font:;
                         case HAL_PLATFORM_V3:  v3_region_destroy(id); break;
                         case HAL_PLATFORM_V4:  v4_region_destroy(id); break;
                         #if __ARM_ARCH == 6
+                        case HAL_PLATFORM_F1:  f1_region_destroy(&osds[id].hand); break;
                         case HAL_PLATFORM_F2:  f2_region_destroy(&osds[id].hand); break;
                         #endif
 #elif defined(__mips__)

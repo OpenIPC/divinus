@@ -8,6 +8,7 @@
 #include "f2_sys.h"
 #include "f2_venc.h"
 #include "f2_vpss.h"
+#include "fh_lamp.h"
 
 #include "../config.h"
 #include "../globals.h"
@@ -37,8 +38,6 @@ int f2_channel_unbind(char index);
 int f2_config_load(char *path);
 
 void *f2_image_thread(void);
-
-int f2_light_enable(int enable);
 
 int f2_night_available(void);
 int f2_night_status(void);

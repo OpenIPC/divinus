@@ -35,6 +35,7 @@ struct AppConfig {
     unsigned int check_interval_s;
     unsigned int pin_switch_delay_us;
     char adc_device[128];
+    hal_light night_lamp;
     int adc_threshold;
 
     // [isp]

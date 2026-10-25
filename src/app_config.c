@@ -103,6 +103,16 @@ int app_config_save(void) {
     fprintf(file, "  ir_led_pin: %d\n", app_config.ir_led_pin);
     fprintf(file, "  pin_switch_delay_us: %d\n", app_config.pin_switch_delay_us);
     fprintf(file, "  adc_device: %s\n", app_config.adc_device);
+    {
+        char lamp[16] = "";
+        if (app_config.night_lamp & HAL_LIGHT_IR) strcat(lamp, "ir");
+        if (app_config.night_lamp & HAL_LIGHT_WHITE) {
+            if (lamp[0]) strcat(lamp, ",");
+            strcat(lamp, "white");
+        }
+        if (!lamp[0]) strcpy(lamp, "none");
+        fprintf(file, "  lamp: %s\n", lamp);
+    }
     fprintf(file, "  adc_threshold: %d\n", app_config.adc_threshold);
 
     fprintf(file, "isp:\n");
@@ -279,6 +289,7 @@ enum ConfigError app_config_parse(void) {
     app_config.pin_switch_delay_us = 250;
     app_config.check_interval_s = 10;
     app_config.adc_device[0] = 0;
+    app_config.night_lamp = HAL_LIGHT_IR;
     app_config.adc_threshold = 128;
 
     struct IniConfig ini;
@@ -346,7 +357,7 @@ enum ConfigError app_config_parse(void) {
     #define PIN_MAX 95
     if (app_config.night_mode_enable) {
         parse_int(
-            &ini, "night_mode", "ir_sensor_pin", 0, PIN_MAX,
+            &ini, "night_mode", "ir_sensor_pin", 0, 999, /* 999 = no sensor */
             &app_config.ir_sensor_pin);
         parse_int(
             &ini, "night_mode", "check_interval_s", 0, 600,
@@ -365,6 +376,27 @@ enum ConfigError app_config_parse(void) {
             &app_config.pin_switch_delay_us);
         parse_param_value(
             &ini, "night_mode", "adc_device", app_config.adc_device);
+        {
+            char lamp[128] = {0};
+            if (parse_param_value_n(&ini, "night_mode", "lamp", lamp, sizeof(lamp)) == CONFIG_OK) {
+                int flags = 0, sawNone = 0, valid = 1;
+                for (char *p = lamp; *p; ) {
+                    p += strspn(p, ",| ");
+                    if (!*p) break;
+                    size_t len = strcspn(p, ",| ");
+                    if (len == 2 && !strncmp(p, "ir", 2))
+                        flags |= HAL_LIGHT_IR;
+                    else if (len == 5 && !strncmp(p, "white", 5))
+                        flags |= HAL_LIGHT_WHITE;
+                    else if (len == 4 && !strncmp(p, "none", 4))
+                        sawNone = 1;
+                    else { valid = 0; break; }
+                    p += len;
+                }
+                if (valid && (flags || sawNone) && !(sawNone && flags))
+                    app_config.night_lamp = (hal_light)flags;
+            }
+        }
         parse_int(
             &ini, "night_mode", "adc_threshold", INT_MIN, INT_MAX,
             &app_config.adc_threshold);

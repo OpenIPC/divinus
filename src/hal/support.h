@@ -16,6 +16,7 @@
 #include "hisi/v3_hal.h"
 #include "hisi/v4_hal.h"
 #if __ARM_ARCH == 6
+#include "fhan/f1_hal.h"
 #include "fhan/f2_hal.h"
 #endif
 #elif defined(__mips__)

@@ -1,5 +1,7 @@
 #include "support.h"
 
+#include <unistd.h>
+
 void *aud_thread = NULL;
 void *isp_thread = NULL;
 void *vid_thread = NULL;
@@ -146,28 +148,69 @@ void hal_identify(void) {
 #if defined(__arm__) && !defined(__ARM_PCS_VFP)
 #if __ARM_ARCH == 6
     {
-        char name[16] = {0};
-        const char *sources[] = {"/proc/cpuinfo", "/proc/driver/chip"};
-        for (int i = 0; i < 2 && !name[0]; i++) {
-            if (!(file = fopen(sources[i], "r"))) continue;
-            while (fgets(line, 200, file)) {
-                char *part = strstr(line, "FH8");
-                if (part) {
-                    sscanf(part, "%15s", name);
-                    break;
+        unsigned int chip_id = 0, ip_ver = 0, sys_ctrl = 0;
+
+        if (hal_registry(FH_PMU_CHIP_ID, &chip_id, OP_READ) &&
+            hal_registry(FH_PMU_IP_VER, &ip_ver, OP_READ) &&
+            hal_registry(FH_PMU_SYS_CTRL, &sys_ctrl, OP_READ)) {
+            if (chip_id == 0x17092901 &&
+                ((ip_ver & 0xf) == 0xc || (ip_ver & 0xf) == 0xd)) {
+                strcpy(chip, (ip_ver & 0xf) == 0xc ? "FH8852V100" : "FH8856V100");
+                plat = HAL_PLATFORM_F1;
+            } else if (chip_id == 0x19112201) {
+                switch (sys_ctrl & 0xffffff) {
+                    case 0x00000001: strcpy(chip, "FH8852V200"); plat = HAL_PLATFORM_F2; break;
+                    case 0x00100001: strcpy(chip, "FH8856V200"); plat = HAL_PLATFORM_F2; break;
+                    case 0x00410001: strcpy(chip, "FH8858V200"); plat = HAL_PLATFORM_F2; break;
+                    case 0x00000002: strcpy(chip, "FH8852V210"); plat = HAL_PLATFORM_F2; break;
+                    case 0x00100002: strcpy(chip, "FH8856V210"); plat = HAL_PLATFORM_F2; break;
+                    case 0x00410002: strcpy(chip, "FH8858V210"); plat = HAL_PLATFORM_F2; break;
+                    case 0x00200001: strcpy(chip, "FH8856V201"); plat = HAL_PLATFORM_F2; break;
+                    case 0x00300001: strcpy(chip, "FH8858V201"); plat = HAL_PLATFORM_F2; break;
+                    default: break;
                 }
             }
-            fclose(file);
         }
-        if (name[0]) {
-            plat = HAL_PLATFORM_F2;
-            strncpy(chip, name, sizeof(chip) - 1);
+
+        if (plat == HAL_PLATFORM_UNK) {
+            char name[16] = {0};
+            const char *sources[] = {"/proc/cpuinfo", "/proc/driver/chip"};
+            for (int i = 0; i < 2 && !name[0]; i++) {
+                if (!(file = fopen(sources[i], "r"))) continue;
+                while (fgets(line, 200, file)) {
+                    char *part = strstr(line, "FH8");
+                    if (part) {
+                        sscanf(part, "%15s", name);
+                        break;
+                    }
+                }
+                fclose(file);
+            }
+            if (name[0]) {
+                strncpy(chip, name, sizeof(chip) - 1);
+                if (strstr(name, "V200"))
+                    plat = HAL_PLATFORM_F2;
+                else if (strstr(name, "V100") || !strncmp(name, "FH8852", 6) ||
+                         !strncmp(name, "FH8856", 6))
+                    plat = HAL_PLATFORM_F1;
+            }
+        }
+
+        if (plat == HAL_PLATFORM_F1 || plat == HAL_PLATFORM_F2) {
             strcpy(family, "fullhan");
-            chnCount = F2_VENC_CHN_NUM;
-            chnState = (hal_chnstate*)f2_state;
-            aud_thread = f2_audio_thread;
-            isp_thread = f2_image_thread;
-            vid_thread = f2_video_thread;
+            if (plat == HAL_PLATFORM_F1) {
+                chnCount = F1_VENC_CHN_NUM;
+                chnState = (hal_chnstate*)f1_state;
+                aud_thread = f1_audio_thread;
+                isp_thread = f1_image_thread;
+                vid_thread = f1_video_thread;
+            } else {
+                chnCount = F2_VENC_CHN_NUM;
+                chnState = (hal_chnstate*)f2_state;
+                aud_thread = f2_audio_thread;
+                isp_thread = f2_image_thread;
+                vid_thread = f2_video_thread;
+            }
             return;
         }
     }

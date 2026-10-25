@@ -4,13 +4,13 @@
 
 /* FH_AC_Set_Config() payload (audio codec on the ARC coprocessor, /dev/f2_audio) */
 typedef struct {
-    unsigned int io;        /* 0/1 = capture, 2/3 = playback */
+    unsigned int io;      /* 0/1 = capture, 2/3 = playback */
     unsigned int rate;
-    unsigned int bit;      /* 16 or 24 */
+    unsigned int bit;     /* 16 or 24 */
     unsigned int fmt;     /* 0 = PCM, 1..5 = other formats (forces 16 bit) */
     unsigned int chnNum;
     unsigned int frmNum;  /* >= 80; vendor uses 320 at 8 kHz */
-    unsigned int volume;        /* 0..100 */
+    unsigned int volume;  /* 0..100 */
 } f2_aud_cnf;
 
 typedef struct {
