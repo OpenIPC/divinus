@@ -12,6 +12,7 @@
 #include "i6_vpe.h"
 
 #include "../globals.h"
+#include "common.h"
 #include "../../fmt/nal.h"
 
 #include <sys/select.h>
@@ -55,3 +56,6 @@ void *i6_video_thread(void);
 
 void i6_system_deinit(void);
 int i6_system_init(void);
+
+int i6_system_identify(void);
+float i6_system_readtemp(void);

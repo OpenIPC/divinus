@@ -242,10 +242,10 @@ void ak_system_deinit(void)
 
 int ak_system_init(char *snrConfig)
 {
-    int ret = EXIT_SUCCESS, val = 0xAA000000;
+    int ret = EXIT_SUCCESS, val = AK_SYS_BOOT_MAGIC;
 
     // Disable the watchdog timer if it isn't already
-    hal_registry(0x080080E8, &val, OP_WRITE);
+    hal_registry(AK_SYS_BOOT_REG, &val, OP_WRITE);
 
     if (ak_vi.fnLoadSensorConfig(snrConfig))
         HAL_DANGER("ak_vi", "Loading the sensor config failed"
@@ -253,6 +253,32 @@ int ak_system_init(char *snrConfig)
             ak_sys.fnGetErrorStr(ret));
 
     return ret;
+}
+
+int ak_system_identify(void)
+{
+    unsigned int val = 0;
+
+    if (access("/sys/devices/platform/i2c-ak39", F_OK) ||
+        !hal_registry(AK_SYS_REG_CHIP, &val, OP_READ))
+        return 0;
+
+    plat = HAL_PLATFORM_AK;
+    strcpy(chip, "AK3918E");
+    switch (val) {
+        case AK_SYS_CHIP_3918EV100: strcat(chip, "V100"); break;
+        case AK_SYS_CHIP_3918EV200: strcat(chip, "V200"); break;
+        case AK_SYS_CHIP_3918EV300: strcat(chip, "V300"); break;
+        case AK_SYS_CHIP_3918EV330: strcat(chip, "V330"); break;
+    }
+    strcpy(family, "anyka");
+    chnCount = AK_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)ak_state;
+    vid_thread = ak_video_thread;
+
+    // Needed for libplat_thread and uClibc
+    dlopen("libpthread.so.0", RTLD_LAZY | RTLD_GLOBAL);
+    return 1;
 }
 
 #endif

@@ -7,6 +7,9 @@
 #include "ak_vi.h"
 
 #include "../globals.h"
+#include "../tools.h"
+
+#include <unistd.h>
 
 extern hal_chnstate ak_state[AK_VENC_CHN_NUM];
 extern int (*ak_aud_cb)(hal_audframe*);
@@ -37,3 +40,5 @@ void *ak_video_thread(void);
 
 void ak_system_deinit(void);
 int ak_system_init(char *snrConfig);
+
+int ak_system_identify(void);

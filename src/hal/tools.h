@@ -19,6 +19,10 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifndef CLOCK_MONOTONIC_COARSE
+#define CLOCK_MONOTONIC_COARSE CLOCK_MONOTONIC
+#endif
+
 #define SHA1_BLOCK_SIZE 64
 #define SHA1_DIGEST_SIZE 20
 

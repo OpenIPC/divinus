@@ -4,6 +4,12 @@
 
 #define V3_SYS_API "1.0"
 
+#define V3_SYS_TEMP_PREP 0x60fa0000
+#define V3A_SYS_TEMP_CFG 0x120a0110
+#define V3A_SYS_TEMP_VAL 0x120a0118
+#define V3_SYS_TEMP_CFG  0x1203009c
+#define V3_SYS_TEMP_VAL  0x120300a4
+
 typedef enum {
     V3_SYS_MOD_CMPI,
     V3_SYS_MOD_VB,

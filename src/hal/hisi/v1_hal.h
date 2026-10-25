@@ -13,6 +13,8 @@
 #include "v1_vpss.h"
 
 #include "../globals.h"
+#include "../tools.h"
+#include "common.h"
 
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -59,3 +61,5 @@ int v1_system_calculate_block(short width, short height, v1_common_pixfmt pixFmt
     unsigned int alignWidth);
 void v1_system_deinit(void);
 int v1_system_init(char *snrConfig);
+
+int v1_system_identify(void);

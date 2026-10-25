@@ -865,4 +865,19 @@ int rk_system_init(char *snrConfig)
     return EXIT_SUCCESS;
 }
 
+int rk_system_identify(void)
+{
+    if (access("/proc/rk_cma", F_OK))
+        return 0;
+
+    plat = HAL_PLATFORM_RK;
+    strcpy(chip, "rv11xx");
+    strcpy(family, "rockchip");
+    chnCount = RK_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)rk_state;
+    aud_thread = rk_audio_thread;
+    vid_thread = rk_video_thread;
+    return 1;
+}
+
 #endif

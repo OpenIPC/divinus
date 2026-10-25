@@ -12,6 +12,10 @@
 #include "hal/macros.h"
 #include "media.h"
 
+#if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
+#include "hal/fhan/fh_lamp.h"
+#endif
+
 bool night_grayscale_on(void);
 bool night_ircut_on(void);
 bool night_irled_on(void);

@@ -24,10 +24,11 @@ This document describes the fields that can be found within a configuration file
 - **ir_cut_pin1**: GPIO number for IR cut filter control (normal state pin).
 - **ir_cut_pin2**: GPIO number for IR cut filter control (inverted state pin).
 - **ir_led_pin**: GPIO number for IR LED control.
-- **ir_sensor_pin**: GPIO number for PIR motion sensor or similar digital toggle.
+- **ir_sensor_pin**: GPIO number for PIR motion sensor or similar digital toggle; `999` means no sensor (default).
 - **check_interval_s**: Interval in seconds to check night mode conditions.
 - **pin_switch_delay_us**: Delay in microseconds before switching GPIO pins, must be used to protect cut filter coils from burning.
 - **adc_device**: Path to the ADC device used for night mode.
+- **lamp**: Illuminator mode on Fullhan, combinable: `ir` (default), `white` (colour night vision, IR-cut filter in) or `none`. Combine with commas, e.g. `ir,white`.
 - **adc_threshold**: Threshold raw value to trigger night mode, depends on the bitness of the given ADC device.
 
 ## ISP section

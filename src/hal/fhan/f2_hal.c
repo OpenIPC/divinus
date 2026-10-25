@@ -283,15 +283,6 @@ static void f2_proc_write(const char *path, const char *value) {
     fclose(file);
 }
 
-int f2_light_enable(int enable) {
-    f2_proc_write("/proc/driver/pwm",
-        (enable & HAL_LIGHT_IR) ? F2_PWM_ON("3", "8") : F2_PWM_OFF("3", "8"));
-    f2_proc_write("/proc/driver/pwm",
-        (enable & HAL_LIGHT_WHITE) ? F2_PWM_ON("7", "128") : F2_PWM_OFF("7", "128"));
-    gpio_write(F2_WHITELAMP_GPIO, (enable & HAL_LIGHT_WHITE) ? 1 : 0);
-    return EXIT_SUCCESS;
-}
-
 int f2_night_available(void) {
     return _f2_smartir;
 }
@@ -419,7 +410,7 @@ int f2_pipeline_create(short width, short height, char mirror, char flip, char f
     if (f2_isp.fnSmartIrInit && !f2_isp.fnSmartIrInit()) {
         _f2_smartir = f2_isp.fnSmartIrStatus != NULL;
     }
-    f2_light_enable(0);
+    fh_lamp_enable(HAL_LIGHT_NONE);
 
     _f2_isp_on = 1;
 
@@ -934,6 +925,21 @@ int f2_system_init(void) {
         HAL_ERROR("f2_snr", "Failed to load the sensor driver\n");
 
     return EXIT_SUCCESS;
+}
+
+int f2_system_identify(void)
+{
+    if (fh_identify() != HAL_PLATFORM_F2)
+        return 0;
+
+    plat = HAL_PLATFORM_F2;
+    strcpy(family, "fullhan");
+    chnCount = F2_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)f2_state;
+    aud_thread = f2_audio_thread;
+    isp_thread = f2_image_thread;
+    vid_thread = f2_video_thread;
+    return 1;
 }
 
 #endif

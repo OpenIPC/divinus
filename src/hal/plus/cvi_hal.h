@@ -58,3 +58,5 @@ int cvi_system_calculate_block(short width, short height, cvi_common_pixfmt pixF
     unsigned int alignWidth);
 void cvi_system_deinit(void);
 int cvi_system_init(char *snrConfig);
+
+int cvi_system_identify(void);

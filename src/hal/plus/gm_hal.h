@@ -9,6 +9,8 @@
 #include "../globals.h"
 #include "../../fmt/nal.h"
 
+#include <unistd.h>
+
 #define GM_LIB_API "1.0"
 #define GM_MAX_SNAP (1024 * 1024)
 
@@ -164,3 +166,5 @@ static void gm_lib_unload(gm_lib_impl *aio_lib) {
     aio_lib->handle = NULL;
     memset(aio_lib, 0, sizeof(*aio_lib));
 }
+
+int gm_system_identify(void);

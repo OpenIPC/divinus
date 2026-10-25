@@ -10,6 +10,7 @@
 #include "m6_vif.h"
 
 #include "../globals.h"
+#include "common.h"
 
 #include <sys/select.h>
 #include <unistd.h>
@@ -50,3 +51,6 @@ void *m6_video_thread(void);
 
 void m6_system_deinit(void);
 int m6_system_init(void);
+
+int m6_system_identify(void);
+float m6_system_readtemp(void);

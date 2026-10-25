@@ -1,9 +1,9 @@
 #if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
 
 /*
- * The Fullhan kernels can oops in rtnl_fill_ifinfo() on a netlink interface
- * dump, which kills the calling process. musl implements getifaddrs() over
- * netlink, so replace it with the SIOCGIFCONF ioctl interface on this platform.
+ * The Fullhan V100/V200 kernels can oops in rtnl_fill_ifinfo() on a netlink
+ * interface dump, which kills the calling process. musl implements getifaddrs()
+ * over netlink, so replace it with the SIOCGIFCONF ioctl interface here.
  */
 #include <errno.h>
 #include <ifaddrs.h>
@@ -15,7 +15,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-struct f2_ifaddr {
+struct fh_ifaddr {
     struct ifaddrs ifa;
     char name[IFNAMSIZ];
     struct sockaddr_in addr, netmask, broadcast;
@@ -26,7 +26,7 @@ int getifaddrs(struct ifaddrs **ifap)
     struct ifconf ifc;
     struct ifreq *reqs;
     int fd, count, len = 32 * sizeof(struct ifreq);
-    struct f2_ifaddr *list = NULL, *last = NULL;
+    struct fh_ifaddr *list = NULL, *last = NULL;
 
     *ifap = NULL;
     if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -46,7 +46,7 @@ int getifaddrs(struct ifaddrs **ifap)
 
     for (int i = 0; i < count; i++) {
         struct ifreq req = reqs[i];
-        struct f2_ifaddr *entry = calloc(1, sizeof(*entry));
+        struct fh_ifaddr *entry = calloc(1, sizeof(*entry));
         if (!entry) break;
         strncpy(entry->name, req.ifr_name, IFNAMSIZ - 1);
         entry->ifa.ifa_name = entry->name;

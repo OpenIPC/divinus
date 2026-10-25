@@ -1,24 +1,18 @@
 #pragma once
 
+#include "../symbols.h"
+#include "../types.h"
+#include "common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "../symbols.h"
-#include "../types.h"
 
 #define F2_VPSS_CHN_NUM 3
 #define F2_VENC_CHN_NUM 8
 #define F2_SNR_MAX 24
 /* Sensor output format handed to the ISP (bayer/mode word). */
 #define F2_SNR_FMT 0x203
-
-/* Illuminators: /proc/driver/pwm takes "id,output_mask,duty_ns,period_ns,...",
- * the mask written raw to GLOBAL_CTRL2 (so 1 << id). IR = PWM3 (GPIO7), white
- * = PWM7 + the white-lamp GPIO. */
-#define F2_PWM_ON(id, mask)  id "," mask ",60,200,0,0,0,0"
-#define F2_PWM_OFF(id, mask) id "," mask ",0,200,0,0,0,0"
-#define F2_WHITELAMP_GPIO 11
 
 /* Error codes returned by the MPI (negative) */
 enum {

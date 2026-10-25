@@ -10,6 +10,7 @@
 
 #include "../config.h"
 #include "../globals.h"
+#include "../tools.h"
 
 #include <sys/select.h>
 #include <unistd.h>
@@ -48,3 +49,5 @@ void *t31_video_thread(void);
 
 void t31_system_deinit(void);
 int t31_system_init(void);
+
+int t31_system_identify(void);

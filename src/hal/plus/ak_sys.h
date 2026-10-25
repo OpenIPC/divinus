@@ -2,6 +2,15 @@
 
 #include "ak_common.h"
 
+#define AK_SYS_REG_CHIP   0x08000000
+#define AK_SYS_BOOT_REG   0x080080E8
+#define AK_SYS_BOOT_MAGIC 0xAA000000
+
+#define AK_SYS_CHIP_3918EV100 0x20120100
+#define AK_SYS_CHIP_3918EV200 0x20150200
+#define AK_SYS_CHIP_3918EV300 0x20160100
+#define AK_SYS_CHIP_3918EV330 0x20160101
+
 typedef struct {
     void *handle, *handleAkuio, *handleDrv, *handleIpcSrv, *handleThread;
 

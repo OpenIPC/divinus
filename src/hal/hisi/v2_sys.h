@@ -4,6 +4,10 @@
 
 #define V2_SYS_API "1.0"
 
+#define V2_SYS_TEMP_PREP 0x60fa0000
+#define V2_SYS_TEMP_CFG  0x20270110
+#define V2_SYS_TEMP_VAL  0x20270114
+
 typedef enum {
     V2_SYS_MOD_CMPI,
     V2_SYS_MOD_VB,

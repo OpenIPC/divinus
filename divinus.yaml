@@ -59,6 +59,7 @@ night_mode:
   ir_led_pin: 3
   pin_switch_delay_us: 150
   adc_device: /dev/sar_adc_drv
+  lamp: ir
   adc_threshold: 128
 
 http_post:

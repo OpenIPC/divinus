@@ -55,3 +55,5 @@ int rk_system_calculate_block(short width, short height, rk_common_pixfmt pixFmt
     unsigned int alignWidth);
 void rk_system_deinit(void);
 int rk_system_init(char *snrConfig);
+
+int rk_system_identify(void);

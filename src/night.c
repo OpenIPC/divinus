@@ -37,6 +37,28 @@ void night_manual(bool enable) { manual = enable; }
 
 void night_mode(bool enable) {
     HAL_INFO("night", "Changing mode to %s\n", enable ? "NIGHT" : "DAY");
+#if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
+    if (plat == HAL_PLATFORM_F1) {
+        hal_light lamp = app_config.night_lamp;
+        if (!enable) {
+            night_grayscale(false);
+            night_ircut(true);
+            night_irled(false);
+            fh_lamp_enable(HAL_LIGHT_NONE);
+        } else if (lamp & HAL_LIGHT_WHITE) {
+            night_grayscale(false);
+            night_ircut(true);
+            night_irled((lamp & HAL_LIGHT_IR) != 0);
+            fh_lamp_enable(lamp);
+        } else {
+            night_grayscale(true);
+            night_ircut(false);
+            night_irled((lamp & HAL_LIGHT_IR) != 0);
+            fh_lamp_enable(lamp);
+        }
+        return;
+    }
+#endif
     night_grayscale(enable);
     night_ircut(!enable);
     night_irled(enable);
@@ -48,6 +70,18 @@ void *night_thread(void) {
 
     night_mode(night_mode_on());
 
+#if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
+    if (plat == HAL_PLATFORM_F1 && f1_night_available()) {
+        HAL_INFO("night", "Using image gain for day/night switching\n");
+        int applied = -1;
+        while (keepRunning && nightOn) {
+            int state = f1_night_status();
+            if (manual) applied = -1;
+            else if (state != applied) { night_mode(state); applied = state; }
+            usleep(40000);
+        }
+    } else
+#endif
     if (app_config.adc_device[0]) {
         int adc_fd = -1;
         fd_set adc_fds;

@@ -860,4 +860,19 @@ int v1_system_init(char *snrConfig)
     return EXIT_SUCCESS;
 }
 
+int v1_system_identify(void)
+{
+    if (hisi_identify() != 1)
+        return 0;
+
+    plat = HAL_PLATFORM_V1;
+    strcpy(family, "hisi-gen1");
+    chnCount = V1_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)v1_state;
+    aud_thread = v1_audio_thread;
+    isp_thread = v1_image_thread;
+    vid_thread = v1_video_thread;
+    return 1;
+}
+
 #endif

@@ -1018,4 +1018,35 @@ int i6c_system_init(void)
     return EXIT_SUCCESS;
 }
 
+int i6c_system_identify(void)
+{
+    unsigned int value = 0;
+    short memory = 0;
+    char package[4] = {0};
+
+    if (!star_identify(&value, &memory, package) || value != STAR_SERIES_I6C)
+        return 0;
+
+    strcpy(chip, "SSC37[7/8]");
+    if (memory > 128)
+        strcat(chip, "Q");
+    else if (memory > 64)
+        strcat(chip, "D");
+    if (package[2] == 'D')
+        strcat(chip, "E");
+    strcpy(family, "infinity6c");
+
+    plat = HAL_PLATFORM_I6C;
+    chnCount = I6C_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)i6c_state;
+    aud_thread = i6c_audio_thread;
+    vid_thread = i6c_video_thread;
+    return 1;
+}
+
+float i6c_system_readtemp(void)
+{
+    return star_system_readtemp();
+}
+
 #endif

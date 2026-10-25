@@ -932,4 +932,19 @@ int cvi_system_init(char *snrConfig)
     return EXIT_SUCCESS;
 }
 
+int cvi_system_identify(void)
+{
+    if (access("/proc/cvi", F_OK))
+        return 0;
+
+    plat = HAL_PLATFORM_CVI;
+    strcpy(family, "CV181x");
+    chnCount = CVI_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)cvi_state;
+    aud_thread = cvi_audio_thread;
+    isp_thread = cvi_image_thread;
+    vid_thread = cvi_video_thread;
+    return 1;
+}
+
 #endif

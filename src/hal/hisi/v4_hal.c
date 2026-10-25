@@ -1027,16 +1027,31 @@ float v4_system_readtemp(void)
         EQUALS(chip, "Hi3516CV500"))
         v4a_device = 1;
 
-    prep = v4a_device ? 0x60fa0000 : 0xc3200000;
+    prep = v4a_device ? V4A_SYS_TEMP_PREP : V4_SYS_TEMP_PREP;
 
-    if (hal_registry(v4a_device ? 0x120300b4 : 0x120280b4, &val, OP_READ) && prep != val)
-        hal_registry(v4a_device ? 0x120300b4 : 0x120280b4, &prep, OP_WRITE);
+    if (hal_registry(v4a_device ? V4A_SYS_TEMP_CFG : V4_SYS_TEMP_CFG, &val, OP_READ) && prep != val)
+        hal_registry(v4a_device ? V4A_SYS_TEMP_CFG : V4_SYS_TEMP_CFG, &prep, OP_WRITE);
 
-    if (!hal_registry(v4a_device ? 0x120300bc : 0x120280bc, &val, OP_READ))
+    if (!hal_registry(v4a_device ? V4A_SYS_TEMP_VAL : V4_SYS_TEMP_VAL, &val, OP_READ))
         return result;
 
     result = val & ((1 << 10) - 1);
     return ((result - (v4a_device ? 136 : 117)) / (v4a_device ? 793 : 798)) * 165 - 40;
+}
+
+int v4_system_identify(void)
+{
+    if (hisi_identify() != 4)
+        return 0;
+
+    plat = HAL_PLATFORM_V4;
+    strcpy(family, "hisi-gen4");
+    chnCount = V4_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)v4_state;
+    aud_thread = v4_audio_thread;
+    isp_thread = v4_image_thread;
+    vid_thread = v4_video_thread;
+    return 1;
 }
 
 #endif
