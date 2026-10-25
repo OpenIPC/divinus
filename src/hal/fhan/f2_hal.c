@@ -927,4 +927,19 @@ int f2_system_init(void) {
     return EXIT_SUCCESS;
 }
 
+int f2_system_identify(void)
+{
+    if (fh_identify() != HAL_PLATFORM_F2)
+        return 0;
+
+    plat = HAL_PLATFORM_F2;
+    strcpy(family, "fullhan");
+    chnCount = F2_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)f2_state;
+    aud_thread = f2_audio_thread;
+    isp_thread = f2_image_thread;
+    vid_thread = f2_video_thread;
+    return 1;
+}
+
 #endif

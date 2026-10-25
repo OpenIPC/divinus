@@ -12,6 +12,7 @@
 #include "i6c_vif.h"
 
 #include "../globals.h"
+#include "common.h"
 
 #include <sys/select.h>
 #include <unistd.h>
@@ -52,3 +53,6 @@ void *i6c_video_thread(void);
 
 void i6c_system_deinit(void);
 int i6c_system_init(void);
+
+int i6c_system_identify(void);
+float i6c_system_readtemp(void);

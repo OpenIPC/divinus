@@ -9,6 +9,7 @@
 #include "i3_vi.h"
 
 #include "../globals.h"
+#include "../tools.h"
 #include "../../fmt/nal.h"
 
 #include <sys/select.h>
@@ -48,3 +49,5 @@ void *i3_video_thread(void);*/
 
 void i3_system_deinit(void);
 int i3_system_init(void);
+
+int i3_system_identify(void);

@@ -464,4 +464,26 @@ int gm_system_init(void)
     return EXIT_SUCCESS;
 }
 
+int gm_system_identify(void)
+{
+    if (access("/dev/vpd", F_OK))
+        return 0;
+
+    plat = HAL_PLATFORM_GM;
+    strcpy(chip, "GM813x");
+    FILE *file = fopen("/proc/pmu/chipver", "r");
+    if (file) {
+        char line[200];
+        if (fgets(line, sizeof(line), file))
+            sscanf(line, "%4s", chip + 2);
+        fclose(file);
+    }
+    strcpy(family, "grainmedia");
+    chnCount = GM_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)gm_state;
+    aud_thread = gm_audio_thread;
+    vid_thread = gm_video_thread;
+    return 1;
+}
+
 #endif

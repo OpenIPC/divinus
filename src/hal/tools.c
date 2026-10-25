@@ -294,6 +294,16 @@ bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
     volatile char *mapped_area;
     if (offset != loaded_offset) {
         mapped_area = mmap64(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, offset);
+        if (mapped_area == MAP_FAILED && errno == EPERM) {
+            /* CONFIG_IO_STRICT_DEVMEM rejects a 64 KiB window that overlaps
+             * a driver-claimed page even when the register page is free.
+             * Retry with a single page, as ipctool does. */
+            long page = sysconf(_SC_PAGESIZE);
+            if (page <= 0) page = 4096;
+            offset = addr & ~((unsigned int)page - 1);
+            size = (unsigned int)page;
+            mapped_area = mmap64(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, offset);
+        }
         if (mapped_area == MAP_FAILED) {
             fprintf(stderr, "hal_registry mmap error: %s (%d)\n",
                     strerror(errno), errno);

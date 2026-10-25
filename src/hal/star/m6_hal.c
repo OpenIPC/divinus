@@ -962,4 +962,28 @@ int m6_system_init(void)
     return EXIT_SUCCESS;
 }
 
+int m6_system_identify(void)
+{
+    unsigned int value = 0;
+    short memory = 0;
+    char package[4] = {0};
+
+    if (!star_identify(&value, &memory, package) || value != STAR_SERIES_M6)
+        return 0;
+
+    plat = HAL_PLATFORM_M6;
+    strcpy(chip, "SSC359G");
+    strcpy(family, "mercury6");
+    chnCount = M6_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)m6_state;
+    aud_thread = m6_audio_thread;
+    vid_thread = m6_video_thread;
+    return 1;
+}
+
+float m6_system_readtemp(void)
+{
+    return star_system_readtemp();
+}
+
 #endif

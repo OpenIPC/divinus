@@ -2,6 +2,11 @@
 #include "globals.h"
 #include "tools.h"
 
+#include <linux/version.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <unistd.h>
+
 #if defined(__ARM_PCS_VFP)
 #include "star/i3_hal.h"
 #include "star/i6_hal.h"
@@ -24,10 +29,6 @@
 #elif defined(__riscv) || defined(__riscv__)
 #include "plus/cvi_hal.h"
 #endif
-
-#include <linux/version.h>
-#include <stdbool.h>
-#include <stdio.h>
 
 // Newer versions of musl have UAPI headers
 // that redefine struct sysinfo

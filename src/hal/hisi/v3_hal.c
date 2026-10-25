@@ -927,7 +927,7 @@ int v3_system_init(char *snrConfig)
 float v3_system_readtemp(void)
 {
     char v3a_device = 0;
-    int val, prep = 0x60fa0000;
+    int val, prep = V3_SYS_TEMP_PREP;
     float result = 0.0 / 0.0;
 
     if (EQUALS(chip, "Hi3516AV200") ||
@@ -936,14 +936,29 @@ float v3_system_readtemp(void)
         EQUALS(chip, "Hi3559V100"))
         v3a_device = 1;
 
-    if (hal_registry(v3a_device ? 0x120a0110 : 0x1203009c, &val, OP_READ) && prep != val)
-        hal_registry(v3a_device ? 0x120a0110 : 0x1203009c, &prep, OP_WRITE);
+    if (hal_registry(v3a_device ? V3A_SYS_TEMP_CFG : V3_SYS_TEMP_CFG, &val, OP_READ) && prep != val)
+        hal_registry(v3a_device ? V3A_SYS_TEMP_CFG : V3_SYS_TEMP_CFG, &prep, OP_WRITE);
 
-    if (!hal_registry(v3a_device ? 0x120a0118 : 0x120300a4, &val, OP_READ))
+    if (!hal_registry(v3a_device ? V3A_SYS_TEMP_VAL : V3_SYS_TEMP_VAL, &val, OP_READ))
         return result;
 
     result = val & ((1 << 10) - 1);
     return ((result - 125) / 806) * 165 - 40;
+}
+
+int v3_system_identify(void)
+{
+    if (hisi_identify() != 3)
+        return 0;
+
+    plat = HAL_PLATFORM_V3;
+    strcpy(family, "hisi-gen3");
+    chnCount = V3_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)v3_state;
+    aud_thread = v3_audio_thread;
+    isp_thread = v3_image_thread;
+    vid_thread = v3_video_thread;
+    return 1;
 }
 
 #endif

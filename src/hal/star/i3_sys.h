@@ -4,6 +4,12 @@
 
 #define I3_SYS_API "1.0"
 
+#define I3_SYS_REG_ID 0x1F2025A4
+#define I3_SYS_CHIP_MASK   0xF000
+#define I3_SYS_CHIP_MSC313E 0x6000
+#define I3_SYS_CHIP_MSC316DC 0x7000
+#define I3_SYS_CHIP_MSC318 0x8000
+
 typedef enum {
     I3_SYS_MOD_AI,
     I3_SYS_MOD_AO,

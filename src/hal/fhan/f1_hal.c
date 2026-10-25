@@ -1180,4 +1180,19 @@ int f1_night_status(void)
     return _f1_night_prev;
 }
 
+int f1_system_identify(void)
+{
+    if (fh_identify() != HAL_PLATFORM_F1)
+        return 0;
+
+    plat = HAL_PLATFORM_F1;
+    strcpy(family, "fullhan");
+    chnCount = F1_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)f1_state;
+    aud_thread = f1_audio_thread;
+    isp_thread = f1_image_thread;
+    vid_thread = f1_video_thread;
+    return 1;
+}
+
 #endif

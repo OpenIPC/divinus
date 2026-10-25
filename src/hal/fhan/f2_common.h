@@ -1,12 +1,12 @@
 #pragma once
 
+#include "../symbols.h"
+#include "../types.h"
+#include "common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "../symbols.h"
-#include "../types.h"
-#include "fh_common.h"
 
 #define F2_VPSS_CHN_NUM 3
 #define F2_VENC_CHN_NUM 8

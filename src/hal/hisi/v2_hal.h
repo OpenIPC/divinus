@@ -13,6 +13,8 @@
 #include "v2_vpss.h"
 
 #include "../globals.h"
+#include "../tools.h"
+#include "common.h"
 
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -61,3 +63,5 @@ int v2_system_calculate_block(short width, short height, v2_common_pixfmt pixFmt
 void v2_system_deinit(void);
 int v2_system_init(char *snrConfig);
 float v2_system_readtemp(void);
+
+int v2_system_identify(void);

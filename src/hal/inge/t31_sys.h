@@ -4,6 +4,19 @@
 
 #define T31_SYS_API "1.0"
 
+#define T31_SYS_REG_GEN  0x1300002C
+#define T31_SYS_REG_TYPE 0x13540238
+
+#define T31_SYS_GEN_T31  0x31
+#define T31_SYS_TYPE_T31X  0x2222
+#define T31_SYS_TYPE_T31L  0x3333
+#define T31_SYS_TYPE_T31A  0x4444
+#define T31_SYS_TYPE_T31ZL 0x5555
+#define T31_SYS_TYPE_T31ZX 0x6666
+#define T31_SYS_TYPE_T31AL 0xcccc
+#define T31_SYS_TYPE_T31ZC 0xdddd
+#define T31_SYS_TYPE_T31LC 0xeeee
+
 typedef enum {
     T31_SYS_DEV_FS,
     T31_SYS_DEV_ENC,

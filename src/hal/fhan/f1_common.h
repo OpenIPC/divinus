@@ -1,12 +1,12 @@
 #pragma once
 
+#include "../symbols.h"
+#include "../types.h"
+#include "common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "../symbols.h"
-#include "../types.h"
-#include "fh_common.h"
 
 /*
  * Fullhan FH8852/FH8856 (V100 generation, SDK V1.2.0 "OSDRV" libraries).

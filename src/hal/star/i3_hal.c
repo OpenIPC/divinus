@@ -854,4 +854,24 @@ int i3_system_init(void)
     return EXIT_SUCCESS;
 }
 
+int i3_system_identify(void)
+{
+    unsigned int val = 0;
+
+    if (access("/proc/mstar/kernel", 0) ||
+        !hal_registry(I3_SYS_REG_ID, &val, OP_READ))
+        return 0;
+
+    plat = HAL_PLATFORM_I3;
+    switch (val & I3_SYS_CHIP_MASK) {
+        case I3_SYS_CHIP_MSC313E: strcpy(chip, "MSC313E"); break;
+        case I3_SYS_CHIP_MSC316DC: strcpy(chip, "MSC316DC"); break;
+        case I3_SYS_CHIP_MSC318: strcpy(chip, "MSC318"); break;
+    }
+    strcpy(family, "infinity3");
+    chnCount = I3_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)i3_state;
+    return 1;
+}
+
 #endif

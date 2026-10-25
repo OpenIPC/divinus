@@ -966,4 +966,65 @@ int i6_system_init(void)
     return EXIT_SUCCESS;
 }
 
+int i6_system_identify(void)
+{
+    unsigned int value = 0;
+    short memory = 0;
+    char package[4] = {0};
+
+    if (!star_identify(&value, &memory, package))
+        return 0;
+
+    switch (value) {
+        case STAR_SERIES_I6:
+            if (memory > 128)
+                strcpy(chip, "SSC327Q");
+            else if (memory > 64)
+                strcpy(chip, "SSC32[5/7]D");
+            else
+                strcpy(chip, "SSC32[3/5/7]");
+            if (package[2] == 'B' && chip[strlen(chip) - 1] != 'Q')
+                strcat(chip, "E");
+            strcpy(family, "infinity6");
+            break;
+        case STAR_SERIES_I6E:
+            if (package[2] == 'A')
+                strcpy(chip, "SSC33[8/9]G");
+            else {
+                if (sysconf(_SC_NPROCESSORS_ONLN) == 1)
+                    strcpy(chip, "SSC30K");
+                else
+                    strcpy(chip, "SSC33[6/8]");
+                if (memory > 128)
+                    strcat(chip, "Q");
+                else if (memory > 64)
+                    strcat(chip, "D");
+            }
+            strcpy(family, "infinity6e");
+            break;
+        case STAR_SERIES_I6B0:
+            strcpy(chip, "SSC33[3/5/7]");
+            if (memory > 64)
+                strcat(chip, "D");
+            if (package[2] == 'B')
+                strcat(chip, "E");
+            strcpy(family, "infinity6b0");
+            break;
+        default:
+            return 0;
+    }
+
+    plat = HAL_PLATFORM_I6;
+    chnCount = I6_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)i6_state;
+    aud_thread = i6_audio_thread;
+    vid_thread = i6_video_thread;
+    return 1;
+}
+
+float i6_system_readtemp(void)
+{
+    return star_system_readtemp();
+}
+
 #endif

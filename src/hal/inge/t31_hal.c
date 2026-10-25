@@ -737,4 +737,36 @@ int t31_system_init(void)
     return EXIT_SUCCESS;
 }
 
+int t31_system_identify(void)
+{
+    unsigned int val = 0, type = 0;
+
+    if (access("/proc/jz", F_OK) ||
+        !hal_registry(T31_SYS_REG_GEN, &val, OP_READ))
+        return 0;
+    hal_registry(T31_SYS_REG_TYPE, &type, OP_READ);
+
+    if (((val >> 12) & 0xFF) != T31_SYS_GEN_T31)
+        return 0;
+
+    plat = HAL_PLATFORM_T31;
+    switch (type >> 16) {
+        case T31_SYS_TYPE_T31X:  sprintf(chip, "T31X");  break;
+        case T31_SYS_TYPE_T31L:  sprintf(chip, "T31L");  break;
+        case T31_SYS_TYPE_T31A:  sprintf(chip, "T31A");  break;
+        case T31_SYS_TYPE_T31ZL: sprintf(chip, "T31ZL"); break;
+        case T31_SYS_TYPE_T31ZX: sprintf(chip, "T31ZX"); break;
+        case T31_SYS_TYPE_T31AL: sprintf(chip, "T31AL"); break;
+        case T31_SYS_TYPE_T31ZC: sprintf(chip, "T31ZC"); break;
+        case T31_SYS_TYPE_T31LC: sprintf(chip, "T31LC"); break;
+        default:     sprintf(chip, "T31N");  break;
+    }
+    strcpy(family, "ingenic t31");
+    chnCount = T31_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)t31_state;
+    aud_thread = t31_audio_thread;
+    vid_thread = t31_video_thread;
+    return 1;
+}
+
 #endif

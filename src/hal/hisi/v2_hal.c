@@ -912,17 +912,32 @@ int v2_system_init(char *snrConfig)
 
 float v2_system_readtemp(void)
 {
-    int val, prep = 0x60fa0000;
+    int val, prep = V2_SYS_TEMP_PREP;
     float result = 0.0 / 0.0;
 
-    if (hal_registry(0x20270110, &val, OP_READ) && prep != val)
-        hal_registry(0x20270110, &prep, OP_WRITE);
+    if (hal_registry(V2_SYS_TEMP_CFG, &val, OP_READ) && prep != val)
+        hal_registry(V2_SYS_TEMP_CFG, &prep, OP_WRITE);
 
-    if (!hal_registry(0x20270114, &val, OP_READ))
+    if (!hal_registry(V2_SYS_TEMP_VAL, &val, OP_READ))
         return result;
 
     result = val & ((1 << 8) - 1);
     return ((result * 180) / 256) - 40;
+}
+
+int v2_system_identify(void)
+{
+    if (hisi_identify() != 2)
+        return 0;
+
+    plat = HAL_PLATFORM_V2;
+    strcpy(family, "hisi-gen2");
+    chnCount = V2_VENC_CHN_NUM;
+    chnState = (hal_chnstate*)v2_state;
+    aud_thread = v2_audio_thread;
+    isp_thread = v2_image_thread;
+    vid_thread = v2_video_thread;
+    return 1;
 }
 
 #endif

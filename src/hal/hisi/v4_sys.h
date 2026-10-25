@@ -4,6 +4,13 @@
 
 #define V4_SYS_API "1.0"
 
+#define V4A_SYS_TEMP_PREP 0x60fa0000
+#define V4_SYS_TEMP_PREP  0xc3200000
+#define V4A_SYS_TEMP_CFG  0x120300b4
+#define V4A_SYS_TEMP_VAL  0x120300bc
+#define V4_SYS_TEMP_CFG   0x120280b4
+#define V4_SYS_TEMP_VAL   0x120280bc
+
 typedef enum {
     V4_SYS_MOD_CMPI,
     V4_SYS_MOD_VB,

@@ -59,3 +59,5 @@ void *f1_video_thread(void);
 
 void f1_system_deinit(void);
 int f1_system_init(void);
+
+int f1_system_identify(void);
