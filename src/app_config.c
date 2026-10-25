@@ -356,9 +356,12 @@ enum ConfigError app_config_parse(void) {
         parse_bool(&ini, "night_mode", "enable", &app_config.night_mode_enable);
     #define PIN_MAX 95
     if (app_config.night_mode_enable) {
-        parse_int(
-            &ini, "night_mode", "ir_sensor_pin", 0, 999, /* 999 = no sensor */
-            &app_config.ir_sensor_pin);
+        {
+            int pin;
+            if (parse_int(&ini, "night_mode", "ir_sensor_pin", 0, 999, &pin) == CONFIG_OK &&
+                (pin <= PIN_MAX || pin == 999))
+                app_config.ir_sensor_pin = pin;
+        }
         parse_int(
             &ini, "night_mode", "check_interval_s", 0, 600,
             &app_config.check_interval_s);

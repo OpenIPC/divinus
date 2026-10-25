@@ -28,7 +28,7 @@ This document describes the fields that can be found within a configuration file
 - **check_interval_s**: Interval in seconds to check night mode conditions.
 - **pin_switch_delay_us**: Delay in microseconds before switching GPIO pins, must be used to protect cut filter coils from burning.
 - **adc_device**: Path to the ADC device used for night mode.
-- **lamp**: Illuminator mode on Fullhan, combinable: `ir` (default), `white` (colour night vision, IR-cut filter in) or `none`. Combine with commas, e.g. `ir,white`.
+- **lamp**: Illuminator mode on Fullhan V100, combinable: `ir` (default), `white` (colour night vision, IR-cut filter in) or `none`. Combine with commas, e.g. `ir,white`.
 - **adc_threshold**: Threshold raw value to trigger night mode, depends on the bitness of the given ADC device.
 
 ## ISP section

@@ -55,8 +55,10 @@ int f2_hal_init(void) {
         return ret;
     if (f2_osd_load(&f2_osd, f2_sys.handleVmm))
         HAL_WARNING("f2_osd", "Overlay library unavailable, OSD disabled\n");
-    if (f2_aud_load(&f2_aud))
+    if (f2_aud_load(&f2_aud)) {
+        f2_aud_unload(&f2_aud);
         HAL_WARNING("f2_aud", "Audio library unavailable, audio disabled\n");
+    }
 
     return EXIT_SUCCESS;
 }

@@ -1025,6 +1025,7 @@ int sdk_start(void) {
             case HAL_PLATFORM_I6C: i6c_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_M6:  m6_config_load(app_config.sensor_config); break;
 #elif defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
+            case HAL_PLATFORM_F1:  f1_config_load(app_config.sensor_config); break;
             case HAL_PLATFORM_F2:  f2_config_load(app_config.sensor_config); break;
 #elif defined(__mips__)
             case HAL_PLATFORM_T31: t31_config_load(app_config.sensor_config); break;

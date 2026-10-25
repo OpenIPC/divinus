@@ -20,16 +20,22 @@ void night_grayscale(bool enable) {
 }
 
 void night_ircut(bool enable) {
-    gpio_write(app_config.ir_cut_pin1, !enable);
-    gpio_write(app_config.ir_cut_pin2, enable);
-    usleep(app_config.pin_switch_delay_us * 100);
-    gpio_write(app_config.ir_cut_pin1, false);
-    gpio_write(app_config.ir_cut_pin2, false);
+    bool has1 = app_config.ir_cut_pin1 != 999;
+    bool has2 = app_config.ir_cut_pin2 != 999;
+
+    if (has1) gpio_write(app_config.ir_cut_pin1, !enable);
+    if (has2) gpio_write(app_config.ir_cut_pin2, enable);
+    if (has1 || has2) {
+        usleep(app_config.pin_switch_delay_us * 100);
+        if (has1) gpio_write(app_config.ir_cut_pin1, false);
+        if (has2) gpio_write(app_config.ir_cut_pin2, false);
+    }
     ircut = enable;
 }
 
 void night_irled(bool enable) {
-    gpio_write(app_config.ir_led_pin, enable);
+    if (app_config.ir_led_pin != 999)
+        gpio_write(app_config.ir_led_pin, enable);
     irled = enable;
 }
 
@@ -71,7 +77,8 @@ void *night_thread(void) {
     night_mode(night_mode_on());
 
 #if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
-    if (plat == HAL_PLATFORM_F1 && f1_night_available()) {
+    if (plat == HAL_PLATFORM_F1 && f1_night_available() &&
+        !app_config.adc_device[0] && app_config.ir_sensor_pin == 999) {
         HAL_INFO("night", "Using image gain for day/night switching\n");
         int applied = -1;
         while (keepRunning && nightOn) {
@@ -106,7 +113,7 @@ void *night_thread(void) {
         }
         if (adc_fd) close(adc_fd);
     } else if (app_config.ir_sensor_pin == 999) {
-        while (keepRunning) sleep(1);
+        while (keepRunning && nightOn) sleep(1);
     } else {
         while (keepRunning) {
             bool state = false;

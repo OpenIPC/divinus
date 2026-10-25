@@ -73,8 +73,10 @@ int f1_hal_init(void)
         return ret;
     if (ret = f1_venc_load(&f1_venc))
         return ret;
-    if (f1_aud_load(&f1_aud))
+    if (f1_aud_load(&f1_aud)) {
+        f1_aud_unload(&f1_aud);
         HAL_WARNING("f1_hal", "Audio library unavailable, audio disabled\n");
+    }
 
     return EXIT_SUCCESS;
 }

@@ -79,11 +79,12 @@ static hal_platform fh_identify(void) {
         }
         if (name[0]) {
             strncpy(chip, name, sizeof(chip) - 1);
-            if (strstr(name, "V200"))
+            if (strstr(name, "V2"))
                 return HAL_PLATFORM_F2;
-            if (strstr(name, "V100") || !strncmp(name, "FH8852", 6) ||
-                !strncmp(name, "FH8856", 6))
+            if (!strncmp(name, "FH8852", 6) || !strncmp(name, "FH8856", 6))
                 return HAL_PLATFORM_F1;
+            if (strstr(name, "FH8"))
+                return HAL_PLATFORM_F2;
         }
     }
 

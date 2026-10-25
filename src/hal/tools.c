@@ -274,15 +274,22 @@ bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
     static unsigned int loaded_offset;
     static unsigned int loaded_size;
 
-    unsigned int offset = addr & 0xffff0000;
-    unsigned int size = 0xffff;
-    if (!addr || (loaded_area && offset != loaded_offset))
-        if (munmap(loaded_area, loaded_size))
+    bool in_cache = loaded_area && loaded_size >= sizeof(*data) &&
+                    addr >= loaded_offset &&
+                    addr - loaded_offset <= loaded_size - sizeof(*data);
+
+    if (!addr || (loaded_area && !in_cache)) {
+        if (loaded_area && munmap(loaded_area, loaded_size))
             fprintf(stderr, "hal_registry munmap error: %s (%d)\n",
                 strerror(errno), errno);
+        loaded_area = NULL;
+        loaded_size = 0;
+        loaded_offset = 0;
+    }
 
     if (!addr) {
         close(mem_fd);
+        mem_fd = 0;
         return true;
     }
 
@@ -292,7 +299,9 @@ bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
     }
 
     volatile char *mapped_area;
-    if (offset != loaded_offset) {
+    if (!in_cache) {
+        unsigned int offset = addr & 0xffff0000;
+        unsigned int size = 0xffff;
         mapped_area = mmap64(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, offset);
         if (mapped_area == MAP_FAILED && errno == EPERM) {
             /* CONFIG_IO_STRICT_DEVMEM rejects a 64 KiB window that overlaps
@@ -316,9 +325,9 @@ bool hal_registry(unsigned int addr, unsigned int *data, hal_register_op op) {
         mapped_area = loaded_area;
 
     if (op & OP_READ)
-        *data = *(volatile unsigned int *)(mapped_area + (addr - offset));
+        *data = *(volatile unsigned int *)(mapped_area + (addr - loaded_offset));
     if (op & OP_WRITE)
-        *(volatile unsigned int *)(mapped_area + (addr - offset)) = *data;
+        *(volatile unsigned int *)(mapped_area + (addr - loaded_offset)) = *data;
 
     return true;
 }
