@@ -532,10 +532,11 @@ static int __connection_reset(void *v)
         }
     }
 
+    ctx = p->trans[0].rtp_timestamp;
+    memset(p->trans, 0, sizeof(p->trans));
+
     p->given_session_id = 0;
     p->cseq = 0;
-
-    ctx = p->trans[0].rtp_timestamp;
 
     /* randomize session id to avoid conflict */
     p->session_id = __get_random_llu(&ctx);
