@@ -17,6 +17,11 @@
 #include <sys/select.h>
 #include <unistd.h>
 
+typedef union {
+    unsigned char data[512];
+    unsigned long long align;
+} cvi_frame;
+
 extern hal_chnstate cvi_state[CVI_VENC_CHN_NUM];
 extern int (*cvi_aud_cb)(hal_audframe*);
 extern int (*cvi_vid_cb)(char, hal_vidstream*);
@@ -29,13 +34,15 @@ int cvi_audio_init(int samplerate);
 void *cvi_audio_thread(void);
 
 int cvi_channel_bind(char index);
-int cvi_channel_create(char index, short width, short height, char mirror, char flip);
+int cvi_channel_create(char index, short width, short height, char framerate,
+    char mirror, char flip);
 int cvi_channel_grayscale(char enable);
 int cvi_channel_unbind(char index);
 
 void *cvi_image_thread(void);
 
 int cvi_pipeline_create(void);
+int cvi_pipeline_start(void);
 void cvi_pipeline_destroy(void);
 
 int cvi_region_create(char handle, hal_rect rect, short opacity);

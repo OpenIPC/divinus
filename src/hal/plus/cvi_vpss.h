@@ -8,8 +8,8 @@ typedef struct {
     cvi_common_pixfmt pixFmt;
     int srcFps;
     int dstFps;
-    int mirror;
-    int flip;
+    char mirror;
+    char flip;
     // Accepts values from 0-8
     unsigned int depth;
     // Accepts values from 0-2 (none, auto, manual)
@@ -17,6 +17,10 @@ typedef struct {
     char aspectBgOn;
     unsigned int aspectBgCol;
     cvi_common_rect aspectRect;
+    char normalizeOn;
+    float normFactor[3];
+    float normMean[3];
+    int normRound;
 } cvi_vpss_chn;
 
 typedef struct {
@@ -43,6 +47,9 @@ typedef struct {
     int (*fnSetChannelConfig)(int group, int channel, cvi_vpss_chn *config);
     int (*fnAttachChannelPool)(int group, int channel, int pool);
     int (*fnDetachChannelPool)(int group, int channel);
+
+    int (*fnGetChannelFrame)(int group, int channel, void *frame, int millis);
+    int (*fnReleaseChannelFrame)(int group, int channel, void *frame);
 } cvi_vpss_impl;
 
 static int cvi_vpss_load(cvi_vpss_impl *vpss_lib) {
@@ -92,7 +99,15 @@ static int cvi_vpss_load(cvi_vpss_impl *vpss_lib) {
     if (!(vpss_lib->fnDetachChannelPool = (int(*)(int group, int channel))
         hal_symbol_load("cvi_vpss", vpss_lib->handle, "CVI_VPSS_DetachVbPool")))
         return EXIT_FAILURE;
-    
+
+    if (!(vpss_lib->fnGetChannelFrame = (int(*)(int group, int channel, void *frame, int millis))
+        hal_symbol_load("cvi_vpss", vpss_lib->handle, "CVI_VPSS_GetChnFrame")))
+        return EXIT_FAILURE;
+
+    if (!(vpss_lib->fnReleaseChannelFrame = (int(*)(int group, int channel, void *frame))
+        hal_symbol_load("cvi_vpss", vpss_lib->handle, "CVI_VPSS_ReleaseChnFrame")))
+        return EXIT_FAILURE;
+
     return EXIT_SUCCESS;
 }
 

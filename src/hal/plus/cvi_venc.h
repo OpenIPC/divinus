@@ -107,7 +107,7 @@ typedef struct {
         cvi_venc_attr_h264 h264;
         cvi_venc_attr_h265 h265;
         cvi_venc_attr_jpg  jpg;
-        int prores[3];
+        int prores[7];
     };
 } cvi_venc_attrib;
 
@@ -183,6 +183,7 @@ typedef struct {
         cvi_venc_rate_h26xqp h265Qp;
         cvi_venc_rate_h265qpmap h265QpMap;
         cvi_venc_rate_h26xbr h265Ubr;
+        int pad[7];
     };
 } cvi_venc_rate;
 
@@ -277,7 +278,7 @@ typedef struct {
     unsigned int leftRecvPics;
     unsigned int leftEncPics;
     char jpegSnapEnd;
-    char strmInfo[53];
+    char strmInfo[60];
 } cvi_venc_stat;
 
 typedef struct {
@@ -291,7 +292,7 @@ typedef struct {
     unsigned int updAttrCnt;
     unsigned int startQual;
     unsigned int meanQual;
-    char pSkip;
+    int pSkip;
 } cvi_venc_strminfo_h264;
 
 typedef struct {
@@ -308,7 +309,7 @@ typedef struct {
     unsigned int updAttrCnt;
     unsigned int startQual;
     unsigned int meanQual;
-    char pSkip;
+    int pSkip;
 } cvi_venc_strminfo_h265;
 
 typedef struct {
@@ -385,8 +386,12 @@ typedef struct {
     int (*fnGetJpegParam)(int channel, cvi_venc_jpg *param);
     int (*fnSetJpegParam)(int channel, cvi_venc_jpg *param);
 
+    int (*fnSetModParam)(int *config);
+
     int (*fnFreeStream)(int channel, cvi_venc_strm *stream);
     int (*fnGetStream)(int channel, cvi_venc_strm *stream, int millis);
+
+    int (*fnSendFrame)(int channel, void *frame, int millis);
 
     int (*fnQuery)(int channel, cvi_venc_stat* stats);
 
@@ -442,6 +447,10 @@ static int cvi_venc_load(cvi_venc_impl *venc_lib) {
         hal_symbol_load("cvi_venc", venc_lib->handle, "CVI_VENC_SetJpegParam")))
         return EXIT_FAILURE;
 
+    if (!(venc_lib->fnSetModParam = (int(*)(int *config))
+        hal_symbol_load("cvi_venc", venc_lib->handle, "CVI_VENC_SetModParam")))
+        return EXIT_FAILURE;
+
     if (!(venc_lib->fnFreeStream = (int(*)(int channel, cvi_venc_strm *stream))
         hal_symbol_load("cvi_venc", venc_lib->handle, "CVI_VENC_ReleaseStream")))
         return EXIT_FAILURE;
@@ -452,6 +461,10 @@ static int cvi_venc_load(cvi_venc_impl *venc_lib) {
 
     if (!(venc_lib->fnQuery = (int(*)(int channel, cvi_venc_stat *stats))
         hal_symbol_load("cvi_venc", venc_lib->handle, "CVI_VENC_QueryStatus")))
+        return EXIT_FAILURE;
+
+    if (!(venc_lib->fnSendFrame = (int(*)(int channel, void *frame, int millis))
+        hal_symbol_load("cvi_venc", venc_lib->handle, "CVI_VENC_SendFrame")))
         return EXIT_FAILURE;
 
     if (!(venc_lib->fnRequestIdr = (int(*)(int channel, char instant))

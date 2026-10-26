@@ -11,6 +11,10 @@
 #define CVI_SNR_MIPI_LANE_NUM 4
 #define CVI_SNR_WDR_VC_NUM 2
 
+#define CVI_SNR_LANE_ARRAY (CVI_SNR_MIPI_LANE_NUM + 1)
+#define CVI_SNR_SYNC_VC (CVI_SNR_WDR_VC_NUM + 1)
+#define CVI_SNR_SYNC_CODE_NUM 4
+
 enum {
     CVI_SNR_CMD_CONF_DEV = 1,
     CVI_SNR_CMD_CONF_CMV = 4,
@@ -44,14 +48,15 @@ typedef enum {
 } cvi_snr_gain;
 
 typedef enum {
-    CVI_SNR_INPUT_BT656,
-    CVI_SNR_INPUT_BT601,
-    CVI_SNR_INPUT_DIGITAL_CAMERA,
-    CVI_SNR_INPUT_INTERLEAVED,
     CVI_SNR_INPUT_MIPI,
-    CVI_SNR_INPUT_LVDS,
-    CVI_SNR_INPUT_HISPI,
     CVI_SNR_INPUT_SUBLVDS,
+    CVI_SNR_INPUT_HISPI,
+    CVI_SNR_INPUT_DIGITAL_CAMERA,
+    CVI_SNR_INPUT_BT1120,
+    CVI_SNR_INPUT_BT601,
+    CVI_SNR_INPUT_BT656,
+    CVI_SNR_INPUT_INTERLEAVED,
+    CVI_SNR_INPUT_LVDS,
     CVI_SNR_INPUT_END
 } cvi_snr_input;
 
@@ -116,7 +121,7 @@ typedef struct {
 typedef struct {
     cvi_snr_lvsynct type;
     unsigned short hBlank1;
-    unsigned short hBlank2; 
+    unsigned short hBlank2;
 } cvi_snr_lvsync;
 
 typedef struct {
@@ -126,23 +131,23 @@ typedef struct {
     int dataBeOn;
     int syncBeOn;
     // Value -1 signifies a lane is disabled
-    short laneId[CVI_SNR_LVDS_LANE_NUM];
+    short laneId[CVI_SNR_LANE_ARRAY];
     /* Each lane has two virtual channel, each has four params
        If syncSavOn is false: SOF, EOF, SOL, EOL
        If syncSavOn is true: invalid sav, invalid eav, valid sav, valid eav  */
-    unsigned short syncCode[CVI_SNR_LVDS_LANE_NUM * CVI_SNR_WDR_VC_NUM * 4];
+    short syncCode[CVI_SNR_LVDS_LANE_NUM][CVI_SNR_SYNC_VC][CVI_SNR_SYNC_CODE_NUM];
     cvi_snr_lvsync vsync;
-    cvi_snr_fid fid;
-    char pnSwap[CVI_SNR_LVDS_LANE_NUM + 1];
+    cvi_snr_lfid fid;
+    char pnSwap[CVI_SNR_LANE_ARRAY];
 } cvi_snr_lvds;
 
 typedef struct {
     cvi_common_prec prec;
         // Value -1 signifies a lane is disabled
-    short laneId[CVI_SNR_MIPI_LANE_NUM + 1];
+    short laneId[CVI_SNR_LANE_ARRAY];
     cvi_snr_mwdr mode;
     short dataType[CVI_SNR_WDR_VC_NUM];
-    char pnSwap[CVI_SNR_MIPI_LANE_NUM + 1];
+    char pnSwap[CVI_SNR_LANE_ARRAY];
     unsigned char dphyEnable;
     unsigned char dphyHsSettle;
     unsigned int demuxOn;
@@ -164,6 +169,11 @@ typedef struct {
     };
     unsigned int device;
     cvi_common_dim dest;
+    unsigned int wdrManualOn;
+    unsigned short l2sDistance;
+    unsigned short lsefLength;
+    unsigned int discardPaddingLines;
+    unsigned int wdrUpdate;
 } cvi_snr_dev;
 
 typedef struct {
@@ -171,7 +181,7 @@ typedef struct {
     short laneId[CVI_SNR_MIPI_LANE_NUM + 1];
     signed char pnSwap[CVI_SNR_MIPI_LANE_NUM + 1];
     unsigned char mclk;
-    char mclkOn;
+    int mclkOn;
 } cvi_snr_rx;
 
 typedef union {
@@ -200,6 +210,24 @@ typedef struct {
     int l2sDstFixOn;
     cvi_snr_brmux brmux;
 } cvi_snr_init;
+
+typedef struct {
+    unsigned short width;
+    unsigned short height;
+    float fps;
+    unsigned char mode;
+} cvi_snr_imgmode;
+
+typedef struct {
+    void (*fn_sensor_init)(int pipe);
+    void (*fn_sensor_exit)(int pipe);
+    void (*fn_sensor_global_init)(int pipe);
+    int  (*fn_set_image_mode)(int pipe, cvi_snr_imgmode *mode);
+    int  (*fn_set_wdr_mode)(int pipe, unsigned char mode);
+    int  (*fn_get_isp_default)(int pipe, void *def);
+    int  (*fn_get_isp_black_level)(int pipe, void *blc);
+    int  (*fn_get_sns_reg_info)(int pipe, void *regs);
+} cvi_snr_exp;
 
 typedef struct {
     int  (*pfnRegisterCallback)(int pipe, cvi_isp_alg *aeLibrary, cvi_isp_alg *awbLibrary);

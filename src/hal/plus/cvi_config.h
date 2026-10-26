@@ -17,6 +17,8 @@ typedef struct {
     char sensor_type[128];
     cvi_common_wdr mode;
     char dll_file[256];
+    int i2c_bus;
+    int i2c_addr;
 
     // [mode]
     cvi_snr_input input_mode;
@@ -103,7 +105,7 @@ static enum ConfigError cvi_parse_config_lvds(
             return err;
     }
     for (int j = 0; j < 32; j++)
-        lvds->syncCode[j] = (unsigned short)synccode[j];
+        ((short *)lvds->syncCode)[j] = (short)synccode[j];
     return CONFIG_OK;
 }
 
@@ -275,7 +277,7 @@ static enum ConfigError cvi_parse_config_videv(
     err = parse_int(ini, section, "devrect_h", 0, INT_MAX, &cvi_config.isp.capt.height);
     if (err != CONFIG_OK)
         return err;
-    
+
     if (device->intf == CVI_VI_INTF_MIPI || device->intf == CVI_VI_INTF_LVDS)
         device->rgbMode = 1;
     else device->rgbMode = 0;
@@ -295,7 +297,7 @@ static enum ConfigError cvi_parse_config_isp(
     else isp->framerate = value * 1.0f;
     {
         const char *possible_values[] = {
-            "BAYER_GRBG", "BAYER_RGGB", "BAYER_BGGR", "BAYER_GBRG"};
+            "BAYER_BGGR", "BAYER_GBRG", "BAYER_GRBG", "BAYER_RGGB"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             ini, "isp_image", "isp_bayer", (void*)&isp->bayer,
@@ -350,12 +352,16 @@ static enum ConfigError cvi_parse_sensor_config(char *path, cvi_config_impl *con
     if (err != CONFIG_OK)
         goto RET_ERR;
 
+    parse_int(&ini, "sensor", "bus", 0, INT_MAX, &config->i2c_bus);
+    parse_int(&ini, "sensor", "address", 0, INT_MAX, &config->i2c_addr);
+
     // [mode]
     {
         const char *possible_values[] = {
-            "INPUT_MODE_BT656",       "INPUT_MODE_BT601",  "INPUT_MODE_DIGITAL_CAMERA",
-            "INPUT_MODE_INTERLEAVED", "INPUT_MODE_MIPI",   "INPUT_MODE_LVDS",
-            "INPUT_MODE_HISPI",       "INPUT_MODE_SUBLVDS"};
+            "INPUT_MODE_MIPI",          "INPUT_MODE_SUBLVDS",  "INPUT_MODE_HISPI",
+            "INPUT_MODE_DIGITAL_CAMERA","INPUT_MODE_BT1120",   "INPUT_MODE_BT601",
+            "INPUT_MODE_BT656",         "INPUT_MODE_INTERLEAVED",
+            "INPUT_MODE_LVDS"};
         const int count = sizeof(possible_values) / sizeof(const char *);
         err = parse_enum(
             &ini, "mode", "input_mode", (void*)&config->input_mode,
@@ -384,6 +390,8 @@ static enum ConfigError cvi_parse_sensor_config(char *path, cvi_config_impl *con
             goto RET_ERR;
         else for (char i = 0; i < 4; i++)
             config->mipi.laneId[i] = laneId[i];
+
+        config->mipi.laneId[4] = -1;
     } else if (config->input_mode == CVI_SNR_INPUT_LVDS) {
         // [lvds]
         err = cvi_parse_config_lvds(&ini, "lvds", &config->lvds);
@@ -403,6 +411,8 @@ static enum ConfigError cvi_parse_sensor_config(char *path, cvi_config_impl *con
 
     for (char i = 0; i < 4; i++)
         config->videv.adChn[i] = -1;
+
+    config->videv.bayerMode = config->isp.bayer;
 
     // Fallbacks for default sensor configuration files
     if (!config->isp.size.width)

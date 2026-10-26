@@ -26,8 +26,40 @@ char _cvi_vi_dev = 0;
 char _cvi_vpss_chn = 0;
 char _cvi_vpss_grp = 0;
 
-cvi_isp_alg cvi_ae_lib = { .id = _cvi_vi_pipe, .libName = "ae_lib" };
-cvi_isp_alg cvi_awb_lib = { .id = _cvi_vi_pipe, .libName = "awb_lib" };
+cvi_isp_alg cvi_ae_lib = { .id = _cvi_vi_pipe, .libName = "cvi_ae_lib" };
+cvi_isp_alg cvi_awb_lib = { .id = _cvi_vi_pipe, .libName = "cvi_awb_lib" };
+
+static void cvi_sensor_name(const char *type, char *name, unsigned int size) {
+    const char *start = type;
+    unsigned int len;
+
+    if (!strncmp(start, "stSns", 5))
+        start += 5;
+    len = strcspn(start, "_");
+    if (len >= size)
+        len = size - 1;
+    for (unsigned int i = 0; i < len; i++) {
+        char c = start[i];
+        name[i] = (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c;
+    }
+    name[len] = '\0';
+}
+
+static int cvi_frame_forward(int channel) {
+    int ret;
+    cvi_frame frame;
+
+    if (ret = cvi_vpss.fnGetChannelFrame(_cvi_vpss_grp, channel, &frame, 1000))
+        return ret;
+
+    if (ret = cvi_venc.fnSendFrame(channel, &frame, 1000))
+        HAL_WARNING("cvi_venc", "Sending the frame on channel %d "
+            "failed with %#x!\n", channel, ret);
+
+    cvi_vpss.fnReleaseChannelFrame(_cvi_vpss_grp, channel, &frame);
+
+    return ret;
+}
 
 void cvi_hal_deinit(void)
 {
@@ -141,22 +173,11 @@ int cvi_channel_bind(char index)
     if (ret = cvi_vpss.fnEnableChannel(_cvi_vpss_grp, index))
         return ret;
 
-    if (ret = cvi_vpss.fnAttachChannelPool(_cvi_vpss_grp, index, index))
-        return ret;
-
-    {
-        cvi_sys_bind source = { .module = CVI_SYS_MOD_VPSS,
-            .device = _cvi_vpss_grp, .channel = index };
-        cvi_sys_bind dest = { .module = CVI_SYS_MOD_VENC,
-            .device = _cvi_venc_dev, .channel = index };
-        if (ret = cvi_sys.fnBind(&source, &dest))
-            return ret;
-    }
-
     return EXIT_SUCCESS;
 }
 
-int cvi_channel_create(char index, short width, short height, char mirror, char flip)
+int cvi_channel_create(char index, short width, short height, char framerate,
+    char mirror, char flip)
 {
     int ret;
 
@@ -165,13 +186,16 @@ int cvi_channel_create(char index, short width, short height, char mirror, char 
         memset(&channel, 0, sizeof(channel));
         channel.dest.width = width;
         channel.dest.height = height;
-        channel.pixFmt = CVI_PIXFMT_NV21;
-        channel.srcFps = -1;
-        channel.dstFps = -1;
+        channel.pixFmt = CVI_PIXFMT_YUV420P;
+        channel.srcFps = cvi_config.isp.framerate;
+        channel.dstFps = framerate;
         channel.mirror = mirror;
         channel.flip = flip;
-        channel.depth = 1;
+        channel.depth = 2;
         channel.aspectRatio = 1;
+        channel.aspectBgOn = 1;
+        channel.aspectBgCol = 0;
+
         if (ret = cvi_vpss.fnSetChannelConfig(_cvi_vpss_grp, index, &channel))
             return ret;
     }
@@ -200,19 +224,8 @@ int cvi_channel_unbind(char index)
 {
     int ret;
 
-    cvi_vpss.fnDetachChannelPool(_cvi_vpss_grp, index);
-
     if (ret = cvi_vpss.fnDisableChannel(_cvi_vpss_grp, index))
         return ret;
-
-    {
-        cvi_sys_bind source = { .module = CVI_SYS_MOD_VPSS,
-            .device = _cvi_vpss_grp, .channel = index };
-        cvi_sys_bind dest = { .module = CVI_SYS_MOD_VENC,
-            .device = _cvi_venc_dev, .channel = index };
-        if (ret = cvi_sys.fnUnbind(&source, &dest))
-            return ret;
-    }
 
     return EXIT_SUCCESS;
 }
@@ -233,10 +246,21 @@ int cvi_pipeline_create(void)
     cvi_vpss.fnDestroyGroup(_cvi_vpss_grp);
 
     {
-        cvi_sys_vimd mode[4];
-        cvi_sys.fnGetViVpssMode((cvi_sys_vimd**)&mode);
+        cvi_sys_vimd mode[CVI_VI_BIND_PIPE_NUM];
+        memset(mode, 0, sizeof(mode));
+
         mode[0] = CVI_SYS_VIMD_VIOFF_VPSSON;
         if (ret = cvi_sys.fnSetViVpssMode((cvi_sys_vimd**)&mode))
+            return ret;
+    }
+
+    {
+        cvi_sys_vpcf config = {
+            .mode = CVI_SYS_VPSS_DUAL,
+            .inputIsIsp = {0, 1},
+            .pipeId = {0, _cvi_vi_pipe}
+        };
+        if (ret = cvi_sys.fnSetVpssMode(&config))
             return ret;
     }
 
@@ -248,9 +272,13 @@ int cvi_pipeline_create(void)
     if (ret = cvi_snr_drv.obj->pfnRegisterCallback(_cvi_vi_pipe, &cvi_ae_lib, &cvi_awb_lib))
         return ret;
 
+    if (ret = cvi_sensor_config())
+        return ret;
+
     {
         cvi_vi_bind bind;
-        bind.num = 0;
+        memset(&bind, 0, sizeof(bind));
+        bind.num = 1;
         bind.pipeId[0] = _cvi_vi_pipe;
         if (ret = cvi_vi.fnBindPipe(_cvi_vi_dev, &bind))
             return ret;
@@ -258,6 +286,7 @@ int cvi_pipeline_create(void)
 
     {
         cvi_vi_pipe pipe;
+        memset(&pipe, 0, sizeof(pipe));
         pipe.bypass = 0;
         pipe.yuvSkipOn = 0;
         pipe.ispBypassOn = 0;
@@ -292,6 +321,7 @@ int cvi_pipeline_create(void)
 
     {
         cvi_vi_chn channel;
+        memset(&channel, 0, sizeof(channel));
         channel.size.width = cvi_config.isp.capt.width;
         channel.size.height = cvi_config.isp.capt.height;
         channel.pixFmt = CVI_PIXFMT_NV21;
@@ -299,7 +329,7 @@ int cvi_pipeline_create(void)
         channel.compress = CVI_COMPR_NONE;
         channel.mirror = 0;
         channel.flip = 0;
-        channel.depth = 0;
+        channel.depth = 1;
         channel.srcFps = -1;
         channel.dstFps = -1;
         if (ret = cvi_vi.fnSetChannelConfig(_cvi_vi_pipe, _cvi_vi_chn, &channel))
@@ -307,16 +337,6 @@ int cvi_pipeline_create(void)
     }
     if (ret = cvi_vi.fnEnableChannel(_cvi_vi_pipe, _cvi_vi_chn))
         return ret;
-
-    {
-        cvi_sys_vpcf config = {
-            .mode = CVI_SYS_VPSS_DUAL,
-            .inputIsIsp = {0, 1},
-            .pipeId = {0, _cvi_vi_pipe}
-        };
-        if (ret = cvi_sys.fnSetVpssMode(&config))
-            return ret;
-    }
 
     {
         cvi_vpss_grp group;
@@ -329,9 +349,19 @@ int cvi_pipeline_create(void)
         group.device = 1;
         if (ret = cvi_vpss.fnCreateGroup(_cvi_vpss_grp, &group))
             return ret;
-        if (ret = cvi_vpss.fnStartGroup(_cvi_vpss_grp))
+        if (ret = cvi_vpss.fnResetGroup(_cvi_vpss_grp))
             return ret;
     }
+
+    return EXIT_SUCCESS;
+}
+
+int cvi_pipeline_start(void)
+{
+    int ret;
+
+    if (ret = cvi_vpss.fnStartGroup(_cvi_vpss_grp))
+        return ret;
 
     {
         cvi_sys_bind source = { .module = CVI_SYS_MOD_VI,
@@ -453,10 +483,69 @@ int cvi_sensor_config(void) {
     config.input = cvi_config.input_mode;
     config.dest.width = cvi_config.isp.capt.width;
     config.dest.height = cvi_config.isp.capt.height;
+    config.pllck.cam = device;
+    config.pllck.freq = CVI_SNR_PLLFR_25M;
     if (config.input == CVI_SNR_INPUT_MIPI)
         memcpy(&config.mipi, &cvi_config.mipi, sizeof(cvi_snr_mipi));
     else if (config.input == CVI_SNR_INPUT_LVDS)
         memcpy(&config.lvds, &cvi_config.lvds, sizeof(cvi_snr_lvds));
+
+    cvi_snr_init init;
+    memset(&init, 0, sizeof(init));
+    init.gain = 0;
+    if (cvi_snr_drv.obj->pfnSetInit)
+        cvi_snr_drv.obj->pfnSetInit(_cvi_vi_pipe, &init);
+
+    cvi_snr_bus bus;
+    memset(&bus, 0, sizeof(bus));
+    bus.i2c = cvi_config.i2c_bus;
+    if (cvi_snr_drv.obj->pfnSetBusInfo)
+        cvi_snr_drv.obj->pfnSetBusInfo(_cvi_vi_pipe, bus);
+    if (cvi_snr_drv.obj->pfnPatchI2cAddr && cvi_config.i2c_addr)
+        cvi_snr_drv.obj->pfnPatchI2cAddr(cvi_config.i2c_addr);
+
+    cvi_snr_rx rx;
+    memset(&rx, 0, sizeof(rx));
+    rx.mipiDev = device;
+    for (int i = 0; i < CVI_SNR_LANE_ARRAY; i++) {
+        rx.laneId[i] = cvi_config.mipi.laneId[i];
+        rx.pnSwap[i] = 0;
+    }
+    rx.mclk = 2;
+    rx.mclkOn = 1;
+    if (cvi_snr_drv.obj->pfnPatchRxAttr)
+        cvi_snr_drv.obj->pfnPatchRxAttr(&rx);
+
+    cvi_snr_exp exp;
+    memset(&exp, 0, sizeof(exp));
+    if (cvi_snr_drv.obj->pfnExpSensorCb)
+        cvi_snr_drv.obj->pfnExpSensorCb(&exp);
+    if (exp.fn_set_image_mode) {
+        cvi_snr_imgmode mode;
+        memset(&mode, 0, sizeof(mode));
+        mode.width = cvi_config.isp.capt.width;
+        mode.height = cvi_config.isp.capt.height;
+        mode.fps = cvi_config.isp.framerate;
+        if (exp.fn_set_image_mode)
+            exp.fn_set_image_mode(_cvi_vi_pipe, &mode);
+    }
+    if (exp.fn_set_wdr_mode)
+        exp.fn_set_wdr_mode(_cvi_vi_pipe, cvi_config.mode);
+
+    if (exp.fn_sensor_init)
+        exp.fn_sensor_init(_cvi_vi_pipe);
+
+    cvi_snr_dev rxattr;
+    memset(&rxattr, 0, sizeof(rxattr));
+    if (cvi_snr_drv.obj->pfnGetRxAttr &&
+        cvi_snr_drv.obj->pfnGetRxAttr(_cvi_vi_pipe, &rxattr) == EXIT_SUCCESS) {
+        if (rxattr.mipi.dphyEnable) {
+            config.mipi.dphyEnable = rxattr.mipi.dphyEnable;
+            config.mipi.dphyHsSettle = rxattr.mipi.dphyHsSettle;
+        }
+        if (rxattr.input) config.input = rxattr.input;
+        if (rxattr.pllck.freq) config.pllck.freq = rxattr.pllck.freq;
+    }
 
     cvi_isp.fnResetSensor(device, 1);
 
@@ -469,6 +558,8 @@ int cvi_sensor_config(void) {
     usleep(20);
 
     cvi_isp.fnResetSensor(device, 0);
+
+    usleep(10000);
 
     return EXIT_SUCCESS;
 }
@@ -517,6 +608,18 @@ int cvi_video_create(char index, hal_vidconfig *config)
     cvi_venc_chn channel;
     memset(&channel, 0, sizeof(channel));
 
+    unsigned char minQual = config->minQual, maxQual = config->maxQual,
+        jpgQual = config->maxQual > 99 ? 75 : config->maxQual;
+
+    if (!maxQual || maxQual > 51) maxQual = 32;
+    if (!minQual || minQual > 51) minQual = 32;
+
+    {
+        int modparam[3] = { 1, 1, 1 };
+        if (cvi_venc.fnSetModParam && (ret = cvi_venc.fnSetModParam(modparam)))
+            HAL_WARNING("cvi_venc", "Setting the module parameter failed with %#x!\n", ret);
+    }
+
     channel.gop.mode = CVI_VENC_GOPMODE_NORMALP;
     if (config->codec == HAL_VIDCODEC_JPG || config->codec == HAL_VIDCODEC_MJPG) {
         channel.attrib.codec = CVI_VENC_CODEC_MJPG;
@@ -533,7 +636,7 @@ int cvi_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_QP:
                 channel.rate.mode = CVI_VENC_RATEMODE_MJPGQP;
                 channel.rate.mjpgQp = (cvi_venc_rate_mjpgqp){ .srcFps = config->framerate,
-                    .dstFps = config->framerate, .quality = config->maxQual }; break;
+                    .dstFps = config->framerate, .quality = jpgQual }; break;
             default:
                 HAL_ERROR("cvi_venc", "MJPEG encoder can only support CBR, VBR or fixed QP modes!");
         }
@@ -554,8 +657,8 @@ int cvi_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_QP:
                 channel.rate.mode = CVI_VENC_RATEMODE_H265QP;
                 channel.rate.h265Qp = (cvi_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual,
-                    .predQual = config->minQual, .bipredQual = config->minQual }; break;
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = maxQual,
+                    .predQual = minQual, .bipredQual = minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = CVI_VENC_RATEMODE_H265AVBR;
                 channel.rate.h265Avbr = (cvi_venc_rate_h26xbr){ .gop = config->gop,
@@ -581,8 +684,8 @@ int cvi_video_create(char index, hal_vidconfig *config)
             case HAL_VIDMODE_QP:
                 channel.rate.mode = CVI_VENC_RATEMODE_H264QP;
                 channel.rate.h264Qp = (cvi_venc_rate_h26xqp){ .gop = config->gop,
-                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = config->maxQual,
-                    .predQual = config->minQual, .bipredQual = config->minQual }; break;
+                    .srcFps = config->framerate, .dstFps = config->framerate, .interQual = maxQual,
+                    .predQual = minQual, .bipredQual = minQual }; break;
             case HAL_VIDMODE_AVBR:
                 channel.rate.mode = CVI_VENC_RATEMODE_H264AVBR;
                 channel.rate.h264Avbr = (cvi_venc_rate_h26xbr){ .gop = config->gop,
@@ -594,12 +697,14 @@ int cvi_video_create(char index, hal_vidconfig *config)
     } else HAL_ERROR("cvi_venc", "This codec is not supported by the hardware!");
     channel.attrib.maxPic.width = config->width;
     channel.attrib.maxPic.height = config->height;
-    channel.attrib.bufSize = ALIGN_UP(config->height, 64) * ALIGN_UP(config->width, 64) * 3 / 2;
+    channel.attrib.bufSize = 0;
     if (channel.attrib.codec == CVI_VENC_CODEC_H264)
-        channel.attrib.profile = MAX(config->profile, 2);
+        channel.attrib.profile = config->profile;
     channel.attrib.byFrame = 1;
     channel.attrib.pic.width = config->width;
     channel.attrib.pic.height = config->height;
+    channel.attrib.esBufQueueOn = 1;
+    channel.attrib.isolateFrmOn = 1;
 
     if (ret = cvi_venc.fnCreateChannel(index, &channel))
         return ret;
@@ -624,15 +729,6 @@ int cvi_video_destroy(char index)
     cvi_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
     cvi_venc.fnStopReceiving(index);
-
-    {
-        cvi_sys_bind source = { .module = CVI_SYS_MOD_VPSS,
-            .device = _cvi_vpss_grp, .channel = index };
-        cvi_sys_bind dest = { .module = CVI_SYS_MOD_VENC,
-            .device = _cvi_venc_dev, .channel = index };
-        if (ret = cvi_sys.fnUnbind(&source, &dest))
-            return ret;
-    }
 
     if (ret = cvi_venc.fnDestroyChannel(index))
         return ret;
@@ -662,22 +758,41 @@ void cvi_video_request_idr(char index)
 
 int cvi_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 {
-    int ret;
+    int ret = EXIT_SUCCESS;
+
+    cvi_venc_stat stat = {0};
+    cvi_venc_strm strm = {0};
+    char bound = 0, receiving = 0, opened = 0;
 
     if (ret = cvi_channel_bind(index)) {
         HAL_DANGER("cvi_venc", "Binding the encoder channel "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
+    bound = 1;
 
-    unsigned int count = 1;
-    if (cvi_venc.fnStartReceivingEx(index, &count)) {
+    int count = 1;
+    if (ret = cvi_venc.fnStartReceivingEx(index, &count)) {
         HAL_DANGER("cvi_venc", "Requesting one frame "
+            "%d failed with %#x!\n", index, ret);
+        goto abort;
+    }
+    receiving = 1;
+
+    if (ret = cvi_frame_forward(index)) {
+        HAL_DANGER("cvi_venc", "Getting the frame on channel "
             "%d failed with %#x!\n", index, ret);
         goto abort;
     }
 
     int fd = cvi_venc.fnGetDescriptor(index);
+    if (fd < 0) {
+        ret = fd;
+        HAL_DANGER("cvi_venc", "Getting the encoder descriptor "
+            "failed with %#x!\n", ret);
+        goto abort;
+    }
+    opened = 1;
 
     struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
     fd_set readFds;
@@ -689,12 +804,12 @@ int cvi_video_snapshot_grab(char index, hal_jpegdata *jpeg)
         goto abort;
     } else if (ret == 0) {
         HAL_DANGER("cvi_venc", "Capture stream timed out!\n");
+        ret = EXIT_FAILURE;
         goto abort;
     }
 
     if (FD_ISSET(fd, &readFds)) {
-        cvi_venc_stat stat;
-        if (cvi_venc.fnQuery(index, &stat)) {
+        if (ret = cvi_venc.fnQuery(index, &stat)) {
             HAL_DANGER("cvi_venc", "Querying the encoder channel "
                 "%d failed with %#x!\n", index, ret);
             goto abort;
@@ -702,11 +817,10 @@ int cvi_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
         if (!stat.curPacks) {
             HAL_DANGER("cvi_venc", "Current frame is empty, skipping it!\n");
+            ret = EXIT_FAILURE;
             goto abort;
         }
 
-        cvi_venc_strm strm;
-        memset(&strm, 0, sizeof(strm));
         cvi_venc_pack packs[8];
         if (stat.curPacks > 8)
             strm.packet = (cvi_venc_pack*)malloc(sizeof(cvi_venc_pack) * stat.curPacks);
@@ -715,15 +829,14 @@ int cvi_video_snapshot_grab(char index, hal_jpegdata *jpeg)
 
         if (!strm.packet) {
             HAL_DANGER("cvi_venc", "Memory allocation on channel %d failed!\n", index);
+            ret = EXIT_FAILURE;
             goto abort;
         }
         strm.count = stat.curPacks;
 
-        if (ret = cvi_venc.fnGetStream(index, &strm, stat.curPacks)) {
+        if (ret = cvi_venc.fnGetStream(index, &strm, 1000)) {
             HAL_DANGER("cvi_venc", "Getting the stream on "
                 "channel %d failed with %#x!\n", index, ret);
-            if (stat.curPacks > 8) free(strm.packet);
-            strm.packet = NULL;
             goto abort;
         }
 
@@ -743,17 +856,14 @@ int cvi_video_snapshot_grab(char index, hal_jpegdata *jpeg)
                 jpeg->jpegSize += packLen;
             }
         }
-
-abort:
-        cvi_venc.fnFreeStream(index, &strm);
-        if (stat.curPacks > 8) free(strm.packet);
     }
 
-    cvi_venc.fnFreeDescriptor(index);
-
-    cvi_venc.fnStopReceiving(index);
-
-    cvi_channel_unbind(index);
+abort:
+    if (strm.count) cvi_venc.fnFreeStream(index, &strm);
+    if (stat.curPacks > 8 && strm.packet) free(strm.packet);
+    if (opened) cvi_venc.fnFreeDescriptor(index);
+    if (receiving) cvi_venc.fnStopReceiving(index);
+    if (bound) cvi_channel_unbind(index);
 
     return ret;
 }
@@ -761,6 +871,9 @@ abort:
 void *cvi_video_thread(void)
 {
     int ret, maxFd = 0;
+
+    if (ret = cvi_pipeline_start())
+        HAL_DANGER("cvi_vpss", "Starting the group failed with %#x!\n", ret);
 
     for (int i = 0; i < CVI_VENC_CHN_NUM; i++) {
         if (!cvi_state[i].enable) continue;
@@ -777,98 +890,56 @@ void *cvi_video_thread(void)
             maxFd = cvi_state[i].fileDesc;
     }
 
-    cvi_venc_stat stat;
     cvi_venc_strm stream;
-    struct timeval timeout;
-    fd_set readFds;
 
     while (keepRunning) {
-        FD_ZERO(&readFds);
-        for(int i = 0; i < CVI_VENC_CHN_NUM; i++) {
+        for (int i = 0; i < CVI_VENC_CHN_NUM; i++) {
             if (!cvi_state[i].enable) continue;
             if (!cvi_state[i].mainLoop) continue;
-            FD_SET(cvi_state[i].fileDesc, &readFds);
-        }
 
-        timeout.tv_sec = 2;
-        timeout.tv_usec = 0;
-        ret = select(maxFd + 1, &readFds, NULL, NULL, &timeout);
-        if (ret < 0) {
-            HAL_DANGER("cvi_venc", "Select operation failed!\n");
-            break;
-        } else if (ret == 0) {
-            HAL_WARNING("cvi_venc", "Main stream loop timed out!\n");
-            continue;
-        } else {
-            for (int i = 0; i < CVI_VENC_CHN_NUM; i++) {
-                if (!cvi_state[i].enable) continue;
-                if (!cvi_state[i].mainLoop) continue;
-                if (FD_ISSET(cvi_state[i].fileDesc, &readFds)) {
-                    memset(&stream, 0, sizeof(stream));
+            if (ret = cvi_frame_forward(i)) continue;
 
-                    if (ret = cvi_venc.fnQuery(i, &stat)) {
-                        HAL_DANGER("cvi_venc", "Querying the encoder channel "
-                            "%d failed with %#x!\n", i, ret);
-                        break;
+            cvi_venc_pack packs[16];
+            stream.packet = packs;
+            stream.count = 16;
+
+            if (ret = cvi_venc.fnGetStream(i, &stream, 1000)) {
+                if (ret != 0xc0078012)
+                    HAL_WARNING("cvi_venc", "Getting the stream on "
+                        "channel %d failed with %#x!\n", i, ret);
+                continue;
+            }
+
+            if (cvi_vid_cb) {
+                hal_vidstream outStrm;
+                hal_vidpack outPack[stream.count];
+                outStrm.count = stream.count;
+                outStrm.seq = stream.sequence;
+                for (int j = 0; j < stream.count; j++) {
+                    cvi_venc_pack *pack = &stream.packet[j];
+                    outPack[j].data = pack->data;
+                    outPack[j].length = pack->length;
+                    outPack[j].naluCnt = 1;
+                    outPack[j].nalu[0].length = pack->length;
+                    outPack[j].nalu[0].offset = pack->offset;
+                    switch (cvi_state[i].payload) {
+                        case HAL_VIDCODEC_H264:
+                            outPack[j].nalu[0].type = pack->naluType.h264Nalu;
+                            break;
+                        case HAL_VIDCODEC_H265:
+                            outPack[j].nalu[0].type = pack->naluType.h265Nalu;
+                            break;
                     }
-
-                    if (!stat.curPacks) {
-                        HAL_WARNING("cvi_venc", "Current frame is empty, skipping it!\n");
-                        continue;
-                    }
-
-                    cvi_venc_pack packs[8];
-                    if (stat.curPacks > 8)
-                        stream.packet = (cvi_venc_pack*)malloc(sizeof(cvi_venc_pack) * stat.curPacks);
-                    else
-                        stream.packet = packs;
-
-                    if (!stream.packet) {
-                        HAL_DANGER("cvi_venc", "Memory allocation on channel %d failed!\n", i);
-                        break;
-                    }
-                    stream.count = stat.curPacks;
-
-                    if (ret = cvi_venc.fnGetStream(i, &stream, 40)) {
-                        HAL_DANGER("cvi_venc", "Getting the stream on "
-                            "channel %d failed with %#x!\n", i, ret);
-                        if (stat.curPacks > 8) free(stream.packet);
-                        break;
-                    }
-
-                    if (cvi_vid_cb) {
-                        hal_vidstream outStrm;
-                        hal_vidpack outPack[stream.count];
-                        outStrm.count = stream.count;
-                        outStrm.seq = stream.sequence;
-                        for (int j = 0; j < stream.count; j++) {
-                            cvi_venc_pack *pack = &stream.packet[j];
-                            outPack[j].data = pack->data;
-                            outPack[j].length = pack->length;
-                            outPack[j].naluCnt = 1;
-                            outPack[j].nalu[0].length = pack->length;
-                            outPack[j].nalu[0].offset = pack->offset;
-                            switch (cvi_state[i].payload) {
-                                case HAL_VIDCODEC_H264:
-                                    outPack[j].nalu[0].type = pack->naluType.h264Nalu;
-                                    break;
-                                case HAL_VIDCODEC_H265:
-                                    outPack[j].nalu[0].type = pack->naluType.h265Nalu;
-                                    break;
-                            }
-                            outPack[j].offset = pack->offset;
-                            outPack[j].timestamp = pack->timestamp;
-                        }
-                        outStrm.pack = outPack;
-                        (*cvi_vid_cb)(i, &outStrm);
-                    }
-
-                    if (ret = cvi_venc.fnFreeStream(i, &stream)) {
-                        HAL_WARNING("cvi_venc", "Releasing the stream on "
-                            "channel %d failed with %#x!\n", i, ret);
-                    }
-                    if (stat.curPacks > 8) free(stream.packet);
+                    outPack[j].offset = pack->offset;
+                    outPack[j].timestamp = pack->timestamp;
                 }
+                outStrm.pack = outPack;
+                (*cvi_vid_cb)(i, &outStrm);
+            }
+
+            if (ret = cvi_venc.fnFreeStream(i, &stream)) {
+                HAL_WARNING("cvi_venc", "Releasing the stream on "
+                    "channel %d failed with %#x!\n", i, ret);
             }
         }
     }
@@ -901,7 +972,7 @@ int cvi_system_init(char *snrConfig)
 
     if (cvi_parse_sensor_config(snrConfig, &cvi_config) != CONFIG_OK)
         HAL_ERROR("cvi_sys", "Can't load sensor config\n");
-    strncpy(sensor, cvi_config.sensor_type, sizeof(sensor) - 1);
+    cvi_sensor_name(cvi_config.sensor_type, sensor, sizeof(sensor));
 
     if (ret = cvi_sensor_init(cvi_config.dll_file, cvi_config.sensor_type))
         return ret;
@@ -910,15 +981,16 @@ int cvi_system_init(char *snrConfig)
         cvi_vb_pool pool;
         memset(&pool, 0, sizeof(pool));
 
-        pool.count = 2;
-        pool.comm[0].blockSize = ALIGN_UP(cvi_config.videv.size.width, 64) *
-            ALIGN_UP(cvi_config.videv.size.height, 64) * 3 / 2;
+        pool.count = 3;
+        pool.comm[0].blockSize = 3110400;
         pool.comm[0].blockCnt = 3;
         pool.comm[0].rempVirt = 2;
-        pool.comm[1].blockSize = ALIGN_UP(cvi_config.videv.size.width, 64) *
-            ALIGN_UP(cvi_config.videv.size.height, 64) * 3 / 2;
+        pool.comm[1].blockSize = 3110400;
         pool.comm[1].blockCnt = 3;
         pool.comm[1].rempVirt = 2;
+        pool.comm[2].blockSize = 2764800;
+        pool.comm[2].blockCnt = 1;
+        pool.comm[2].rempVirt = 2;
 
         if (ret = cvi_vb.fnConfigPool(&pool))
             return ret;
@@ -938,6 +1010,24 @@ int cvi_system_identify(void)
         return 0;
 
     plat = HAL_PLATFORM_CVI;
+
+    {
+        FILE *file = fopen("/proc/meminfo", "r");
+        unsigned long kb = 0;
+        char line[64];
+
+        if (file) {
+            while (fgets(line, sizeof(line), file))
+                if (sscanf(line, "MemTotal: %lu kB", &kb) == 1)
+                    break;
+            fclose(file);
+        }
+        if (kb >= 262144)
+            strcpy(chip, "SG2000");
+        else if (kb)
+            strcpy(chip, "SG2002");
+    }
+
     strcpy(family, "CV181x");
     chnCount = CVI_VENC_CHN_NUM;
     chnState = (hal_chnstate*)cvi_state;

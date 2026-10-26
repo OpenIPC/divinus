@@ -35,9 +35,11 @@ typedef enum {
     CVI_VI_WORK_4MULTIPLEX
 } cvi_vi_work;
 
+#define CVI_VI_BIND_PIPE_NUM 6
+
 typedef struct {
     unsigned int num;
-    int pipeId[CVI_VI_PIPE_NUM];
+    int pipeId[CVI_VI_BIND_PIPE_NUM];
 } cvi_vi_bind;
 
 typedef struct {
@@ -111,6 +113,10 @@ typedef struct {
     cvi_common_bayer bayerMode;
     unsigned int chnNum;
     unsigned int snrFps;
+    char muxOn;
+    unsigned int switchGpioPin;
+    char switchGpioPol;
+    char disEnableSbmOn;
 } cvi_vi_dev;
 
 typedef struct {

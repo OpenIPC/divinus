@@ -14,11 +14,20 @@ typedef struct {
 } cvi_vb_pool;
 
 typedef struct {
+    unsigned int blockSize;
+    unsigned int blockCnt;
+    int rempVirt;
+    char heapName[32];
+} cvi_vb_cfg;
+
+typedef struct {
     void *handle;
 
     int (*fnConfigPool)(cvi_vb_pool *config);
     int (*fnExit)(void);
     int (*fnInit)(void);
+
+    int (*fnCreatePool)(cvi_vb_cfg *config);
 } cvi_vb_impl;
 
 static int cvi_vb_load(cvi_vb_impl *vb_lib) {
@@ -35,6 +44,10 @@ static int cvi_vb_load(cvi_vb_impl *vb_lib) {
 
     if (!(vb_lib->fnInit = (int(*)(void))
         hal_symbol_load("cvi_vb", vb_lib->handle, "CVI_VB_Init")))
+        return EXIT_FAILURE;
+
+    if (!(vb_lib->fnCreatePool = (int(*)(cvi_vb_cfg *config))
+        hal_symbol_load("cvi_vb", vb_lib->handle, "CVI_VB_CreatePool")))
         return EXIT_FAILURE;
 
     return EXIT_SUCCESS;
