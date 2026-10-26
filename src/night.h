@@ -8,13 +8,10 @@
 #include <unistd.h>
 
 #include "app_config.h"
-#include "gpio.h"
+#include "hal/gpio.h"
 #include "hal/macros.h"
+#include "hal/support.h"
 #include "media.h"
-
-#if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
-#include "hal/fhan/fh_lamp.h"
-#endif
 
 bool night_grayscale_on(void);
 bool night_ircut_on(void);

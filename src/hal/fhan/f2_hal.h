@@ -8,11 +8,10 @@
 #include "f2_sys.h"
 #include "f2_venc.h"
 #include "f2_vpss.h"
-#include "fh_lamp.h"
 
 #include "../config.h"
 #include "../globals.h"
-#include "../../gpio.h"
+#include "../gpio.h"
 
 #include <dirent.h>
 #include <fcntl.h>

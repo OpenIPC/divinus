@@ -16,7 +16,7 @@
 #include <string.h>
 #endif
 
-#include "hal/macros.h"
+#include "macros.h"
 
 void gpio_deinit(void);
 int gpio_init(void);

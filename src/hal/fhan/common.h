@@ -1,9 +1,11 @@
 #pragma once
 
+#include "../gpio.h"
 #include "../globals.h"
 #include "../tools.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define FH_PMU_BASE     0xf0000000
@@ -32,6 +34,25 @@
 #define FH_PWM_ON(id, mask)  id "," mask ",60,200,0,0,0,0"
 #define FH_PWM_OFF(id, mask) id "," mask ",0,200,0,0,0,0"
 #define FH_LAMP_WHITE_GPIO 11
+
+static void fh_proc_write(const char *path, const char *value) {
+    FILE *file = fopen(path, "w");
+    if (!file) {
+        HAL_WARNING("fh_hal", "Cannot write %s to %s!\n", value, path);
+        return;
+    }
+    fputs(value, file);
+    fclose(file);
+}
+
+static int fh_lamp_enable(int flags) {
+    fh_proc_write("/proc/driver/pwm",
+        (flags & HAL_LIGHT_IR) ? FH_PWM_ON("3", "8") : FH_PWM_OFF("3", "8"));
+    fh_proc_write("/proc/driver/pwm",
+        (flags & HAL_LIGHT_WHITE) ? FH_PWM_ON("7", "128") : FH_PWM_OFF("7", "128"));
+    gpio_write(FH_LAMP_WHITE_GPIO, (flags & HAL_LIGHT_WHITE) ? 1 : 0);
+    return EXIT_SUCCESS;
+}
 
 static hal_platform fh_identify(void) {
     unsigned int chip_id = 0, ip_ver = 0, sys_ctrl = 0;

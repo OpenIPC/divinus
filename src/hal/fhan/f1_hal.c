@@ -41,17 +41,6 @@ static unsigned char *_f1_mjpeg_cache; static unsigned int _f1_mjpeg_len, _f1_mj
 
 /* libc compatibility shims for the SDK libraries live in fh_compat.c */
 
-static void f1_proc_write(const char *path, const char *value)
-{
-    FILE *file = fopen(path, "w");
-    if (!file) {
-        HAL_WARNING("f1_hal", "Cannot write %s to %s!\n", value, path);
-        return;
-    }
-    fputs(value, file);
-    fclose(file);
-}
-
 void f1_hal_deinit(void)
 {
     f1_aud_unload(&f1_aud);
@@ -367,32 +356,32 @@ int f1_pipeline_create(short width, short height, char mirror, char flip, char f
     {
         char value[64];
         snprintf(value, sizeof(value), "vi_%u_%u", _f1_snr_dim.width, _f1_snr_dim.height);
-        f1_proc_write("/proc/driver/vpu", value);
+        fh_proc_write("/proc/driver/vpu", value);
         /* Scaler channel memory is allocated on demand in f1_channel_create() */
         for (int i = 0; i < F1_VPSS_CHN_NUM; i++) {
             snprintf(value, sizeof(value), "cap_%d_0_0", i);
-            f1_proc_write("/proc/driver/vpu", value);
+            fh_proc_write("/proc/driver/vpu", value);
             snprintf(value, sizeof(value), "buf_%d_2", i);
-            f1_proc_write("/proc/driver/vpu", value);
+            fh_proc_write("/proc/driver/vpu", value);
         }
-        f1_proc_write("/proc/driver/vpu", "support4k_off");
-        f1_proc_write("/proc/driver/isp", "support4k_off");
-        f1_proc_write("/proc/driver/vpu", "sublimit_off");
-        f1_proc_write("/proc/driver/isp", "sublimit_off");
-        f1_proc_write("/proc/driver/isp", "wdr_off");
-        f1_proc_write("/proc/driver/isp", "cir_off");
-        f1_proc_write("/proc/driver/enc", "stm_2621440");
-        f1_proc_write("/proc/driver/hevc", "stm_2621440");
-        f1_proc_write("/proc/driver/hevc", "usebfrm_0");
+        fh_proc_write("/proc/driver/vpu", "support4k_off");
+        fh_proc_write("/proc/driver/isp", "support4k_off");
+        fh_proc_write("/proc/driver/vpu", "sublimit_off");
+        fh_proc_write("/proc/driver/isp", "sublimit_off");
+        fh_proc_write("/proc/driver/isp", "wdr_off");
+        fh_proc_write("/proc/driver/isp", "cir_off");
+        fh_proc_write("/proc/driver/enc", "stm_2621440");
+        fh_proc_write("/proc/driver/hevc", "stm_2621440");
+        fh_proc_write("/proc/driver/hevc", "usebfrm_0");
         /* JPEG snapshot buffer: the driver's own rule is width*height/2, forcing 128 KiB
          * (the vendor value) overruns at 2560x1440 and crashes the JPEG thread */
         snprintf(value, sizeof(value), "mem_1_%u", ALIGN_UP((unsigned int)width * height / 2 + 8, 4096));
-        f1_proc_write("/proc/driver/jpeg", value);
+        fh_proc_write("/proc/driver/jpeg", value);
         /* Motion JPEG pool: three 512 KiB slots (larger pools fail to ioremap on 32 MiB systems) */
         {
             unsigned int jpgSize = 512 * 1024;
             snprintf(value, sizeof(value), "mjpg_%u_%u", jpgSize * 3, jpgSize);
-            f1_proc_write("/proc/driver/jpeg", value);
+            fh_proc_write("/proc/driver/jpeg", value);
         }
     }
 

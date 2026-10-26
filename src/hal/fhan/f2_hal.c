@@ -275,16 +275,6 @@ void *f2_image_thread(void) {
     return NULL;
 }
 
-static void f2_proc_write(const char *path, const char *value) {
-    FILE *file = fopen(path, "w");
-    if (!file) {
-        HAL_WARNING("f2_hal", "Cannot write %s to %s!\n", value, path);
-        return;
-    }
-    fputs(value, file);
-    fclose(file);
-}
-
 int f2_night_available(void) {
     return _f2_smartir;
 }
@@ -311,26 +301,26 @@ int f2_pipeline_create(short width, short height, char mirror, char flip, char f
     {
         char value[64];
         snprintf(value, sizeof(value), "vi_%u_%u", _f2_snr_dim.width, _f2_snr_dim.height);
-        f2_proc_write("/proc/driver/vpu", value);
+        fh_proc_write("/proc/driver/vpu", value);
         for (int i = 0; i < F2_VPSS_CHN_NUM; i++) {
             snprintf(value, sizeof(value), "cap_%d_0_0", i);
-            f2_proc_write("/proc/driver/vpu", value);
+            fh_proc_write("/proc/driver/vpu", value);
             snprintf(value, sizeof(value), "buf_%d_2", i);
-            f2_proc_write("/proc/driver/vpu", value);
+            fh_proc_write("/proc/driver/vpu", value);
         }
-        f2_proc_write("/proc/driver/vpu", "support4k_off");
-        f2_proc_write("/proc/driver/isp", "support4k_off");
-        f2_proc_write("/proc/driver/vpu", "sublimit_off");
-        f2_proc_write("/proc/driver/isp", "sublimit_off");
-        f2_proc_write("/proc/driver/isp", "wdr_off");
-        f2_proc_write("/proc/driver/isp", "cir_off");
-        f2_proc_write("/proc/driver/enc", "stm_2621440");
+        fh_proc_write("/proc/driver/vpu", "support4k_off");
+        fh_proc_write("/proc/driver/isp", "support4k_off");
+        fh_proc_write("/proc/driver/vpu", "sublimit_off");
+        fh_proc_write("/proc/driver/isp", "sublimit_off");
+        fh_proc_write("/proc/driver/isp", "wdr_off");
+        fh_proc_write("/proc/driver/isp", "cir_off");
+        fh_proc_write("/proc/driver/enc", "stm_2621440");
         snprintf(value, sizeof(value), "mem_1_%u", ALIGN_UP((unsigned int)width * height / 2 + 8, 4096));
-        f2_proc_write("/proc/driver/jpeg", value);
+        fh_proc_write("/proc/driver/jpeg", value);
         {
             unsigned int jpgSize = 512 * 1024;
             snprintf(value, sizeof(value), "mjpg_%u_%u", jpgSize * 3, jpgSize);
-            f2_proc_write("/proc/driver/jpeg", value);
+            fh_proc_write("/proc/driver/jpeg", value);
         }
     }
 
