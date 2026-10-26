@@ -441,6 +441,11 @@ found_font:;
                             t31_region_create(&osds[id].hand, rect, osds[id].opal);
                             t31_region_setbitmap(&osds[id].hand, &bitmap);
                             break;
+#elif defined(__riscv) || defined(__riscv__)
+                        case HAL_PLATFORM_CVI:
+                            cvi_region_create(id, rect, osds[id].opal);
+                            cvi_region_setbitmap(id, &bitmap);
+                            break;
 #endif
                     }
                     free(bitmap.data);
@@ -518,6 +523,11 @@ found_font:;
                                 t31_region_create(&osds[id].hand, rect, osds[id].opal);
                                 t31_region_setbitmap(&osds[id].hand, &bitmap);
                                 break;
+#elif defined(__riscv) || defined(__riscv__)
+                            case HAL_PLATFORM_CVI:
+                                cvi_region_create(id, rect, osds[id].opal);
+                                cvi_region_setbitmap(id, &bitmap);
+                                break;
 #endif
                         }
                         free(bitmap.data);
@@ -542,6 +552,8 @@ found_font:;
                         #endif
 #elif defined(__mips__)
                         case HAL_PLATFORM_T31: t31_region_destroy(&osds[id].hand); break;
+#elif defined(__riscv) || defined(__riscv__)
+                        case HAL_PLATFORM_CVI: cvi_region_destroy(id); break;
 #endif
                     }
             }

@@ -62,7 +62,10 @@ typedef struct {
 
 typedef struct {
     void *handle;
-    
+
+    int (*fnInit)(void);
+    int (*fnDeinit)(void);
+
     int (*fnDisableDevice)(int device);
     int (*fnEnableDevice)(int device);
     int (*fnSetDeviceConfig)(int device, cvi_aud_cnf *config);
@@ -77,6 +80,14 @@ typedef struct {
 static int cvi_aud_load(cvi_aud_impl *aud_lib) {
     if (!(aud_lib->handle = dlopen("libcvi_audio.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("cvi_aud", "Failed to load library!\nError: %s\n", dlerror());
+
+    if (!(aud_lib->fnInit = (int(*)(void))
+        hal_symbol_load("cvi_aud", aud_lib->handle, "CVI_AUDIO_INIT")))
+        return EXIT_FAILURE;
+
+    if (!(aud_lib->fnDeinit = (int(*)(void))
+        hal_symbol_load("cvi_aud", aud_lib->handle, "CVI_AUDIO_DEINIT")))
+        return EXIT_FAILURE;
 
     if (!(aud_lib->fnDisableDevice = (int(*)(int device))
         hal_symbol_load("cvi_aud", aud_lib->handle, "CVI_AI_Disable")))

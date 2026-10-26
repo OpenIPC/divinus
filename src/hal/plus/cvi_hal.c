@@ -26,43 +26,22 @@ char _cvi_vi_dev = 0;
 char _cvi_vpss_chn = 0;
 char _cvi_vpss_grp = 0;
 
+static volatile char cvi_ready[CVI_VENC_CHN_NUM];
+static volatile char cvi_busy[CVI_VENC_CHN_NUM];
+static char cvi_rgn_attached[16];
+
 cvi_isp_alg cvi_ae_lib = { .id = _cvi_vi_pipe, .libName = "cvi_ae_lib" };
 cvi_isp_alg cvi_awb_lib = { .id = _cvi_vi_pipe, .libName = "cvi_awb_lib" };
 
-static void cvi_sensor_name(const char *type, char *name, unsigned int size) {
-    const char *start = type;
-    unsigned int len;
-
-    if (!strncmp(start, "stSns", 5))
-        start += 5;
-    len = strcspn(start, "_");
-    if (len >= size)
-        len = size - 1;
-    for (unsigned int i = 0; i < len; i++) {
-        char c = start[i];
-        name[i] = (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c;
-    }
-    name[len] = '\0';
-}
-
-static int cvi_frame_forward(int channel) {
-    int ret;
-    cvi_frame frame;
-
-    if (ret = cvi_vpss.fnGetChannelFrame(_cvi_vpss_grp, channel, &frame, 1000))
-        return ret;
-
-    if (ret = cvi_venc.fnSendFrame(channel, &frame, 1000))
-        HAL_WARNING("cvi_venc", "Sending the frame on channel %d "
-            "failed with %#x!\n", channel, ret);
-
-    cvi_vpss.fnReleaseChannelFrame(_cvi_vpss_grp, channel, &frame);
-
-    return ret;
-}
+static void cvi_video_pause(void);
+static void cvi_video_resume(void);
 
 void cvi_hal_deinit(void)
 {
+    for (int i = 0; i < 16; i++)
+        if (cvi_rgn_attached[i])
+            cvi_region_destroy(i);
+
     cvi_vpss_unload(&cvi_vpss);
     cvi_vi_unload(&cvi_vi);
     cvi_venc_unload(&cvi_venc);
@@ -71,6 +50,11 @@ void cvi_hal_deinit(void)
     cvi_isp_unload(&cvi_isp);
     cvi_aud_unload(&cvi_aud);
     cvi_sys_unload(&cvi_sys);
+}
+
+static cvi_sys_bind cvi_rgn_channel(void) {
+    return (cvi_sys_bind){ .module = CVI_SYS_MOD_VPSS,
+        .device = _cvi_vpss_grp, .channel = 0 };
 }
 
 int cvi_hal_init(void)
@@ -85,6 +69,15 @@ int cvi_hal_init(void)
         return ret;
     if (ret = cvi_rgn_load(&cvi_rgn))
         return ret;
+
+    {
+        cvi_sys_bind stale = cvi_rgn_channel();
+        for (int i = 0; i < 16; i++) {
+            cvi_rgn.fnDetachChannel(i, &stale);
+            cvi_rgn.fnDestroyRegion(i);
+        }
+    }
+
     if (ret = cvi_vb_load(&cvi_vb))
         return ret;
     if (ret = cvi_venc_load(&cvi_venc))
@@ -102,11 +95,16 @@ void cvi_audio_deinit(void)
     cvi_aud.fnDisableChannel(_cvi_aud_dev, _cvi_aud_chn);
 
     cvi_aud.fnDisableDevice(_cvi_aud_dev);
+
+    cvi_aud.fnDeinit();
 }
 
 int cvi_audio_init(int samplerate)
 {
     int ret;
+
+    if (ret = cvi_aud.fnInit())
+        return ret;
 
     {
         cvi_aud_cnf config;
@@ -173,6 +171,8 @@ int cvi_channel_bind(char index)
     if (ret = cvi_vpss.fnEnableChannel(_cvi_vpss_grp, index))
         return ret;
 
+    cvi_ready[(unsigned char)index] = 1;
+
     return EXIT_SUCCESS;
 }
 
@@ -224,6 +224,9 @@ int cvi_channel_unbind(char index)
 {
     int ret;
 
+    cvi_ready[(unsigned char)index] = 0;
+    while (cvi_busy[(unsigned char)index]) usleep(1000);
+
     if (ret = cvi_vpss.fnDisableChannel(_cvi_vpss_grp, index))
         return ret;
 
@@ -237,6 +240,22 @@ void *cvi_image_thread(void)
     if (ret = cvi_isp.fnRun(_cvi_vi_pipe))
         HAL_DANGER("cvi_isp", "Operation failed with %#x!\n", ret);
     HAL_INFO("cvi_isp", "Shutting down ISP thread...\n");
+}
+
+static int cvi_pipeline_forward(int channel) {
+    int ret;
+    cvi_frame frame;
+
+    if (ret = cvi_vpss.fnGetChannelFrame(_cvi_vpss_grp, channel, &frame, 1000))
+        return ret;
+
+    if (ret = cvi_venc.fnSendFrame(channel, &frame, 1000))
+        HAL_WARNING("cvi_venc", "Sending the frame on channel %d "
+            "failed with %#x!\n", channel, ret);
+
+    cvi_vpss.fnReleaseChannelFrame(_cvi_vpss_grp, channel, &frame);
+
+    return ret;
 }
 
 int cvi_pipeline_create(void)
@@ -410,40 +429,33 @@ void cvi_pipeline_destroy(void)
 
 int cvi_region_create(char handle, hal_rect rect, short opacity)
 {
-    int ret;
+    int ret = EXIT_SUCCESS;
+    unsigned int id = (unsigned char)handle % 16;
 
-    cvi_sys_bind channel = { .module = CVI_SYS_MOD_VENC,
-        .device = _cvi_venc_dev, .channel = 0 };
+    cvi_sys_bind channel = cvi_rgn_channel();
     cvi_rgn_cnf region, regionCurr;
-    cvi_rgn_chn attrib, attribCurr;
+    cvi_rgn_chn attrib;
+
+    cvi_video_pause();
 
     memset(&region, 0, sizeof(region));
     region.type = CVI_RGN_TYPE_OVERLAY;
-    region.overlay.pixFmt = CVI_PIXFMT_ARGB1555;
+    region.overlay.pixFmt = CVI_PIXFMT_ARGB8888;
     region.overlay.size.width = rect.width;
     region.overlay.size.height = rect.height;
-    region.overlay.canvas = handle + 1;
+    region.overlay.canvas = 2;
 
     if (cvi_rgn.fnGetRegionConfig(handle, &regionCurr)) {
-        HAL_INFO("cvi_rgn", "Creating region %d...\n", handle);
         if (ret = cvi_rgn.fnCreateRegion(handle, &region))
-            return ret;
-    } else if (regionCurr.overlay.size.height != region.overlay.size.height ||
-        regionCurr.overlay.size.width != region.overlay.size.width) {
-        HAL_INFO("cvi_rgn", "Parameters are different, recreating "
-            "region %d...\n", handle);
-        cvi_rgn.fnDetachChannel(handle, &channel);
+            goto resume;
+    } else if (regionCurr.overlay.size.height != rect.height ||
+        regionCurr.overlay.size.width != rect.width) {
+        if (cvi_rgn_attached[id])
+            cvi_rgn.fnDetachChannel(handle, &channel);
         cvi_rgn.fnDestroyRegion(handle);
+        cvi_rgn_attached[id] = 0;
         if (ret = cvi_rgn.fnCreateRegion(handle, &region))
-            return ret;
-    }
-
-    if (cvi_rgn.fnGetChannelConfig(handle, &channel, &attribCurr))
-        HAL_INFO("cvi_rgn", "Attaching region %d...\n", handle);
-    else if (attribCurr.overlay.point.x != rect.x || attribCurr.overlay.point.y != rect.y) {
-        HAL_INFO("cvi_rgn", "Position has changed, reattaching "
-            "region %d...\n", handle);
-        cvi_rgn.fnDetachChannel(handle, &channel);
+            goto resume;
     }
 
     memset(&attrib, 0, sizeof(attrib));
@@ -451,28 +463,91 @@ int cvi_region_create(char handle, hal_rect rect, short opacity)
     attrib.type = CVI_RGN_TYPE_OVERLAY;
     attrib.overlay.point.x = rect.x;
     attrib.overlay.point.y = rect.y;
-    attrib.overlay.layer = 7;
 
-    cvi_rgn.fnAttachChannel(handle, &channel, &attrib);
+    if (!cvi_rgn_attached[id]) {
+        if (ret = cvi_rgn.fnAttachChannel(handle, &channel, &attrib))
+            HAL_WARNING("cvi_rgn", "Attaching region %d failed with %#x!\n", handle, ret);
+        else
+            cvi_rgn_attached[id] = 1;
+    } else if (ret = cvi_rgn.fnSetChannelConfig(handle, &channel, &attrib))
+        HAL_WARNING("cvi_rgn", "Moving region %d failed with %#x!\n", handle, ret);
 
-    return EXIT_SUCCESS;
+resume:
+    cvi_video_resume();
+    return ret;
 }
 
 void cvi_region_destroy(char handle)
 {
-    cvi_sys_bind channel = { .module = CVI_SYS_MOD_VENC,
-        .device = _cvi_venc_dev, .channel = 0 };
+    unsigned int id = (unsigned char)handle % 16;
+    cvi_sys_bind channel = cvi_rgn_channel();
 
-    cvi_rgn.fnDetachChannel(handle, &channel);
+    cvi_video_pause();
+
+    if (cvi_rgn_attached[id])
+        cvi_rgn.fnDetachChannel(handle, &channel);
     cvi_rgn.fnDestroyRegion(handle);
+    cvi_rgn_attached[id] = 0;
+
+    cvi_video_resume();
 }
 
 int cvi_region_setbitmap(int handle, hal_bitmap *bitmap)
 {
-    cvi_rgn_bmp nativeBmp = { .data = bitmap->data, .pixFmt = CVI_PIXFMT_ARGB1555,
-        .size.height = bitmap->dim.height, .size.width = bitmap->dim.width };
+    unsigned int pixels = bitmap->dim.width * bitmap->dim.height;
+    unsigned int *argb = malloc(pixels * 4);
+    unsigned short *src = bitmap->data;
+    cvi_rgn_canv canvas;
+    unsigned int width, height;
+    int ret;
 
-    return cvi_rgn.fnSetBitmap(handle, &nativeBmp);
+    if (!argb)
+        return EXIT_FAILURE;
+
+    for (unsigned int i = 0; i < pixels; i++) {
+        unsigned short px = src[i];
+        unsigned int r = (px >> 10) & 0x1F, g = (px >> 5) & 0x1F, b = px & 0x1F;
+        argb[i] = ((px & 0x8000) ? 0xFF000000 : 0) |
+            ((r * 255 / 31) << 16) | ((g * 255 / 31) << 8) | (b * 255 / 31);
+    }
+
+    if (ret = cvi_rgn.fnGetCanvas(handle, &canvas)) {
+        HAL_WARNING("cvi_rgn", "Getting the canvas on region %d failed with %#x!\n",
+            handle, ret);
+        free(argb);
+        return ret;
+    }
+
+    width = bitmap->dim.width < canvas.size.width ?
+        bitmap->dim.width : canvas.size.width;
+    height = bitmap->dim.height < canvas.size.height ?
+        bitmap->dim.height : canvas.size.height;
+    for (unsigned int y = 0; y < height; y++)
+        memcpy(canvas.virtAddr + y * canvas.stride,
+            argb + y * bitmap->dim.width, width * 4);
+
+    if (ret = cvi_rgn.fnUpdateCanvas(handle))
+        HAL_WARNING("cvi_rgn", "Updating the canvas on region %d failed with %#x!\n",
+            handle, ret);
+
+    free(argb);
+    return ret;
+}
+
+static void cvi_sensor_name(const char *type, char *name, unsigned int size) {
+    const char *start = type;
+    unsigned int len;
+
+    if (!strncmp(start, "stSns", 5))
+        start += 5;
+    len = strcspn(start, "_");
+    if (len >= size)
+        len = size - 1;
+    for (unsigned int i = 0; i < len; i++) {
+        char c = start[i];
+        name[i] = (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c;
+    }
+    name[len] = '\0';
 }
 
 int cvi_sensor_config(void) {
@@ -602,6 +677,20 @@ int cvi_sensor_init(char *name, char *obj)
     return EXIT_SUCCESS;
 }
 
+static void cvi_video_pause(void) {
+    for (int i = 0; i < CVI_VENC_CHN_NUM; i++)
+        if (cvi_state[i].enable && cvi_state[i].mainLoop) {
+            cvi_ready[i] = 0;
+            while (cvi_busy[i]) usleep(1000);
+        }
+}
+
+static void cvi_video_resume(void) {
+    for (int i = 0; i < CVI_VENC_CHN_NUM; i++)
+        if (cvi_state[i].enable && cvi_state[i].mainLoop)
+            cvi_ready[i] = 1;
+}
+
 int cvi_video_create(char index, hal_vidconfig *config)
 {
     int ret;
@@ -725,15 +814,15 @@ int cvi_video_destroy(char index)
 {
     int ret;
 
+    cvi_ready[(unsigned char)index] = 0;
+    while (cvi_busy[(unsigned char)index]) usleep(1000);
+
     cvi_state[index].enable = 0;
     cvi_state[index].payload = HAL_VIDCODEC_UNSPEC;
 
     cvi_venc.fnStopReceiving(index);
 
     if (ret = cvi_venc.fnDestroyChannel(index))
-        return ret;
-
-    if (ret = cvi_vpss.fnDisableChannel(_cvi_vpss_grp, index))
         return ret;
 
     return EXIT_SUCCESS;
@@ -779,7 +868,7 @@ int cvi_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     }
     receiving = 1;
 
-    if (ret = cvi_frame_forward(index)) {
+    if (ret = cvi_pipeline_forward(index)) {
         HAL_DANGER("cvi_venc", "Getting the frame on channel "
             "%d failed with %#x!\n", index, ret);
         goto abort;
@@ -896,8 +985,14 @@ void *cvi_video_thread(void)
         for (int i = 0; i < CVI_VENC_CHN_NUM; i++) {
             if (!cvi_state[i].enable) continue;
             if (!cvi_state[i].mainLoop) continue;
+            if (!cvi_ready[i]) continue;
 
-            if (ret = cvi_frame_forward(i)) continue;
+            cvi_busy[i] = 1;
+
+            if (ret = cvi_pipeline_forward(i)) {
+                cvi_busy[i] = 0;
+                continue;
+            }
 
             cvi_venc_pack packs[16];
             stream.packet = packs;
@@ -907,6 +1002,7 @@ void *cvi_video_thread(void)
                 if (ret != 0xc0078012)
                     HAL_WARNING("cvi_venc", "Getting the stream on "
                         "channel %d failed with %#x!\n", i, ret);
+                cvi_busy[i] = 0;
                 continue;
             }
 
@@ -941,6 +1037,8 @@ void *cvi_video_thread(void)
                 HAL_WARNING("cvi_venc", "Releasing the stream on "
                     "channel %d failed with %#x!\n", i, ret);
             }
+
+            cvi_busy[i] = 0;
         }
     }
 

@@ -26,10 +26,17 @@ typedef enum {
 } cvi_rgn_type;
 
 typedef struct {
-    cvi_common_pixfmt pixFmt;
+    unsigned long long phyAddr;
+    unsigned char *virtAddr;
     cvi_common_dim size;
-    void *data;
-} cvi_rgn_bmp;
+    unsigned int stride;
+    cvi_common_pixfmt pixFmt;
+    char compr;
+    unsigned int comprSize;
+    cvi_rgn_compr osdComprMode;
+    void *canvCmprAttr;
+    void *objAttr;
+} cvi_rgn_canv;
 
 typedef struct {
     cvi_rgn_compr mode;
@@ -102,6 +109,8 @@ typedef struct {
     unsigned int bgColor;
     cvi_common_dim size;
     unsigned int canvas;
+    char flip;
+    char mirror;
     cvi_rgn_cmpinfo compInfo;
 } cvi_rgn_ovl;
 
@@ -126,7 +135,8 @@ typedef struct {
     int (*fnGetChannelConfig)(unsigned int handle, cvi_sys_bind *dest, cvi_rgn_chn *config);
     int (*fnSetChannelConfig)(unsigned int handle, cvi_sys_bind *dest, cvi_rgn_chn *config);
 
-    int (*fnSetBitmap)(unsigned int handle, cvi_rgn_bmp *bitmap);
+    int (*fnGetCanvas)(unsigned int handle, cvi_rgn_canv *canvas);
+    int (*fnUpdateCanvas)(unsigned int handle);
 } cvi_rgn_impl;
 
 static int cvi_rgn_load(cvi_rgn_impl *rgn_lib) {
@@ -165,8 +175,12 @@ static int cvi_rgn_load(cvi_rgn_impl *rgn_lib) {
         hal_symbol_load("cvi_rgn", rgn_lib->handle, "CVI_RGN_SetDisplayAttr")))
         return EXIT_FAILURE;
 
-    if (!(rgn_lib->fnSetBitmap = (int(*)(unsigned int handle, cvi_rgn_bmp *bitmap))
-        hal_symbol_load("cvi_rgn", rgn_lib->handle, "CVI_RGN_SetBitMap")))
+    if (!(rgn_lib->fnGetCanvas = (int(*)(unsigned int handle, cvi_rgn_canv *canvas))
+        hal_symbol_load("cvi_rgn", rgn_lib->handle, "CVI_RGN_GetCanvasInfo")))
+        return EXIT_FAILURE;
+
+    if (!(rgn_lib->fnUpdateCanvas = (int(*)(unsigned int handle))
+        hal_symbol_load("cvi_rgn", rgn_lib->handle, "CVI_RGN_UpdateCanvas")))
         return EXIT_FAILURE;
 
     return EXIT_SUCCESS;
