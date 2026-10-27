@@ -38,10 +38,6 @@ static void cvi_video_resume(void);
 
 void cvi_hal_deinit(void)
 {
-    for (int i = 0; i < 16; i++)
-        if (cvi_rgn_attached[i])
-            cvi_region_destroy(i);
-
     cvi_vpss_unload(&cvi_vpss);
     cvi_vi_unload(&cvi_vi);
     cvi_venc_unload(&cvi_venc);
@@ -831,6 +827,10 @@ int cvi_video_destroy(char index)
 int cvi_video_destroy_all(void)
 {
     int ret;
+
+    for (int i = 0; i < 16; i++)
+        if (cvi_rgn_attached[i])
+            cvi_region_destroy(i);
 
     for (char i = 0; i < CVI_VENC_CHN_NUM; i++)
         if (cvi_state[i].enable)
