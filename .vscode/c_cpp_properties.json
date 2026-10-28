@@ -1,84 +1,161 @@
 {
     "configurations": [
-      {
-        "name": "arm-glibc",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS"],
-        "compilerPath": "toolchain/toolchain.hisilicon-hi3516cv500/bin/arm-openipc-linux-gnueabi-gcc",
-        "cStandard": "c11"
-      },{
-        "name": "arm-musl3",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS"],
-        "compilerPath": "toolchain/toolchain.hisilicon-hi3516av100/bin/arm-openipc-linux-musleabi-gcc",
-        "cStandard": "c11"
-      },{
-        "name": "arm-musl4",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS"],
-        "compilerPath": "toolchain/toolchain.hisilicon-hi3516ev200/bin/arm-openipc-linux-musleabi-gcc",
-        "cStandard": "c11"
-      },{
-        "name": "arm9-glibc",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS"],
-        "compilerPath": "toolchain/arm926t-gcc13-musl-3_0/bin/arm-openipc-linux-musleabi-gcc",
-        "cStandard": "c11"
-      },{
-        "name": "arm9-musl3",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS"],
-        "compilerPath": "toolchain/toolchain.hisilicon-hi3516cv100/bin/arm-openipc-linux-musleabi-gcc",
-        "cStandard": "c11"
-      },{
-        "name": "arm9-musl4",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS"],
-        "compilerPath": "toolchain/toolchain.hisilicon-hi3516cv200/bin/arm-openipc-linux-musleabi-gcc",
-        "cStandard": "c11"
-      },{
-        "name": "arm9-uclibc",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS"],
-        "compilerPath": "toolchain/toolchain.grainmedia-gm8136/bin/arm-openipc-linux-uclibcgnueabi-gcc",
-        "cStandard": "c11"
-      },{
-        "name": "armhf-glibc",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS_VFP"],
-        "compilerPath": "toolchain/toolchain.sigmastar-infinity6e/bin/arm-openipc-linux-gnueabihf-gcc",
-        "cStandard": "c11"
-      },{
-        "name": "armhf-musl",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS_VFP"],
-        "compilerPath": "toolchain/toolchain.sigmastar-infinity6/bin/arm-openipc-linux-musleabihf-gcc",
-        "cStandard": "c11"
-      },{
-        "name": "armhf-uclibc",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS_VFP"],
-        "compilerPath": "toolchain/toolchain.rockchip-rv11xx/bin/arm-rockchip830-linux-uclibcgnueabihf-gcc",
-        "cStandard": "c11"
-      },{
-        "name": "armv6-musl",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__arm__", "__ARM_PCS", "__ARM_ARCH=6"],
-        "compilerPath": "toolchain/toolchain.fullhan-fh8852v200/bin/arm-openipc-linux-musleabi-gcc",
-        "cStandard": "c11"
-      },{
-        "name": "mips-musl",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__mips__"],
-        "compilerPath": "toolchain/toolchain.ingenic-t31/bin/mipsel-openipc-linux-musl-gcc",
-        "cStandard": "c11"    
-      },{
-        "name": "riscv64-musl",
-        "includePath": ["${workspaceFolder}/**"],
-        "defines": ["__riscv", "__riscv__"],
-        "compilerPath": "toolchain/riscv64-lp64d--musl--stable-2024.05-1/bin/riscv64-linux-gcc",
-        "cStandard": "c11"    
-      }
+        {
+            "name": "ak39xx",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__arm__",
+                "__ARM_PCS"
+            ],
+            "compilerPath": "toolchain/toolchain.anyka-ak3918ev300/bin/arm-openipc-linux-musleabi-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "cvitek",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__riscv",
+                "__riscv__"
+            ],
+            "compilerPath": "toolchain/riscv64-lp64d--musl--stable-2024.05-1/bin/riscv64-linux-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "fhan-v2",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__arm__",
+                "__ARM_PCS",
+                "__ARM_ARCH=6"
+            ],
+            "compilerPath": "toolchain/toolchain.fullhan-fh8852v200/bin/arm-openipc-linux-musleabi-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "gm813x",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__arm__",
+                "__ARM_PCS"
+            ],
+            "compilerPath": "toolchain/toolchain.grainmedia-gm8136/bin/arm-openipc-linux-uclibcgnueabi-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "hisi-v1",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__arm__",
+                "__ARM_PCS"
+            ],
+            "compilerPath": "toolchain/toolchain.hisilicon-hi3516cv100/bin/arm-openipc-linux-musleabi-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "hisi-v2",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__arm__",
+                "__ARM_PCS"
+            ],
+            "compilerPath": "toolchain/toolchain.hisilicon-hi3516cv200/bin/arm-openipc-linux-musleabi-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "hisi-v2a",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__arm__",
+                "__ARM_PCS"
+            ],
+            "compilerPath": "toolchain/toolchain.hisilicon-hi3516av100/bin/arm-openipc-linux-musleabi-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "hisi-v4",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__arm__",
+                "__ARM_PCS"
+            ],
+            "compilerPath": "toolchain/toolchain.hisilicon-hi3516ev200/bin/arm-openipc-linux-musleabi-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "hisi-v4a",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__arm__",
+                "__ARM_PCS"
+            ],
+            "compilerPath": "toolchain/toolchain.hisilicon-hi3516cv500/bin/arm-openipc-linux-gnueabi-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "inge-t31",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__mips__"
+            ],
+            "compilerPath": "toolchain/toolchain.ingenic-t31/bin/mipsel-openipc-linux-musl-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "rv11xx",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__arm__",
+                "__ARM_PCS_VFP"
+            ],
+            "compilerPath": "toolchain/toolchain.rockchip-rv11xx/bin/arm-rockchip830-linux-uclibcgnueabihf-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "star6",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__arm__",
+                "__ARM_PCS_VFP"
+            ],
+            "compilerPath": "toolchain/toolchain.sigmastar-infinity6/bin/arm-openipc-linux-musleabihf-gcc",
+            "cStandard": "c11"
+        },
+        {
+            "name": "star6e",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "__arm__",
+                "__ARM_PCS_VFP"
+            ],
+            "compilerPath": "toolchain/toolchain.sigmastar-infinity6e/bin/arm-openipc-linux-gnueabihf-gcc",
+            "cStandard": "c11"
+        }
     ],
     "version": 4
-  }
+}

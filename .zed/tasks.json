@@ -1,79 +1,79 @@
 [
     {
-        "label": "Config: arm-glibc",
-        "command": "cp .zed/profiles/arm-glibc.txt compile_flags.txt",
+        "label": "Config: ak39xx",
+        "command": "cp .zed/profiles/ak39xx.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: arm-musl3",
-        "command": "cp .zed/profiles/arm-musl3.txt compile_flags.txt",
+        "label": "Config: cvitek",
+        "command": "cp .zed/profiles/cvitek.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: arm-musl4",
-        "command": "cp .zed/profiles/arm-musl4.txt compile_flags.txt",
+        "label": "Config: fhan-v2",
+        "command": "cp .zed/profiles/fhan-v2.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: arm9-glibc",
-        "command": "cp .zed/profiles/arm9-glibc.txt compile_flags.txt",
+        "label": "Config: gm813x",
+        "command": "cp .zed/profiles/gm813x.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: arm9-musl3",
-        "command": "cp .zed/profiles/arm9-musl3.txt compile_flags.txt",
+        "label": "Config: hisi-v1",
+        "command": "cp .zed/profiles/hisi-v1.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: arm9-musl4",
-        "command": "cp .zed/profiles/arm9-musl4.txt compile_flags.txt",
+        "label": "Config: hisi-v2",
+        "command": "cp .zed/profiles/hisi-v2.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: arm9-uclibc",
-        "command": "cp .zed/profiles/arm9-uclibc.txt compile_flags.txt",
+        "label": "Config: hisi-v2a",
+        "command": "cp .zed/profiles/hisi-v2a.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: armhf-glibc",
-        "command": "cp .zed/profiles/armhf-glibc.txt compile_flags.txt",
+        "label": "Config: hisi-v4",
+        "command": "cp .zed/profiles/hisi-v4.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: armhf-musl",
-        "command": "cp .zed/profiles/armhf-musl.txt compile_flags.txt",
+        "label": "Config: hisi-v4a",
+        "command": "cp .zed/profiles/hisi-v4a.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: armhf-uclibc",
-        "command": "cp .zed/profiles/armhf-uclibc.txt compile_flags.txt",
+        "label": "Config: inge-t31",
+        "command": "cp .zed/profiles/inge-t31.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: armv6-musl",
-        "command": "cp .zed/profiles/armv6-musl.txt compile_flags.txt",
+        "label": "Config: rv11xx",
+        "command": "cp .zed/profiles/rv11xx.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: mips-musl",
-        "command": "cp .zed/profiles/mips-musl.txt compile_flags.txt",
+        "label": "Config: star6",
+        "command": "cp .zed/profiles/star6.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     },
     {
-        "label": "Config: riscv64-musl",
-        "command": "cp .zed/profiles/riscv64-musl.txt compile_flags.txt",
+        "label": "Config: star6e",
+        "command": "cp .zed/profiles/star6e.txt compile_flags.txt",
         "hide": "always",
         "use_new_terminal": false
     }
