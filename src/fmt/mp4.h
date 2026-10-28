@@ -31,6 +31,7 @@ void mp4_set_config(short width, short height, char framerate, char acodec,
 void mp4_set_sps(const char *nal_data, const uint32_t nal_len, char is_h265);
 void mp4_set_pps(const char *nal_data, const uint32_t nal_len, char is_h265);
 void mp4_set_vps(const char *nal_data, const uint32_t nal_len);
+void mp4_set_timestamp(uint64_t tstamp);
 enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     char is_iframe);
 enum BufError mp4_ingest_audio(const char *data, const uint32_t len);

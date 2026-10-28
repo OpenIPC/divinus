@@ -36,11 +36,8 @@ elif [ "$1" = "arm-musl3" ] || [ "$1" = "hisi-v2a" ] || [ "$1" = "hisi-v3a" ]; t
     toolchain toolchain.hisilicon-hi3516av100 arm
 elif [ "$1" = "arm-musl4" ] || [ "$1" = "hisi-v4" ]; then
     toolchain toolchain.hisilicon-hi3516ev200 arm
-elif [ "$1" = "arm9-glibc" ] || [ "$1" = "ak39xx" ]; then
-	DL="https://github.com/Lamobo/Lamobo-D1/raw/master/compiler"
-	EXT="tar.bz2"
-	PRE="none-linux-gnueabi"
-	toolchain arm-2009q3-67-arm-none-linux-gnueabi-i686-pc-linux-gnu arm "-ldl -lm -lpthread -lrt -std=gnu99"
+elif [ "$1" = "ak39xx" ]; then
+	toolchain toolchain.anyka-ak3918ev300 arm
 elif [ "$1" = "arm9-musl3" ] || [ "$1" = "hisi-v1" ]; then
 	toolchain toolchain.hisilicon-hi3516cv100 arm
 elif [ "$1" = "arm9-musl4" ] || [ "$1" = "hisi-v2" ] || [ "$1" = "hisi-v3" ]; then

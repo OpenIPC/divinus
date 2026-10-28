@@ -3,12 +3,13 @@
 #include "ak_common.h"
 #include "ak_aud.h"
 #include "ak_sys.h"
-#include "ak_venc.h"
-#include "ak_vi.h"
+#include "ak_v4l2.h"
 
 #include "../globals.h"
 #include "../tools.h"
+#include "../../app_config.h"
 
+#include <pthread.h>
 #include <unistd.h>
 
 extern hal_chnstate ak_state[AK_VENC_CHN_NUM];
@@ -28,8 +29,14 @@ int ak_channel_unbind(char index);
 
 int ak_config_load(char *path);
 
-int ak_pipeline_create(char mirror, char flip);
+int ak_pipeline_create(short width, short height, char mirror, char flip);
+void ak_pipeline_streamon(void);
+void ak_pipeline_streamon_sub(void);
 void ak_pipeline_destroy(void);
+
+void ak_region_destroy(char handle);
+int ak_region_create(char handle, hal_rect rect, short opacity);
+int ak_region_setbitmap(char handle, hal_bitmap *bitmap);
 
 int ak_video_create(char index, hal_vidconfig *config);
 int ak_video_destroy(char index);

@@ -521,6 +521,7 @@ void media_audio_disable(void) {
         case HAL_PLATFORM_M6:  m6_audio_deinit(); break;
         case HAL_PLATFORM_RK:  rk_audio_deinit(); break;
 #elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ak_audio_deinit(); break;
         case HAL_PLATFORM_GM:  gm_audio_deinit(); break;
         case HAL_PLATFORM_V1:  v1_audio_deinit(); break;
         case HAL_PLATFORM_V2:  v2_audio_deinit(); break;
@@ -553,6 +554,7 @@ int media_audio_enable(void) {
         case HAL_PLATFORM_M6:  ret = m6_audio_init(app_config.audio_srate, app_config.audio_gain); break;
         case HAL_PLATFORM_RK:  ret = rk_audio_init(app_config.audio_srate); break;
 #elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:  ret = ak_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_GM:  ret = gm_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V1:  ret = v1_audio_init(app_config.audio_srate); break;
         case HAL_PLATFORM_V2:  ret = v2_audio_init(app_config.audio_srate); break;
@@ -861,6 +863,10 @@ int sdk_start(void) {
             rk_vid_cb = save_video_stream;
             break;
 #elif defined(__arm__) && !defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_AK:
+            ak_aud_cb = save_audio_stream;
+            ak_vid_cb = save_video_stream;
+            break;
         case HAL_PLATFORM_GM:
             gm_aud_cb = save_audio_stream;
             gm_vid_cb = save_video_stream;
@@ -953,8 +959,8 @@ int sdk_start(void) {
             height, app_config.mirror, app_config.flip, framerate); break;
         case HAL_PLATFORM_RK:  ret = rk_pipeline_create(width, height); break;
 #elif defined(__arm__) && !defined(__ARM_PCS_VFP)
-        case HAL_PLATFORM_AK:  ret = ak_pipeline_create(app_config.mirror,
-            app_config.flip); break;
+        case HAL_PLATFORM_AK:  ret = ak_pipeline_create(width, height,
+            app_config.mirror, app_config.flip); break;
         case HAL_PLATFORM_GM:  ret = gm_pipeline_create(app_config.mirror,
             app_config.flip); break;
         case HAL_PLATFORM_V1:  ret = v1_pipeline_create(); break;
@@ -975,6 +981,11 @@ int sdk_start(void) {
     if (ret)
         HAL_ERROR("media", "Pipeline creation failed with %#x!\n%s\n",
             ret, errstr(ret));
+
+#if defined(__arm__) && !defined(__ARM_PCS_VFP)
+    if (plat == HAL_PLATFORM_AK && !ret)
+        ak_pipeline_streamon();
+#endif
 
     if (isp_thread) {
         pthread_attr_t thread_attr;
@@ -1000,6 +1011,11 @@ int sdk_start(void) {
 
     if (app_config.jpeg_enable && (ret = jpeg_init()))
         HAL_ERROR("media", "JPEG initialization failed with %#x!\n", ret);
+
+#if defined(__arm__) && !defined(__ARM_PCS_VFP)
+    if (plat == HAL_PLATFORM_AK)
+        ak_pipeline_streamon_sub();
+#endif
 
     {
         pthread_attr_t thread_attr;

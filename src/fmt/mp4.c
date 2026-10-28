@@ -2,6 +2,8 @@
 
 uint32_t default_sample_size = 40000;
 uint32_t last_fragment_duration, timescale;
+uint64_t last_vid_tstamp;
+uint32_t vid_duration;
 
 unsigned int aud_samplerate = 0;
 unsigned short aud_bitrate = 0;
@@ -64,6 +66,8 @@ void mp4_set_config(short width, short height, char framerate, char acodec,
      * and parameter sets; without this a codec switch keeps sending the old one */
     buf_header.offset = 0;
     buf_sps_len = buf_pps_len = buf_vps_len = 0;
+    last_vid_tstamp = 0;
+    vid_duration = default_sample_size;
     vid_width = width;
     vid_height = height;
     vid_framerate = framerate;
@@ -91,6 +95,16 @@ void mp4_set_vps(const char *nal_data, const uint32_t nal_len) {
     create_header(1);
 }
 
+void mp4_set_timestamp(uint64_t tstamp) {
+    if (!tstamp) return;
+
+    if (last_vid_tstamp && tstamp > last_vid_tstamp && timescale) {
+        uint32_t duration = ((tstamp - last_vid_tstamp) * timescale) / 1000000;
+        if (duration) vid_duration = duration;
+    }
+    last_vid_tstamp = tstamp;
+}
+
 enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     char is_iframe) {
     uint64_t aud_ticks = 0;
@@ -99,7 +113,7 @@ enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     struct SampleInfo samples_info[2];
     memset(samples_info, 0, sizeof(samples_info));
     samples_info[0].size = nal_len + 4; // add size of sample
-    samples_info[0].duration = default_sample_size;
+    samples_info[0].duration = vid_duration;
     samples_info[0].flags = is_iframe ? 0 : 65536;
     samples_info[1].size = buf_aud.offset;
     if (aud_bitrate > 0 && buf_aud.offset > 0) {
@@ -151,7 +165,10 @@ enum BufError mp4_set_state(struct Mp4State *state) {
         state->base_media_decode_time);
     chk_err state->sequence_number++;
     state->base_data_offset += buf_moof.offset + buf_mdat.offset;
-    state->base_media_decode_time += last_fragment_duration;
+    if (last_vid_tstamp)
+        state->base_media_decode_time += vid_duration;
+    else
+        state->base_media_decode_time += last_fragment_duration;
     return BUF_OK;
 }
 

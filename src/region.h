@@ -73,5 +73,6 @@ typedef struct {
 extern osd osds[MAX_OSD];
 extern char timefmt[64];
 
+void region_defaults(osd *o, int id);
 int region_start();
 void region_stop();

@@ -4,23 +4,26 @@
 
 ak_aud_impl  ak_aud;
 ak_sys_impl  ak_sys;
-ak_venc_impl ak_venc;
-ak_vi_impl   ak_vi;
 
 hal_chnstate ak_state[AK_VENC_CHN_NUM] = {0};
 int (*ak_aud_cb)(hal_audframe*);
 int (*ak_vid_cb)(char, hal_vidstream*);
 
-ak_vi_res _ak_vi_res;
+static unsigned char *ak_mjpeg_buf;
+static size_t ak_mjpeg_len;
+static pthread_mutex_t ak_mjpeg_mtx = PTHREAD_MUTEX_INITIALIZER;
 
+static struct {
+    int width, height, maxWidth, maxHeight;
+} _ak_vi_res;
+
+void *_ak_aud_dev;
 void *_ak_vi_dev;
 void *_ak_venc_dev[AK_VENC_CHN_NUM];
 void *_ak_venc_strm[AK_VENC_CHN_NUM];
 
 void ak_hal_deinit(void)
 {
-    ak_vi_unload(&ak_vi);
-    ak_venc_unload(&ak_venc);
     ak_aud_unload(&ak_aud);
     ak_sys_unload(&ak_sys);
 }
@@ -33,132 +36,139 @@ int ak_hal_init(void)
         return ret;
     if (ret = ak_aud_load(&ak_aud))
         return ret;
-    if (ret = ak_venc_load(&ak_venc))
-        return ret;
-    if (ret = ak_vi_load(&ak_vi))
-        return ret;
 
     return EXIT_SUCCESS;
+}
+
+void ak_audio_deinit(void)
+{
+    ak_aud.fnDisableDevice(_ak_aud_dev);
+
+    _ak_aud_dev = NULL;
+}
+
+int ak_audio_init(int samplerate)
+{
+    int ret;
+    ak_aud_cnf config = {
+        .rate = samplerate,
+        .bit = 16,
+        .chnNum = 1
+    };
+
+    if (!(_ak_aud_dev = ak_aud.fnEnableDevice(&config)))
+        HAL_ERROR("ak_aud", "Opening the audio input failed with %#x!\n%s\n",
+            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
+
+    return EXIT_SUCCESS;
+}
+
+void *ak_audio_thread(void)
+{
+    int ret;
+    unsigned long sequence = 0;
+
+    while (keepRunning && audioOn) {
+        ak_aud_frm frame;
+        memset(&frame, 0, sizeof(frame));
+
+        if (ret = ak_aud.fnGetFrame(_ak_aud_dev, &frame, 1000)) {
+            HAL_WARNING("ak_aud", "Getting the audio frame failed with %#x!\n",
+                ak_sys.fnGetErrorNum());
+            continue;
+        }
+        if (!frame.length) {
+            ak_aud.fnFreeFrame(_ak_aud_dev, &frame);
+            continue;
+        }
+
+        if (ak_aud_cb) {
+            hal_audframe outFrame;
+            outFrame.channelCnt = 1;
+            outFrame.data[0] = frame.data;
+            outFrame.length[0] = frame.length;
+            outFrame.seq = sequence++;
+            outFrame.timestamp = frame.timestamp;
+            (*ak_aud_cb)(&outFrame);
+        }
+
+        if (ak_aud.fnFreeFrame(_ak_aud_dev, &frame))
+            HAL_DANGER("ak_aud", "Releasing the audio frame failed!\n");
+    }
+    HAL_INFO("ak_aud", "Shutting down audio capture thread...\n");
 }
 
 int ak_channel_bind(char index)
 {
-    int ret = EXIT_SUCCESS;
-
-    if (!(_ak_venc_strm[index] =
-        ak_venc.fnBindChannel(_ak_vi_dev, _ak_venc_dev[index])))
-        HAL_ERROR("ak_venc", "Binding the channel failed with %#x!\n%s\n",
-            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
-
-    return ret;
-}
-
-int ak_channel_grayscale(char enable)
-{
-    return ak_vi.fnSetDeviceMode(_ak_vi_dev, enable & 1);
-}
-
-int ak_channel_unbind(char index)
-{
-    int ret = ak_venc.fnUnbindChannel(_ak_venc_strm[index]);
-
-    _ak_venc_strm[index] = NULL;
-
-    return ret;
-}
-
-int ak_pipeline_create(char mirror, char flip)
-{
-    int ret;
-
-    if (!(_ak_vi_dev = ak_vi.fnEnableDevice(0)))
-        HAL_ERROR("ak_vi", "Enabling the sensor failed with %#x!\n%s\n",
-            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
-
-    if (ak_vi.fnGetDeviceResolution(_ak_vi_dev, &_ak_vi_res))
-        HAL_ERROR("ak_vi", "Getting the sensor resolution failed with %#x!\n%s\n",
-            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
-
-    {
-        ak_vi_cnf config;
-        config.capt.width = _ak_vi_res.width;
-        config.capt.height = _ak_vi_res.height;
-        config.capt.x = 0;
-        config.capt.y = 0;
-        config.dest[0].width = 640;
-        config.dest[0].height = 480;
-        config.dest[0].maxWidth = 640;
-        config.dest[0].maxHeight = 480;
-        config.dest[1].width = _ak_vi_res.width;
-        config.dest[1].height = _ak_vi_res.height;
-        config.dest[1].maxWidth = _ak_vi_res.width;
-        config.dest[1].maxHeight = _ak_vi_res.height;
-
-        if (ak_vi.fnSetDeviceConfig(_ak_vi_dev, &config))
-            HAL_ERROR("ak_vi", "Setting the sensor resolution failed with %#x!\n%s\n",
-                ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
+    if (ak_v4l2_enc_streamon(index) < 0) {
+        HAL_ERROR("ak_venc", "Starting the encoder failed!\n");
+        return EXIT_FAILURE;
     }
-
-    if (ak_vi.fnStartDevice(_ak_vi_dev))
-        HAL_ERROR("ak_vi", "Starting the acquisition failed with %#x!\n%s\n",
-            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
-
-    if (ak_vi.fnSetDeviceFlipMirror(_ak_vi_dev, flip & 1, mirror & 1))
-        HAL_ERROR("ak_vi", "Setting image parameters failed with %#x!\n%s\n",
-            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
 
     return EXIT_SUCCESS;
 }
 
+int ak_channel_grayscale(char enable)
+{
+    return ak_v4l2_enc_grayscale(0, enable);
+}
+
+int ak_channel_unbind(char index)
+{
+    ak_v4l2_enc_streamoff(index);
+    return EXIT_SUCCESS;
+}
+
+int ak_pipeline_create(short width, short height, char mirror, char flip)
+{
+    (void)mirror;
+    (void)flip;
+
+    if (width <= 0 || height <= 0) {
+        width = 1280;
+        height = 720;
+    }
+
+    if (ak_v4l2_cap_open(0, width, height) < 0)
+        HAL_ERROR("ak_vi", "Opening the main capture failed!\n");
+
+    if (ak_v4l2_cap_open(1, app_config.mjpeg_width,
+            app_config.mjpeg_height) < 0)
+        HAL_WARNING("ak_vi", "Opening the sub capture failed; main only\n");
+
+    _ak_vi_res.width = width;
+    _ak_vi_res.height = height;
+    _ak_vi_res.maxWidth = width;
+    _ak_vi_res.maxHeight = height;
+
+    return EXIT_SUCCESS;
+}
+
+void ak_pipeline_streamon(void)
+{
+    if (ak_v4l2_cap_streamon(0) < 0)
+        HAL_ERROR("ak_vi", "Starting the main capture failed!\n");
+}
+
+void ak_pipeline_streamon_sub(void)
+{
+    if (ak_v4l2_cap_streamon(1) < 0)
+        HAL_WARNING("ak_vi", "Starting the sub capture failed; main only\n");
+}
+
 void ak_pipeline_destroy(void)
 {
-    ak_vi.fnStopDevice(_ak_vi_dev);
-    ak_vi.fnDisableDevice(_ak_vi_dev);
+    ak_v4l2_cap_close(0);
+    ak_v4l2_cap_close(1);
 }
 
 int ak_video_create(char index, hal_vidconfig *config)
 {
-    int ret;
-    ak_venc_codec codec;
-    char ratemode;
-    ak_venc_prof profile;
-
-    switch (config->mode) {
-        case HAL_VIDMODE_CBR: ratemode = 0; break;
-        case HAL_VIDMODE_VBR: ratemode = 1; break;
-        default: HAL_ERROR("ak_venc", "Video encoder does not support this mode!");
-    }
-    switch (config->codec) {
-        case HAL_VIDCODEC_JPG:
-        case HAL_VIDCODEC_MJPG:
-            codec = AK_VENC_CODEC_MJPG;
-            profile = AK_VENC_PROF_HEVC_MAINSTILL;
-            break;
-        case HAL_VIDCODEC_H265:
-            codec = AK_VENC_CODEC_H265;
-            profile = AK_VENC_PROF_HEVC_MAIN;
-            break;
-        case HAL_VIDCODEC_H264:
-            codec = AK_VENC_CODEC_H264;
-            switch (config->profile) {
-                case HAL_VIDPROFILE_BASELINE: profile = AK_VENC_PROF_BASE; break;
-                case HAL_VIDPROFILE_MAIN: profile = AK_VENC_PROF_MAIN; break;
-                default: profile = AK_VENC_PROF_HIGH; break;
-            } break;
-        default: HAL_ERROR("ak_venc", "This codec is not supported by the hardware!");
-    }
-
-    {
-        ak_venc_cnf channel = {.codec = codec, .width = config->width, .height = config->height,
-            .minQual = MIN(MAX(config->minQual, 20), 50),
-            .maxQual = MIN(MAX(config->maxQual ? config->maxQual : 50, 20), 50),
-            .dstFps = config->framerate, .gop = config->gop, .maxBitrate = config->maxBitrate,
-            .profile = profile, .subChnOn = index,
-            .output = index ? AK_VENC_OUT_SUBSTRM : AK_VENC_OUT_MAINSTRM, .vbrModeOn = ratemode};
-
-        if (!(_ak_venc_dev[index] = ak_venc.fnEnableChannel(&channel)))
-            HAL_ERROR("ak_venc", "Creating channel %d failed with %#x!\n%s\n",
-                index, ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
+    if (ak_v4l2_enc_open(index, config->width, config->height,
+            config->codec, config->framerate, config->bitrate,
+            config->gop) < 0) {
+        HAL_ERROR("ak_venc", "Creating channel %d failed!\n", index);
+        return EXIT_FAILURE;
     }
 
     ak_state[index].payload = config->codec;
@@ -168,9 +178,7 @@ int ak_video_create(char index, hal_vidconfig *config)
 
 int ak_video_destroy(char index)
 {
-    if (ak_venc.fnDisableChannel(_ak_venc_dev[index]))
-        return EXIT_FAILURE;
-
+    ak_v4l2_enc_close(index);
     return EXIT_SUCCESS;
 }
 
@@ -188,51 +196,219 @@ int ak_video_destroy_all(void)
 
 void ak_video_request_idr(char index)
 {
-    ak_venc.fnRequestIdr(_ak_venc_dev[index]);
+    ak_v4l2_enc_request_idr(index);
+}
+
+int ak_video_snapshot_grab(char index, hal_jpegdata *jpeg)
+{
+    void *data = NULL;
+    size_t len = 0;
+    (void)index;
+
+    jpeg->data = NULL;
+    jpeg->length = jpeg->jpegSize = 0;
+
+    pthread_mutex_lock(&ak_mjpeg_mtx);
+    if (ak_mjpeg_len) {
+        data = malloc(ak_mjpeg_len);
+        if (data) {
+            memcpy(data, ak_mjpeg_buf, ak_mjpeg_len);
+            len = ak_mjpeg_len;
+        }
+    }
+    pthread_mutex_unlock(&ak_mjpeg_mtx);
+
+    if (!data && ak_v4l2_snapshot(1280, 720, 80, &data, &len) < 0)
+        HAL_ERROR("ak_venc", "Encoding the snapshot failed!\n");
+
+    jpeg->data = data;
+    jpeg->length = jpeg->jpegSize = len;
+
+    return EXIT_SUCCESS;
+}
+
+static unsigned int ak_nal_start(const unsigned char *d, unsigned int off, unsigned int len)
+{
+    for (unsigned int i = off; i + 2 < len; i++)
+        if (!d[i] && !d[i + 1] &&
+            (d[i + 2] == 1 || (i + 3 < len && d[i + 2] == 0 && d[i + 3] == 1)))
+            return i;
+    return len;
+}
+
+#define AK_OSD_MAX 10
+
+static struct {
+    hal_rect rect;
+    hal_dim dim;
+    short opacity;
+    unsigned char *bits;
+} ak_osd[AK_OSD_MAX];
+
+int ak_region_create(char handle, hal_rect rect, short opacity)
+{
+    if (handle < 0 || handle >= AK_OSD_MAX)
+        return EXIT_FAILURE;
+    ak_osd[handle].rect = rect;
+    ak_osd[handle].opacity = opacity;
+    return EXIT_SUCCESS;
+}
+
+int ak_region_setbitmap(char handle, hal_bitmap *bitmap)
+{
+    if (handle < 0 || handle >= AK_OSD_MAX || !bitmap || !bitmap->data)
+        return EXIT_FAILURE;
+    unsigned int size = bitmap->dim.width * bitmap->dim.height * 2;
+    unsigned char *bits = malloc(size);
+    if (!bits)
+        return EXIT_FAILURE;
+    memcpy(bits, bitmap->data, size);
+    free(ak_osd[handle].bits);
+    ak_osd[handle].bits = bits;
+    ak_osd[handle].dim = bitmap->dim;
+    return EXIT_SUCCESS;
+}
+
+void ak_region_destroy(char handle)
+{
+    if (handle < 0 || handle >= AK_OSD_MAX)
+        return;
+    free(ak_osd[handle].bits);
+    ak_osd[handle].bits = NULL;
+    ak_osd[handle].dim.width = ak_osd[handle].dim.height = 0;
+}
+
+static void ak_region_apply(unsigned char *frame, int width, int height)
+{
+    int luma_size = width * height;
+    int chroma_size = (width >> 1) * (height >> 1);
+
+    for (int id = 0; id < AK_OSD_MAX; id++) {
+        if (!ak_osd[id].bits) continue;
+        int bw = ak_osd[id].dim.width, bh = ak_osd[id].dim.height;
+        int x0 = ak_osd[id].rect.x, y0 = ak_osd[id].rect.y;
+        int op = ak_osd[id].opacity;
+        unsigned short *src = (unsigned short *)ak_osd[id].bits;
+
+        for (int y = 0; y < bh; y++) {
+            int fy = y0 + y;
+            if (fy < 0 || fy >= height) continue;
+            for (int x = 0; x < bw; x++) {
+                unsigned short p = src[y * bw + x];
+                if (!(p & 0x8000)) continue;
+                int fx = x0 + x;
+                if (fx < 0 || fx >= width) continue;
+
+                int r5 = (p >> 10) & 0x1F, g5 = (p >> 5) & 0x1F, b5 = p & 0x1F;
+                int r8 = (r5 << 3) | (r5 >> 2);
+                int g8 = (g5 << 3) | (g5 >> 2);
+                int b8 = (b5 << 3) | (b5 >> 2);
+                int Y = (77 * r8 + 150 * g8 + 29 * b8) >> 8;
+                int U = ((-43 * r8 - 85 * g8 + 128 * b8) >> 8) + 128;
+                int V = ((128 * r8 - 107 * g8 - 21 * b8) >> 8) + 128;
+                if (Y < 0) Y = 0; else if (Y > 255) Y = 255;
+                if (U < 0) U = 0; else if (U > 255) U = 255;
+                if (V < 0) V = 0; else if (V > 255) V = 255;
+
+                int idx = fy * width + fx;
+                frame[idx] = (Y * op + frame[idx] * (255 - op)) / 255;
+
+                int uv = luma_size + (fy >> 1) * (width >> 1) + (fx >> 1);
+                frame[uv] = (U * op + frame[uv] * (255 - op)) / 255;
+                frame[uv + chroma_size] = (V * op + frame[uv + chroma_size] * (255 - op)) / 255;
+            }
+        }
+    }
+}
+
+static void ak_video_emit(char index, void *out, size_t outlen, uint64_t tstamp)
+{
+    if (!ak_vid_cb || !outlen) return;
+
+    if (ak_state[index].payload == HAL_VIDCODEC_MJPG) {
+        pthread_mutex_lock(&ak_mjpeg_mtx);
+        unsigned char *nb = realloc(ak_mjpeg_buf, outlen);
+        if (nb) {
+            ak_mjpeg_buf = nb;
+            memcpy(ak_mjpeg_buf, out, outlen);
+            ak_mjpeg_len = outlen;
+        }
+        pthread_mutex_unlock(&ak_mjpeg_mtx);
+    }
+
+    hal_vidstream outStrm;
+    hal_vidpack outPack[1];
+    memset(outPack, 0, sizeof(outPack));
+    outStrm.count = 1;
+    outStrm.seq = 0;
+    outPack[0].data = out;
+    outPack[0].length = outlen;
+
+    unsigned int n = 0, sc, scan = 0;
+    while (n < 7 && (sc = ak_nal_start(out, scan, outlen)) < outlen) {
+        unsigned int scLen = (((unsigned char *)out)[sc + 2] == 1) ? 3 : 4;
+        outPack[0].nalu[n].offset = sc;
+        outPack[0].nalu[n].type = ((unsigned char *)out)[sc + scLen] & 0x1F;
+        n++;
+        scan = sc + scLen;
+    }
+    if (n) {
+        outPack[0].naluCnt = n;
+        outPack[0].nalu[n].offset = outlen;
+        for (unsigned int k = 0; k < n; k++)
+            outPack[0].nalu[k].length =
+                outPack[0].nalu[k + 1].offset - outPack[0].nalu[k].offset;
+    } else {
+        outPack[0].naluCnt = 1;
+        outPack[0].nalu[0].length = outlen;
+        outPack[0].nalu[0].offset = 0;
+        outPack[0].nalu[0].type = 1;
+    }
+    outPack[0].offset = 0;
+    outPack[0].timestamp = tstamp;
+    outStrm.pack = outPack;
+    (*ak_vid_cb)(index, &outStrm);
 }
 
 void *ak_video_thread(void)
 {
-    int ret;
-
     while (keepRunning) {
+        void *data = NULL, *out = NULL;
+        size_t len = 0, outlen = 0;
+        uint64_t tstamp = 0;
+        int frameIdx = -1;
+
+        if (ak_v4l2_cap_dequeue(0, &data, &len, &tstamp, &frameIdx, 1000) < 0)
+            continue;
+
+        ak_region_apply((unsigned char *)data, _ak_vi_res.width, _ak_vi_res.height);
+
         for (char i = 0; i < AK_VENC_CHN_NUM; i++) {
-            if (!ak_state[i].enable) continue;
-            if (!ak_state[i].mainLoop) continue;
-
-            ak_venc_strm stream;
-            if (ak_venc.fnGetStream(_ak_venc_strm[i], &stream)) {
-                HAL_DANGER("ak_venc", "Getting the stream on channel %d"
-                    " failed with %#x!\n%s\n", i, ret = ak_sys.fnGetErrorNum(),
-                    ak_sys.fnGetErrorStr(ret));
-            };
-            if (!stream.length) continue;
-
-            if (ak_vid_cb) {
-                hal_vidstream outStrm;
-                hal_vidpack outPack[1];
-                memset(outPack, 0, sizeof(outPack));
-                outStrm.count = 1;
-                outStrm.seq = stream.sequence;
-                outPack[0].data = stream.data;
-                outPack[0].length = stream.length;
-                outPack[0].naluCnt = 1;
-                outPack[0].nalu[0].length = outPack[0].length;
-                outPack[0].nalu[0].offset = 0;
-                outPack[0].nalu[0].type = stream.naluType;
-                outPack[0].offset = 0;
-                outPack[0].timestamp = stream.timestamp;
-                outStrm.pack = outPack;
-                (*ak_vid_cb)(i, &outStrm);
-
-                if (ak_venc.fnFreeStream(_ak_venc_strm[i], &stream)) {
-                    HAL_DANGER("ak_venc", "Releasing the stream on "
-                        "channel %d failed!\n", i);
-                }
-            }
+            if (!ak_state[i].enable || !ak_state[i].mainLoop) continue;
+            if (ak_state[i].payload == HAL_VIDCODEC_MJPG ||
+                ak_state[i].payload == HAL_VIDCODEC_JPG) continue;
+            if (ak_v4l2_enc_push(i, data, len, &out, &outlen, 1000) < 0) continue;
+            ak_video_emit(i, out, outlen, tstamp);
+            ak_v4l2_enc_requeue(i);
         }
+        ak_v4l2_cap_requeue(0, frameIdx);
+
+        if (ak_v4l2_cap_dequeue(1, &data, &len, &tstamp, &frameIdx, 1000) < 0)
+            continue;
+
+        for (char i = 0; i < AK_VENC_CHN_NUM; i++) {
+            if (!ak_state[i].enable || !ak_state[i].mainLoop) continue;
+            if (ak_state[i].payload != HAL_VIDCODEC_MJPG &&
+                ak_state[i].payload != HAL_VIDCODEC_JPG) continue;
+            if (ak_v4l2_enc_push(i, data, len, &out, &outlen, 1000) < 0) continue;
+            ak_video_emit(i, out, outlen, tstamp);
+            ak_v4l2_enc_requeue(i);
+        }
+        ak_v4l2_cap_requeue(1, frameIdx);
     }
+
     HAL_INFO("ak_venc", "Shutting down encoding thread...\n");
+    return NULL;
 }
 
 void ak_system_deinit(void)
@@ -242,24 +418,36 @@ void ak_system_deinit(void)
 
 int ak_system_init(char *snrConfig)
 {
-    int ret = EXIT_SUCCESS, val = AK_SYS_BOOT_MAGIC;
+    int val = AK_SYS_BOOT_MAGIC;
+    (void)snrConfig;
 
     // Disable the watchdog timer if it isn't already
     hal_registry(AK_SYS_BOOT_REG, &val, OP_WRITE);
 
-    if (ak_vi.fnLoadSensorConfig(snrConfig))
-        HAL_DANGER("ak_vi", "Loading the sensor config failed"
-            " with %#x!\n%s\n", ret = ak_sys.fnGetErrorNum(),
-            ak_sys.fnGetErrorStr(ret));
+    return EXIT_SUCCESS;
+}
 
-    return ret;
+static int ak_identify_board(void)
+{
+    char compat[128] = {0};
+    FILE *file = fopen("/proc/device-tree/compatible", "r");
+
+    if (!file) return 0;
+
+    size_t len = fread(compat, 1, sizeof(compat) - 1, file);
+    fclose(file);
+
+    for (size_t i = 0; i < len; i++)
+        if (!compat[i]) compat[i] = ' ';
+
+    return strstr(compat, "anyka,ak3918") != NULL;
 }
 
 int ak_system_identify(void)
 {
     unsigned int val = 0;
 
-    if (access("/sys/devices/platform/i2c-ak39", F_OK) ||
+    if (!ak_identify_board() ||
         !hal_registry(AK_SYS_REG_CHIP, &val, OP_READ))
         return 0;
 
@@ -274,6 +462,7 @@ int ak_system_identify(void)
     strcpy(family, "anyka");
     chnCount = AK_VENC_CHN_NUM;
     chnState = (hal_chnstate*)ak_state;
+    aud_thread = ak_audio_thread;
     vid_thread = ak_video_thread;
 
     // Needed for libplat_thread and uClibc

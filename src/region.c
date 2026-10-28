@@ -1,6 +1,20 @@
 #include "region.h"
 
 osd osds[MAX_OSD];
+
+void region_defaults(osd *o, int id) {
+    o->hand = -1;
+    o->color = DEF_COLOR;
+    o->opal = DEF_OPAL;
+    o->size = DEF_SIZE;
+    o->posx = DEF_POSX;
+    o->posy = DEF_POSY + (DEF_SIZE * 3 / 2) * id;
+    o->outl = DEF_OUTL;
+    o->thick = DEF_THICK;
+    o->updt = 0;
+    strncpy(o->font, DEF_FONT, sizeof(o->font) - 1);
+    o->font[sizeof(o->font) - 1] = '\0';
+}
 pthread_t regionPid = 0;
 char timefmt[64];
 unsigned int rxb_l, txb_l, cpu_l[6];
@@ -338,16 +352,7 @@ void *region_thread(void) {
     for (char id = 0; id < MAX_OSD; id++)
     {
         if (!EMPTY(osds[id].text) || !EMPTY(osds[id].img)) continue;
-        osds[id].hand = -1;
-        osds[id].color = DEF_COLOR;
-        osds[id].opal = DEF_OPAL;
-        osds[id].size = DEF_SIZE;
-        osds[id].posx = DEF_POSX;
-        osds[id].posy = DEF_POSY + (DEF_SIZE * 3 / 2) * id;
-        osds[id].outl = DEF_OUTL;
-        osds[id].thick = DEF_THICK;
-        osds[id].updt = 0;
-        strncpy(osds[id].font, DEF_FONT, sizeof(osds[id].font) - 1);
+        region_defaults(&osds[id], id);
         osds[id].text[0] = '\0';
         osds[id].img[0] = '\0';
     }
@@ -425,6 +430,10 @@ found_font:;
                         case HAL_PLATFORM_V4:
                             v4_region_create(id, rect, osds[id].opal);
                             v4_region_setbitmap(id, &bitmap);
+                            break;
+                        case HAL_PLATFORM_AK:
+                            ak_region_create(id, rect, osds[id].opal);
+                            ak_region_setbitmap(id, &bitmap);
                             break;
                         #if __ARM_ARCH == 6
                         case HAL_PLATFORM_F1:
@@ -508,6 +517,10 @@ found_font:;
                                 v4_region_create(id, rect, osds[id].opal);
                                 v4_region_setbitmap(id, &bitmap);
                                 break;
+                            case HAL_PLATFORM_AK:
+                                ak_region_create(id, rect, osds[id].opal);
+                                ak_region_setbitmap(id, &bitmap);
+                                break;
                             #if __ARM_ARCH == 6
                             case HAL_PLATFORM_F1:
                                 f1_region_create(&osds[id].hand, rect, osds[id].opal);
@@ -546,6 +559,7 @@ found_font:;
                         case HAL_PLATFORM_V2:  v2_region_destroy(id); break;
                         case HAL_PLATFORM_V3:  v3_region_destroy(id); break;
                         case HAL_PLATFORM_V4:  v4_region_destroy(id); break;
+                        case HAL_PLATFORM_AK:  ak_region_destroy(id); break;
                         #if __ARM_ARCH == 6
                         case HAL_PLATFORM_F1:  f1_region_destroy(&osds[id].hand); break;
                         case HAL_PLATFORM_F2:  f2_region_destroy(&osds[id].hand); break;

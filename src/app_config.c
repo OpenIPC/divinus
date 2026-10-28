@@ -420,6 +420,7 @@ enum ConfigError app_config_parse(void) {
         for (char i = 0; i < MAX_OSD; i++) {
             char param[16];
             int val;
+            region_defaults(&osds[i], i);
             sprintf(param, "reg%d_img", i);
             parse_param_value(&ini, "osd", param, osds[i].img);
             sprintf(param, "reg%d_text", i);

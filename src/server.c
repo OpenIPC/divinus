@@ -239,6 +239,9 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
         hal_vidpack *pack = &stream->pack[i];
         unsigned char *pack_data = pack->data + pack->offset;
 
+        if (plat == HAL_PLATFORM_AK)
+            mp4_set_timestamp(pack->timestamp);
+
         for (char j = 0; j < pack->naluCnt; j++) {
             /* nalu[].offset points at the start code, which is 3 or 4
              * bytes depending on the encoder; the muxer wants the payload. */
@@ -394,8 +397,6 @@ void send_jpeg_to_client(char index, char *buf, ssize_t size) {
         "Content-Type: image/jpeg\r\n"
         "Content-Length: %lu\r\n"
         "Connection: close\r\n\r\n", size);
-    buf[size++] = '\r';
-    buf[size++] = '\n';
 
     pthread_mutex_lock(&client_fds_mutex);
     for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i) {
@@ -1359,6 +1360,8 @@ void respond_request(http_request_t *req) {
             send_http_error(req->clntFd, 404);
             return;
         }
+        if (EMPTY(osds[id].text) && EMPTY(osds[id].img))
+            region_defaults(&osds[id], id);
         if (EQUALS(req->method, "POST")) {
             char *type = request_header("Content-Type");
             if (type && STARTS_WITH(type, "multipart/form-data")) {
