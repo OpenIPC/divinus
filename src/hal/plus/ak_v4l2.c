@@ -12,6 +12,14 @@
 #define V4L2_CID_JPEG_COMPRESSION_QUALITY 0x009d0003
 #endif
 
+pthread_mutex_t ak_v4l2_mtx = PTHREAD_MUTEX_INITIALIZER;
+static unsigned int capGen[2];
+
+unsigned int ak_v4l2_cap_gen(int index)
+{
+    return capGen[index & 1];
+}
+
 int ak_v4l2_cap_open(int index, int width, int height)
 {
     struct v4l2_cap *c;
@@ -60,6 +68,7 @@ int ak_v4l2_cap_open(int index, int width, int height)
 
     c->width = f.fmt.pix.width;
     c->height = f.fmt.pix.height;
+    capGen[index & 1]++;
     return 0;
 
 fail:
@@ -91,10 +100,13 @@ void ak_v4l2_cap_close(int index)
         return;
     if (c->streaming)
         xioctl(c->fd, VIDIOC_STREAMOFF, &type);
+    pthread_mutex_lock(&ak_v4l2_mtx);
     munmap_bufs(c->buf, CAP_BUFS);
     close(c->fd);
     c->fd = -1;
     c->streaming = 0;
+    capGen[index & 1]++;
+    pthread_mutex_unlock(&ak_v4l2_mtx);
 }
 
 int ak_v4l2_cap_dequeue(int index, void **data, size_t *len, uint64_t *ts, int *bufIndex, int timeout_ms)

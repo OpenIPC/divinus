@@ -1,5 +1,7 @@
 #include "mp4.h"
 
+pthread_mutex_t mp4_mtx = PTHREAD_MUTEX_INITIALIZER;
+
 uint32_t default_sample_size = 40000;
 uint32_t last_fragment_duration, timescale;
 uint64_t last_vid_tstamp;

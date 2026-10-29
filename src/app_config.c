@@ -273,7 +273,7 @@ enum ConfigError app_config_parse(void) {
     app_config.mjpeg_enable = false;
     app_config.mjpeg_fps = 15;
     app_config.mjpeg_width = 640;
-    app_config.mjpeg_height = 480;
+    app_config.mjpeg_height = 360;
     app_config.mjpeg_bitrate = 1024;
     app_config.mjpeg_qfactor = 50;
 

@@ -218,8 +218,8 @@ int ak_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     }
     pthread_mutex_unlock(&ak_mjpeg_mtx);
 
-    if (!data && ak_v4l2_snapshot(1280, 720, 80, &data, &len) < 0)
-        HAL_ERROR("ak_venc", "Encoding the snapshot failed!\n");
+    if (!data)
+        return EXIT_FAILURE;
 
     jpeg->data = data;
     jpeg->length = jpeg->jpegSize = len;
@@ -378,33 +378,53 @@ void *ak_video_thread(void)
         uint64_t tstamp = 0;
         int frameIdx = -1;
 
+        unsigned int gen = ak_v4l2_cap_gen(0);
+
         if (ak_v4l2_cap_dequeue(0, &data, &len, &tstamp, &frameIdx, 1000) < 0)
             continue;
 
-        ak_region_apply((unsigned char *)data, _ak_vi_res.width, _ak_vi_res.height);
+        /* The pipeline may have been torn down while the dequeue was
+           waiting; the frame pointer would then already be unmapped. */
+        if (gen != ak_v4l2_cap_gen(0))
+            continue;
 
-        for (char i = 0; i < AK_VENC_CHN_NUM; i++) {
-            if (!ak_state[i].enable || !ak_state[i].mainLoop) continue;
-            if (ak_state[i].payload == HAL_VIDCODEC_MJPG ||
-                ak_state[i].payload == HAL_VIDCODEC_JPG) continue;
-            if (ak_v4l2_enc_push(i, data, len, &out, &outlen, 1000) < 0) continue;
-            ak_video_emit(i, out, outlen, tstamp);
-            ak_v4l2_enc_requeue(i);
+        pthread_mutex_lock(&ak_v4l2_mtx);
+        if (gen == ak_v4l2_cap_gen(0)) {
+            ak_region_apply((unsigned char *)data, _ak_vi_res.width, _ak_vi_res.height);
+
+            for (char i = 0; i < AK_VENC_CHN_NUM; i++) {
+                if (!ak_state[i].enable || !ak_state[i].mainLoop) continue;
+                if (ak_state[i].payload == HAL_VIDCODEC_MJPG ||
+                    ak_state[i].payload == HAL_VIDCODEC_JPG) continue;
+                if (ak_v4l2_enc_push(i, data, len, &out, &outlen, 1000) < 0) continue;
+                ak_video_emit(i, out, outlen, tstamp);
+                ak_v4l2_enc_requeue(i);
+            }
+            ak_v4l2_cap_requeue(0, frameIdx);
         }
-        ak_v4l2_cap_requeue(0, frameIdx);
+        pthread_mutex_unlock(&ak_v4l2_mtx);
+
+        gen = ak_v4l2_cap_gen(1);
 
         if (ak_v4l2_cap_dequeue(1, &data, &len, &tstamp, &frameIdx, 1000) < 0)
             continue;
 
-        for (char i = 0; i < AK_VENC_CHN_NUM; i++) {
-            if (!ak_state[i].enable || !ak_state[i].mainLoop) continue;
-            if (ak_state[i].payload != HAL_VIDCODEC_MJPG &&
-                ak_state[i].payload != HAL_VIDCODEC_JPG) continue;
-            if (ak_v4l2_enc_push(i, data, len, &out, &outlen, 1000) < 0) continue;
-            ak_video_emit(i, out, outlen, tstamp);
-            ak_v4l2_enc_requeue(i);
+        if (gen != ak_v4l2_cap_gen(1))
+            continue;
+
+        pthread_mutex_lock(&ak_v4l2_mtx);
+        if (gen == ak_v4l2_cap_gen(1)) {
+            for (char i = 0; i < AK_VENC_CHN_NUM; i++) {
+                if (!ak_state[i].enable || !ak_state[i].mainLoop) continue;
+                if (ak_state[i].payload != HAL_VIDCODEC_MJPG &&
+                    ak_state[i].payload != HAL_VIDCODEC_JPG) continue;
+                if (ak_v4l2_enc_push(i, data, len, &out, &outlen, 1000) < 0) continue;
+                ak_video_emit(i, out, outlen, tstamp);
+                ak_v4l2_enc_requeue(i);
+            }
+            ak_v4l2_cap_requeue(1, frameIdx);
         }
-        ak_v4l2_cap_requeue(1, frameIdx);
+        pthread_mutex_unlock(&ak_v4l2_mtx);
     }
 
     HAL_INFO("ak_venc", "Shutting down encoding thread...\n");

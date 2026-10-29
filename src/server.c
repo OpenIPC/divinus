@@ -83,6 +83,7 @@ void free_client(int i) {
 
     close_socket_fd(client_fds[i].sockFd);
     client_fds[i].sockFd = -1;
+    client_fds[i].type = -1;
 }
 
 int send_to_fd(int fd, char *buf, ssize_t size) {
@@ -291,11 +292,22 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                     default_sample_size;
             }
 
+            /* buf_moof and the pos_* cursors are shared with the recorder,
+               so the whole muxing sequence has to be exclusive. */
+            pthread_mutex_lock(&mp4_mtx);
             err = mp4_set_state(&client_fds[i].mp4);
-            chk_err_continue {
+            if (err != BUF_OK) {
+                pthread_mutex_unlock(&mp4_mtx);
+                continue;
+            }
+            {
                 struct BitBuf moof_buf;
                 err = mp4_get_moof(&moof_buf);
-                chk_err_continue ssize_t len_size =
+                if (err != BUF_OK) {
+                    pthread_mutex_unlock(&mp4_mtx);
+                    continue;
+                }
+                ssize_t len_size =
                     sprintf(len_buf, "%zX\r\n", (ssize_t)moof_buf.offset);
 
                 struct iovec iov[3];
@@ -306,13 +318,19 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                 iov[2].iov_base = (void*)"\r\n";
                 iov[2].iov_len = 2;
 
-                if (sendv_to_client(i, iov, 3) < 0)
+                if (sendv_to_client(i, iov, 3) < 0) {
+                    pthread_mutex_unlock(&mp4_mtx);
                     continue;
+                }
             }
             {
                 struct BitBuf mdat_buf;
                 err = mp4_get_mdat(&mdat_buf);
-                chk_err_continue ssize_t len_size =
+                if (err != BUF_OK) {
+                    pthread_mutex_unlock(&mp4_mtx);
+                    continue;
+                }
+                ssize_t len_size =
                     sprintf(len_buf, "%zX\r\n", (ssize_t)mdat_buf.offset);
 
                 struct iovec iov[3];
@@ -323,9 +341,12 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                 iov[2].iov_base = (void*)"\r\n";
                 iov[2].iov_len = 2;
 
-                if (sendv_to_client(i, iov, 3) < 0)
+                if (sendv_to_client(i, iov, 3) < 0) {
+                    pthread_mutex_unlock(&mp4_mtx);
                     continue;
+                }
             }
+            pthread_mutex_unlock(&mp4_mtx);
         }
         pthread_mutex_unlock(&client_fds_mutex);
     }
@@ -419,40 +440,6 @@ struct jpegtask {
     uint8_t qfactor;
     uint8_t color2Gray;
 };
-
-void *send_jpeg_thread(void *vargp) {
-    struct jpegtask *task = (struct jpegtask *)vargp;
-    hal_jpegdata jpeg = {0};
-    HAL_INFO("server", "Requesting a JPEG snapshot (%ux%u, qfactor %u, color2Gray %d)...\n",
-        task->width, task->height, task->qfactor, task->color2Gray);
-    int ret =
-        jpeg_get(task->width, task->height, task->qfactor, task->color2Gray, &jpeg);
-    if (ret) {
-        HAL_DANGER("server", "Failed to receive a JPEG snapshot...\n");
-        static char response[] =
-            "HTTP/1.1 503 Internal Error\r\n"
-            "Connection: close\r\n\r\n";
-        send_and_close(task->client_fd, response, sizeof(response) - 1); // zero ending string!
-        free(task);
-        return NULL;
-    }
-    HAL_INFO("server", "JPEG snapshot has been received!\n");
-    char buf[1024];
-    int buf_len = sprintf(
-        buf, "HTTP/1.1 200 OK\r\n"
-        "Content-Type: image/jpeg\r\n"
-        "Content-Length: %lu\r\n"
-        "Connection: close\r\n\r\n",
-        jpeg.jpegSize);
-    send_to_fd(task->client_fd, buf, buf_len);
-    send_to_fd(task->client_fd, jpeg.data, jpeg.jpegSize);
-    send_to_fd(task->client_fd, "\r\n", 2);
-    close_socket_fd(task->client_fd);
-    free(jpeg.data);
-    free(task);
-    HAL_INFO("server", "JPEG snapshot has been sent!\n");
-    return NULL;
-}
 
 int send_file(const int client_fd, const char *path) {
     if (!access(path, F_OK)) {
@@ -863,23 +850,28 @@ void respond_request(http_request_t *req) {
                 }
             }
 
-            pthread_t thread_id;
-            pthread_attr_t thread_attr;
-            pthread_attr_init(&thread_attr);
-            size_t stacksize;
-            pthread_attr_getstacksize(&thread_attr, &stacksize);
-            size_t new_stacksize = 16 * 1024;
-            if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
-                HAL_DANGER("jpeg", "Can't set stack size %zu\n", new_stacksize);
-            if (pthread_create(
-                &thread_id, &thread_attr, send_jpeg_thread, (void *)task)) {
-                HAL_DANGER("jpeg", "Can't create thread\n");
+            hal_jpegdata jpeg = {0};
+            if (jpeg_get(task->width, task->height, task->qfactor,
+                    task->color2Gray, &jpeg)) {
+                send_http_error(req->clntFd, 503);
                 free(task);
+                return;
             }
-            if (pthread_attr_setstacksize(&thread_attr, stacksize))
-                HAL_DANGER("jpeg", "Can't set stack size %zu\n", stacksize);
-            pthread_attr_destroy(&thread_attr);
-            pthread_detach(thread_id);
+
+            char header[256];
+            int header_len = sprintf(header,
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: image/jpeg\r\n"
+                "Content-Length: %u\r\n"
+                "Connection: close\r\n\r\n",
+                (unsigned)jpeg.jpegSize);
+            send_to_fd(req->clntFd, header, header_len);
+            send_to_fd(req->clntFd, jpeg.data, jpeg.jpegSize);
+            free(jpeg.data);
+            free(task);
+            close_socket_fd(req->clntFd);
+            req->clntFd = -1;
+            return;
         }
         return;
     }

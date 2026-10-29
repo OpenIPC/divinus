@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -19,6 +20,8 @@
 int ak_v4l2_cap_open(int index, int width, int height);
 int ak_v4l2_cap_streamon(int index);
 void ak_v4l2_cap_close(int index);
+unsigned int ak_v4l2_cap_gen(int index);
+extern pthread_mutex_t ak_v4l2_mtx;
 int ak_v4l2_cap_dequeue(int index, void **data, size_t *len, uint64_t *ts, int *bufIndex, int timeout_ms);
 int ak_v4l2_cap_requeue(int index, int bufIndex);
 

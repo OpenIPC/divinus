@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -12,6 +13,7 @@
 #include "nal.h"
 #include "../hal/macros.h"
 
+extern pthread_mutex_t mp4_mtx;
 extern uint32_t default_sample_size;
 
 struct Mp4State {

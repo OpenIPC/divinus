@@ -192,12 +192,20 @@ static void record_feed_nalu(unsigned char *data, unsigned int len,
 static bool record_emit_fragment_locked(void) {
     struct BitBuf buf;
 
+    pthread_mutex_lock(&mp4_mtx);
+
     if (!recordState.header_sent) {
         mp4_get_header(&buf);
         /* No moov until the parameter sets arrive; nothing decodable to keep. */
-        if (buf.offset == 0) return true;
+        if (buf.offset == 0) {
+            pthread_mutex_unlock(&mp4_mtx);
+            return true;
+        }
 
-        if (!record_write_locked(buf.buf, buf.offset)) return false;
+        if (!record_write_locked(buf.buf, buf.offset)) {
+            pthread_mutex_unlock(&mp4_mtx);
+            return false;
+        }
         recordSize += buf.offset;
 
         recordState.sequence_number = 0;
@@ -208,16 +216,32 @@ static bool record_emit_fragment_locked(void) {
         recordState.header_sent = true;
     }
 
-    if (mp4_set_state(&recordState) != BUF_OK) return false;
+    if (mp4_set_state(&recordState) != BUF_OK) {
+        pthread_mutex_unlock(&mp4_mtx);
+        return false;
+    }
 
-    mp4_get_moof(&buf);
-    if (!record_write_locked(buf.buf, buf.offset)) return false;
+    if (mp4_get_moof(&buf) != BUF_OK) {
+        pthread_mutex_unlock(&mp4_mtx);
+        return false;
+    }
+    if (!record_write_locked(buf.buf, buf.offset)) {
+        pthread_mutex_unlock(&mp4_mtx);
+        return false;
+    }
     recordSize += buf.offset;
 
-    mp4_get_mdat(&buf);
-    if (!record_write_locked(buf.buf, buf.offset)) return false;
+    if (mp4_get_mdat(&buf) != BUF_OK) {
+        pthread_mutex_unlock(&mp4_mtx);
+        return false;
+    }
+    if (!record_write_locked(buf.buf, buf.offset)) {
+        pthread_mutex_unlock(&mp4_mtx);
+        return false;
+    }
     recordSize += buf.offset;
 
+    pthread_mutex_unlock(&mp4_mtx);
     return true;
 }
 

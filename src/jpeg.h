@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <sys/select.h>
+#include <time.h>
 
 #include "error.h"
 #include "hal/types.h"

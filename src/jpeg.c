@@ -5,7 +5,7 @@ bool jpeg_module_init = false;
 
 pthread_mutex_t jpeg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int jpeg_init() {  
+int jpeg_init() {
     int ret;
 
     pthread_mutex_lock(&jpeg_mutex);
@@ -25,7 +25,7 @@ int jpeg_init() {
 
     if (ret = create_channel(jpeg_index, app_config.jpeg_width, app_config.jpeg_height, 1, 1)) {
         pthread_mutex_unlock(&jpeg_mutex);
-        HAL_ERROR("jpeg", "Creating channel %d failed with %#x!\n%s\n", 
+        HAL_ERROR("jpeg", "Creating channel %d failed with %#x!\n%s\n",
             jpeg_index, ret, errstr(ret));
     }
 
@@ -57,14 +57,14 @@ int jpeg_init() {
 #elif defined(__riscv) || defined(__riscv__)
             case HAL_PLATFORM_CVI: ret = cvi_video_create(jpeg_index, &config); break;
 #endif
-            default: 
+            default:
                 pthread_mutex_unlock(&jpeg_mutex);
-                return EXIT_FAILURE;      
+                return EXIT_FAILURE;
         }
 
         if (ret) {
             pthread_mutex_unlock(&jpeg_mutex);
-            HAL_ERROR("jpeg", "Creating encoder %d failed with %#x!\n%s\n", 
+            HAL_ERROR("jpeg", "Creating encoder %d failed with %#x!\n%s\n",
                 jpeg_index, ret, errstr(ret));
         }
     }
@@ -105,9 +105,9 @@ void jpeg_deinit() {
 #elif defined(__riscv) || defined(__riscv__)
         case HAL_PLATFORM_CVI: cvi_video_destroy(jpeg_index); break;
 #endif
-        default: 
+        default:
             pthread_mutex_unlock(&jpeg_mutex);
-            return;    
+            return;
     }
 
 active:
@@ -116,9 +116,17 @@ active:
     HAL_INFO("jpeg", "Module disabled!\n");
 }
 
-int jpeg_get(short width, short height, char quality, char grayscale, 
+int jpeg_get(short width, short height, char quality, char grayscale,
     hal_jpegdata *jpeg) {
-    pthread_mutex_lock(&jpeg_mutex);
+    struct timespec lock_deadline;
+    clock_gettime(CLOCK_REALTIME, &lock_deadline);
+    lock_deadline.tv_sec += 2;
+
+    if (pthread_mutex_timedlock(&jpeg_mutex, &lock_deadline)) {
+        HAL_DANGER("jpeg", "Snapshot lock timed out!\n");
+        return EXIT_FAILURE;
+    }
+
     if (!jpeg_module_init) {
         pthread_mutex_unlock(&jpeg_mutex);
         HAL_ERROR("jpeg", "Module is not enabled!\n");
@@ -143,13 +151,13 @@ int jpeg_get(short width, short height, char quality, char grayscale,
         case HAL_PLATFORM_F2:  ret = f2_video_snapshot_grab(jpeg_index, jpeg); break;
         #endif
 #elif defined(__mips__)
-        case HAL_PLATFORM_T31: ret = t31_video_snapshot_grab(app_config.mjpeg_enable ? 
+        case HAL_PLATFORM_T31: ret = t31_video_snapshot_grab(app_config.mjpeg_enable ?
             -1 : jpeg_index, jpeg); break;
 #elif defined(__riscv) || defined(__riscv__)
         case HAL_PLATFORM_CVI: ret = cvi_video_snapshot_grab(jpeg_index, jpeg); break;
 #endif
     }
-    if (ret && jpeg->data) { 
+    if (ret && jpeg->data) {
         free(jpeg->data);
         jpeg->data = NULL;
     }
