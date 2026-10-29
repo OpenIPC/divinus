@@ -73,6 +73,7 @@ struct AppConfig {
     char record_path[128];
     int record_segment_duration;
     int record_segment_size;
+    int record_reserve;
 
     // [stream]
     bool stream_enable;

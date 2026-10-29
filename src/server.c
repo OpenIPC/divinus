@@ -235,10 +235,12 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
     for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i)
         if (client_fds[i].sockFd >= 0 && client_fds[i].type == STREAM_MP4) { anyClient = 1; break; }
     pthread_mutex_unlock(&client_fds_mutex);
+    char recording = record_active();
 
     for (unsigned int i = 0; i < stream->count; ++i) {
         hal_vidpack *pack = &stream->pack[i];
         unsigned char *pack_data = pack->data + pack->offset;
+        char gotSlice = 0, isKey = 0;
 
         if (plat == HAL_PLATFORM_AK)
             mp4_set_timestamp(pack->timestamp);
@@ -255,13 +257,19 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                 mp4_set_pps(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, isH265);
             else if (pack->nalu[j].type == NalUnitType_VPS_HEVC && pack->nalu[j].length <= UINT16_MAX)
                 mp4_set_vps(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen);
-            else if (!anyClient)
+            else if (!anyClient && !recording)
                 continue;
-            else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux)
+            else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux) {
                 mp4_set_slice(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, 1);
-            else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr)
+                gotSlice = isKey = 1;
+            } else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr) {
                 mp4_set_slice(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, 0);
+                gotSlice = 1;
+            }
         }
+        /* A pack without a slice leaves no new fragment to hand out */
+        if (!gotSlice) continue;
+        if (recording) record_fragment(isKey);
         if (!anyClient) continue;
 
         static enum BufError err;
@@ -286,6 +294,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                 client_fds[i].mp4.sequence_number = 0;
                 client_fds[i].mp4.base_data_offset = header_buf.offset;
                 client_fds[i].mp4.base_media_decode_time = 0;
+                client_fds[i].mp4.audio_media_decode_time = 0;
                 client_fds[i].mp4.header_sent = true;
                 client_fds[i].mp4.nals_count = 0;
                 client_fds[i].mp4.default_sample_duration =

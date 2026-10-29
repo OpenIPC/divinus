@@ -2,13 +2,16 @@
 
 #define RECORD_PATH_MAX 512
 
+#include <dirent.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -21,4 +24,6 @@ bool record_start(void);
 void record_stop(void);
 bool record_active(void);
 time_t record_start_time(void);
-void record_ingest_stream(hal_vidstream *stream, char isH265);
+void record_tick(void);
+void record_storage(char *out, size_t outSize);
+void record_fragment(char isKey);

@@ -148,6 +148,7 @@ int app_config_save(void) {
     fprintf(file, "  filename: %s\n", app_config.record_filename);
     fprintf(file, "  segment_duration: %d\n", app_config.record_segment_duration);
     fprintf(file, "  segment_size: %d\n", app_config.record_segment_size);
+    fprintf(file, "  reserve: %d\n", app_config.record_reserve);
 
     fprintf(file, "stream:\n");
     fprintf(file, "  enable: %s\n", app_config.stream_enable ? "true" : "false");
@@ -261,8 +262,9 @@ enum ConfigError app_config_parse(void) {
     app_config.record_continuous = false;
     app_config.record_filename[0] = '\0';
     strcpy(app_config.record_path, "/mnt/sdcard/recordings");
-    app_config.record_segment_duration = 0;
+    app_config.record_segment_duration = 300;
     app_config.record_segment_size = 0;
+    app_config.record_reserve = 512;
 
     app_config.stream_enable = false;
     app_config.stream_udp_srcport = 0;
@@ -490,6 +492,8 @@ enum ConfigError app_config_parse(void) {
         &app_config.record_segment_duration);
     parse_int(&ini, "record", "segment_size", 0, INT_MAX,
         &app_config.record_segment_size);
+    parse_int(&ini, "record", "reserve", 0, INT_MAX,
+        &app_config.record_reserve);
 
     parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
     parse_int(&ini, "rtsp", "port", 0, USHRT_MAX, &app_config.rtsp_port);

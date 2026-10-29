@@ -108,11 +108,12 @@ int main(int argc, char *argv[]) {
 
     while (keepRunning) {
         if (app_config.rtsp_enable) rtsp_tick(rtspHandle);
+        record_tick();
         watchdog_reset();
         sleep(1);
     }
 
-    if (app_config.record_enable && app_config.record_continuous)
+    if (record_active())
         record_stop();
 
     if (app_config.http_post_enable)
