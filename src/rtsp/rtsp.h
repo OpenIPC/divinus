@@ -118,11 +118,13 @@ struct connection_item_t {
     pthread_mutex_t write_mutex;
     /* Interleaved (TCP) output is queued here and written without blocking:
      * tx_buf[tx_off..tx_len) is still to go. Only whole frames are queued, a
-     * client with something pending skips the next one */
+     * client with something pending skips frames until the next keyframe */
     unsigned char *tx_buf;
     unsigned int tx_off;
     unsigned int tx_len;
     bool tx_frame;
+    bool tx_skip;
+    unsigned int tx_dropped;
     unsigned int tx_stall_ms;
     struct list_t list_entry;
 };

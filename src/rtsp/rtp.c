@@ -42,6 +42,7 @@ static unsigned int __frame_ts_video, __frame_ts_audio;
 
 struct __frame_t {
     unsigned int bytes;
+    bool idr;
 };
 
 static int __tcp_flush_each(struct list_t *e, void *v)
@@ -59,7 +60,8 @@ static int __tcp_flush_each(struct list_t *e, void *v)
 }
 
 /* Decides whether an interleaved client takes the coming video frame: only
- * with nothing left from earlier ones, so it never gets half a frame */
+ * with nothing left from earlier ones, so it never gets half a frame, and
+ * after a skip only from a keyframe on */
 static int __tcp_admit_frame(struct list_t *e, void *v)
 {
     struct transfer_item_t *trans;
@@ -72,8 +74,19 @@ static int __tcp_admit_frame(struct list_t *e, void *v)
     pthread_mutex_lock(&con->write_mutex);
     if (__tcp_pump(con) != SUCCESS)
         ERR("send (interleaved):%s\n", strerror(errno));
-    con->tx_frame = con->tx_off == con->tx_len && frame->bytes <= RTSP_TX_BATCH - RTSP_TX_SPARE;
+    con->tx_frame = con->tx_off == con->tx_len && frame->bytes <= RTSP_TX_BATCH - RTSP_TX_SPARE &&
+        (!con->tx_skip || frame->idr);
     pthread_mutex_unlock(&con->write_mutex);
+
+    if (!con->tx_frame) {
+        con->tx_skip = true;
+        con->tx_dropped++;
+    } else if (con->tx_skip) {
+        con->tx_skip = false;
+        HAL_WARNING("rtsp", "Client %s skipped %u frames\n",
+            inet_ntoa(con->addr.sin_addr), con->tx_dropped);
+        con->tx_dropped = 0;
+    }
     return SUCCESS;
 }
 
@@ -242,7 +255,11 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
         if (track_id == 0) {
             queued = con->tx_frame && __tcp_queue(con, con->trans[0].channel_rtp,
                 &(rtp->packet), rtp->rtpsize);
-            if (con->tx_frame && !queued) con->tx_frame = false;
+            if (con->tx_frame && !queued) {
+                con->tx_frame = false;
+                con->tx_skip = true;
+                con->tx_dropped++;
+            }
         } else {
             queued = __tcp_pump(con) == SUCCESS && con->tx_off == con->tx_len &&
                 __tcp_queue(con, con->trans[1].channel_rtp, &(rtp->packet), rtp->rtpsize);
@@ -504,6 +521,8 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
             size_t single_len = 0;
             while (nal_split(data, &nalptr, &single_len, length) == SUCCESS) {
                 if (single_len < 4) continue;
+                unsigned int type = isH265 ? (nalptr[0] >> 1 & 0x3F) : (nalptr[0] & 0x1F);
+                frame.idr |= isH265 ? (type >= 16 && type <= 21) : type == 5;
                 /* every RTP packet adds at most its interleave, RTP and FU heads */
                 frame.bytes += single_len + (single_len / (__RTP_MAXPAYLOADSIZE - 3) + 1) *
                     (4 + sizeof(rtp_hdr_t) + 3);

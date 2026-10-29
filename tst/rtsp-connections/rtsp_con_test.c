@@ -600,6 +600,42 @@ static void test_reader_unaffected_by_stalled_one(void)
     close(reader.fd);
 }
 
+/* A client that falls behind resumes on a keyframe, never mid-GOP */
+static void test_stalled_reader_resumes_on_idr(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    struct rtp_reader_t reader = {};
+    pthread_t thread;
+    int i, gaps = 0;
+
+    attach_thread_pool(h);
+    reader.fd = play_tcp_client(h, &con);
+    CHECK(reader.fd >= 0 && con);
+    stall_sender(con);
+    fcntl(reader.fd, F_SETFL, fcntl(reader.fd, F_GETFL) | O_NONBLOCK);
+
+    for (i = 0; i < 10; i++) send_frame(h, i, i == 0);
+    pthread_create(&thread, NULL, reader_thread, &reader);
+    for (; i < 60; i++) {
+        send_frame(h, i, i % 20 == 0);
+        usleep(5000);
+    }
+    usleep(200 * 1000);
+    __atomic_store_n(&reader.stop, 1, __ATOMIC_SEQ_CST);
+    pthread_join(thread, NULL);
+
+    /* frame 0 went out before the stall; after it, every gap ends on a keyframe */
+    CHECK(reader.count >= 2 && reader.frames[0] == 0);
+    for (i = 1; i < reader.count; i++) {
+        if (reader.frames[i] == reader.frames[i - 1] + 1) continue;
+        gaps++;
+        CHECK(reader.types[i] == 5);
+    }
+    CHECK(gaps > 0);
+    close(reader.fd);
+}
+
 int main(void)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -615,5 +651,6 @@ int main(void)
     test_request_body_skipped();
     test_stalled_reader_does_not_block();
     test_reader_unaffected_by_stalled_one();
+    test_stalled_reader_resumes_on_idr();
     CHECK_DONE();
 }

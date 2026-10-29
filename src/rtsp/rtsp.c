@@ -638,7 +638,8 @@ __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd,
     ASSERT((p->fp_tcp_read = fdopen(fd, "r")), goto error);
 
     p->tx_off = p->tx_len = 0;
-    p->tx_frame = false;
+    p->tx_frame = p->tx_skip = false;
+    p->tx_dropped = 0;
     p->con_state = __CON_S_INIT;
 
     return list_add(head, &(p->list_entry));
