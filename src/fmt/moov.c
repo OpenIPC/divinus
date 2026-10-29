@@ -757,7 +757,8 @@ enum BufError write_mp4a(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     err = put_u32_be(ptr, 0);
     chk_err;
 
-    err = put_str4(ptr, "mp4a");
+    char is_opus = (unsigned char)moov_info->audio_codec == ACODEC_ID_OPUS;
+    err = put_str4(ptr, is_opus ? "Opus" : "mp4a");
     chk_err;
     err = put_skip(ptr, 6);
     chk_err; // 6 reserved
@@ -771,11 +772,31 @@ enum BufError write_mp4a(struct BitBuf *ptr, const struct MoovInfo *moov_info) {
     chk_err; // 2 sample size
     err = put_skip(ptr, 4);
     chk_err; // 4 reserved
-    err = put_u16_be(ptr, moov_info->audio_samplerate);
-    chk_err; // 2 samplerate
+    err = put_u16_be(ptr, is_opus ? 48000 : moov_info->audio_samplerate);
+    chk_err; // 2 samplerate (Opus in ISOBMFF is always signalled as 48 kHz)
     err = put_skip(ptr, 2);
     chk_err; // 2 reserved
-    err = write_esds(ptr, moov_info);
+    if (is_opus) {
+        uint32_t start_dops = ptr->offset;
+        err = put_u32_be(ptr, 0);
+        chk_err;
+        err = put_str4(ptr, "dOps");
+        chk_err;
+        err = put_u8(ptr, 0);
+        chk_err; // 1 version
+        err = put_u8(ptr, moov_info->audio_channels);
+        chk_err; // 1 output channel count
+        err = put_u16_be(ptr, 312);
+        chk_err; // 2 pre-skip (48 kHz samples)
+        err = put_u32_be(ptr, 48000);
+        chk_err; // 4 input sample rate (informational; Chrome wants it equal to the entry's rate)
+        err = put_u16_be(ptr, 0);
+        chk_err; // 2 output gain
+        err = put_u8(ptr, 0);
+        chk_err; // 1 channel mapping family
+        err = put_u32_be_to_offset(ptr, start_dops, ptr->offset - start_dops);
+    } else
+        err = write_esds(ptr, moov_info);
     chk_err;
     err = write_btrt(ptr, moov_info);
     chk_err;
