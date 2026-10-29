@@ -11,6 +11,7 @@
 #include "rtsp.h"
 #include "list.h"
 #include "hash.h"
+#include "../sysauth.h"
 #include "mime.h"
 #include "thread.h"
 #include "rfc.h"
@@ -76,54 +77,56 @@ static int __message_proc_sock(struct list_t *e, void *p);
 static inline int __set_select_sock(struct list_t *p, void *param);
 static inline int __find_fd_max(struct list_head_t *head);
 
-static inline bufpool_handle __connectionpool_create(int num);
+static inline bufpool_handle __connectionpool_create(int num, int inst);
 static int __connection_is_dead(struct list_t *l);
 
 /******************************************************************************
  *              PRIVATE DATA
  ******************************************************************************/
-static struct connection_item_t __connection_pool[RTSP_MAXIMUM_CONNECTIONS] = {};
+/* One set of pools per server instance (main stream and sub-stream) */
+#define RTSP_INSTANCES 2
+static struct connection_item_t __connection_pool[RTSP_INSTANCES][RTSP_MAXIMUM_CONNECTIONS] = {};
 
-static struct transfer_item_t __transfer_pool[RTSP_MAXIMUM_CONNECTIONS] = {};
+static struct transfer_item_t __transfer_pool[RTSP_INSTANCES][RTSP_MAXIMUM_CONNECTIONS] = {};
+
+static int __rtsp_instances;
 
 /******************************************************************************
  *              PRIVATE FUNCTIONS
  ******************************************************************************/
-static void *__bufgetter_connection(int i)
-{
-    return (void *)&(__connection_pool[i]);
-}
+static void *__bufgetter_connection0(int i) { return (void *)&(__connection_pool[0][i]); }
+static void *__bufgetter_connection1(int i) { return (void *)&(__connection_pool[1][i]); }
 
-static inline bufpool_handle __connectionpool_create(int num)
+static inline bufpool_handle __connectionpool_create(int num, int inst)
 {
-    bufpool_handle h = bufpool_create(num, (__bufgetter_connection), (__connection_reset), sizeof(struct connection_item_t));
+    bufpool_handle h = bufpool_create(num, inst ? (__bufgetter_connection1) : (__bufgetter_connection0),
+        (__connection_reset), sizeof(struct connection_item_t));
 
     if (h) {
         int i;
         for(i = 0; i < num; i++) {
-            __connection_pool[i].pool = h;
-            __connection_pool[i].con_state = __CON_S_DISCONNECTED;
-            pthread_mutex_init(&__connection_pool[i].write_mutex, NULL);
+            __connection_pool[inst][i].pool = h;
+            __connection_pool[inst][i].con_state = __CON_S_DISCONNECTED;
+            pthread_mutex_init(&__connection_pool[inst][i].write_mutex, NULL);
         }
     }
 
     return h;
 }
 
-static void *__bufgetter_trans(int i)
-{
-    return (void *)&(__transfer_pool[i]);
-}
+static void *__bufgetter_trans0(int i) { return (void *)&(__transfer_pool[0][i]); }
+static void *__bufgetter_trans1(int i) { return (void *)&(__transfer_pool[1][i]); }
 
-static inline bufpool_handle __transpool_create(int num)
+static inline bufpool_handle __transpool_create(int num, int inst)
 {
-    bufpool_handle h = bufpool_create(num, (__bufgetter_trans), NULL, sizeof(struct transfer_item_t));
+    bufpool_handle h = bufpool_create(num, inst ? (__bufgetter_trans1) : (__bufgetter_trans0),
+        NULL, sizeof(struct transfer_item_t));
 
     if (h) {
         int i;
         for(i = 0; i < num; i++) {
-            __transfer_pool[i].pool = h;
-            __transfer_pool[i].list_entry.cleaner = (__transfer_item_cleaner);
+            __transfer_pool[inst][i].pool = h;
+            __transfer_pool[inst][i].list_entry.cleaner = (__transfer_item_cleaner);
         }
     }
 
@@ -427,6 +430,10 @@ static int __message_proc_sock(struct list_t *e, void *p)
                     sprintf(cred, "%s:%s", h->user, h->pass);
                     strcpy(valid, "Basic ");
                     base64_encode(valid + 6, cred, strlen(cred));
+                    if (!strcmp(h->pass, "@system")) {
+                        char *given = buf + strlen(__STR_AUTH) + 2;
+                        isAuthValid = !strncmp(given, "Basic ", 6) && sysauth_check_basic(given + 6);
+                    } else
                     isAuthValid = !strncmp(buf + strlen(__STR_AUTH) + 2, valid, strlen(valid));
              } else if (SCMP(__STR_CSEQ, buf)) {
                 ASSERT(tok = strtok_r(buf, ": ", &last), goto error);
@@ -615,13 +622,20 @@ static inline int __bind_tcp(unsigned short port)
 
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &tmp, sizeof(tmp));
 
+    memset(&addr, 0, sizeof(addr));
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_family = AF_INET;
 
-    ASSERT(bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) == 0, ({
-                ERR("bind:%s\n", strerror(errno));
-                goto error;}));
+    /* A restart can race the previous instance releasing the port; a single
+     * failed bind used to leave the server silently dead, so retry briefly. */
+    for (int attempt = 0; bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) != 0; attempt++) {
+        if (errno != EADDRINUSE || attempt >= 40) {
+            ERR("bind:%s\n", strerror(errno));
+            goto error;
+        }
+        usleep(250000);
+    }
 
     ASSERT(listen(server_fd, 5) >= 0, ({
                 ERR("listen:%s\n", strerror(errno));
@@ -901,8 +915,10 @@ rtsp_handle rtsp_create(unsigned char max_con, unsigned int port, int priority)
     pthread_mutex_init(&nh->mutex,NULL);
 
     ASSERT(nh->pool = threadpool_create(nh), goto error);
-    ASSERT(nh->con_pool =  __connectionpool_create(max_con), goto error);
-    ASSERT(nh->transfer_pool =  __transpool_create(max_con), goto error);
+    ASSERT(__rtsp_instances < RTSP_INSTANCES, goto error);
+    int inst = __rtsp_instances++;
+    ASSERT(nh->con_pool =  __connectionpool_create(max_con, inst), goto error);
+    ASSERT(nh->transfer_pool =  __transpool_create(max_con, inst), goto error);
 
     /* create tcp thread */
     ASSERT(CREATE_THREAD(nh->pool, rtspThrFxn, priority--, NULL),
