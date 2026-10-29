@@ -89,6 +89,11 @@ struct AppConfig {
     // [mp4]
     bool mp4_enable;
     bool mp4_codecH265;
+    bool mp4_audio;
+
+    // [sub] second, smaller H.264 stream on its own RTSP port
+    bool sub_enable;
+    unsigned int sub_width, sub_height, sub_gop, sub_bitrate, sub_rtsp_port;
     unsigned int mp4_mode;
     unsigned int mp4_fps;
     unsigned int mp4_gop;

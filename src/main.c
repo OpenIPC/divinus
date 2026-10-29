@@ -15,7 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 
-rtsp_handle rtspHandle;
+rtsp_handle rtspHandle, rtspSubHandle;
 volatile char graceful = 0, keepRunning = 1;
 
 void handle_error(int signo) {
@@ -36,6 +36,20 @@ void handle_exit(int signo) {
 }
 
 int main(int argc, char *argv[]) {
+    /* The system keeps its time zone rule in /etc/TZ; pick it up when the
+     * environment did not hand one over (timestamps in the OSD and file names). */
+    if (!getenv("TZ")) {
+        char tz[64] = {0};
+        FILE *tzf = fopen("/etc/TZ", "r");
+        if (tzf) {
+            if (fgets(tz, sizeof(tz), tzf)) {
+                tz[strcspn(tz, "\r\n")] = 0;
+                if (*tz) setenv("TZ", tz, 1);
+            }
+            fclose(tzf);
+        }
+    }
+    tzset();
     {
         struct sigaction sa;
         memset(&sa, 0, sizeof(sa));
@@ -86,6 +100,14 @@ int main(int argc, char *argv[]) {
                 HAL_INFO("rtsp", "Authentication enabled!\n");
             }
         }
+        if (app_config.sub_enable) {
+            rtspSubHandle = rtsp_create(RTSP_MAXIMUM_CONNECTIONS, app_config.sub_rtsp_port, 1);
+            if (rtspSubHandle && app_config.rtsp_enable_auth &&
+                !EMPTY(app_config.rtsp_auth_user) && !EMPTY(app_config.rtsp_auth_pass))
+                rtsp_configure_auth(rtspSubHandle, app_config.rtsp_auth_user, app_config.rtsp_auth_pass);
+            if (rtspSubHandle)
+                HAL_INFO("rtsp", "Sub-stream server started on port %d\n", app_config.sub_rtsp_port);
+        }
     }
 
     if (app_config.stream_enable)
@@ -108,6 +130,7 @@ int main(int argc, char *argv[]) {
 
     while (keepRunning) {
         if (app_config.rtsp_enable) rtsp_tick(rtspHandle);
+        if (rtspSubHandle) rtsp_tick(rtspSubHandle);
         record_tick();
         watchdog_reset();
         sleep(1);
@@ -132,6 +155,7 @@ int main(int argc, char *argv[]) {
 
     if (app_config.rtsp_enable) {
         rtsp_finish(rtspHandle);
+        if (rtspSubHandle) rtsp_finish(rtspSubHandle);
         HAL_INFO("rtsp", "Server has closed!\n");
     }
 

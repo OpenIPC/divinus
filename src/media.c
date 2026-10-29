@@ -13,8 +13,68 @@ short pcmSrc[SHINE_MAX_SAMPLES];
 /* Raw PCM queue between the capture callback and the MP3 encoder, so the
  * capture thread only ever copies a frame and the SDK never drops buffers
  * waiting on the encode.  Newest frames are dropped when it is full. */
+static char subIndex = -1;
+static time_t subSecond;
+static unsigned int subCount, subRate;
+
+/* Frames the sub-stream encoder delivered in the last full second */
+int media_sub_rate(void) {
+    return (subIndex >= 0 && time(NULL) - subSecond <= 1) ? subRate : 0;
+}
 static struct ringbuf audRing;
 static unsigned int audDrops;
+
+/* Opus for the MP4 muxer: browsers decode it reliably, unlike the MP3 from the
+ * built-in encoder. libopus is optional and loaded at run time. */
+#include <dlfcn.h>
+#define MP4_ACODEC_OPUS 0xAD
+#define OPUS_KBPS 32
+static void *opusEnc;
+static int (*opus_encode_fn)(void*, const short*, int, unsigned char*, int);
+static short opusPcm[960];
+static unsigned int opusPos, opusFrame;
+
+static char mp4_opus_ready(void) {
+    static char tried;
+    if (tried) return opusEnc != NULL;
+    tried = 1;
+    unsigned int srate = app_config.audio_srate;
+    if (srate != 8000 && srate != 12000 && srate != 16000 && srate != 24000 && srate != 48000)
+        return 0;
+    void *lib = dlopen("libopus.so.0", RTLD_NOW);
+    if (!lib) return 0;
+    void *(*create)(int, int, int, int*) = dlsym(lib, "opus_encoder_create");
+    int (*ctl)(void*, int, ...) = dlsym(lib, "opus_encoder_ctl");
+    opus_encode_fn = dlsym(lib, "opus_encode");
+    int err = 0;
+    if (!create || !ctl || !opus_encode_fn ||
+        !(opusEnc = create(srate, 1, 2048 /* OPUS_APPLICATION_VOIP */, &err)) || err) {
+        opusEnc = NULL;
+        return 0;
+    }
+    ctl(opusEnc, 4002 /* OPUS_SET_BITRATE */, OPUS_KBPS * 1000);
+    ctl(opusEnc, 4010 /* OPUS_SET_COMPLEXITY */, 3);
+    opusFrame = srate / 50; /* 20 ms */
+    HAL_INFO("media", "MP4 audio: Opus %u Hz, %d kbps\n", srate, OPUS_KBPS);
+    return 1;
+}
+
+static void mp4_opus_feed(const short *pcm, unsigned int samples) {
+    static unsigned char pkt[1500];
+    while (samples > 0) {
+        unsigned int n = opusFrame - opusPos;
+        if (n > samples) n = samples;
+        memcpy(opusPcm + opusPos, pcm, n * 2);
+        opusPos += n; pcm += n; samples -= n;
+        if (opusPos < opusFrame) break;
+        opusPos = 0;
+        int len = opus_encode_fn(opusEnc, opusPcm, opusFrame, pkt, sizeof(pkt));
+        if (len <= 2) continue; /* error or DTX */
+        pthread_mutex_lock(&mp4Mtx);
+        mp4_ingest_audio_frame((char*)pkt, len, opusFrame);
+        pthread_mutex_unlock(&mp4Mtx);
+    }
+}
 
 int save_audio_stream(hal_audframe *frame) {
 #ifdef DEBUG_AUDIO
@@ -116,11 +176,16 @@ void *aenc_thread(void) {
         pthread_mutex_lock(&aencMtx);
         if (mp3Buf.offset >= mp3FrmSize) {
             send_mp3_to_client(mp3Buf.buf, mp3FrmSize);
-            pthread_mutex_lock(&mp4Mtx);
-            mp4_ingest_audio(mp3Buf.buf, mp3FrmSize);
-            pthread_mutex_unlock(&mp4Mtx);
+            if (!opusEnc) {
+                pthread_mutex_lock(&mp4Mtx);
+                mp4_ingest_audio(mp3Buf.buf, mp3FrmSize);
+                pthread_mutex_unlock(&mp4Mtx);
+            }
             if (app_config.rtsp_enable && !rtsp_g711_active())
+            {
                 rtp_send_mp3(rtspHandle, mp3Buf.buf, mp3FrmSize);
+                if (rtspSubHandle) rtp_send_mp3(rtspSubHandle, mp3Buf.buf, mp3FrmSize);
+            }
             rtmp_ingest_audio(mp3Buf.buf, mp3FrmSize);
             mp3Buf.offset -= mp3FrmSize;
             if (mp3Buf.offset > 0)
@@ -148,6 +213,8 @@ void *aenc_thread(void) {
         send_pcm_to_client(&outFrame);
         if (app_config.rtsp_enable && rtsp_g711_active())
             rtsp_pcma_feed((short *)(frame_buf + 2), flen / 2);
+        if (opusEnc && app_config.mp4_audio && (record_active() || any_http_audio()))
+            mp4_opus_feed((short *)(frame_buf + 2), flen / 2);
 
         if (!record_active() && !app_config.stream_enable && !any_http_audio() &&
             !(app_config.rtsp_enable && !rtsp_g711_active())) {
@@ -186,6 +253,19 @@ int save_video_stream(char index, hal_vidstream *stream) {
         case HAL_VIDCODEC_H265:
         {
             char isH265 = chnState[index].payload == HAL_VIDCODEC_H265 ? 1 : 0;
+
+            /* The sub-stream only goes to its own RTSP server */
+            if (index == subIndex) {
+                time_t now = time(NULL);
+                if (now != subSecond) {
+                    subRate = now - subSecond == 1 ? subCount : 0;
+                    subCount = 0;
+                    subSecond = now;
+                }
+                subCount++;
+                if (rtspSubHandle) rtp_send_h26x(rtspSubHandle, stream, isH265);
+                break;
+            }
 
             if (app_config.mp4_enable) {
                 pthread_mutex_lock(&mp4Mtx);
@@ -327,6 +407,7 @@ void request_idr(void) {
     }
     if (index != -1) switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  i3_video_request_idr(index); break;
         case HAL_PLATFORM_I6:  i6_video_request_idr(index); break;
         case HAL_PLATFORM_I6C: i6c_video_request_idr(index); break;
         case HAL_PLATFORM_M6:  m6_video_request_idr(index); break;
@@ -355,6 +436,7 @@ void set_grayscale(bool active) {
     pthread_mutex_lock(&chnMtx);
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  i3_channel_grayscale(active); break;
         case HAL_PLATFORM_I6:  i6_channel_grayscale(active); break;
         case HAL_PLATFORM_I6C: i6c_channel_grayscale(active); break;
         case HAL_PLATFORM_M6:  m6_channel_grayscale(active); break;
@@ -394,6 +476,7 @@ int take_next_free_channel(bool mainLoop) {
 int create_channel(char index, short width, short height, char framerate, char jpeg) {
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  return i3_channel_create(index, width, height, jpeg);
         case HAL_PLATFORM_I6:  return i6_channel_create(index, width, height, jpeg);
         case HAL_PLATFORM_I6C: return i6c_channel_create(index, width, height, jpeg);
         case HAL_PLATFORM_M6:  return m6_channel_create(index, width, height, jpeg);
@@ -427,6 +510,7 @@ int create_channel(char index, short width, short height, char framerate, char j
 int bind_channel(char index, char framerate, char jpeg) {
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  return i3_channel_bind(index, framerate);
         case HAL_PLATFORM_I6:  return i6_channel_bind(index, framerate);
         case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate);
         case HAL_PLATFORM_M6:  return m6_channel_bind(index, framerate);
@@ -453,6 +537,7 @@ int bind_channel(char index, char framerate, char jpeg) {
 int unbind_channel(char index, char jpeg) {
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  return i3_channel_unbind(index);
         case HAL_PLATFORM_I6:  return i6_channel_unbind(index);
         case HAL_PLATFORM_I6C: return i6c_channel_unbind(index);
         case HAL_PLATFORM_M6:  return m6_channel_unbind(index);
@@ -479,6 +564,7 @@ int unbind_channel(char index, char jpeg) {
 int media_video_disable(char index, char jpeg) {
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  return i3_video_destroy(index);
         case HAL_PLATFORM_I6:  return i6_video_destroy(index);
         case HAL_PLATFORM_I6C: return i6c_video_destroy(index);
         case HAL_PLATFORM_M6:  return m6_video_destroy(index);
@@ -515,6 +601,7 @@ void media_audio_disable(void) {
 
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  i3_audio_deinit(); break;
         case HAL_PLATFORM_I6:  i6_audio_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_audio_deinit(); break;
         case HAL_PLATFORM_M6:  m6_audio_deinit(); break;
@@ -548,6 +635,7 @@ int media_audio_enable(void) {
 
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  ret = i3_audio_init(app_config.audio_srate, app_config.audio_gain); break;
         case HAL_PLATFORM_I6:  ret = i6_audio_init(app_config.audio_srate, app_config.audio_gain); break;
         case HAL_PLATFORM_I6C: ret = i6c_audio_init(app_config.audio_srate, app_config.audio_gain); break;
         case HAL_PLATFORM_M6:  ret = m6_audio_init(app_config.audio_srate, app_config.audio_gain); break;
@@ -610,7 +698,7 @@ int media_audio_enable(void) {
         pthread_attr_init(&thread_attr);
         size_t stacksize;
         pthread_attr_getstacksize(&thread_attr, &stacksize);
-        size_t new_stacksize = 16384;
+        size_t new_stacksize = 256 * 1024; /* the Opus encoder needs far more than 16K */
         if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
             HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
         if (pthread_create(
@@ -648,6 +736,14 @@ int media_mjpeg_disable(void) {
 int media_mjpeg_enable(void) {
     int ret;
 
+    /* Infinity3 has one scaled output besides the main picture; the
+     * sub-stream and MJPEG cannot both have it. */
+    if (plat == HAL_PLATFORM_I3 && subIndex >= 0) {
+        HAL_WARNING("media", "MJPEG is not available while the sub-stream is on\n");
+        app_config.mjpeg_enable = false;
+        return EXIT_FAILURE;
+    }
+
     int index = take_next_free_channel(true);
 
     if (ret = create_channel(index, app_config.mjpeg_width,
@@ -671,6 +767,7 @@ int media_mjpeg_enable(void) {
 
         switch (plat) {
 #if defined(__ARM_PCS_VFP)
+            case HAL_PLATFORM_I3:  ret = i3_video_create(index, &config); break;
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
             case HAL_PLATFORM_M6:  ret = m6_video_create(index, &config); break;
@@ -764,6 +861,7 @@ int media_mp4_enable(void) {
 
         switch (plat) {
 #if defined(__ARM_PCS_VFP)
+            case HAL_PLATFORM_I3:  ret = i3_video_create(index, &config); break;
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
             case HAL_PLATFORM_M6:  ret = m6_video_create(index, &config); break;
@@ -796,8 +894,11 @@ int media_mp4_enable(void) {
         }
 
         mp4_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
-            app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC,
-            app_config.audio_bitrate, 1, app_config.audio_srate);
+            !(app_config.audio_enable && app_config.mp4_audio) ? HAL_AUDCODEC_UNSPEC :
+                mp4_opus_ready() ? MP4_ACODEC_OPUS : HAL_AUDCODEC_MP3,
+            !(app_config.audio_enable && app_config.mp4_audio) ? 0 :
+                mp4_opus_ready() ? OPUS_KBPS : app_config.audio_bitrate,
+            1, app_config.audio_srate);
     }
 
     if (ret = bind_channel(index, app_config.mp4_fps, 0))
@@ -812,12 +913,71 @@ int media_mp4_enable(void) {
     return EXIT_SUCCESS;
 }
 
+/* Second, smaller H.264 stream (for grids, phones, motion analysis) served by
+ * its own RTSP instance. Only wired up for platforms that were tested.
+ * It runs at the main stream's frame rate: on Infinity3 the encoder's rate
+ * only steers the bitrate, no frames are dropped. */
+int media_sub_enable(void) {
+    int ret = EXIT_FAILURE;
+    if (plat != HAL_PLATFORM_I3) return EXIT_SUCCESS;
+
+    int index = take_next_free_channel(true);
+    if (index < 0) return EXIT_FAILURE;
+    if (ret = create_channel(index, app_config.sub_width, app_config.sub_height,
+        app_config.mp4_fps, 0)) {
+        chnState[index].enable = false;
+        HAL_ERROR("media", "Creating sub channel %d failed with %#x!\n%s\n",
+            index, ret, errstr(ret));
+    }
+
+    hal_vidconfig config;
+    memset(&config, 0, sizeof(config));
+    config.width = app_config.sub_width;
+    config.height = app_config.sub_height;
+    config.codec = HAL_VIDCODEC_H264;
+    config.mode = HAL_VIDMODE_CBR;
+    config.profile = app_config.mp4_profile;
+    config.gop = app_config.sub_gop;
+    config.framerate = app_config.mp4_fps;
+    config.bitrate = app_config.sub_bitrate;
+    config.maxBitrate = app_config.sub_bitrate * 5 / 4;
+#if defined(__ARM_PCS_VFP)
+    ret = i3_video_create(index, &config);
+#endif
+    if (ret) {
+        media_video_disable(index, 0);
+        chnState[index].enable = false;
+        HAL_ERROR("media", "Creating sub encoder %d failed with %#x!\n%s\n",
+            index, ret, errstr(ret));
+    }
+    if (ret = bind_channel(index, app_config.mp4_fps, 0)) {
+        media_video_disable(index, 0);
+        chnState[index].enable = false;
+        HAL_ERROR("media", "Binding sub channel %d failed with %#x!\n%s\n",
+            index, ret, errstr(ret));
+    }
+    subIndex = index;
+    return EXIT_SUCCESS;
+}
+
 int sdk_start(void) {
     int ret;
 
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
-        case HAL_PLATFORM_I3:  ret = i3_hal_init(); break;
+        case HAL_PLATFORM_I3: {
+            /* The scaler output for the sub-stream takes its size from the
+             * vendor property store, not from the channel attributes */
+            char num[12];
+            if (app_config.sub_enable) {
+                sprintf(num, "%u", app_config.sub_width);
+                i3_property_set("mi.vi.sub.width", num);
+                sprintf(num, "%u", app_config.sub_height);
+                i3_property_set("mi.vi.sub.height", num);
+            }
+            ret = i3_hal_init();
+            break;
+        }
         case HAL_PLATFORM_I6:  ret = i6_hal_init(); break;
         case HAL_PLATFORM_I6C: ret = i6c_hal_init(); break;
         case HAL_PLATFORM_M6:  ret = m6_hal_init(); break;
@@ -845,6 +1005,10 @@ int sdk_start(void) {
 
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:
+            i3_aud_cb = save_audio_stream;
+            i3_vid_cb = save_video_stream;
+            break;
         case HAL_PLATFORM_I6:
             i6_aud_cb = save_audio_stream;
             i6_vid_cb = save_video_stream;
@@ -950,6 +1114,8 @@ int sdk_start(void) {
 
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  ret = i3_pipeline_create(0, width,
+            height, app_config.mirror, app_config.flip, framerate); break;
         case HAL_PLATFORM_I6:  ret = i6_pipeline_create(0, width,
             height, app_config.mirror, app_config.flip, framerate); break;
         case HAL_PLATFORM_I6C: ret = i6c_pipeline_create(0, width,
@@ -1004,6 +1170,10 @@ int sdk_start(void) {
 
     if (app_config.mp4_enable && (ret = media_mp4_enable()))
         HAL_ERROR("media", "MP4 initialization failed with %#x!\n", ret);
+
+    if (app_config.sub_enable && app_config.mp4_enable && app_config.rtsp_enable &&
+        (ret = media_sub_enable()))
+        HAL_WARNING("media", "Sub-stream is not available\n");
 
     if (app_config.mjpeg_enable && (ret = media_mjpeg_enable()))
         HAL_ERROR("media", "MJPEG initialization failed with %#x!\n", ret);
@@ -1060,6 +1230,7 @@ int sdk_stop(void) {
 
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  i3_video_destroy_all(); break;
         case HAL_PLATFORM_I6:  i6_video_destroy_all(); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy_all(); break;
         case HAL_PLATFORM_M6:  m6_video_destroy_all(); break;
@@ -1084,6 +1255,7 @@ int sdk_stop(void) {
 
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  i3_pipeline_destroy(); break;
         case HAL_PLATFORM_I6:  i6_pipeline_destroy(); break;
         case HAL_PLATFORM_I6C: i6c_pipeline_destroy(); break;
         case HAL_PLATFORM_M6:  m6_pipeline_destroy(); break;

@@ -169,6 +169,7 @@ int app_config_save(void) {
     fprintf(file, "mp4:\n");
     fprintf(file, "  enable: %s\n", app_config.mp4_enable ? "true" : "false");
     fprintf(file, "  codec: %s\n", app_config.mp4_codecH265 ? "H.265" : "H.264");
+    fprintf(file, "  audio: %s\n", app_config.mp4_audio ? "true" : "false");
     fprintf(file, "  mode: %d\n", app_config.mp4_mode);
     fprintf(file, "  width: %d\n", app_config.mp4_width);
     fprintf(file, "  height: %d\n", app_config.mp4_height);
@@ -176,6 +177,14 @@ int app_config_save(void) {
     fprintf(file, "  gop: %d\n", app_config.mp4_gop);
     fprintf(file, "  profile: %d\n", app_config.mp4_profile);
     fprintf(file, "  bitrate: %d\n", app_config.mp4_bitrate);
+
+    fprintf(file, "sub:\n");
+    fprintf(file, "  enable: %s\n", app_config.sub_enable ? "true" : "false");
+    fprintf(file, "  width: %d\n", app_config.sub_width);
+    fprintf(file, "  height: %d\n", app_config.sub_height);
+    fprintf(file, "  gop: %d\n", app_config.sub_gop);
+    fprintf(file, "  bitrate: %d\n", app_config.sub_bitrate);
+    fprintf(file, "  rtsp_port: %d\n", app_config.sub_rtsp_port);
 
     fprintf(file, "osd:\n");
     fprintf(file, "  enable: %s\n", app_config.osd_enable ? "true" : "false");
@@ -276,6 +285,13 @@ enum ConfigError app_config_parse(void) {
     app_config.audio_gain = 0;
     app_config.jpeg_enable = false;
     app_config.mp4_enable = false;
+    app_config.mp4_audio = true;
+    app_config.sub_enable = false;
+    app_config.sub_width = 640;
+    app_config.sub_height = 360;
+    app_config.sub_gop = 30;
+    app_config.sub_bitrate = 512;
+    app_config.sub_rtsp_port = 555;
 
     app_config.mjpeg_enable = false;
     app_config.mjpeg_fps = 15;
@@ -434,6 +450,13 @@ enum ConfigError app_config_parse(void) {
 
     parse_bool(&ini, "mdns", "enable", &app_config.mdns_enable);
 
+    parse_bool(&ini, "sub", "enable", &app_config.sub_enable);
+    parse_int(&ini, "sub", "width", 160, INT_MAX, &app_config.sub_width);
+    parse_int(&ini, "sub", "height", 120, INT_MAX, &app_config.sub_height);
+    parse_int(&ini, "sub", "gop", 1, INT_MAX, &app_config.sub_gop);
+    parse_int(&ini, "sub", "bitrate", 32, INT_MAX, &app_config.sub_bitrate);
+    parse_int(&ini, "sub", "rtsp_port", 1, USHRT_MAX, &app_config.sub_rtsp_port);
+
     parse_bool(&ini, "osd", "enable", &app_config.osd_enable);
     if (app_config.osd_enable) {
         for (char i = 0; i < MAX_OSD; i++) {
@@ -538,6 +561,8 @@ enum ConfigError app_config_parse(void) {
 
     parse_bool(&ini, "mp4", "enable", &app_config.mp4_enable);
     if (app_config.mp4_enable) {
+        /* MP3 from the built-in encoder is rejected by strict browser decoders */
+        parse_bool(&ini, "mp4", "audio", &app_config.mp4_audio);
         {
             const char *possible_values[] = {"H.264", "H.265", "H264", "H265", "AVC", "HEVC"};
             const int count = sizeof(possible_values) / sizeof(const char *);
