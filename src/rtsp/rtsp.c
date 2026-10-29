@@ -89,6 +89,8 @@ static struct connection_item_t __connection_pool[RTSP_MAXIMUM_CONNECTIONS] = {}
 
 static struct transfer_item_t __transfer_pool[RTSP_MAXIMUM_CONNECTIONS] = {};
 
+unsigned int rtsp_tx_reserved;
+
 /******************************************************************************
  *              PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -343,6 +345,22 @@ static void __method_error(struct connection_item_t *p, rtsp_handle h)
 
 static void __method_play(struct connection_item_t *p, rtsp_handle h)
 {
+    bool tcp = p->trans[0].is_tcp || p->trans[1].is_tcp;
+    if (tcp && !p->tx_buf) {
+        if (!__tx_budget_take(RTSP_TX_MIN)) {
+            HAL_WARNING("rtsp", "Client %s refused, no queue memory left\n",
+                inet_ntoa(p->addr.sin_addr));
+            __rtsp_write(p, "RTSP/1.0 453 Not Enough Bandwidth\r\nCSeq: %d\r\n\r\n", p->cseq);
+            return;
+        }
+        if (!(p->tx_buf = malloc(RTSP_TX_MIN))) {
+            __tx_budget_give(RTSP_TX_MIN);
+            __method_error(p, h);
+            return;
+        }
+        p->tx_cap = RTSP_TX_MIN;
+    }
+
     __rtsp_write(p,
         "RTSP/1.0 200 OK\r\n"
         "CSeq: %d\r\n"
@@ -362,10 +380,6 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
              * tx_buf is what rides out a lagging client */
             int size = 256 * 1024;
             setsockopt(p->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
-            if (!p->tx_buf) {
-                ASSERT(p->tx_buf = malloc(RTSP_TX_MIN), return);
-                p->tx_cap = RTSP_TX_MIN;
-            }
         }
         p->trans[p->track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
         p->trans[p->track_id].rtp_seq = rand_r(&h->ctx);
@@ -610,6 +624,7 @@ static int __connection_reset(void *v)
     }
 
     free(p->tx_buf);
+    __tx_budget_give(p->tx_cap);
     p->tx_buf = NULL;
     p->tx_cap = p->tx_off = p->tx_len = 0;
 

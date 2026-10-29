@@ -556,6 +556,12 @@ static void *reader_thread(void *v)
     return NULL;
 }
 
+/* Lets the server see every peer gone, so the queues go back to the budget */
+static void release_clients(rtsp_handle h)
+{
+    for (int i = 0; i < 10 && h->con_list.list; i++) serve_once(h);
+}
+
 static void stall_sender(struct connection_item_t *con)
 {
     int size = 4096;
@@ -578,6 +584,7 @@ static void test_stalled_reader_does_not_block(void)
     for (int i = 0; i < 200; i++) send_frame(h, i, i % 30 == 0);
     CHECK(millis() - start < 1000);
     close(peer);
+    release_clients(h);
 }
 
 /* The reading client gets every frame whole while the other one is stalled */
@@ -609,6 +616,7 @@ static void test_reader_unaffected_by_stalled_one(void)
     CHECK(reader.count == 200);
     close(stalled_peer);
     close(reader.fd);
+    release_clients(h);
 }
 
 /* A client that falls behind resumes on a keyframe, never mid-GOP */
@@ -649,6 +657,7 @@ static void test_stalled_reader_resumes_on_idr(void)
     }
     CHECK(gaps > 0);
     close(reader.fd);
+    release_clients(h);
 }
 
 /* A reader that pauses for 1.5 s, as measured on the cameras' clients, then
@@ -684,6 +693,48 @@ static void test_paused_reader_loses_nothing(void)
     for (i = 1; i < reader.count; i++)
         CHECK(reader.frames[i] == reader.frames[i - 1] + 1);
     close(reader.fd);
+    release_clients(h);
+}
+
+/* Clients that stop reading together cannot take more queue memory than the
+ * budget, and the one still reading keeps getting every frame */
+static void test_stalled_clients_within_budget(void)
+{
+    enum { STALLED = 4 };
+    rtsp_handle h = make_server(STALLED + 1);
+    struct connection_item_t *stalled[STALLED], *reading = NULL;
+    struct rtp_reader_t reader = {};
+    pthread_t thread;
+    int peers[STALLED], over = 0;
+
+    attach_thread_pool(h);
+    for (int i = 0; i < STALLED; i++) {
+        peers[i] = play_tcp_client(h, &stalled[i]);
+        CHECK(peers[i] >= 0);
+        stall_sender(stalled[i]);
+    }
+    reader.fd = play_tcp_client(h, &reading);
+    CHECK(reader.fd >= 0);
+    fcntl(reader.fd, F_SETFL, fcntl(reader.fd, F_GETFL) | O_NONBLOCK);
+    pthread_create(&thread, NULL, reader_thread, &reader);
+
+    for (int n = 0; n < 150; n++) {
+        send_frame(h, n, n % 40 == 0);
+        unsigned int total = reading->tx_cap;
+        for (int i = 0; i < STALLED; i++) total += stalled[i]->tx_cap;
+        if (total > RTSP_TX_BUDGET) over++;
+        usleep(2000);
+    }
+    usleep(200 * 1000);
+    __atomic_store_n(&reader.stop, 1, __ATOMIC_SEQ_CST);
+    pthread_join(thread, NULL);
+
+    CHECK(over == 0);
+    CHECK(reader.markers == 150);
+    CHECK(reader.count == 150);
+    for (int i = 0; i < STALLED; i++) close(peers[i]);
+    close(reader.fd);
+    release_clients(h);
 }
 
 int main(void)
@@ -703,5 +754,6 @@ int main(void)
     test_reader_unaffected_by_stalled_one();
     test_stalled_reader_resumes_on_idr();
     test_paused_reader_loses_nothing();
+    test_stalled_clients_within_budget();
     CHECK_DONE();
 }

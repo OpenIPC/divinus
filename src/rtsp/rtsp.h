@@ -132,6 +132,29 @@ struct connection_item_t {
 };
 #define RTSP_TX_MIN (64 * 1024)
 #define RTSP_TX_MAX (1024 * 1024)
+/* What all client queues may hold together: clients that open sessions and
+ * stop reading must not run the camera out of memory */
+#ifndef RTSP_TX_BUDGET
+#define RTSP_TX_BUDGET (3 * 1024 * 1024)
+#endif
+
+extern unsigned int rtsp_tx_reserved;
+
+/* Takes size bytes of the queue budget; false when it is spent */
+static inline bool __tx_budget_take(unsigned int size)
+{
+    unsigned int now = __atomic_load_n(&rtsp_tx_reserved, __ATOMIC_RELAXED);
+    do {
+        if (now + size > RTSP_TX_BUDGET) return false;
+    } while (!__atomic_compare_exchange_n(&rtsp_tx_reserved, &now, now + size,
+        false, __ATOMIC_RELAXED, __ATOMIC_RELAXED));
+    return true;
+}
+
+static inline void __tx_budget_give(unsigned int size)
+{
+    __atomic_sub_fetch(&rtsp_tx_reserved, size, __ATOMIC_RELAXED);
+}
 #define RTSP_STALL_MS 5000
 
 struct transfer_item_t {
@@ -289,8 +312,12 @@ static inline bool __tcp_room(struct connection_item_t *con, unsigned int size)
     while (pending + size > cap) cap *= 2;
     if (cap > RTSP_TX_MAX) cap = RTSP_TX_MAX;
     if (cap != con->tx_cap) {
+        if (!__tx_budget_take(cap - con->tx_cap)) return false;
         unsigned char *buf = realloc(con->tx_buf, cap);
-        if (!buf) return false;
+        if (!buf) {
+            __tx_budget_give(cap - con->tx_cap);
+            return false;
+        }
         con->tx_buf = buf;
         con->tx_cap = cap;
     }
