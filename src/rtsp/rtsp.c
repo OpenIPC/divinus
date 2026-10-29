@@ -151,7 +151,12 @@ static int __rtsp_write(struct connection_item_t *p, const char *fmt, ...)
     ASSERT(len >= 0 && len < (int)sizeof(msg), return FAILURE);
 
     pthread_mutex_lock(&p->write_mutex);
-    ret = __tcp_send_all(p->client_fd, (unsigned char *)msg, len);
+    ret = SUCCESS;
+    if (p->tx_off < p->tx_len)
+        ret = __tcp_send_all(p->client_fd, p->tx_buf + p->tx_off, p->tx_len - p->tx_off);
+    p->tx_off = p->tx_len = 0;
+    if (ret == SUCCESS)
+        ret = __tcp_send_all(p->client_fd, (unsigned char *)msg, len);
     pthread_mutex_unlock(&p->write_mutex);
 
     if (ret != SUCCESS) ERR("send:%s\n", strerror(errno));
@@ -351,6 +356,12 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
         if (!p->trans[i].is_tcp) {
             ASSERT(__bind_rtcp(p) == SUCCESS, return);
             ASSERT(__bind_rtp(p) == SUCCESS, return);
+        } else {
+            /* A frame is only queued behind an empty queue, so the socket
+             * must take a whole keyframe between two frames */
+            int size = RTSP_TX_BATCH;
+            setsockopt(p->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+            if (!p->tx_buf) ASSERT(p->tx_buf = malloc(RTSP_TX_BATCH), return);
         }
         p->trans[p->track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
         p->trans[p->track_id].rtp_seq = rand_r(&h->ctx);
@@ -626,8 +637,8 @@ __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd,
 
     ASSERT((p->fp_tcp_read = fdopen(fd, "r")), goto error);
 
-    p->tx_len = 0;
-    if (!p->tx_buf) p->tx_buf = malloc(RTSP_TX_BATCH);
+    p->tx_off = p->tx_len = 0;
+    p->tx_frame = false;
     p->con_state = __CON_S_INIT;
 
     return list_add(head, &(p->list_entry));

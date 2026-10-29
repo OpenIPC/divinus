@@ -15,6 +15,7 @@
 #include "thread.h"
 #include "bufpool.h"
 #include "mime.h"
+#include "../hal/tools.h"
 
 /******************************************************************************
  *              DEFINITIONS
@@ -115,13 +116,18 @@ struct connection_item_t {
     unsigned long long given_session_id;
     unsigned int ssrc;
     pthread_mutex_t write_mutex;
-    /* Interleaved (TCP) output is staged here and written with one send()
-     * per frame: on small SoCs a send() costs ~100 us whatever its size */
+    /* Interleaved (TCP) output is queued here and written without blocking:
+     * tx_buf[tx_off..tx_len) is still to go. Only whole frames are queued, a
+     * client with something pending skips the next one */
     unsigned char *tx_buf;
+    unsigned int tx_off;
     unsigned int tx_len;
+    bool tx_frame;
+    unsigned int tx_stall_ms;
     struct list_t list_entry;
 };
-#define RTSP_TX_BATCH (64 * 1024)
+#define RTSP_TX_BATCH (256 * 1024)
+#define RTSP_STALL_MS 5000
 
 struct transfer_item_t {
     struct list_t list_entry;
@@ -234,6 +240,46 @@ static inline int __tcp_send_all(int fd, const unsigned char *buf, unsigned int 
         else return FAILURE;
     }
     return SUCCESS;
+}
+
+/* Writes what the queue holds without waiting. Something left pending is not
+ * an error; a peer that takes nothing for RTSP_STALL_MS, or a send error, is
+ * shut down and the RTSP thread then drops it. Called with write_mutex held */
+static inline int __tcp_pump(struct connection_item_t *con)
+{
+    while (con->tx_off < con->tx_len) {
+        int r = send(con->client_fd, con->tx_buf + con->tx_off, con->tx_len - con->tx_off, 0);
+        if (r > 0) {
+            con->tx_off += r;
+            con->tx_stall_ms = millis();
+            continue;
+        }
+        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            if (millis() - con->tx_stall_ms < RTSP_STALL_MS) return SUCCESS;
+            errno = ETIMEDOUT;
+        }
+        shutdown(con->client_fd, SHUT_RDWR);
+        con->tx_off = con->tx_len = 0;
+        return FAILURE;
+    }
+    con->tx_off = con->tx_len = 0;
+    return SUCCESS;
+}
+
+/* Appends one interleaved packet; false when it does not fit */
+static inline bool __tcp_queue(struct connection_item_t *con, unsigned char channel,
+    const void *packet, unsigned int size)
+{
+    if (con->tx_len + 4 + size > RTSP_TX_BATCH) return false;
+    if (con->tx_off == con->tx_len) con->tx_stall_ms = millis();
+    unsigned char *p = con->tx_buf + con->tx_len;
+    p[0] = '$';
+    p[1] = channel;
+    p[2] = (size >> 8) & 0xFF;
+    p[3] = size & 0xFF;
+    memcpy(p + 4, packet, size);
+    con->tx_len += 4 + size;
+    return true;
 }
 
 static inline unsigned long long __get_random_byte(unsigned *ctx)

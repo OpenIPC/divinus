@@ -37,12 +37,12 @@ struct __transfer_set_t {
 
 static unsigned int __frame_ts_video, __frame_ts_audio;
 
-static int __tcp_flush(struct connection_item_t *con)
-{
-    int ret = __tcp_send_all(con->client_fd, con->tx_buf, con->tx_len);
-    con->tx_len = 0;
-    return ret;
-}
+/* Room kept for audio packets queued while a video frame is being written */
+#define RTSP_TX_SPARE (8 * 1024)
+
+struct __frame_t {
+    unsigned int bytes;
+};
 
 static int __tcp_flush_each(struct list_t *e, void *v)
 {
@@ -50,14 +50,31 @@ static int __tcp_flush_each(struct list_t *e, void *v)
     struct connection_item_t *con;
     list_upcast(trans, e);
     MUST(con = trans->con, return FAILURE);
-    /* Packets are only ever staged from the interleaved branch below, so
-     * anything in tx_buf came from a TCP transfer whichever track sent it.
-     * Testing track 0 here never flushed a client that set up audio alone. */
-    if (!con->tx_buf || !con->tx_len) return SUCCESS;
+    if (!con->tx_buf) return SUCCESS;
     pthread_mutex_lock(&con->write_mutex);
-    int ret = __tcp_flush(con);
+    if (__tcp_pump(con) != SUCCESS)
+        ERR("send (interleaved):%s\n", strerror(errno));
     pthread_mutex_unlock(&con->write_mutex);
-    return ret;
+    return SUCCESS;
+}
+
+/* Decides whether an interleaved client takes the coming video frame: only
+ * with nothing left from earlier ones, so it never gets half a frame */
+static int __tcp_admit_frame(struct list_t *e, void *v)
+{
+    struct transfer_item_t *trans;
+    struct connection_item_t *con;
+    struct __frame_t *frame = v;
+    list_upcast(trans, e);
+    MUST(con = trans->con, return FAILURE);
+    if (!con->trans[0].is_tcp) return SUCCESS;
+
+    pthread_mutex_lock(&con->write_mutex);
+    if (__tcp_pump(con) != SUCCESS)
+        ERR("send (interleaved):%s\n", strerror(errno));
+    con->tx_frame = con->tx_off == con->tx_len && frame->bytes <= RTSP_TX_BATCH - RTSP_TX_SPARE;
+    pthread_mutex_unlock(&con->write_mutex);
+    return SUCCESS;
 }
 
 /******************************************************************************
@@ -215,62 +232,33 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
     con->trans[track_id].rtp_timestamp = track_id ? __frame_ts_audio : __frame_ts_video;
     rtp->packet.header.ts = htonl(con->trans[track_id].rtp_timestamp);
     rtp->packet.header.ssrc = htonl(con->ssrc);
-    con->trans[track_id].rtp_seq += 1;
 
     if (con->trans[track_id].is_tcp) {
-        unsigned char head[4];
-        head[0] = '$';
-        head[1] = con->trans[track_id].channel_rtp;
-        head[2] = (rtp->rtpsize >> 8) & 0xFF;
-        head[3] = rtp->rtpsize & 0xFF;
-
+        /* A video frame goes in whole or not at all; audio only behind
+         * nothing pending. A client that fails is shut down by the pump and
+         * dropped by the RTSP thread, the others carry on */
         pthread_mutex_lock(&con->write_mutex);
-        if (con->tx_buf) {
-            int ok = 1;
-            if (con->tx_len + 4 + rtp->rtpsize > RTSP_TX_BATCH)
-                ok = __tcp_flush(con) == SUCCESS;
-            if (ok) {
-                memcpy(con->tx_buf + con->tx_len, head, 4);
-                memcpy(con->tx_buf + con->tx_len + 4, &(rtp->packet), rtp->rtpsize);
-                con->tx_len += 4 + rtp->rtpsize;
-            }
-            pthread_mutex_unlock(&con->write_mutex);
-            if (ok) {
-                con->trans[track_id].rtcp_packet_cnt += 1;
-                con->trans[track_id].rtcp_octet += rtp->rtpsize;
-                return SUCCESS;
-            }
-            ERR("send (staged):%s\n", strerror(errno));
-            return FAILURE;
-        }
-        int sent_h = 0;
-        while (sent_h < 4) {
-            int r = send(con->client_fd, head + sent_h, 4 - sent_h, 0);
-            if (r > 0) sent_h += r;
-            else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
-            else { sent_h = -1; break; }
-        }
-        if (sent_h == 4) {
-            int sent_b = 0;
-            while (sent_b < rtp->rtpsize) {
-                int r = send(con->client_fd, (char*)&(rtp->packet) + sent_b, rtp->rtpsize - sent_b, 0);
-                if (r > 0) sent_b += r;
-                else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
-                else { sent_b = -1; break; }
-            }
-            send_bytes = sent_b;
+        bool queued;
+        if (track_id == 0) {
+            queued = con->tx_frame && __tcp_queue(con, con->trans[0].channel_rtp,
+                &(rtp->packet), rtp->rtpsize);
+            if (con->tx_frame && !queued) con->tx_frame = false;
         } else {
-            send_bytes = -1;
+            queued = __tcp_pump(con) == SUCCESS && con->tx_off == con->tx_len &&
+                __tcp_queue(con, con->trans[1].channel_rtp, &(rtp->packet), rtp->rtpsize);
+            if (queued) __tcp_pump(con);
         }
         pthread_mutex_unlock(&con->write_mutex);
 
-        if (send_bytes == rtp->rtpsize) {
+        if (queued) {
+            con->trans[track_id].rtp_seq += 1;
             con->trans[track_id].rtcp_packet_cnt += 1;
             con->trans[track_id].rtcp_octet += rtp->rtpsize;
-            return SUCCESS;
         }
+        return SUCCESS;
     } else {
         char attempts = 0;
+        con->trans[track_id].rtp_seq += 1;
         do  {
             send_bytes = send(con->trans[track_id].server_rtp_fd,
                 &(rtp->packet),rtp->rtpsize,0);
@@ -508,6 +496,21 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
     rtsp_unlock(h);
 
     if (trans.list_head.list) {
+        struct __frame_t frame = {};
+        for (int i = 0; i < stream->count; i++) {
+            unsigned char *data = stream->pack[i].data + stream->pack[i].offset;
+            size_t length = stream->pack[i].length - stream->pack[i].offset;
+            unsigned char *nalptr = data;
+            size_t single_len = 0;
+            while (nal_split(data, &nalptr, &single_len, length) == SUCCESS) {
+                if (single_len < 4) continue;
+                /* every RTP packet adds at most its interleave, RTP and FU heads */
+                frame.bytes += single_len + (single_len / (__RTP_MAXPAYLOADSIZE - 3) + 1) *
+                    (4 + sizeof(rtp_hdr_t) + 3);
+            }
+        }
+        ASSERT(list_map_inline(&(trans.list_head), (__tcp_admit_frame), &frame) == SUCCESS, goto error);
+
         for (int i = 0; i < stream->count; i++) {
             unsigned char *data = stream->pack[i].data + stream->pack[i].offset;
             size_t length = stream->pack[i].length - stream->pack[i].offset;

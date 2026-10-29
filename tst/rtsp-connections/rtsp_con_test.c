@@ -25,6 +25,7 @@ static int counted_close(int fd)
 #include "check.h"
 #undef CHECK
 #include "rtsp/rtsp.c"
+#include "rtsp/rtp.h"
 #undef CHECK
 #define CHECK(cond) \
     do { \
@@ -454,6 +455,151 @@ static void test_request_body_skipped(void)
     close(peer);
 }
 
+#define FRAME_NAL 12000
+
+/* rtp_send_h26x reads the quit flag through the thread pool */
+static void attach_thread_pool(rtsp_handle h)
+{
+    h->pool = calloc(1, sizeof(*h->pool));
+    h->pool->sharedp = calloc(1, sizeof(*h->pool->sharedp));
+    h->pool->sharedp->gbl = gbl_create();
+}
+
+static int play_tcp_client(rtsp_handle h, struct connection_item_t **con)
+{
+    char reply[1024];
+    int peer = connect_client(h, con);
+
+    send_str(peer, "SETUP rtsp://cam/track=0 RTSP/1.0\r\nCSeq: 1\r\n"
+        "Transport: RTP/AVP/TCP;unicast;interleaved=0-1\r\n\r\n");
+    serve_once(h);
+    send_str(peer, "PLAY rtsp://cam/ RTSP/1.0\r\nCSeq: 2\r\n\r\n");
+    serve_once(h);
+    usleep(10 * 1000);
+    if (read(peer, reply, sizeof(reply)) <= 0) return -1;
+    return peer;
+}
+
+/* Frame n is one H.264 NAL stamped with (n + 1) seconds, so the receiver can
+ * tell frames apart by their RTP timestamp */
+static void send_frame(rtsp_handle h, int n, int idr)
+{
+    static unsigned char nal[4 + FRAME_NAL];
+    hal_vidpack pack = { .data = nal, .length = sizeof(nal),
+        .timestamp = (unsigned long long)(n + 1) * 1000000 };
+    hal_vidstream stream = { .pack = &pack, .count = 1 };
+
+    memset(nal, 0x55, sizeof(nal));
+    nal[0] = nal[1] = nal[2] = 0;
+    nal[3] = 1;
+    nal[4] = idr ? 0x65 : 0x41;
+    rtp_send_h26x(h, &stream, 0);
+}
+
+struct rtp_reader_t {
+    int fd, stop;
+    unsigned char buf[2048];
+    size_t have;
+    int frames[256], types[256], count;
+    int markers;
+};
+
+/* Parses interleaved packets, recording each video frame start and marker */
+static void reader_feed(struct rtp_reader_t *r)
+{
+    for (;;) {
+        ssize_t got = read(r->fd, r->buf + r->have, sizeof(r->buf) - r->have);
+        if (got <= 0) return;
+        r->have += got;
+        while (r->have >= 4) {
+            size_t len = r->buf[2] << 8 | r->buf[3];
+            if (r->have < 4 + len) break;
+            unsigned char *rtp = r->buf + 4;
+            if (r->buf[0] == '$' && r->buf[1] == 0 && len > 14) {
+                unsigned int ts = rtp[4] << 24 | rtp[5] << 16 | rtp[6] << 8 | rtp[7];
+                int type = rtp[12] & 0x1F, start = 1;
+                if (type == 28) {
+                    start = rtp[13] & 0x80;
+                    type = rtp[13] & 0x1F;
+                }
+                if (start && r->count < 256) {
+                    r->frames[r->count] = ts / 90000 - 1;
+                    r->types[r->count++] = type;
+                }
+                if (rtp[1] & 0x80) r->markers++;
+            }
+            memmove(r->buf, r->buf + 4 + len, r->have - 4 - len);
+            r->have -= 4 + len;
+        }
+    }
+}
+
+static void *reader_thread(void *v)
+{
+    struct rtp_reader_t *r = v;
+    while (!__atomic_load_n(&r->stop, __ATOMIC_SEQ_CST)) {
+        struct pollfd pfd = { .fd = r->fd, .events = POLLIN };
+        if (poll(&pfd, 1, 50) == 1) reader_feed(r);
+    }
+    reader_feed(r);
+    return NULL;
+}
+
+static void stall_sender(struct connection_item_t *con)
+{
+    int size = 4096;
+    setsockopt(con->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+}
+
+/* A client that stops reading must not hold up the encoder thread */
+static void test_stalled_reader_does_not_block(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    int peer;
+
+    attach_thread_pool(h);
+    peer = play_tcp_client(h, &con);
+    CHECK(peer >= 0 && con);
+    stall_sender(con);
+
+    unsigned long long start = millis();
+    for (int i = 0; i < 200; i++) send_frame(h, i, i % 30 == 0);
+    CHECK(millis() - start < 1000);
+    close(peer);
+}
+
+/* The reading client gets every frame whole while the other one is stalled */
+static void test_reader_unaffected_by_stalled_one(void)
+{
+    rtsp_handle h = make_server(2);
+    struct connection_item_t *stalled = NULL, *reading = NULL;
+    struct rtp_reader_t reader = {};
+    pthread_t thread;
+    int stalled_peer;
+
+    attach_thread_pool(h);
+    stalled_peer = play_tcp_client(h, &stalled);
+    reader.fd = play_tcp_client(h, &reading);
+    CHECK(stalled_peer >= 0 && reader.fd >= 0);
+    stall_sender(stalled);
+    fcntl(reader.fd, F_SETFL, fcntl(reader.fd, F_GETFL) | O_NONBLOCK);
+    pthread_create(&thread, NULL, reader_thread, &reader);
+
+    for (int i = 0; i < 200; i++) {
+        send_frame(h, i, i % 30 == 0);
+        usleep(2000);
+    }
+    usleep(200 * 1000);
+    __atomic_store_n(&reader.stop, 1, __ATOMIC_SEQ_CST);
+    pthread_join(thread, NULL);
+
+    CHECK(reader.markers == 200);
+    CHECK(reader.count == 200);
+    close(stalled_peer);
+    close(reader.fd);
+}
+
 int main(void)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -467,5 +613,7 @@ int main(void)
     test_connection_overflow();
     test_get_parameter_keepalive();
     test_request_body_skipped();
+    test_stalled_reader_does_not_block();
+    test_reader_unaffected_by_stalled_one();
     CHECK_DONE();
 }
