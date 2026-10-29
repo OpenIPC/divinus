@@ -549,9 +549,9 @@ grant_access:
         return;
     }
 
-    HAL_INFO("server", "\x1b[32mNew request: (%s) %s\n"
-        "         Received from: %s\x1b[0m\n",
-        req->method, req->uri, client_ip);
+    HAL_INFO("server", "%sNew request: (%s) %s\n"
+        "         Received from: %s%s\n", HAL_COLOR("\x1b[32m"),
+        req->method, req->uri, client_ip, HAL_COLOR("\x1b[0m"));
 
     if (req->query = strchr(req->uri, '?'))
         *req->query++ = '\0';
@@ -607,7 +607,8 @@ void respond_request(http_request_t *req) {
         }
 
         char *action = onvif_extract_soap_action(req->payload);
-        HAL_INFO("onvif", "\x1b[32mAction: %s\x1b[0m\n", action);
+        HAL_INFO("onvif", "%sAction: %s%s\n",
+            HAL_COLOR("\x1b[32m"), action, HAL_COLOR("\x1b[0m"));
         respLen = sizeof(response);
 
         if (app_config.onvif_enable_auth && !onvif_is_preauth_action(action) &&
