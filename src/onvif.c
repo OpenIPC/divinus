@@ -64,7 +64,7 @@ void *onvif_thread(void) {
 
     struct ip_mreq group = {
         .imr_multiaddr.s_addr = inet_addr("239.255.255.250"),
-        .imr_interface.s_addr = inet_addr(netinfo.ipaddr[0])
+        .imr_interface.s_addr = htonl(INADDR_ANY)
     };
 
     if (bind(servfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
@@ -72,12 +72,19 @@ void *onvif_thread(void) {
         return (void*)EXIT_FAILURE;
     }
 
-    if (setsockopt(servfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group)) < 0){
-        close(servfd);
-        return (void*)EXIT_FAILURE;
-    }
+    bool joined = false, joinReported = false;
 
     while (keepRunning) {
+        if (!joined) {
+            joined = !setsockopt(servfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+                (char *)&group, sizeof(group));
+            if (!joined && !joinReported) {
+                HAL_WARNING("onvif", "Failed to join the discovery group, retrying: %s\n",
+                    strerror(errno));
+                joinReported = true;
+            }
+        }
+
         fd_set readfds;
         FD_ZERO(&readfds);
         FD_SET(servfd, &readfds);
