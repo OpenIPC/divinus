@@ -189,6 +189,7 @@ int app_config_save(void) {
             fprintf(file, "    reg%d_text: %s\n", i, osds[i].text);
         fprintf(file, "    reg%d_font: %s\n", i, osds[i].font);
         fprintf(file, "    reg%d_opal: %d\n", i, osds[i].opal);
+        fprintf(file, "    reg%d_anchor: %s\n", i, osd_anchors[(unsigned char)osds[i].anchor % 9]);
         fprintf(file, "    reg%d_posx: %d\n", i, osds[i].posx);
         fprintf(file, "    reg%d_posy: %d\n", i, osds[i].posy);
         fprintf(file, "    reg%d_size: %.1f\n", i, osds[i].size);
@@ -446,6 +447,12 @@ enum ConfigError app_config_parse(void) {
             sprintf(param, "reg%d_opal", i);
             err = parse_int(&ini, "osd", param, 0, UCHAR_MAX, &val);
             if (err == CONFIG_OK) osds[i].opal = (unsigned char)val;
+            {
+                char anchor[16] = {0};
+                sprintf(param, "reg%d_anchor", i);
+                if (parse_param_value(&ini, "osd", param, anchor) == CONFIG_OK)
+                    osds[i].anchor = region_anchor_parse(anchor);
+            }
             sprintf(param, "reg%d_posx", i);
             err = parse_int(&ini, "osd", param, 0, SHRT_MAX, &val);
             if (err == CONFIG_OK) osds[i].posx = (short)val;
