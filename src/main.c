@@ -61,7 +61,8 @@ int main(int argc, char *argv[]) {
     if (!*family)
         HAL_ERROR("hal", "Unsupported chip family! Quitting...\n");
 
-    fprintf(stderr, "\033[0m\033[7m Divinus (rev %s) for %s \033[0m\n", GIT_REV, family);
+    fprintf(stderr, "%s Divinus (rev %s) for %s %s\n",
+        HAL_COLOR("\033[0m\033[7m"), GIT_REV, family, HAL_COLOR("\033[0m"));
     fprintf(stderr, "Chip ID: %s\n", chip);
 
     if (app_config_parse() != CONFIG_OK)
