@@ -125,6 +125,16 @@ static void i3_property_commit(void)
         chmod("/dev/__properties__", 0644);
     }
     free(area);
+
+    // OpenIPC's own libat.so keeps the settings in the process instead (read
+    // from /etc/sigmastar.conf), so hand them to it as well where it is used.
+    void *at = dlopen("libat.so", RTLD_LAZY | RTLD_GLOBAL);
+    if (at) {
+        int (*set)(const char*, const char*) = dlsym(at, "property_set");
+        if (set && !dlsym(at, "__system_property_area__"))
+            for (int i = 0; i < i3_prop_num; i++)
+                set(i3_props[i].name, i3_props[i].value);
+    }
 }
 
 void i3_hal_deinit(void)
@@ -137,6 +147,11 @@ int i3_hal_init(void)
 {
     i3_property_commit();
 
+    // libmi.so and libmi_isp.so use each other's symbols. glibc resolves that
+    // lazily when both are preloaded; musl needs libmi_isp.so opened first with
+    // RTLD_GLOBAL, so its pending symbols are bound when libmi.so arrives.
+    if (!dlopen("libmi_isp.so", RTLD_LAZY | RTLD_GLOBAL))
+        HAL_WARNING("i3_hal", "libmi_isp.so: %s\n", dlerror());
     if (!(i3.handle = dlopen("libmi.so", RTLD_LAZY | RTLD_GLOBAL)))
         HAL_ERROR("i3_hal", "Failed to load libmi.so (it needs libmi_isp.so "
             "preloaded alongside it)!\nError: %s\n", dlerror());
