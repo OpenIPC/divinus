@@ -456,6 +456,7 @@ static void test_request_body_skipped(void)
 }
 
 #define FRAME_NAL 12000
+#define FRAME_NAL_MAX 160000
 
 /* rtp_send_h26x reads the quit flag through the thread pool */
 static void attach_thread_pool(rtsp_handle h)
@@ -482,10 +483,10 @@ static int play_tcp_client(rtsp_handle h, struct connection_item_t **con)
 
 /* Frame n is one H.264 NAL stamped with (n + 1) seconds, so the receiver can
  * tell frames apart by their RTP timestamp */
-static void send_frame(rtsp_handle h, int n, int idr)
+static void send_sized_frame(rtsp_handle h, int n, int idr, unsigned int size)
 {
-    static unsigned char nal[4 + FRAME_NAL];
-    hal_vidpack pack = { .data = nal, .length = sizeof(nal),
+    static unsigned char nal[4 + FRAME_NAL_MAX];
+    hal_vidpack pack = { .data = nal, .length = 4 + size,
         .timestamp = (unsigned long long)(n + 1) * 1000000 };
     hal_vidstream stream = { .pack = &pack, .count = 1 };
 
@@ -496,12 +497,18 @@ static void send_frame(rtsp_handle h, int n, int idr)
     rtp_send_h26x(h, &stream, 0);
 }
 
+static void send_frame(rtsp_handle h, int n, int idr)
+{
+    send_sized_frame(h, n, idr, FRAME_NAL);
+}
+
 struct rtp_reader_t {
     int fd, stop;
     unsigned char buf[2048];
     size_t have;
     int frames[256], types[256], count;
     int markers;
+    int seen, last_seq, seq_gaps;
 };
 
 /* Parses interleaved packets, recording each video frame start and marker */
@@ -527,6 +534,10 @@ static void reader_feed(struct rtp_reader_t *r)
                     r->types[r->count++] = type;
                 }
                 if (rtp[1] & 0x80) r->markers++;
+                int seq = rtp[2] << 8 | rtp[3];
+                if (r->seen && seq != ((r->last_seq + 1) & 0xFFFF)) r->seq_gaps++;
+                r->seen = 1;
+                r->last_seq = seq;
             }
             memmove(r->buf, r->buf + 4 + len, r->have - 4 - len);
             r->have -= 4 + len;
@@ -615,9 +626,13 @@ static void test_stalled_reader_resumes_on_idr(void)
     stall_sender(con);
     fcntl(reader.fd, F_SETFL, fcntl(reader.fd, F_GETFL) | O_NONBLOCK);
 
-    for (i = 0; i < 10; i++) send_frame(h, i, i == 0);
+    /* stalled for longer than the largest queue holds */
+    for (i = 0; i < 100; i++) send_frame(h, i, i == 0);
+    /* back to reading, with a kernel buffer like the cameras' */
+    int size = 160 * 1024;
+    setsockopt(con->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
     pthread_create(&thread, NULL, reader_thread, &reader);
-    for (; i < 60; i++) {
+    for (; i < 160; i++) {
         send_frame(h, i, i % 20 == 0);
         usleep(5000);
     }
@@ -633,6 +648,41 @@ static void test_stalled_reader_resumes_on_idr(void)
         CHECK(reader.types[i] == 5);
     }
     CHECK(gaps > 0);
+    close(reader.fd);
+}
+
+/* A reader that pauses for 1.5 s, as measured on the cameras' clients, then
+ * catches up loses nothing: 9 KB frames at 20 fps, a 160 KB keyframe every 40 */
+static void test_paused_reader_loses_nothing(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    struct rtp_reader_t reader = {};
+    pthread_t thread;
+    int i;
+
+    attach_thread_pool(h);
+    reader.fd = play_tcp_client(h, &con);
+    CHECK(reader.fd >= 0 && con);
+    /* about what the kernel holds for a client on the cameras */
+    int size = 64 * 1024;
+    setsockopt(con->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+    fcntl(reader.fd, F_SETFL, fcntl(reader.fd, F_GETFL) | O_NONBLOCK);
+
+    for (i = 0; i < 100; i++) {
+        if (i == 30) pthread_create(&thread, NULL, reader_thread, &reader);
+        send_sized_frame(h, i, i % 40 == 0, i % 40 ? 9000 : FRAME_NAL_MAX);
+        usleep(50 * 1000);
+    }
+    usleep(300 * 1000);
+    __atomic_store_n(&reader.stop, 1, __ATOMIC_SEQ_CST);
+    pthread_join(thread, NULL);
+
+    CHECK(reader.markers == 100);
+    CHECK(reader.count == 100);
+    CHECK(reader.seq_gaps == 0);
+    for (i = 1; i < reader.count; i++)
+        CHECK(reader.frames[i] == reader.frames[i - 1] + 1);
     close(reader.fd);
 }
 
@@ -652,5 +702,6 @@ int main(void)
     test_stalled_reader_does_not_block();
     test_reader_unaffected_by_stalled_one();
     test_stalled_reader_resumes_on_idr();
+    test_paused_reader_loses_nothing();
     CHECK_DONE();
 }

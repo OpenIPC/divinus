@@ -59,9 +59,10 @@ static int __tcp_flush_each(struct list_t *e, void *v)
     return SUCCESS;
 }
 
-/* Decides whether an interleaved client takes the coming video frame: only
- * with nothing left from earlier ones, so it never gets half a frame, and
- * after a skip only from a keyframe on */
+/* Decides whether an interleaved client takes the coming video frame: whole,
+ * behind whatever is still pending, while the queue can grow to hold it. A
+ * client too far behind for that skips frames until a keyframe finds its
+ * queue empty */
 static int __tcp_admit_frame(struct list_t *e, void *v)
 {
     struct transfer_item_t *trans;
@@ -74,9 +75,16 @@ static int __tcp_admit_frame(struct list_t *e, void *v)
     pthread_mutex_lock(&con->write_mutex);
     if (__tcp_pump(con) != SUCCESS)
         ERR("send (interleaved):%s\n", strerror(errno));
-    con->tx_frame = con->tx_off == con->tx_len && frame->bytes <= RTSP_TX_BATCH - RTSP_TX_SPARE &&
-        (!con->tx_skip || frame->idr);
+    if (frame->bytes > RTSP_TX_MAX - RTSP_TX_SPARE)
+        con->tx_frame = false;
+    else if (con->tx_skip)
+        con->tx_frame = frame->idr && con->tx_off == con->tx_len &&
+            __tcp_room(con, frame->bytes + RTSP_TX_SPARE);
+    else
+        con->tx_frame = __tcp_room(con, frame->bytes + RTSP_TX_SPARE);
     pthread_mutex_unlock(&con->write_mutex);
+
+    if (frame->bytes > RTSP_TX_MAX - RTSP_TX_SPARE) return SUCCESS;
 
     if (!con->tx_frame) {
         con->tx_skip = true;
@@ -261,7 +269,7 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
                 con->tx_dropped++;
             }
         } else {
-            queued = __tcp_pump(con) == SUCCESS && con->tx_off == con->tx_len &&
+            queued = __tcp_pump(con) == SUCCESS &&
                 __tcp_queue(con, con->trans[1].channel_rtp, &(rtp->packet), rtp->rtpsize);
             if (queued) __tcp_pump(con);
         }
@@ -527,6 +535,11 @@ int rtp_send_h26x(rtsp_handle h, hal_vidstream *stream, char isH265)
                 frame.bytes += single_len + (single_len / (__RTP_MAXPAYLOADSIZE - 3) + 1) *
                     (4 + sizeof(rtp_hdr_t) + 3);
             }
+        }
+        static bool too_large_told;
+        if (frame.bytes > RTSP_TX_MAX - RTSP_TX_SPARE && !too_large_told) {
+            too_large_told = true;
+            HAL_WARNING("rtsp", "Frame of %u bytes is too large for interleaved clients\n", frame.bytes);
         }
         ASSERT(list_map_inline(&(trans.list_head), (__tcp_admit_frame), &frame) == SUCCESS, goto error);
 

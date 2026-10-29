@@ -357,11 +357,15 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
             ASSERT(__bind_rtcp(p) == SUCCESS, return);
             ASSERT(__bind_rtp(p) == SUCCESS, return);
         } else {
-            /* A frame is only queued behind an empty queue, so the socket
-             * must take a whole keyframe between two frames */
-            int size = RTSP_TX_BATCH;
+            /* Lets the kernel take a keyframe at once; it caps this at
+             * net.core.wmem_max (160 KB on the cameras), so the queue in
+             * tx_buf is what rides out a lagging client */
+            int size = 256 * 1024;
             setsockopt(p->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
-            if (!p->tx_buf) ASSERT(p->tx_buf = malloc(RTSP_TX_BATCH), return);
+            if (!p->tx_buf) {
+                ASSERT(p->tx_buf = malloc(RTSP_TX_MIN), return);
+                p->tx_cap = RTSP_TX_MIN;
+            }
         }
         p->trans[p->track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
         p->trans[p->track_id].rtp_seq = rand_r(&h->ctx);
@@ -604,6 +608,10 @@ static int __connection_reset(void *v)
             p->trans[i].server_rtp_fd = 0;
         }
     }
+
+    free(p->tx_buf);
+    p->tx_buf = NULL;
+    p->tx_cap = p->tx_off = p->tx_len = 0;
 
     ctx = p->trans[0].rtp_timestamp;
     memset(p->trans, 0, sizeof(p->trans));

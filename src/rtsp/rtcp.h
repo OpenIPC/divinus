@@ -49,9 +49,9 @@ static inline int __rtcp_send_sr(struct connection_item_t *con, int track_id)
 
     if (t->is_tcp) {
         /* Queued behind the media like any interleaved packet; a client
-         * with data still pending simply misses this report */
+         * whose queue is full simply misses this report */
         pthread_mutex_lock(&con->write_mutex);
-        if (__tcp_pump(con) == SUCCESS && con->tx_off == con->tx_len &&
+        if (__tcp_pump(con) == SUCCESS &&
             __tcp_queue(con, t->channel_rtcp, &rtcp, 36))
             __tcp_pump(con);
         pthread_mutex_unlock(&con->write_mutex);

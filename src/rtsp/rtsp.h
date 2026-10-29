@@ -117,9 +117,11 @@ struct connection_item_t {
     unsigned int ssrc;
     pthread_mutex_t write_mutex;
     /* Interleaved (TCP) output is queued here and written without blocking:
-     * tx_buf[tx_off..tx_len) is still to go. Only whole frames are queued, a
-     * client with something pending skips frames until the next keyframe */
+     * tx_buf[tx_off..tx_len) is still to go, out of tx_cap. Whole frames are
+     * queued behind what is pending; the queue grows up to RTSP_TX_MAX for a
+     * client that lags, and one that lags further skips to the next keyframe */
     unsigned char *tx_buf;
+    unsigned int tx_cap;
     unsigned int tx_off;
     unsigned int tx_len;
     bool tx_frame;
@@ -128,7 +130,8 @@ struct connection_item_t {
     unsigned int tx_stall_ms;
     struct list_t list_entry;
 };
-#define RTSP_TX_BATCH (256 * 1024)
+#define RTSP_TX_MIN (64 * 1024)
+#define RTSP_TX_MAX (1024 * 1024)
 #define RTSP_STALL_MS 5000
 
 struct transfer_item_t {
@@ -268,11 +271,37 @@ static inline int __tcp_pump(struct connection_item_t *con)
     return SUCCESS;
 }
 
+/* Makes room for size more bytes, moving what is pending to the front and
+ * doubling the queue up to RTSP_TX_MAX; false when even that is not enough.
+ * The queue is not shrunk while the client stays: a healthy one already needs
+ * a keyframe's worth, and the connection reset gives it all back */
+static inline bool __tcp_room(struct connection_item_t *con, unsigned int size)
+{
+    unsigned int pending = con->tx_len - con->tx_off;
+    if (con->tx_len + size <= con->tx_cap) return true;
+    if (pending + size > RTSP_TX_MAX) return false;
+    if (con->tx_off) {
+        memmove(con->tx_buf, con->tx_buf + con->tx_off, pending);
+        con->tx_off = 0;
+        con->tx_len = pending;
+    }
+    unsigned int cap = con->tx_cap;
+    while (pending + size > cap) cap *= 2;
+    if (cap > RTSP_TX_MAX) cap = RTSP_TX_MAX;
+    if (cap != con->tx_cap) {
+        unsigned char *buf = realloc(con->tx_buf, cap);
+        if (!buf) return false;
+        con->tx_buf = buf;
+        con->tx_cap = cap;
+    }
+    return true;
+}
+
 /* Appends one interleaved packet; false when it does not fit */
 static inline bool __tcp_queue(struct connection_item_t *con, unsigned char channel,
     const void *packet, unsigned int size)
 {
-    if (con->tx_len + 4 + size > RTSP_TX_BATCH) return false;
+    if (!__tcp_room(con, 4 + size)) return false;
     if (con->tx_off == con->tx_len) con->tx_stall_ms = millis();
     unsigned char *p = con->tx_buf + con->tx_len;
     p[0] = '$';
