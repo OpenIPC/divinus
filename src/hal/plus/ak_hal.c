@@ -243,14 +243,20 @@ static struct {
     hal_dim dim;
     short opacity;
     unsigned char *bits;
-} ak_osd[AK_OSD_MAX];
+} ak_region[AK_OSD_MAX];
+
+/* The region thread swaps or frees bitmaps while the video thread paints
+   them into the frame, so the table needs one lock for both sides. */
+static pthread_mutex_t ak_region_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 int ak_region_create(char handle, hal_rect rect, short opacity)
 {
     if (handle < 0 || handle >= AK_OSD_MAX)
         return EXIT_FAILURE;
-    ak_osd[handle].rect = rect;
-    ak_osd[handle].opacity = opacity;
+    pthread_mutex_lock(&ak_region_mtx);
+    ak_region[handle].rect = rect;
+    ak_region[handle].opacity = opacity;
+    pthread_mutex_unlock(&ak_region_mtx);
     return EXIT_SUCCESS;
 }
 
@@ -263,9 +269,11 @@ int ak_region_setbitmap(char handle, hal_bitmap *bitmap)
     if (!bits)
         return EXIT_FAILURE;
     memcpy(bits, bitmap->data, size);
-    free(ak_osd[handle].bits);
-    ak_osd[handle].bits = bits;
-    ak_osd[handle].dim = bitmap->dim;
+    pthread_mutex_lock(&ak_region_mtx);
+    free(ak_region[handle].bits);
+    ak_region[handle].bits = bits;
+    ak_region[handle].dim = bitmap->dim;
+    pthread_mutex_unlock(&ak_region_mtx);
     return EXIT_SUCCESS;
 }
 
@@ -273,9 +281,11 @@ void ak_region_destroy(char handle)
 {
     if (handle < 0 || handle >= AK_OSD_MAX)
         return;
-    free(ak_osd[handle].bits);
-    ak_osd[handle].bits = NULL;
-    ak_osd[handle].dim.width = ak_osd[handle].dim.height = 0;
+    pthread_mutex_lock(&ak_region_mtx);
+    free(ak_region[handle].bits);
+    ak_region[handle].bits = NULL;
+    ak_region[handle].dim.width = ak_region[handle].dim.height = 0;
+    pthread_mutex_unlock(&ak_region_mtx);
 }
 
 static void ak_region_apply(unsigned char *frame, int width, int height)
@@ -283,12 +293,13 @@ static void ak_region_apply(unsigned char *frame, int width, int height)
     int luma_size = width * height;
     int chroma_size = (width >> 1) * (height >> 1);
 
+    pthread_mutex_lock(&ak_region_mtx);
     for (int id = 0; id < AK_OSD_MAX; id++) {
-        if (!ak_osd[id].bits) continue;
-        int bw = ak_osd[id].dim.width, bh = ak_osd[id].dim.height;
-        int x0 = ak_osd[id].rect.x, y0 = ak_osd[id].rect.y;
-        int op = ak_osd[id].opacity;
-        unsigned short *src = (unsigned short *)ak_osd[id].bits;
+        if (!ak_region[id].bits) continue;
+        int bw = ak_region[id].dim.width, bh = ak_region[id].dim.height;
+        int x0 = ak_region[id].rect.x, y0 = ak_region[id].rect.y;
+        int op = ak_region[id].opacity;
+        unsigned short *src = (unsigned short *)ak_region[id].bits;
 
         for (int y = 0; y < bh; y++) {
             int fy = y0 + y;
@@ -319,6 +330,7 @@ static void ak_region_apply(unsigned char *frame, int width, int height)
             }
         }
     }
+    pthread_mutex_unlock(&ak_region_mtx);
 }
 
 static void ak_video_emit(char index, void *out, size_t outlen, uint64_t tstamp)
