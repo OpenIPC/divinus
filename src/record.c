@@ -13,9 +13,17 @@ static bool recordActive;
 static bool recordWaitKey;
 static time_t recordLastSync, recordLastRoom, recordLastTry;
 static char recordPath[RECORD_PATH_MAX];
+/* Monotonic second at which a timed recording ends, 0 for none */
+static time_t recordStopAt;
 
 #define RECORD_CARD_ROOT "/mnt/sdcard"
 #define RECORD_CARD_TOOL "/usr/sbin/sdcard"
+
+static time_t record_now(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec;
+}
 
 /* The card is kept read-only unless a recording is running; the helper
  * (re)mounts it in the requested mode. Must not be called with recordMtx held. */
@@ -375,6 +383,7 @@ void record_stop(void) {
     record_close_locked();
     recordActive = false;
     recordStartTime = 0;
+    recordStopAt = 0;
 
     pthread_mutex_unlock(&recordMtx);
 
@@ -382,11 +391,44 @@ void record_stop(void) {
 }
 
 /**
+ * Ends the current recording after the given number of seconds; calling it
+ * again moves the end, 0 cancels it. Continuous recording ignores it.
+ */
+void record_stop_after(unsigned int seconds) {
+    pthread_mutex_lock(&recordMtx);
+    recordStopAt = seconds ? record_now() + seconds : 0;
+    pthread_mutex_unlock(&recordMtx);
+}
+
+/**
+ * Seconds left of a timed recording, 0 when none is set
+ */
+unsigned int record_stop_in(void) {
+    time_t left;
+
+    pthread_mutex_lock(&recordMtx);
+    left = recordStopAt ? recordStopAt - record_now() : 0;
+    pthread_mutex_unlock(&recordMtx);
+    return left > 0 ? left : 0;
+}
+
+/**
  * Keeps continuous recording alive: retries when the card was missing at
  * start or a write failed (card pulled). Called once a second.
  */
 void record_tick(void) {
-    time_t now = time(NULL);
+    time_t now = time(NULL), stopAt;
+
+    pthread_mutex_lock(&recordMtx);
+    stopAt = recordStopAt;
+    pthread_mutex_unlock(&recordMtx);
+    if (stopAt && record_now() >= stopAt) {
+        if (app_config.record_continuous) {
+            pthread_mutex_lock(&recordMtx);
+            recordStopAt = 0;
+            pthread_mutex_unlock(&recordMtx);
+        } else record_stop();
+    }
 
     if (!app_config.record_enable || !app_config.record_continuous) return;
     if (record_active()) return;

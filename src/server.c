@@ -1781,6 +1781,7 @@ void respond_request(http_request_t *req) {
         if (req->query) {
             char *remain;
             char wantStart = 0, wantStop = 0;
+            long duration = -1;
             while (req->query) {
                 char *value = split(&req->query, "&");
                 if (!value || !*value) continue;
@@ -1817,6 +1818,10 @@ void respond_request(http_request_t *req) {
                     if (remain != value && result >= 0)
                         app_config.record_segment_size = result;
                 }
+                else if (EQUALS(key, "duration")) {
+                    long result = strtol(value, &remain, 10);
+                    if (remain != value && result >= 0) duration = result;
+                }
                 else if (EQUALS(key, "reserve")) {
                     long result = strtol(value, &remain, 10);
                     if (remain != value && result >= 0)
@@ -1829,8 +1834,13 @@ void respond_request(http_request_t *req) {
              * records whenever enabled, otherwise start/stop decide. */
             if (!app_config.record_enable || (wantStop && !app_config.record_continuous)) {
                 if (record_active()) record_stop();
-            } else if (app_config.record_continuous || wantStart)
-                record_start();
+            } else if (app_config.record_continuous || wantStart) {
+                /* "start&duration=N" records for N seconds, repeating it
+                 * moves the end so an event source can keep it going;
+                 * a plain "start" records until "stop" */
+                if (record_start() && wantStart)
+                    record_stop_after(duration > 0 ? duration : 0);
+            }
         }
         char start_time[32] = "", storage[64];
         record_storage(storage, sizeof(storage));
@@ -1847,11 +1857,12 @@ void respond_request(http_request_t *req) {
             "\r\n"
             "{\"recording\":%s,\"start_time\":\"%s\",\"continuous\":%s,\"path\":\"%s\","
             "\"filename\":\"%s\",\"segment_duration\":%d,\"segment_size\":%d,"
-            "\"enable\":%s,\"reserve\":%d,\"storage\":\"%s\"}",
+            "\"enable\":%s,\"reserve\":%d,\"storage\":\"%s\",\"stop_in\":%u}",
                 record_active() ? "true" : "false", start_time, app_config.record_continuous ? "true" : "false",
                 app_config.record_path, app_config.record_filename,
                 app_config.record_segment_duration, app_config.record_segment_size,
-                app_config.record_enable ? "true" : "false", app_config.record_reserve, storage);
+                app_config.record_enable ? "true" : "false", app_config.record_reserve, storage,
+                record_stop_in());
         send_and_close(req->clntFd, response, respLen);
         return;
     }

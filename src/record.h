@@ -22,6 +22,8 @@
 
 bool record_start(void);
 void record_stop(void);
+void record_stop_after(unsigned int seconds);
+unsigned int record_stop_in(void);
 bool record_active(void);
 time_t record_start_time(void);
 void record_tick(void);
