@@ -11,7 +11,11 @@
  *     in the process before us (LD_PRELOAD both); dlopen() of one alone fails.
  *   - MI_VENC_GetStreamTimeOut() hands back one Annex-B buffer per frame:
  *     word 0 = data pointer, word 1 = length, words 2-3 = timestamp, word 4 = type.
- *   - Rate control mode 0 is CBR, 1 is VBR.
+ *   - Rate control modes are 0 none, 1 VBR, 2 CBR, 3 fixed QP: VBR and CBR
+ *     are the other way round from later chips (_MI_VENC_SetRcParamEx, called
+ *     from MI_VENC_CreateChn, hands 1 to _MI_VENC_SetVbr and 2 to
+ *     _MI_VENC_SetCbr). With 0 the H.264 encoder ignores the bitrate and sits
+ *     at QP 48; the JPEG encoder is left at 0, its quality sets the size.
  */
 
 typedef struct { unsigned int width, height; } i3_dim;
@@ -723,10 +727,11 @@ int i3_video_create(char index, hal_vidconfig *config)
     channel.attrib.mode = I3_MODE_TUNNEL;
 
     if (config->mode == HAL_VIDMODE_CBR) {
-        channel.rate.mode = 0;
+        channel.rate.mode = channel.attrib.codec == 2 ? 0 : 2;
         channel.rate.cbr.gop = config->gop;
         channel.rate.cbr.statTime = 1;
         channel.rate.cbr.bitrate = (unsigned int)config->bitrate << 10;
+        channel.rate.cbr.avgLvl = 1;
         channel.rate.cbr.maxQual = config->maxQual ? config->maxQual : 45;
         channel.rate.cbr.minQual = config->minQual ? config->minQual : 20;
     } else {
@@ -827,7 +832,9 @@ void *i3_video_thread(void)
             active = 1;
 
             memset(stream, 0, sizeof(stream));
-            if (i3.vencGet(i, stream, 200)) continue;
+            // A channel that is being restarted fails at once instead of
+            // waiting out the timeout; don't spin on it.
+            if (i3.vencGet(i, stream, 200)) { usleep(10000); continue; }
 
             unsigned char *data = (unsigned char*)(unsigned long)stream[0];
             unsigned int length = stream[1];
