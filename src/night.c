@@ -142,7 +142,7 @@ void *night_thread(void) {
         // No light sensor: decide from how hard the auto-exposure has to work.
         // Exposure index = sensor gain x ISP gain x shutter (relative to 40 ms).
         // raw = the same in 1/1024 steps, for comparing readings in night mode.
-        unsigned int sg, ig, us, luma, over = 0, drop = 0, dwell = 0, wait = 6, base = 0;
+        unsigned int sg, ig, us, luma, over = 0, drop = 0, dwell = 0, wait = 120, base = 0;
         while (keepRunning && nightOn) {
             for (int i = 0; i < app_config.check_interval_s * 5 && keepRunning && nightOn; i++)
                 usleep(200000);
@@ -157,17 +157,19 @@ void *night_thread(void) {
                 // Two readings in a row and at least six intervals in day mode
                 if (over >= 2 && dwell >= 6) {
                     night_mode(true);
-                    over = drop = dwell = base = 0; wait = 6;
+                    over = drop = dwell = base = 0; wait = 120;
                 }
                 continue;
             }
             // Night, IR lamps on: they light the scene, so the exposure says
-            // nothing about daylight by itself. Remember what it settles at and
-            // look for it dropping (more light than the lamps give), and probe
-            // now and then anyway.
+            // nothing about daylight by itself. Remember the darkest it settles
+            // at and look for it dropping (more light than the lamps give), or
+            // the picture getting brighter than the auto-exposure aims for.
+            // Each probe blanks the picture for a moment, so the timed ones
+            // start after ten minutes and back off to about once an hour.
             if (idx > app_config.exposure_day) { drop = 0; base = 0; continue; }
-            if (dwell == 2 || !base) base = raw;
-            drop = (raw * 10 < base * 8) ? drop + 1 : 0;
+            if (dwell >= 2 && raw > base) base = raw;
+            drop = (raw * 10 < base * 8 || luma >= 80) ? drop + 1 : 0;
             if (dwell < 3 || (drop < 2 && dwell < wait)) continue;
             // Switch the lamps off for a moment and see whether there is light
             // without them.
@@ -181,7 +183,7 @@ void *night_thread(void) {
             else {
                 // Still dark: lamps back on, wait longer before the next timed probe
                 night_irled(true);
-                if (drop < 2 && wait < 60) wait *= 2;
+                if (drop < 2 && wait < 720) wait = wait * 2 > 720 ? 720 : wait * 2;
             }
             over = drop = dwell = base = 0;
         }
