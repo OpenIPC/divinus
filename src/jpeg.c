@@ -31,6 +31,7 @@ int jpeg_init() {
 
     {
         hal_vidconfig config;
+        memset(&config, 0, sizeof(config));
         config.width = app_config.jpeg_width;
         config.height = app_config.jpeg_height;
         config.codec = HAL_VIDCODEC_JPG;

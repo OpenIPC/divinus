@@ -757,6 +757,7 @@ int media_mjpeg_enable(void) {
 
     {
         hal_vidconfig config;
+        memset(&config, 0, sizeof(config));
         config.width = app_config.mjpeg_width;
         config.height = app_config.mjpeg_height;
         config.codec = HAL_VIDCODEC_MJPG;
@@ -848,6 +849,7 @@ int media_mp4_enable(void) {
 
     {
         hal_vidconfig config;
+        memset(&config, 0, sizeof(config));
         config.width = app_config.mp4_width;
         config.height = app_config.mp4_height;
         config.codec = app_config.mp4_codecH265 ?
