@@ -458,10 +458,36 @@ int i3_channel_bind(char index, char framerate)
     return i3.vencStart(index);
 }
 
-// Grayscale for night mode is done by the encoder. MI_ISP_SetColorToGray() also
-// exists and accepts the flag, but has no visible effect on this pipeline.
+// Grayscale for night mode is done by the ISP, so every channel (streams and
+// snapshots) turns gray. MI_ISP_SetColorToGray(chn, attr) takes the attribute
+// by value; its layout is the ColorToGray page of I3_isp_api.xml: Enable,
+// WBCtrlEnable, OpType (0 auto, 1 manual), Auto.Enable[16], Manual.Enable.
+// MI_VENC_SetColor2Grey() is only the fallback: it leaves the bottom of a
+// 1080p frame in colour and the MJPEG encoder does not support it at all.
+typedef struct {
+    unsigned int enable, wbCtrlEnable, opType;
+    unsigned int autoEnable[16];
+    unsigned int manualEnable;
+} i3_isp_colortogray;
+
 int i3_channel_grayscale(char enable)
 {
+    int (*getGray)(int, i3_isp_colortogray*) =
+        dlsym(RTLD_DEFAULT, "MI_ISP_GetColorToGray");
+    int (*setGray)(int, i3_isp_colortogray) =
+        dlsym(RTLD_DEFAULT, "MI_ISP_SetColorToGray");
+
+    if (getGray && setGray) {
+        i3_isp_colortogray attr;
+        memset(&attr, 0, sizeof(attr));
+        getGray(0, &attr);
+        attr.enable = 1;
+        attr.opType = 1;
+        attr.manualEnable = enable ? 1 : 0;
+        if (!setGray(0, attr))
+            return EXIT_SUCCESS;
+    }
+
     int (*setGrey)(int, int*) = dlsym(i3.handle, "MI_VENC_SetColor2Grey");
     if (!setGrey) return EXIT_FAILURE;
 
