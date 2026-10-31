@@ -82,16 +82,6 @@ static void close_socket_fd(int sockFd) {
 void free_client(int i) {
     if (client_fds[i].sockFd < 0) return;
 
-    if (!access("/tmp/http.log", W_OK)) {
-        int e = errno;
-        FILE *lf = fopen("/tmp/http.log", "a");
-        if (lf) {
-            fprintf(lf, "%ld DROP client %d type %d errno %d (%s)\n", (long)time(NULL), i,
-                client_fds[i].type, e, strerror(e));
-            fclose(lf);
-        }
-    }
-
     close_socket_fd(client_fds[i].sockFd);
     client_fds[i].sockFd = -1;
     client_fds[i].type = -1;
@@ -554,8 +544,12 @@ static pthread_mutex_t clip_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void *send_clip_thread(void *arg) {
     clip_job_t *job = arg;
     char *buf = malloc(32768), header[512];
-    FILE *file = fopen(job->path, "rb");
+    /* Only regular files in the recording directory, not what a link points at */
+    int clipFd = open(job->path, O_RDONLY | O_NOFOLLOW);
+    FILE *file = clipFd >= 0 ? fdopen(clipFd, "rb") : NULL;
     struct stat st;
+
+    if (clipFd >= 0 && !file) close(clipFd);
 
     if (!buf || !file || fstat(fileno(file), &st) || !S_ISREG(st.st_mode)) {
         send_http_error(job->fd, 404);
@@ -631,7 +625,11 @@ static void send_clip_list(int fd) {
     while (dir && (ent = readdir(dir))) {
         size_t n = strlen(ent->d_name);
         if (n < 5 || n > 120 || strcmp(ent->d_name + n - 4, ".mp4")) continue;
-        if (strpbrk(ent->d_name, "\"\\")) continue;
+        /* Names go into JSON as they are: skip any that would need escaping */
+        bool plain = true;
+        for (const char *c = ent->d_name; *c && plain; c++)
+            plain = (unsigned char)*c >= 0x20 && *c != '"' && *c != '\\';
+        if (!plain) continue;
         if (count == cap) {
             char **grown = realloc(names, (cap = cap ? cap * 2 : 64) * sizeof(*names));
             if (!grown) break;
@@ -654,7 +652,7 @@ static void send_clip_list(int fd) {
         char path[RECORD_PATH_MAX];
         struct stat st;
         snprintf(path, sizeof(path), "%s/%s", app_config.record_path, names[i]);
-        if (stat(path, &st) || !S_ISREG(st.st_mode)) continue;
+        if (lstat(path, &st) || !S_ISREG(st.st_mode)) continue;
         len += sprintf(out + len, "%s{\"name\":\"%s\",\"size\":%lld}",
             out[len - 1] == '[' ? "" : ",", names[i], (long long)st.st_size);
     }
@@ -803,19 +801,6 @@ void respond_request(http_request_t *req) {
     int respLen = 0;
 
     if (req->clntFd < 0) return;
-
-    /* Request trace for debugging clients; active only while the file exists. */
-    if (!access("/tmp/http.log", W_OK) &&
-        !(EQUALS(req->uri, "/api/status") && (!req->query || !*req->query))) {
-        FILE *lf = fopen("/tmp/http.log", "a");
-        if (lf) {
-            char *ua = request_header("User-Agent"), *rg = request_header("Range");
-            if (ftell(lf) < 65536)
-                fprintf(lf, "%ld %s %s ?%s | %s | range=%s\n", (long)time(NULL), req->method,
-                    req->uri, req->query ? req->query : "", ua ? ua : "-", rg ? rg : "-");
-            fclose(lf);
-        }
-    }
 
     if (!EQUALS(req->method, "GET") && !EQUALS(req->method, "POST")) {
         send_http_error(req->clntFd, 405);
@@ -1505,17 +1490,6 @@ void respond_request(http_request_t *req) {
                 req->paysize >= 2 && req->total >= req->header_len + req->paysize)
                 ok = i3_speaker_write((short*)req->payload, req->paysize / 2);
             volume = i3_speaker_volume(-1);
-            if (EQUALS(req->method, "POST") && !access("/tmp/http.log", W_OK)) {
-                int peak = 0, n = req->total >= req->header_len + req->paysize ? req->paysize / 2 : 0;
-                for (int i = 0; i < n; i++) {
-                    int v = ((short*)req->payload)[i];
-                    if (v < 0) v = -v;
-                    if (v > peak) peak = v;
-                }
-                FILE *lf = fopen("/tmp/http.log", "a");
-                if (lf) { fprintf(lf, "SPEAK paysize=%d total=%d hdr=%d samples=%d peak=%d ok=%d\n",
-                    req->paysize, req->total, req->header_len, n, peak, !ok); fclose(lf); }
-            }
         }
 #endif
         respLen = sprintf(response,
@@ -1820,7 +1794,7 @@ void respond_request(http_request_t *req) {
                 }
                 else if (EQUALS(key, "duration")) {
                     long result = strtol(value, &remain, 10);
-                    if (remain != value && result >= 0) duration = result;
+                    if (remain != value && result >= 0 && result <= 86400) duration = result;
                 }
                 else if (EQUALS(key, "reserve")) {
                     long result = strtol(value, &remain, 10);
@@ -1831,8 +1805,10 @@ void respond_request(http_request_t *req) {
             }
 
             /* Bring the recorder in line with the settings: continuous mode
-             * records whenever enabled, otherwise start/stop decide. */
-            if (!app_config.record_enable || (wantStop && !app_config.record_continuous)) {
+             * records whenever enabled, otherwise start/stop decide. An
+             * explicit stop also ends continuous mode, or it would restart. */
+            if (!app_config.record_enable || wantStop) {
+                if (wantStop) app_config.record_continuous = 0;
                 if (record_active()) record_stop();
             } else if (app_config.record_continuous || wantStart) {
                 /* "start&duration=N" records for N seconds, repeating it
