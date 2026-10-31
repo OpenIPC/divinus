@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope" xmlns:ter="http://www.onvif.org/ver10/error" xmlns:wsrf-rw="http://docs.oasis-open.org/wsrf/rw-2">
+  <SOAP-ENV:Body>
+    <SOAP-ENV:Fault>
+      <SOAP-ENV:Code>
+        <SOAP-ENV:Value>SOAP-ENV:%s</SOAP-ENV:Value>
+        <SOAP-ENV:Subcode>
+          <SOAP-ENV:Value>%s</SOAP-ENV:Value>
+        </SOAP-ENV:Subcode>
+      </SOAP-ENV:Code>
+      <SOAP-ENV:Reason>
+        <SOAP-ENV:Text xml:lang="en">%s</SOAP-ENV:Text>
+      </SOAP-ENV:Reason>
+    </SOAP-ENV:Fault>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

@@ -37,6 +37,15 @@ struct AppConfig {
     char adc_device[128];
     hal_light night_lamp;
     int adc_threshold;
+    unsigned int night_gain;
+    unsigned int day_gain;
+    unsigned int night_hold_s;
+    unsigned int day_hold_s;
+
+    // [motion_detect]
+    bool motion_detect_enable;
+    int motion_detect_sensitivity;
+    int motion_detect_hold_s;
 
     // [isp]
     bool mirror;
