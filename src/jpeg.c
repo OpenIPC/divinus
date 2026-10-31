@@ -31,6 +31,7 @@ int jpeg_init() {
 
     {
         hal_vidconfig config;
+        memset(&config, 0, sizeof(config));
         config.width = app_config.jpeg_width;
         config.height = app_config.jpeg_height;
         config.codec = HAL_VIDCODEC_JPG;
@@ -39,6 +40,7 @@ int jpeg_init() {
 
         switch (plat) {
 #if defined(__ARM_PCS_VFP)
+            case HAL_PLATFORM_I3:  ret = i3_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_I6:  ret = i6_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_M6:  ret = m6_video_create(jpeg_index, &config); break;
@@ -82,6 +84,7 @@ void jpeg_deinit() {
 
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  i3_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_I6:  i6_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_M6:  m6_video_destroy(jpeg_index); break;
@@ -135,6 +138,7 @@ int jpeg_get(short width, short height, char quality, char grayscale,
 
     switch (plat) {
  #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  ret = i3_video_snapshot_grab(jpeg_index, quality, jpeg); break;
         case HAL_PLATFORM_I6:  ret = i6_video_snapshot_grab(jpeg_index, quality, jpeg); break;
         case HAL_PLATFORM_I6C: ret = i6c_video_snapshot_grab(jpeg_index, quality, jpeg); break;
         case HAL_PLATFORM_M6:  ret = m6_video_snapshot_grab(jpeg_index, quality, jpeg); break;

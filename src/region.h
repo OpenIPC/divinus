@@ -63,6 +63,7 @@ typedef struct {
     int hand, color;
     short opal, posx, posy;
     char updt;
+    char anchor; /* index into osd_anchors[]; posx/posy are the offsets from it */
     char font[32];
     char text[80];
     char img[64];
@@ -72,6 +73,9 @@ typedef struct {
 
 extern osd osds[MAX_OSD];
 extern char timefmt[64];
+extern const char *osd_anchors[9];
+char region_anchor_parse(const char *name);
+void region_anchor_place(char id, unsigned short width, unsigned short height, hal_rect *rect);
 
 void region_defaults(osd *o, int id);
 int region_start();

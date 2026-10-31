@@ -3,7 +3,7 @@
 pthread_mutex_t mp4_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 uint32_t default_sample_size = 40000;
-uint32_t last_fragment_duration, timescale;
+uint32_t last_video_duration, last_audio_duration, timescale;
 uint64_t last_vid_tstamp;
 uint32_t vid_duration;
 
@@ -19,6 +19,8 @@ uint16_t buf_sps_len = 0;
 char buf_vps[128];
 uint16_t buf_vps_len = 0;
 struct BitBuf buf_aud;
+#define MP4_AUD_MAX 16
+static uint32_t aud_frm_size[MP4_AUD_MAX], aud_frm_samp[MP4_AUD_MAX], aud_frm_cnt;
 struct BitBuf buf_header;
 struct BitBuf buf_mdat;
 struct BitBuf buf_moof;
@@ -57,6 +59,7 @@ enum BufError create_header(char is_h265) {
     moov_info.vps_length = buf_vps_len;
 
     buf_aud.offset = 0;
+    aud_frm_cnt = 0;
     buf_header.offset = 0;
     enum BufError err = write_header(&buf_header, &moov_info);
     chk_err return BUF_OK;
@@ -109,43 +112,94 @@ void mp4_set_timestamp(uint64_t tstamp) {
 
 enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     char is_iframe) {
-    uint64_t aud_ticks = 0;
     enum BufError err;
 
-    struct SampleInfo samples_info[2];
+    /* One MP4 sample per MPEG audio frame: decoders that validate packet
+     * lengths reject several frames glued into a single sample. */
+    struct SampleInfo samples_info[1 + MP4_AUD_MAX];
+    uint32_t aud_cnt = 0, aud_len = 0, aud_dur = 0;
     memset(samples_info, 0, sizeof(samples_info));
     samples_info[0].size = nal_len + 4; // add size of sample
     samples_info[0].duration = vid_duration;
     samples_info[0].flags = is_iframe ? 0 : 65536;
-    samples_info[1].size = buf_aud.offset;
-    if (aud_bitrate > 0 && buf_aud.offset > 0) {
-        aud_ticks = ((uint64_t)(buf_aud.offset << 3) * timescale) /
-            (aud_bitrate * 1000);
-        samples_info[1].duration = (uint32_t)aud_ticks;
-        last_fragment_duration = MAX(samples_info[1].duration, samples_info[0].duration);
-    } else {
-        samples_info[1].duration = 0;
-        last_fragment_duration = samples_info[0].duration;
+    if (aud_frm_cnt > 0 && aud_samplerate > 0) {
+        /* Frames handed over one by one with their length (Opus) */
+        for (; aud_cnt < aud_frm_cnt; aud_cnt++) {
+            samples_info[1 + aud_cnt].size = aud_frm_size[aud_cnt];
+            samples_info[1 + aud_cnt].duration =
+                (uint32_t)((uint64_t)aud_frm_samp[aud_cnt] * timescale / aud_samplerate);
+            aud_dur += samples_info[1 + aud_cnt].duration;
+            aud_len += aud_frm_size[aud_cnt];
+        }
+    } else if (aud_codec != 0x69 /* MP3 */ && aud_bitrate > 0 && buf_aud.offset > 0) {
+        samples_info[1].size = aud_len = buf_aud.offset;
+        samples_info[1].duration = aud_dur = (uint32_t)(((uint64_t)(buf_aud.offset << 3) *
+            timescale) / (aud_bitrate * 1000));
+        aud_cnt = 1;
+    } else if (aud_bitrate > 0 && aud_samplerate > 0 && buf_aud.offset > 0) {
+        static const uint16_t kbps[2][15] = {
+            {0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320},
+            {0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160}};
+        static const uint16_t rates[3] = {44100, 48000, 32000};
+        const unsigned char *a = (const unsigned char*)buf_aud.buf;
+        while (aud_cnt < MP4_AUD_MAX && aud_len + 4 <= buf_aud.offset) {
+            const unsigned char *h = a + aud_len;
+            if (h[0] != 0xFF || (h[1] & 0xE6) != 0xE2) break; // Layer III sync
+            unsigned ver = (h[1] >> 3) & 3, bi = h[2] >> 4, ri = (h[2] >> 2) & 3;
+            if (ver == 1 || bi == 0 || bi == 15 || ri == 3) break;
+            unsigned lsf = ver != 3, rate = rates[ri] >> (ver == 3 ? 0 : ver == 2 ? 1 : 2);
+            unsigned spf = lsf ? 576 : 1152;
+            unsigned len = spf / 8 * kbps[lsf][bi] * 1000 / rate + ((h[2] >> 1) & 1);
+            if (aud_len + len > buf_aud.offset) break;
+            samples_info[1 + aud_cnt].size = len;
+            samples_info[1 + aud_cnt].duration = (uint32_t)((uint64_t)spf * timescale / rate);
+            aud_dur += samples_info[1 + aud_cnt].duration;
+            aud_len += len;
+            aud_cnt++;
+        }
     }
+    /* Each track keeps its own clock; sharing one made every video frame
+     * inherit the length of the audio chunk muxed with it. */
+    last_video_duration = samples_info[0].duration;
+    last_audio_duration = aud_dur;
 
     buf_moof.offset = 0;
     err = write_moof(
         &buf_moof, 0, 0, 0, default_sample_size, samples_info,
-        1, samples_info + 1, 1);
+        1, samples_info + 1, aud_cnt ? aud_cnt : 1);
     chk_err;
 
     buf_mdat.offset = 0;
     err = write_mdat(&buf_mdat, nal_data, nal_len,
-        buf_aud.buf, buf_aud.offset);
+        buf_aud.buf, aud_len);
     chk_err;
 
+    /* Anything that is not a whole frame is unusable: drop it and resync. */
     buf_aud.offset = 0;
+    aud_frm_cnt = 0;
 
+    return BUF_OK;
+}
+
+enum BufError mp4_ingest_audio_frame(const char *data, const uint32_t len,
+    const uint32_t samples) {
+    if (aud_bitrate == 0) return BUF_OK;
+    /* Nobody draining (no client): keep only the newest frames */
+    if (aud_frm_cnt >= MP4_AUD_MAX) { aud_frm_cnt = 0; buf_aud.offset = 0; }
+    enum BufError err = put(&buf_aud, data, len);
+    chk_err;
+    aud_frm_size[aud_frm_cnt] = len;
+    aud_frm_samp[aud_frm_cnt++] = samples;
     return BUF_OK;
 }
 
 enum BufError mp4_ingest_audio(const char *data, const uint32_t len) {
     enum BufError err;
+    /* Audio is only drained when a slice is muxed; with no client attached it
+     * would pile up and the next fragment would jump the timeline by minutes. */
+    if (aud_bitrate == 0) return BUF_OK;
+    if (buf_aud.offset + len > (uint32_t)aud_bitrate * 1000 / 8 / 4)
+        buf_aud.offset = 0;
     err = put(&buf_aud, data, len);
     chk_err;
 
@@ -161,16 +215,14 @@ enum BufError mp4_set_state(struct Mp4State *state) {
         &buf_moof, pos_base_data_offset, state->base_data_offset);
     chk_err if (pos_audio_media_decode_time > 0) err = put_u64_be_to_offset(
         &buf_moof, pos_audio_media_decode_time,
-        state->base_media_decode_time);
+        state->audio_media_decode_time);
     chk_err if (pos_video_media_decode_time > 0) err = put_u64_be_to_offset(
         &buf_moof, pos_video_media_decode_time,
         state->base_media_decode_time);
     chk_err state->sequence_number++;
     state->base_data_offset += buf_moof.offset + buf_mdat.offset;
-    if (last_vid_tstamp)
-        state->base_media_decode_time += vid_duration;
-    else
-        state->base_media_decode_time += last_fragment_duration;
+    state->base_media_decode_time += last_video_duration;
+    state->audio_media_decode_time += last_audio_duration;
     return BUF_OK;
 }
 

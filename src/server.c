@@ -57,6 +57,7 @@ int server_fd = -1;
 pthread_t server_thread_id;
 pthread_mutex_t client_fds_mutex;
 
+#include "sysauth.h"
 static bool is_local_address(const char *client_ip) {
     if (!client_ip) return false;
 
@@ -235,10 +236,12 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
     for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i)
         if (client_fds[i].sockFd >= 0 && client_fds[i].type == STREAM_MP4) { anyClient = 1; break; }
     pthread_mutex_unlock(&client_fds_mutex);
+    char recording = record_active();
 
     for (unsigned int i = 0; i < stream->count; ++i) {
         hal_vidpack *pack = &stream->pack[i];
         unsigned char *pack_data = pack->data + pack->offset;
+        char gotSlice = 0, isKey = 0;
 
         if (plat == HAL_PLATFORM_AK)
             mp4_set_timestamp(pack->timestamp);
@@ -255,13 +258,19 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                 mp4_set_pps(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, isH265);
             else if (pack->nalu[j].type == NalUnitType_VPS_HEVC && pack->nalu[j].length <= UINT16_MAX)
                 mp4_set_vps(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen);
-            else if (!anyClient)
+            else if (!anyClient && !recording)
                 continue;
-            else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux)
+            else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux) {
                 mp4_set_slice(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, 1);
-            else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr)
+                gotSlice = isKey = 1;
+            } else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr) {
                 mp4_set_slice(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, 0);
+                gotSlice = 1;
+            }
         }
+        /* A pack without a slice leaves no new fragment to hand out */
+        if (!gotSlice) continue;
+        if (recording) record_fragment(isKey);
         if (!anyClient) continue;
 
         static enum BufError err;
@@ -286,6 +295,7 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                 client_fds[i].mp4.sequence_number = 0;
                 client_fds[i].mp4.base_data_offset = header_buf.offset;
                 client_fds[i].mp4.base_media_decode_time = 0;
+                client_fds[i].mp4.audio_media_decode_time = 0;
                 client_fds[i].mp4.header_sent = true;
                 client_fds[i].mp4.nals_count = 0;
                 client_fds[i].mp4.default_sample_duration =
@@ -517,6 +527,206 @@ char *request_header(const char *name) {
 
 http_header_t *request_headers(void) { return http_headers; }
 
+/* Recorded clips are sent from their own thread: the server loop handles one
+ * request at a time and a download would freeze everything else. */
+#define CLIP_MAX_SENDERS 3
+typedef struct {
+    int fd;
+    char path[RECORD_PATH_MAX];
+    char name[128];
+    long long first, last;
+    bool hasRange, download;
+} clip_job_t;
+
+static int clip_senders;
+static pthread_mutex_t clip_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void *send_clip_thread(void *arg) {
+    clip_job_t *job = arg;
+    char *buf = malloc(32768), header[512];
+    /* Only regular files in the recording directory, not what a link points at */
+    int clipFd = open(job->path, O_RDONLY | O_NOFOLLOW);
+    FILE *file = clipFd >= 0 ? fdopen(clipFd, "rb") : NULL;
+    struct stat st;
+
+    if (clipFd >= 0 && !file) close(clipFd);
+
+    if (!buf || !file || fstat(fileno(file), &st) || !S_ISREG(st.st_mode)) {
+        send_http_error(job->fd, 404);
+        goto done;
+    }
+
+    long long size = st.st_size, first = 0, last = size - 1;
+    if (job->hasRange) {
+        if (job->first < 0) {
+            /* "bytes=-N": the last N bytes */
+            first = size + job->first < 0 ? 0 : size + job->first;
+        } else {
+            first = job->first;
+            if (job->last >= 0 && job->last < last) last = job->last;
+        }
+        if (first > last || first >= size) {
+            int len = sprintf(header, "HTTP/1.1 416 Range Not Satisfiable\r\n"
+                "Content-Range: bytes */%lld\r\nContent-Length: 0\r\nConnection: close\r\n\r\n", size);
+            send_to_fd(job->fd, header, len);
+            close_socket_fd(job->fd);
+            goto done;
+        }
+    }
+
+    int len = sprintf(header, "HTTP/1.1 %s\r\n"
+        "Content-Type: video/mp4\r\n"
+        "Accept-Ranges: bytes\r\n"
+        "Content-Length: %lld\r\n", job->hasRange ? "206 Partial Content" : "200 OK", last - first + 1);
+    if (job->hasRange)
+        len += sprintf(header + len, "Content-Range: bytes %lld-%lld/%lld\r\n", first, last, size);
+    if (job->download)
+        len += sprintf(header + len, "Content-Disposition: attachment; filename=\"%s\"\r\n", job->name);
+    len += sprintf(header + len, "Connection: close\r\n\r\n");
+
+    if (send(job->fd, header, len, MSG_NOSIGNAL) == len && !fseeko(file, first, SEEK_SET)) {
+        long long left = last - first + 1;
+        while (left > 0 && keepRunning) {
+            size_t got = fread(buf, 1, left > 32768 ? 32768 : (size_t)left, file);
+            if (!got) break;
+            size_t sent = 0;
+            while (sent < got) {
+                ssize_t n = send(job->fd, buf + sent, got - sent, MSG_NOSIGNAL);
+                if (n <= 0) goto closing;
+                sent += n;
+            }
+            left -= got;
+        }
+    }
+closing:
+    close_socket_fd(job->fd);
+done:
+    if (file) fclose(file);
+    free(buf);
+    free(job);
+    pthread_mutex_lock(&clip_mutex);
+    clip_senders--;
+    pthread_mutex_unlock(&clip_mutex);
+    return NULL;
+}
+
+static int clip_name_cmp(const void *a, const void *b) {
+    /* Names carry the start time: descending order puts the newest first */
+    return strcmp(*(char *const *)b, *(char *const *)a);
+}
+
+/* Lists the recorded clips as JSON, newest first. */
+static void send_clip_list(int fd) {
+    char **names = NULL, *out;
+    size_t count = 0, cap = 0, len;
+    struct dirent *ent;
+    DIR *dir = opendir(app_config.record_path);
+
+    while (dir && (ent = readdir(dir))) {
+        size_t n = strlen(ent->d_name);
+        if (n < 5 || n > 120 || strcmp(ent->d_name + n - 4, ".mp4")) continue;
+        /* Names go into JSON as they are: skip any that would need escaping */
+        bool plain = true;
+        for (const char *c = ent->d_name; *c && plain; c++)
+            plain = (unsigned char)*c >= 0x20 && *c != '"' && *c != '\\';
+        if (!plain) continue;
+        if (count == cap) {
+            char **grown = realloc(names, (cap = cap ? cap * 2 : 64) * sizeof(*names));
+            if (!grown) break;
+            names = grown;
+        }
+        if (!(names[count] = strdup(ent->d_name))) break;
+        count++;
+    }
+    if (dir) closedir(dir);
+    if (count) qsort(names, count, sizeof(*names), clip_name_cmp);
+
+    if (!(out = malloc(256 + count * 176))) {
+        send_http_error(fd, 500);
+        goto cleanup;
+    }
+    len = sprintf(out, "HTTP/1.1 200 OK\r\n"
+        "Content-Type: application/json;charset=UTF-8\r\n"
+        "Connection: close\r\n\r\n{\"recording\":%s,\"files\":[", record_active() ? "true" : "false");
+    for (size_t i = 0; i < count; i++) {
+        char path[RECORD_PATH_MAX];
+        struct stat st;
+        snprintf(path, sizeof(path), "%s/%s", app_config.record_path, names[i]);
+        if (lstat(path, &st) || !S_ISREG(st.st_mode)) continue;
+        len += sprintf(out + len, "%s{\"name\":\"%s\",\"size\":%lld}",
+            out[len - 1] == '[' ? "" : ",", names[i], (long long)st.st_size);
+    }
+    len += sprintf(out + len, "]}");
+    send_and_close(fd, out, len);
+    free(out);
+cleanup:
+    for (size_t i = 0; i < count; i++) free(names[i]);
+    free(names);
+}
+
+/* Hands a clip over to a sender thread; the socket then belongs to it. */
+static void send_clip(http_request_t *req, const char *name) {
+    clip_job_t *job;
+    pthread_attr_t attr;
+    pthread_t tid;
+    char *range = request_header("Range");
+    size_t n = strlen(name);
+
+    if (n < 5 || n >= sizeof(job->name) || strchr(name, '/') || strcmp(name + n - 4, ".mp4")) {
+        send_http_error(req->clntFd, 404);
+        return;
+    }
+
+    pthread_mutex_lock(&clip_mutex);
+    bool busy = clip_senders >= CLIP_MAX_SENDERS;
+    if (!busy) clip_senders++;
+    pthread_mutex_unlock(&clip_mutex);
+    if (busy || !(job = calloc(1, sizeof(*job)))) {
+        if (!busy) {
+            pthread_mutex_lock(&clip_mutex);
+            clip_senders--;
+            pthread_mutex_unlock(&clip_mutex);
+        }
+        send_http_error(req->clntFd, 500);
+        return;
+    }
+
+    job->fd = req->clntFd;
+    strcpy(job->name, name);
+    snprintf(job->path, sizeof(job->path), "%s/%s", app_config.record_path, name);
+    job->download = req->query && strstr(req->query, "download");
+    job->last = -1;
+    if (range && !strncmp(range, "bytes=", 6)) {
+        char *end;
+        range += 6;
+        if (*range == '-') {
+            job->first = -strtoll(range + 1, &end, 10);
+            job->hasRange = end != range + 1 && job->first < 0;
+        } else {
+            job->first = strtoll(range, &end, 10);
+            job->hasRange = end != range && *end == '-';
+            if (job->hasRange && end[1] >= '0' && end[1] <= '9') job->last = strtoll(end + 1, NULL, 10);
+        }
+    }
+
+    /* Long transfers over WiFi: a stalled client is dropped after 20 s */
+    struct timeval tv = { .tv_sec = 20, .tv_usec = 0 };
+    setsockopt(job->fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_attr_setstacksize(&attr, 64 * 1024);
+    if (pthread_create(&tid, &attr, send_clip_thread, job)) {
+        pthread_mutex_lock(&clip_mutex);
+        clip_senders--;
+        pthread_mutex_unlock(&clip_mutex);
+        free(job);
+        send_http_error(req->clntFd, 500);
+    }
+    pthread_attr_destroy(&attr);
+}
+
+
 void parse_request(http_request_t *req) {
     struct sockaddr_in client_sock;
     socklen_t client_sock_len = sizeof(client_sock);
@@ -686,7 +896,10 @@ void respond_request(http_request_t *req) {
             strcpy(valid, "Basic ");
             base64_encode(valid + 6, cred, strlen(cred));
 
-            if (!auth || !EQUALS(auth, valid)) {
+            bool granted = EQUALS(app_config.web_auth_pass, "@system") ?
+                (auth && STARTS_WITH(auth, "Basic ") && sysauth_check_basic(auth + 6)) :
+                (auth && EQUALS(auth, valid));
+            if (!granted) {
                 respLen = sprintf(response,
                     "HTTP/1.1 401 Unauthorized\r\n"
                     "Content-Type: text/plain\r\n"
@@ -1266,6 +1479,45 @@ void respond_request(http_request_t *req) {
         send_and_close(req->clntFd, response, respLen);
         return;
     }
+    if (EQUALS(req->uri, "/api/speak")) {
+        /* Talk-back: the body is raw 16 kHz mono signed 16-bit PCM */
+        int ok = EXIT_FAILURE, volume = -1;
+#if defined(__ARM_PCS_VFP)
+        if (plat == HAL_PLATFORM_I3 && app_config.audio_enable) {
+            char *vol = req->query ? strstr(req->query, "volume=") : NULL;
+            if (vol) ok = (volume = i3_speaker_volume(atoi(vol + 7))) < 0;
+            if (EQUALS(req->method, "POST") &&
+                req->paysize >= 2 && req->total >= req->header_len + req->paysize)
+                ok = i3_speaker_write((short*)req->payload, req->paysize / 2);
+            volume = i3_speaker_volume(-1);
+        }
+#endif
+        respLen = sprintf(response,
+            "HTTP/1.1 %s\r\n"
+            "Content-Type: application/json;charset=UTF-8\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "{\"ok\":%s,\"volume\":%d}", ok ? "503 Service Unavailable" : "200 OK",
+            ok ? "false" : "true", volume);
+        send_and_close(req->clntFd, response, respLen);
+        return;
+    }
+    if (EQUALS(req->uri, "/api/lamp")) {
+        /* White lamp only; unlike /api/night this leaves the day/night logic alone */
+        if (req->query) {
+            if (strstr(req->query, "on=1") || strstr(req->query, "on=true")) night_whiteled(1);
+            else if (strstr(req->query, "on=0") || strstr(req->query, "on=false")) night_whiteled(0);
+            else if (strstr(req->query, "toggle")) night_whiteled(!night_whiteled_on());
+        }
+        respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json;charset=UTF-8\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "{\"on\":%s}", night_whiteled_on() ? "true" : "false");
+        send_and_close(req->clntFd, response, respLen);
+        return;
+    }
     if (EQUALS(req->uri, "/api/night")) {
         if (req->query) {
             char *remain;
@@ -1309,6 +1561,11 @@ void respond_request(http_request_t *req) {
                         night_irled(1);
                     else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
                         night_irled(0);
+                } else if (EQUALS(key, "whiteled")) {
+                    if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
+                        night_whiteled(1);
+                    else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
+                        night_whiteled(0);
                 } else if (EQUALS(key, "irled_pin")) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
@@ -1328,18 +1585,27 @@ void respond_request(http_request_t *req) {
             night_disable();
             if (app_config.night_mode_enable) night_enable();
         }
+        unsigned int expo[4] = {0};
+        int expoBv = 0;
+        night_exposure(&expo[0], &expo[1], &expo[2], &expo[3], &expoBv);
         respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
             "{\"active\":%s,\"manual\":%s,\"grayscale\":%s,\"ircut\":%s,\"ircut_pin1\":%d,\"ircut_pin2\":%d,"
-            "\"irled\":%s,\"irled_pin\":%d,\"irsense_pin\":%d,\"adc_device\":\"%s\",\"adc_threshold\":%d}",
+            "\"irled\":%s,\"whiteled\":%s,\"irled_pin\":%d,\"irsense_pin\":%d,\"adc_device\":\"%s\",\"adc_threshold\":%d,"
+            "\"sensor_gain\":%u,\"isp_gain\":%u,\"shutter_us\":%u,\"avg_y\":%u,\"bv\":%d,"
+            "\"exposure\":%u,\"exposure_night\":%u,\"exposure_day\":%u}",
             app_config.night_mode_enable ? "true" : "false", night_manual_on() ? "true" : "false",
             night_grayscale_on() ? "true" : "false",
             night_ircut_on() ? "true" : "false", app_config.ir_cut_pin1, app_config.ir_cut_pin2,
-            night_irled_on() ? "true" : "false", app_config.ir_led_pin, app_config.ir_sensor_pin,
-            app_config.adc_device, app_config.adc_threshold);
+            night_irled_on() ? "true" : "false", night_whiteled_on() ? "true" : "false",
+            app_config.ir_led_pin, app_config.ir_sensor_pin,
+            app_config.adc_device, app_config.adc_threshold,
+            expo[0], expo[1], expo[2], expo[3], expoBv,
+            (unsigned int)((unsigned long long)expo[0] * expo[1] / 1024 * expo[2] / 40000 / 1024),
+            app_config.exposure_night, app_config.exposure_day);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
@@ -1423,6 +1689,8 @@ void respond_request(http_request_t *req) {
                     if (remain != value)
                         osds[id].opal = result & 0xFF;
                 }
+                else if (EQUALS(key, "anchor"))
+                    osds[id].anchor = region_anchor_parse(value);
                 else if (EQUALS(key, "posx")) {
                     short result = strtol(value, &remain, 10);
                     if (remain != value)
@@ -1460,25 +1728,44 @@ void respond_request(http_request_t *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"id\":%d,\"color\":\"#%x\",\"opal\":%d,\"pos\":[%d,%d],"
+            "{\"id\":%d,\"color\":\"#%x\",\"opal\":%d,\"anchor\":\"%s\",\"pos\":[%d,%d],"
             "\"font\":\"%s\",\"size\":%.1f,\"text\":\"%s\",\"img\":\"%s\","
             "\"outl\":\"#%x\",\"thick\":%.1f}",
-            id, color, osds[id].opal, osds[id].posx, osds[id].posy,
+            id, color, osds[id].opal, osd_anchors[(unsigned char)osds[id].anchor % 9],
+            osds[id].posx, osds[id].posy,
             osds[id].font, osds[id].size, osds[id].text, osds[id].img,
             osds[id].outl, osds[id].thick);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
 
+    if (EQUALS(req->uri, "/api/recordings")) {
+        send_clip_list(req->clntFd);
+        return;
+    }
+
+    if (STARTS_WITH(req->uri, "/recordings/")) {
+        unescape_uri(req->uri);
+        if (strstr(req->uri, "..")) send_http_error(req->clntFd, 404);
+        else send_clip(req, req->uri + 12);
+        return;
+    }
+
     if (EQUALS(req->uri, "/api/record")) {
         if (req->query) {
             char *remain;
+            char wantStart = 0, wantStop = 0;
+            long duration = -1;
             while (req->query) {
                 char *value = split(&req->query, "&");
                 if (!value || !*value) continue;
                 unescape_uri(value);
                 char *key = split(&value, "=");
-                if (!key || !*key || !value || !*value) continue;
+                if (!key || !*key) continue;
+                /* "start" and "stop" come without a value */
+                if (EQUALS(key, "start")) { wantStart = 1; continue; }
+                if (EQUALS(key, "stop")) { wantStop = 1; continue; }
+                if (!value || !*value) continue;
                 if (EQUALS(key, "enable")) {
                     if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
                         app_config.record_enable = 1;
@@ -1496,29 +1783,47 @@ void respond_request(http_request_t *req) {
                 else if (EQUALS(key, "filename"))
                     strncpy(app_config.record_filename, value, sizeof(app_config.record_filename) - 1);
                 else if (EQUALS(key, "segment_duration")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
+                    long result = strtol(value, &remain, 10);
+                    if (remain != value && result >= 0)
                         app_config.record_segment_duration = result;
                 }
                 else if (EQUALS(key, "segment_size")) {
-                    short result = strtol(value, &remain, 10);
-                    if (remain != value)
+                    long result = strtol(value, &remain, 10);
+                    if (remain != value && result >= 0)
                         app_config.record_segment_size = result;
                 }
+                else if (EQUALS(key, "duration")) {
+                    long result = strtol(value, &remain, 10);
+                    if (remain != value && result >= 0 && result <= 86400) duration = result;
+                }
+                else if (EQUALS(key, "reserve")) {
+                    long result = strtol(value, &remain, 10);
+                    if (remain != value && result >= 0)
+                        app_config.record_reserve = result;
+                }
 
-                if (!app_config.record_enable) continue;
-                if (app_config.record_continuous) continue;
-                if (EQUALS(key, "start"))
-                    record_start();
-                else if (EQUALS(key, "stop"))
-                    record_stop();
+            }
+
+            /* Bring the recorder in line with the settings: continuous mode
+             * records whenever enabled, otherwise start/stop decide. An
+             * explicit stop also ends continuous mode, or it would restart. */
+            if (!app_config.record_enable || wantStop) {
+                if (wantStop) app_config.record_continuous = 0;
+                if (record_active()) record_stop();
+            } else if (app_config.record_continuous || wantStart) {
+                /* "start&duration=N" records for N seconds, repeating it
+                 * moves the end so an event source can keep it going;
+                 * a plain "start" records until "stop" */
+                if (record_start() && wantStart)
+                    record_stop_after(duration > 0 ? duration : 0);
             }
         }
-        char start_time[32] = "";
+        char start_time[32] = "", storage[64];
+        record_storage(storage, sizeof(storage));
         time_t startTime = record_start_time();
         if (startTime) {
             struct tm tm_buf, *tm_info = localtime_r(&startTime, &tm_buf);
-            strftime(start_time, sizeof(start_time), "%Y-%m-%dT%H:%M:%SZ", tm_info);
+            strftime(start_time, sizeof(start_time), "%Y-%m-%d %H:%M:%S", tm_info);
         }
 
         respLen = sprintf(response,
@@ -1527,11 +1832,74 @@ void respond_request(http_request_t *req) {
             "Connection: close\r\n"
             "\r\n"
             "{\"recording\":%s,\"start_time\":\"%s\",\"continuous\":%s,\"path\":\"%s\","
-            "\"filename\":\"%s\",\"segment_duration\":%d,\"segment_size\":%d}",
+            "\"filename\":\"%s\",\"segment_duration\":%d,\"segment_size\":%d,"
+            "\"enable\":%s,\"reserve\":%d,\"storage\":\"%s\",\"stop_in\":%u}",
                 record_active() ? "true" : "false", start_time, app_config.record_continuous ? "true" : "false",
                 app_config.record_path, app_config.record_filename,
-                app_config.record_segment_duration, app_config.record_segment_size);
+                app_config.record_segment_duration, app_config.record_segment_size,
+                app_config.record_enable ? "true" : "false", app_config.record_reserve, storage,
+                record_stop_in());
         send_and_close(req->clntFd, response, respLen);
+        return;
+    }
+
+    if (EQUALS(req->uri, "/api/sub")) {
+        /* The scaler size is read once when the vendor library loads and the
+         * second RTSP server is set up at start, so a change is saved and the
+         * streamer restarts itself. */
+        char changed = 0;
+        if (req->query) {
+            char *remain;
+            while (req->query) {
+                char *value = split(&req->query, "&");
+                if (!value || !*value) continue;
+                unescape_uri(value);
+                char *key = split(&value, "=");
+                if (!key || !*key || !value || !*value) continue;
+                if (EQUALS(key, "enable")) {
+                    bool on = EQUALS_CASE(value, "true") || EQUALS(value, "1");
+                    if (on != app_config.sub_enable) changed = 1;
+                    app_config.sub_enable = on;
+                    continue;
+                }
+                long result = strtol(value, &remain, 10);
+                if (remain == value) continue;
+                unsigned int *field = NULL;
+                long min = 1, max = INT_MAX;
+                if (EQUALS(key, "size")) {
+                    /* "640x360" */
+                    long h = *remain == 'x' ? strtol(remain + 1, NULL, 10) : 0;
+                    /* Sizes the Infinity3 scaler was seen to deliver; others give
+                     * no frames or stop the pipeline. */
+                    if (!((result == 640 && (h == 360 || h == 480)) || (result == 704 && h == 576)))
+                        continue;
+                    if (result != app_config.sub_width || h != app_config.sub_height) changed = 1;
+                    app_config.sub_width = result;
+                    app_config.sub_height = h;
+                    continue;
+                }
+                else if (EQUALS(key, "gop")) { field = &app_config.sub_gop; max = 300; }
+                else if (EQUALS(key, "bitrate")) { field = &app_config.sub_bitrate; min = 32; max = 8192; }
+                else if (EQUALS(key, "rtsp_port")) { field = &app_config.sub_rtsp_port; max = USHRT_MAX; }
+                if (!field || result < min || result > max) continue;
+                if (*field != result) changed = 1;
+                *field = result;
+            }
+        }
+
+        respLen = sprintf(response,
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json;charset=UTF-8\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "{\"enable\":%s,\"size\":\"%dx%d\",\"gop\":%d,\"bitrate\":%d,"
+            "\"rtsp_port\":%d,\"measured\":\"%d fps\",\"restarting\":%s}",
+            app_config.sub_enable ? "true" : "false", app_config.sub_width, app_config.sub_height,
+            app_config.sub_gop, app_config.sub_bitrate,
+            app_config.sub_rtsp_port, media_sub_rate(), changed ? "true" : "false");
+        send_and_close(req->clntFd, response, respLen);
+        if (changed && !app_config_save())
+            kill(getpid(), SIGHUP);
         return;
     }
 
@@ -1573,8 +1941,19 @@ void respond_request(http_request_t *req) {
                 if (!key || !*key || !value || !*value) continue;
                 if (EQUALS(key, "fmt")) {
                     strncpy(timefmt, value, 32);
+                } else if (EQUALS(key, "tz")) {
+                    /* POSIX TZ rule, e.g. CST6CDT,M3.2.0,M11.1.0. Kept where the
+                     * rest of the system reads it, and applied right away. */
+                    FILE *tzf;
+                    if (strlen(value) < 64 && !strpbrk(value, "\n\r\"'`$;|&") &&
+                        (tzf = fopen("/etc/TZ", "w"))) {
+                        fprintf(tzf, "%s\n", value);
+                        fclose(tzf);
+                        setenv("TZ", value, 1);
+                        tzset();
+                    }
                 } else if (EQUALS(key, "ts")) {
-                    short result = strtol(value, &remain, 10);
+                    long long result = strtoll(value, &remain, 10);
                     if (remain == value) continue;
                     t.tv_sec = result;
                     clock_settime(CLOCK_REALTIME, &t);
@@ -1587,7 +1966,8 @@ void respond_request(http_request_t *req) {
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
-            "{\"fmt\":\"%s\",\"ts\":%zu}", timefmt, t.tv_sec);
+            "{\"fmt\":\"%s\",\"ts\":%zu,\"tz\":\"%s\"}", timefmt, t.tv_sec,
+            getenv("TZ") ? getenv("TZ") : "");
         send_and_close(req->clntFd, response, respLen);
         return;
     }
@@ -1613,7 +1993,14 @@ void *server_thread(void *vargp) {
         .sin_port = htons(app_config.web_port),
         .sin_addr.s_addr = htonl(INADDR_ANY)
     };
-    if (ret = bind(server_fd, (struct sockaddr *)&server, sizeof(server))) {
+    /* A previous instance that is still shutting down keeps the port for a
+     * few seconds; giving up at once would leave the camera without its page. */
+    for (int attempt = 0; attempt < 30 && keepRunning; attempt++) {
+        if (!(ret = bind(server_fd, (struct sockaddr *)&server, sizeof(server)))) break;
+        if (errno != EADDRINUSE) break;
+        sleep(1);
+    }
+    if (ret) {
         HAL_DANGER("server", "%s (%d)\n", strerror(errno), errno);
         keepRunning = 0;
         close_socket_fd(server_fd);

@@ -31,12 +31,15 @@ struct AppConfig {
     unsigned int ir_cut_pin1;
     unsigned int ir_cut_pin2;
     unsigned int ir_led_pin;
+    unsigned int white_led_pin;
     unsigned int ir_sensor_pin;
     unsigned int check_interval_s;
     unsigned int pin_switch_delay_us;
     char adc_device[128];
     hal_light night_lamp;
     int adc_threshold;
+    unsigned int exposure_night;
+    unsigned int exposure_day;
 
     // [isp]
     bool mirror;
@@ -70,6 +73,7 @@ struct AppConfig {
     char record_path[128];
     int record_segment_duration;
     int record_segment_size;
+    int record_reserve;
 
     // [stream]
     bool stream_enable;
@@ -85,6 +89,11 @@ struct AppConfig {
     // [mp4]
     bool mp4_enable;
     bool mp4_codecH265;
+    bool mp4_audio;
+
+    // [sub] second, smaller H.264 stream on its own RTSP port
+    bool sub_enable;
+    unsigned int sub_width, sub_height, sub_gop, sub_bitrate, sub_rtsp_port;
     unsigned int mp4_mode;
     unsigned int mp4_fps;
     unsigned int mp4_gop;
