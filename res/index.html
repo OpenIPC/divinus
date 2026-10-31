@@ -427,8 +427,7 @@
 				document.getElementById('lampstate').textContent = 'Lamp is ' + (j.on ? 'ON' : 'OFF');
 			}).catch(function() { document.getElementById('lampstate').textContent = 'no answer from camera'; });
 		}
-		// Add ?debug to the page address to see the player state under the picture
-		// and have it reported to the camera's request trace (/tmp/http.log).
+		// Add ?debug to the page address to see the player state under the picture.
 		var liveDebug = location.search.indexOf('debug') > -1;
 		function liveStop() {
 			if (window.liveTimer) { clearInterval(window.liveTimer); window.liveTimer = null; }
@@ -454,12 +453,11 @@
 			frame.innerHTML = '<video id="player" width="100%" autoplay muted playsinline controls></video>' +
 				'<div id="playerdbg" style="font:12px monospace;opacity:.6' + (liveDebug ? '' : ';display:none') + '"></div>';
 			var v = document.getElementById('player'), ms = new MediaSource(), sb = null, queue = [], dead = false;
-			var ctl = new AbortController(), last = -1, stuck = 0, tick = 0, note = '';
+			var ctl = new AbortController(), last = -1, stuck = 0, note = '';
 			window.liveAbort = ctl;
 			v.src = URL.createObjectURL(ms);
 			function restart(why) {
 				if (dead) return; dead = true;
-				if (liveDebug) fetch('api/status?dbg=' + encodeURIComponent('RESTART ' + why)).catch(function(){});
 				setTimeout(function() { if (document.getElementById('player') === v) setSource(id, src); }, 500);
 			}
 			function pump() {
@@ -507,7 +505,6 @@
 					' drop=' + (v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality().droppedVideoFrames : '?') +
 					' err=' + (v.error ? v.error.code + ':' + v.error.message : 'none') + ' ' + note;
 				var d = document.getElementById('playerdbg'); if (d) d.textContent = st;
-				if (liveDebug && tick++ % 12 == 4) fetch('api/status?dbg=' + encodeURIComponent(st)).catch(function(){});
 				if (v.error) restart('error ' + v.error.message);
 				else if (stuck >= 16) restart('stuck');
 			}, 250);
