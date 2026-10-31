@@ -167,7 +167,9 @@ void *night_thread(void) {
             // the picture getting brighter than the auto-exposure aims for.
             // Each probe blanks the picture for a moment, so the timed ones
             // start after ten minutes and back off to about once an hour.
-            if (idx > app_config.exposure_day) { drop = 0; base = 0; continue; }
+            if (app_config.exposure_day && idx > app_config.exposure_day) {
+                drop = 0; base = 0; continue;
+            }
             if (dwell >= 2 && raw > base) base = raw;
             drop = (raw * 10 < base * 8 || luma >= 80) ? drop + 1 : 0;
             if (dwell < 3 || (drop < 2 && dwell < wait)) continue;
@@ -178,7 +180,9 @@ void *night_thread(void) {
             bool lit = !night_exposure(&sg, &ig, &us, &luma, NULL) && (luma >= 30 ||
                 (unsigned int)((unsigned long long)sg * ig / 1024 * us / 40000 / 1024)
                     < app_config.exposure_night * 2 / 3);
-            if (manual) continue;
+            // Interrupted (manual mode, settings change): the lamps go back on
+            // as they were before the probe.
+            if (manual || !nightOn || !keepRunning) { night_irled(true); continue; }
             if (lit) night_mode(false);
             else {
                 // Still dark: lamps back on, wait longer before the next timed probe
