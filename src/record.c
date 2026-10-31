@@ -3,6 +3,10 @@
 /* Guards the recording state: the encoder thread feeds fragments while the
  * server thread starts and stops sessions. */
 static pthread_mutex_t recordMtx = PTHREAD_MUTEX_INITIALIZER;
+/* Serializes starting and stopping with their storage remounts, which run
+ * outside recordMtx */
+static pthread_mutex_t recordModeMtx = PTHREAD_MUTEX_INITIALIZER;
+static bool recordStorageRw;
 
 static FILE *recordFile;
 static struct Mp4State recordState;
@@ -34,6 +38,7 @@ static void record_storage_mode(const char *mode) {
     if (access(RECORD_CARD_TOOL, X_OK)) return;
     snprintf(cmd, sizeof(cmd), RECORD_CARD_TOOL " mount %s >/dev/null 2>&1", mode);
     if (system(cmd)) HAL_WARNING("record", "Storage could not be switched to '%s'\n", mode);
+    recordStorageRw = !strcmp(mode, "rw");
 }
 
 /* Recordings must land on mounted storage, never on the root filesystem:
@@ -79,14 +84,31 @@ static void record_name_parts(char *stem, size_t stemSize, char *ext, size_t ext
     if (EMPTY(stem)) strncpy(stem, "recording", stemSize - 1);
 }
 
+/* Whether a name is "<stem>_YYYYMMDD-HHMMSS[-N]<ext>", as record_build_path
+ * makes them. */
+static bool record_own_name(const char *name, const char *stem, size_t stemLen,
+    const char *ext, size_t extLen) {
+    size_t len = strlen(name);
+    const char *p = name + stemLen + 1, *end = name + len - extLen;
+
+    if (len < stemLen + 1 + 15 + extLen || strncmp(name, stem, stemLen) ||
+        name[stemLen] != '_' || strcmp(end, ext)) return false;
+    for (int i = 0; i < 15; i++, p++)
+        if (i == 8 ? *p != '-' : (*p < '0' || *p > '9')) return false;
+    if (p == end) return true;
+    if (*p++ != '-' || p == end) return false;
+    for (; p < end; p++)
+        if (*p < '0' || *p > '9') return false;
+    return true;
+}
+
 /* Loop recording: while free space is below the reserve, removes the oldest
- * segment. Only files this recorder named itself are ever touched. */
-static void record_make_room_locked(void) {
+ * segment. Only files this recorder named itself are ever touched. Runs
+ * without recordMtx, so the encoder thread never waits for the card. */
+static void record_make_room(const char *current) {
     char stem[sizeof(app_config.record_filename)], ext[16];
     size_t stemLen, extLen;
-    const char *current = strrchr(recordPath, '/');
 
-    current = (recordFile && current) ? current + 1 : "";
     record_name_parts(stem, sizeof(stem), ext, sizeof(ext));
     stemLen = strlen(stem);
     extLen = strlen(ext);
@@ -103,10 +125,8 @@ static void record_make_room_locked(void) {
 
         if (!(dir = opendir(app_config.record_path))) return;
         while ((ent = readdir(dir))) {
-            size_t len = strlen(ent->d_name);
-            if (len >= sizeof(oldest) || len <= stemLen + 1 + extLen) continue;
-            if (strncmp(ent->d_name, stem, stemLen) || ent->d_name[stemLen] != '_') continue;
-            if (strcmp(ent->d_name + len - extLen, ext)) continue;
+            if (strlen(ent->d_name) >= sizeof(oldest)) continue;
+            if (!record_own_name(ent->d_name, stem, stemLen, ext, extLen)) continue;
             if (!strcmp(ent->d_name, current)) continue;
             /* Names carry the start time, so the smallest one is the oldest */
             if (EMPTY(oldest) || strcmp(ent->d_name, oldest) < 0) strcpy(oldest, ent->d_name);
@@ -212,7 +232,6 @@ static bool record_open_locked(void) {
         return false;
     }
     if (!record_ensure_dir(app_config.record_path)) return false;
-    record_make_room_locked();
     if (!record_build_path(recordPath, sizeof(recordPath))) return false;
 
     if (!(recordFile = fopen(recordPath, "wb"))) {
@@ -338,10 +357,6 @@ static void record_flush_locked(void) {
         recordLastSync = now;
         fdatasync(fileno(recordFile));
     }
-    if (now - recordLastRoom >= 30) {
-        recordLastRoom = now;
-        record_make_room_locked();
-    }
 }
 
 /**
@@ -349,35 +364,36 @@ static void record_flush_locked(void) {
  * @return true once recording, false if the output could not be opened
  */
 bool record_start(void) {
+    bool ok = true;
+
     if (record_active()) return true;
 
+    pthread_mutex_lock(&recordModeMtx);
     record_storage_mode("rw");
+    if (record_on_storage(NULL)) record_make_room("");
 
     pthread_mutex_lock(&recordMtx);
     recordLastTry = time(NULL);
 
-    if (recordActive) {
-        pthread_mutex_unlock(&recordMtx);
-        return true;
+    if (!recordActive) {
+        recordStartTime = time(NULL);
+        if (recordStartTime == (time_t)-1) recordStartTime = 0;
+        if (record_open_locked()) recordActive = true;
+        else ok = false;
     }
-
-    recordStartTime = time(NULL);
-    if (recordStartTime == (time_t)-1) recordStartTime = 0;
-
-    if (!record_open_locked()) {
-        pthread_mutex_unlock(&recordMtx);
-        return false;
-    }
-
-    recordActive = true;
     pthread_mutex_unlock(&recordMtx);
-    return true;
+
+    /* Nothing is being written: the card goes back to read-only */
+    if (!ok) record_storage_mode("ro");
+    pthread_mutex_unlock(&recordModeMtx);
+    return ok;
 }
 
 /**
  * Stops the current recording session and finalizes its file
  */
 void record_stop(void) {
+    pthread_mutex_lock(&recordModeMtx);
     pthread_mutex_lock(&recordMtx);
 
     record_close_locked();
@@ -388,6 +404,7 @@ void record_stop(void) {
     pthread_mutex_unlock(&recordMtx);
 
     record_storage_mode("ro");
+    pthread_mutex_unlock(&recordModeMtx);
 }
 
 /**
@@ -418,6 +435,27 @@ unsigned int record_stop_in(void) {
  */
 void record_tick(void) {
     time_t now = time(NULL), stopAt;
+    bool active = record_active();
+
+    /* A write or rotation failure on the encoder thread ends the recording
+     * there; the card goes back to read-only from here. */
+    if (!active && recordStorageRw) {
+        pthread_mutex_lock(&recordModeMtx);
+        if (!record_active() && recordStorageRw) record_storage_mode("ro");
+        pthread_mutex_unlock(&recordModeMtx);
+    }
+
+    /* Free space is checked here rather than on the encoder thread */
+    if (active && now - recordLastRoom >= 30) {
+        char current[RECORD_PATH_MAX] = "";
+        const char *name;
+        recordLastRoom = now;
+        pthread_mutex_lock(&recordMtx);
+        name = strrchr(recordPath, '/');
+        if (recordFile && name) strncpy(current, name + 1, sizeof(current) - 1);
+        pthread_mutex_unlock(&recordMtx);
+        record_make_room(current);
+    }
 
     pthread_mutex_lock(&recordMtx);
     stopAt = recordStopAt;
