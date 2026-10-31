@@ -930,6 +930,7 @@ int media_sub_enable(void) {
         chnState[index].enable = false;
         HAL_ERROR("media", "Creating sub channel %d failed with %#x!\n%s\n",
             index, ret, errstr(ret));
+        return ret;
     }
 
     hal_vidconfig config;
@@ -951,12 +952,14 @@ int media_sub_enable(void) {
         chnState[index].enable = false;
         HAL_ERROR("media", "Creating sub encoder %d failed with %#x!\n%s\n",
             index, ret, errstr(ret));
+        return ret;
     }
     if (ret = bind_channel(index, app_config.mp4_fps, 0)) {
         media_video_disable(index, 0);
         chnState[index].enable = false;
         HAL_ERROR("media", "Binding sub channel %d failed with %#x!\n%s\n",
             index, ret, errstr(ret));
+        return ret;
     }
     subIndex = index;
     return EXIT_SUCCESS;

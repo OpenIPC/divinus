@@ -711,9 +711,11 @@ int i3_video_create(char index, hal_vidconfig *config)
         i3_vi_of[index] = I3_VI_CHN_IMAGE;
     }
     if (channel.attrib.codec == 2) {
-        // JPEG quality: generous for stills, moderate for the MJPEG stream
-        // (rate control is not applied to this encoder, quality sets the size).
-        channel.attrib.pad[0] = config->codec == HAL_VIDCODEC_JPG ? 85 : 50;
+        // JPEG quality (rate control is not applied to this encoder, quality
+        // sets the size): the configured qfactor, else generous for stills
+        // and moderate for the MJPEG stream. Fixed for the channel's life.
+        channel.attrib.pad[0] = config->maxQual ? MIN(config->maxQual, 100) :
+            config->codec == HAL_VIDCODEC_JPG ? 85 : 50;
         config->mode = HAL_VIDMODE_CBR;
         if (!config->bitrate) config->bitrate = 4096;
         if (!config->framerate) config->framerate = 5;
