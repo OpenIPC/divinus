@@ -788,6 +788,24 @@ int i3_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
     int ret;
     unsigned int stream[I3_STRM_WORDS];
 
+    // Per-request quality. The snapshot channel is an MJPEG encoder, whose
+    // parameters start with the quality it was created with (i3_video_create);
+    // only that word is changed, and only while the channel is stopped
+    // between snapshots, the one state in which the vendor accepts it.
+    {
+        static int (*getJpeg)(int, void*), (*setJpeg)(int, void*);
+        unsigned int param[64];
+        if (!getJpeg) getJpeg = dlsym(RTLD_DEFAULT, "MI_VENC_GetMjpegParam");
+        if (!setJpeg) setJpeg = dlsym(RTLD_DEFAULT, "MI_VENC_SetMjpegParam");
+        memset(param, 0, sizeof(param));
+        if (getJpeg && setJpeg && quality > 0 && quality <= 100 && !getJpeg(index, param) &&
+            param[0] >= 1 && param[0] <= 100 && param[0] != (unsigned char)quality) {
+            param[0] = (unsigned char)quality;
+            if (setJpeg(index, param))
+                HAL_WARNING("i3_venc", "Snapshot quality %d was not applied\n", quality);
+        }
+    }
+
     if (ret = i3_channel_bind(index, 1)) {
         HAL_DANGER("i3_venc", "Binding the encoder channel "
             "%d failed with %#x!\n", index, ret);
