@@ -5,3 +5,4 @@
 /toolchain
 compile_flags.txt
 divinus
+/test/*_test
