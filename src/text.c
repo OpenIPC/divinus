@@ -172,18 +172,20 @@ void text_dim_rendered(double *margin, double *height, double *width, const char
 }
 
 hal_bitmap text_create_rendered(const char *font, double size, const char *text,
-    int color, int outline, double thick)
+    int color, int outline, double thick, int background)
 {
     text_load_font(&sft, font, size, &lmtx);
 
     double margin, height, width;
     text_dim_rendered(&margin, &height, &width, text);
-    text_new_rendered(&canvas, (CEILING(width) + 3) & ~3, CEILING(height), 0);
+    // A box around the text gets some room on either side
+    int pad = background ? CEILING(size / 4) : 0;
+    text_new_rendered(&canvas, (CEILING(width) + 2 * pad + 3) & ~3, CEILING(height), background);
 
     unsigned cps[strlen(text) + 1];
     int n = utf8_to_utf32(text, cps, strlen(text) + 1);
 
-    double x = margin;
+    double x = margin + pad;
     double y = margin + lmtx.ascender + lmtx.lineGap;
     SFT_Glyph ogid = 0;
     for (int k = 0; k < n; k++)
@@ -191,7 +193,7 @@ hal_bitmap text_create_rendered(const char *font, double size, const char *text,
         if (cps[k] == '\\' && cps[k + 1] == 'n')
         {
             k++;
-            x = margin;
+            x = margin + pad;
             y += lmtx.ascender - lmtx.descender + lmtx.lineGap;
             ogid = 0;
             continue;
