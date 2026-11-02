@@ -23,12 +23,9 @@ char _t31_osd_grp = 0;
 
 void t31_hal_deinit(void)
 {
-    t31_venc_unload(&t31_venc);
-    t31_osd_unload(&t31_osd);
-    t31_isp_unload(&t31_isp);
-    t31_fs_unload(&t31_fs);
-    t31_aud_unload(&t31_aud);
-    t31_sys_unload(&t31_sys);
+    /* libimp keeps its internal worker threads polling the pipeline after
+       IMP_ISP_Exit, so unmapping the libraries here faults on the code they
+       are still executing. The process exits right after this call. */
 }
 
 int t31_hal_init(void)
@@ -230,28 +227,29 @@ int t31_pipeline_create(char mirror, char flip, char framerate, char antiflicker
     {
         char* paths[] = {"/proc/jz/sinfo/info", "/proc/jz/sensor/name"};
         char **path = paths;
-        char *sensorlocal, sensorname[50];
+        char *sensorlocal = NULL, sensorname[50];
         FILE *sensorinfo;
 
         while (*path) {
             if (sensorinfo = fopen(*path, "r")) {
-                sensorlocal = fgets(sensorname, 50, sensorinfo);
+                sensorlocal = fgets(sensorname, sizeof(sensorname), sensorinfo);
                 fclose(sensorinfo);
                 if (sensorlocal) {
-                    sensorlocal = strstr(sensorname, ":");
-                    if (!sensorlocal++) goto sensor_from_env;
-                    sensorlocal[strlen(sensorlocal) - 1] = '\0';
-                    goto sensor_found;
+                    if (sensorlocal = strchr(sensorname, ':'))
+                        sensorlocal++;
+                    else
+                        sensorlocal = sensorname;
+                    sensorlocal[strcspn(sensorlocal, "\r\n")] = '\0';
+                    if (*sensorlocal) goto sensor_found;
                 }
             }
-            else *path++;
+            path++;
         }
 
-        if (!sensorlocal)
+        if (!(sensorlocal = getenv("SENSOR")) || !*sensorlocal) {
             HAL_INFO("t31_hal", "Couldn't determine the sensor name from kernel modules!\n");
-
-sensor_from_env:
-        sensorlocal = getenv("SENSOR");
+            HAL_ERROR("t31_hal", "Unknown sensor, please update the app!\n");
+        }
 
 sensor_found:
         if (*sensorlocal) strncpy(sensor, sensorlocal, sizeof(sensor));
