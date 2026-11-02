@@ -22,6 +22,7 @@ typedef struct {
 bool network_collect(struct ifaddrs *list, NetInfo *info);
 void network_init(void);
 void network_refresh(void);
+void network_address(char *address);
 int network_start(void);
 void network_stop(void);
 
