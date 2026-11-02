@@ -115,8 +115,10 @@ void *onvif_thread(void) {
             snprintf(device_uuid, sizeof(device_uuid), "urn:uuid:%s", uuid);
         }
         snprintf(device_name, sizeof(device_name), "Divinus");
+        char address[INET_ADDRSTRLEN];
+        network_address(address);
         snprintf(device_url, sizeof(device_url), "http://%s:%d/onvif/device_service",
-            netinfo.ipaddr[0], app_config.web_port);
+            address, app_config.web_port);
     
         char *msgid_init = strstr(request, "MessageID>");
         if (msgid_init) {
@@ -260,14 +262,16 @@ void onvif_respond_capabilities(char *response, int *respLen) {
     memcpy(response, onvifgood, headerLen);
     *respLen = headerLen;
 
+    char address[INET_ADDRSTRLEN];
+    network_address(address);
     *respLen += snprintf(response + headerLen, maxLen - headerLen,
         capabilitiesxml,
-        netinfo.ipaddr[0], app_config.web_port,    // Analytics
-        netinfo.ipaddr[0], app_config.web_port,    // Device
-        netinfo.ipaddr[0], app_config.web_port,    // Events
-        netinfo.ipaddr[0], app_config.web_port,    // Imaging
-        netinfo.ipaddr[0], app_config.web_port,    // Media
-        netinfo.ipaddr[0], app_config.web_port);   // PTZ
+        address, app_config.web_port,    // Analytics
+        address, app_config.web_port,    // Device
+        address, app_config.web_port,    // Events
+        address, app_config.web_port,    // Imaging
+        address, app_config.web_port,    // Media
+        address, app_config.web_port);   // PTZ
 }
 
 void onvif_respond_deviceinfo(char *response, int *respLen) {
@@ -327,6 +331,8 @@ void onvif_respond_snapshot(char *response, int *respLen) {
     if (!response || !respLen) return;
 
     char snapshot_url[256];
+    char address[INET_ADDRSTRLEN];
+    network_address(address);
 
     if (app_config.web_enable_auth && 
         *app_config.web_auth_user && *app_config.web_auth_pass) {
@@ -334,10 +340,10 @@ void onvif_respond_snapshot(char *response, int *respLen) {
         escape_url(user, app_config.web_auth_user, sizeof(user));
         escape_url(pass, app_config.web_auth_pass, sizeof(pass));
         snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%s@%s:%d/image.jpg",
-            user, pass, netinfo.ipaddr[0], app_config.web_port);
+            user, pass, address, app_config.web_port);
     } else
         snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%d/image.jpg",
-            netinfo.ipaddr[0], app_config.web_port);
+            address, app_config.web_port);
 
     int maxLen = *respLen;
     int headerLen = strlen(onvifgood);
@@ -353,6 +359,8 @@ void onvif_respond_stream(char *response, int *respLen) {
     if (!response || !respLen) return;
 
     char stream_url[256];
+    char address[INET_ADDRSTRLEN];
+    network_address(address);
 
     if (app_config.rtsp_enable_auth && 
         *app_config.rtsp_auth_user && *app_config.rtsp_auth_pass) {
@@ -360,10 +368,10 @@ void onvif_respond_stream(char *response, int *respLen) {
         escape_url(user, app_config.rtsp_auth_user, sizeof(user));
         escape_url(pass, app_config.rtsp_auth_pass, sizeof(pass));
         snprintf(stream_url, sizeof(stream_url), "rtsp://%s:%s@%s:%d/",
-            user, pass, netinfo.ipaddr[0], app_config.rtsp_port);
+            user, pass, address, app_config.rtsp_port);
     } else
         snprintf(stream_url, sizeof(stream_url), "rtsp://%s:%d/",
-            netinfo.ipaddr[0], app_config.rtsp_port);
+            address, app_config.rtsp_port);
 
     int maxLen = *respLen;
     int headerLen = strlen(onvifgood);

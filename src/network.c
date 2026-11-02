@@ -4,6 +4,7 @@ char configured = 0;
 struct mdnsd *mdns = {0};
 NetInfo netinfo;
 
+static pthread_mutex_t netinfoLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t watchPid;
 static volatile char watching = 0;
 
@@ -44,14 +45,23 @@ void network_refresh(void) {
     freeifaddrs(ifaddr);
     if (!changed) return;
 
+    pthread_mutex_lock(&netinfoLock);
     memcpy(&netinfo, &updated, sizeof(netinfo));
+    pthread_mutex_unlock(&netinfoLock);
     HAL_INFO("network", "Address changed to %s\n",
         netinfo.count ? netinfo.ipaddr[0] : "none");
 
     if (app_config.mdns_enable) {
         mdns_stop();
-        mdns_start();
+        if (netinfo.count)
+            mdns_start();
     }
+}
+
+void network_address(char *address) {
+    pthread_mutex_lock(&netinfoLock);
+    memcpy(address, netinfo.ipaddr[0], sizeof(*netinfo.ipaddr));
+    pthread_mutex_unlock(&netinfoLock);
 }
 
 static void *network_watch(void) {
@@ -94,7 +104,7 @@ int network_start(void) {
     if (!configured)
         return EXIT_FAILURE;
 
-    if (app_config.mdns_enable)
+    if (app_config.mdns_enable && netinfo.count)
         mdns_start();
 
     if (app_config.onvif_enable)
