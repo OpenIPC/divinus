@@ -1,6 +1,7 @@
 #if defined(__arm__) && !defined(__ARM_PCS_VFP)
 
 #include "ak_hal.h"
+#include "ak_osd.h"
 
 ak_aud_impl  ak_aud;
 ak_sys_impl  ak_sys;
@@ -147,7 +148,7 @@ int ak_pipeline_create(short width, short height, char mirror, char flip)
 void ak_pipeline_streamon(void)
 {
     if (ak_v4l2_cap_streamon(0) < 0)
-        HAL_ERROR("ak_vi", "Starting the main capture failed!\n");
+        HAL_DANGER("ak_vi", "Starting the main capture failed!\n");
 }
 
 void ak_pipeline_streamon_sub(void)
@@ -236,19 +237,6 @@ static unsigned int ak_nal_start(const unsigned char *d, unsigned int off, unsig
     return len;
 }
 
-#define AK_OSD_MAX 10
-
-static struct {
-    hal_rect rect;
-    hal_dim dim;
-    short opacity;
-    unsigned char *bits;
-} ak_region[AK_OSD_MAX];
-
-/* The region thread swaps or frees bitmaps while the video thread paints
-   them into the frame, so the table needs one lock for both sides. */
-static pthread_mutex_t ak_region_mtx = PTHREAD_MUTEX_INITIALIZER;
-
 int ak_region_create(char handle, hal_rect rect, short opacity)
 {
     if (handle < 0 || handle >= AK_OSD_MAX)
@@ -264,11 +252,16 @@ int ak_region_setbitmap(char handle, hal_bitmap *bitmap)
 {
     if (handle < 0 || handle >= AK_OSD_MAX || !bitmap || !bitmap->data)
         return EXIT_FAILURE;
-    unsigned int size = bitmap->dim.width * bitmap->dim.height * 2;
-    unsigned char *bits = malloc(size);
+    if (!bitmap->dim.width || !bitmap->dim.height)
+        return EXIT_FAILURE;
+    const int bw = bitmap->dim.width, bh = bitmap->dim.height;
+    const int stride = (bw + 1) & ~1;
+    unsigned char *bits = calloc((size_t)stride * bh, 2);
     if (!bits)
         return EXIT_FAILURE;
-    memcpy(bits, bitmap->data, size);
+    for (int y = 0; y < bh; y++)
+        memcpy(bits + (size_t)y * stride * 2,
+            (unsigned char *)bitmap->data + (size_t)y * bw * 2, bw * 2);
     pthread_mutex_lock(&ak_region_mtx);
     free(ak_region[handle].bits);
     ak_region[handle].bits = bits;
@@ -285,51 +278,6 @@ void ak_region_destroy(char handle)
     free(ak_region[handle].bits);
     ak_region[handle].bits = NULL;
     ak_region[handle].dim.width = ak_region[handle].dim.height = 0;
-    pthread_mutex_unlock(&ak_region_mtx);
-}
-
-static void ak_region_apply(unsigned char *frame, int width, int height)
-{
-    int luma_size = width * height;
-    int chroma_size = (width >> 1) * (height >> 1);
-
-    pthread_mutex_lock(&ak_region_mtx);
-    for (int id = 0; id < AK_OSD_MAX; id++) {
-        if (!ak_region[id].bits) continue;
-        int bw = ak_region[id].dim.width, bh = ak_region[id].dim.height;
-        int x0 = ak_region[id].rect.x, y0 = ak_region[id].rect.y;
-        int op = ak_region[id].opacity;
-        unsigned short *src = (unsigned short *)ak_region[id].bits;
-
-        for (int y = 0; y < bh; y++) {
-            int fy = y0 + y;
-            if (fy < 0 || fy >= height) continue;
-            for (int x = 0; x < bw; x++) {
-                unsigned short p = src[y * bw + x];
-                if (!(p & 0x8000)) continue;
-                int fx = x0 + x;
-                if (fx < 0 || fx >= width) continue;
-
-                int r5 = (p >> 10) & 0x1F, g5 = (p >> 5) & 0x1F, b5 = p & 0x1F;
-                int r8 = (r5 << 3) | (r5 >> 2);
-                int g8 = (g5 << 3) | (g5 >> 2);
-                int b8 = (b5 << 3) | (b5 >> 2);
-                int Y = (77 * r8 + 150 * g8 + 29 * b8) >> 8;
-                int U = ((-43 * r8 - 85 * g8 + 128 * b8) >> 8) + 128;
-                int V = ((128 * r8 - 107 * g8 - 21 * b8) >> 8) + 128;
-                if (Y < 0) Y = 0; else if (Y > 255) Y = 255;
-                if (U < 0) U = 0; else if (U > 255) U = 255;
-                if (V < 0) V = 0; else if (V > 255) V = 255;
-
-                int idx = fy * width + fx;
-                frame[idx] = (Y * op + frame[idx] * (255 - op)) / 255;
-
-                int uv = luma_size + (fy >> 1) * (width >> 1) + (fx >> 1);
-                frame[uv] = (U * op + frame[uv] * (255 - op)) / 255;
-                frame[uv + chroma_size] = (V * op + frame[uv + chroma_size] * (255 - op)) / 255;
-            }
-        }
-    }
     pthread_mutex_unlock(&ak_region_mtx);
 }
 
