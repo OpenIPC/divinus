@@ -389,10 +389,12 @@ static void onvif_respond_unknown_sub(char *response, int *respLen) {
 }
 
 void onvif_respond_services(char *response, int *respLen) {
+    char address[INET_ADDRSTRLEN];
+    network_address(address);
     onvif_reply(response, respLen, "200 OK", servicesxml,
-        netinfo.ipaddr[0], app_config.web_port,
-        netinfo.ipaddr[0], app_config.web_port,
-        netinfo.ipaddr[0], app_config.web_port);
+        address, app_config.web_port,
+        address, app_config.web_port,
+        address, app_config.web_port);
 }
 
 void onvif_respond_eventcaps(char *response, int *respLen, const char *request) {
@@ -422,8 +424,10 @@ void onvif_respond_pullpoint(char *response, int *respLen, const char *request) 
 
     soap_datetime_format(now, current, sizeof(current));
     soap_datetime_format(now + seconds, termination, sizeof(termination));
+    char address[INET_ADDRSTRLEN];
+    network_address(address);
     snprintf(body, sizeof(body), pullpointxml,
-        netinfo.ipaddr[0], app_config.web_port, id, current, termination);
+        address, app_config.web_port, id, current, termination);
     onvif_message_id(request, messageId, sizeof(messageId));
     onvif_reply_event(response, respLen, messageId,
         ONVIF_EVENTS_WSDL "EventPortType/CreatePullPointSubscriptionResponse", body);
