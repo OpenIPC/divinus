@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema">
+  <SOAP-ENV:Body>
+    <tds:GetNetworkProtocolsResponse>
+      <tds:NetworkProtocols>
+        <tt:Name>HTTP</tt:Name>
+        <tt:Enabled>true</tt:Enabled>
+        <tt:Port>%d</tt:Port>
+      </tds:NetworkProtocols>
+      <tds:NetworkProtocols>
+        <tt:Name>RTSP</tt:Name>
+        <tt:Enabled>%s</tt:Enabled>
+        <tt:Port>%d</tt:Port>
+      </tds:NetworkProtocols>
+    </tds:GetNetworkProtocolsResponse>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

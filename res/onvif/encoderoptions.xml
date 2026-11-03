@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope" xmlns:trt="http://www.onvif.org/ver10/media/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema">
+  <SOAP-ENV:Body>
+    <trt:GetVideoEncoderConfigurationOptionsResponse>
+      <trt:Options>
+        <tt:QualityRange>
+          <tt:Min>1</tt:Min>
+          <tt:Max>5</tt:Max>
+        </tt:QualityRange>
+        <tt:H264>
+          <tt:ResolutionsAvailable>
+            <tt:Width>%d</tt:Width>
+            <tt:Height>%d</tt:Height>
+          </tt:ResolutionsAvailable>
+          <tt:ResolutionsAvailable>
+            <tt:Width>%d</tt:Width>
+            <tt:Height>%d</tt:Height>
+          </tt:ResolutionsAvailable>
+          <tt:GovLengthRange>
+            <tt:Min>1</tt:Min>
+            <tt:Max>200</tt:Max>
+          </tt:GovLengthRange>
+          <tt:FrameRateRange>
+            <tt:Min>1</tt:Min>
+            <tt:Max>%d</tt:Max>
+          </tt:FrameRateRange>
+          <tt:EncodingIntervalRange>
+            <tt:Min>1</tt:Min>
+            <tt:Max>1</tt:Max>
+          </tt:EncodingIntervalRange>
+          <tt:H264ProfilesSupported>Main</tt:H264ProfilesSupported>
+        </tt:H264>
+      </trt:Options>
+    </trt:GetVideoEncoderConfigurationOptionsResponse>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

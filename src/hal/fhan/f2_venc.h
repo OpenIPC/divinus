@@ -14,7 +14,7 @@ typedef struct {
 /*
  * Rate control block, also the payload of FH_VENC_SetRCAttr().
  * Layouts (vendor application defaults):
- *   H264/H265 CBR: { mode, 35, bitrate_bps, minQp(28), maxQp(50), targetQp, 50, fps | den << 16, 120, 0, 0, 5, 1, 0 }
+ *   H264/H265 CBR: { mode, 35, bitrate_bps, fps | den << 16, maxQp(50), targetQp, 50, fps | den << 16, 120, 0, 0, 5, 1, 0 }
  *   H264/H265 VBR: { mode, 35, bitrate_bps, fps | den << 16, 120, 0, 0, 5, 1 }
  *   H264 fixed QP: { mode, iQp, pQp, fps | den << 16 }
  */

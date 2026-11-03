@@ -42,8 +42,8 @@
             <tt:RELToken>false</tt:RELToken>
             <tt:SAMLToken>false</tt:SAMLToken>
             <tt:KerberosToken>false</tt:KerberosToken>
-            <tt:UsernameToken>true</tt:UsernameToken>
-            <tt:HttpDigest>true</tt:HttpDigest>
+            <tt:UsernameToken>%s</tt:UsernameToken>
+            <tt:HttpDigest>false</tt:HttpDigest>
           </tt:Security>
         </tt:Device>
         <tt:Events>
@@ -60,7 +60,7 @@
           <tt:StreamingCapabilities>
             <tt:RTPMulticast>false</tt:RTPMulticast>
             <tt:RTP_TCP>false</tt:RTP_TCP>
-            <tt:RTP_RTSP_TCP>false</tt:RTP_RTSP_TCP>
+            <tt:RTP_RTSP_TCP>true</tt:RTP_RTSP_TCP>
           </tt:StreamingCapabilities>
           <tt:ProfileCapabilities>
             <tt:MaximumNumberOfProfiles>2</tt:MaximumNumberOfProfiles>

@@ -20,5 +20,16 @@
             <tt:EncodingInterval>1</tt:EncodingInterval>
             <tt:BitrateLimit>%d</tt:BitrateLimit>
           </tt:RateControl>
+%s
+          <tt:Multicast>
+            <tt:Address>
+              <tt:Type>IPv4</tt:Type>
+              <tt:IPv4Address>0.0.0.0</tt:IPv4Address>
+            </tt:Address>
+            <tt:Port>0</tt:Port>
+            <tt:TTL>1</tt:TTL>
+            <tt:AutoStart>false</tt:AutoStart>
+          </tt:Multicast>
+          <tt:SessionTimeout>PT60S</tt:SessionTimeout>
         </tt:VideoEncoderConfiguration>
       </trt:Profiles>

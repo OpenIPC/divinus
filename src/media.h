@@ -2,6 +2,11 @@
 
 #define AUD_RING_CAP (1 << 16) /* 64 KB, roughly 0.7 s of 48 kHz mono */
 #define AUD_FRAME_MAX 16384    /* largest frame any HAL produces */
+#define MEDIA_SUB_WIDTH 640
+#define MEDIA_SUB_HEIGHT 360
+#define MEDIA_SUB_FPS 15
+#define MEDIA_SUB_BITRATE 512
+#define MEDIA_SUB_GOP 15
 
 #include <pthread.h>
 #include <signal.h>
@@ -47,5 +52,9 @@ int media_mjpeg_disable(void);
 int media_mjpeg_enable(void);
 int media_mp4_disable(void);
 int media_mp4_enable(void);
+int media_sub_enable(void);
+
+extern int media_main_ch;
+extern int media_sub_ch;
 
 void rtsp_latch_audio_codec(void);

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope" xmlns:tds="http://www.onvif.org/ver10/device/wsdl">
+  <SOAP-ENV:Body>
+    <tds:GetServiceCapabilitiesResponse>
+      <tds:Capabilities>
+        <tds:Network IPFilter="false" ZeroConfiguration="false" IPVersion6="false" DynDNS="false" Dot11Configuration="false" HostnameFromDHCP="false" NTP="0"/>
+        <tds:Security TLS1.0="false" TLS1.1="false" TLS1.2="false" OnboardKeyGeneration="false" AccessPolicyConfig="false" DefaultAccessPolicy="false" Dot1X="false" RemoteUserHandling="false" X.509Token="false" SAMLToken="false" KerberosToken="false" UsernameToken="%s" HttpDigest="false" RELToken="false"/>
+        <tds:System DiscoveryResolve="true" DiscoveryBye="true" RemoteDiscovery="false" SystemBackup="false" SystemLogging="false" FirmwareUpgrade="false"/>
+      </tds:Capabilities>
+    </tds:GetServiceCapabilitiesResponse>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

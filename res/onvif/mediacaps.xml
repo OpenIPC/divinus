@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://www.w3.org/2003/05/soap-envelope" xmlns:trt="http://www.onvif.org/ver10/media/wsdl">
+  <SOAP-ENV:Body>
+    <trt:GetServiceCapabilitiesResponse>
+      <trt:Capabilities SnapshotUri="true" Rotation="false" VideoSourceMode="false" OSD="false">
+        <trt:ProfileCapabilities MaximumNumberOfProfiles="2"/>
+        <trt:StreamingCapabilities RTPMulticast="false" RTP_TCP="false" RTP_RTSP_TCP="true" NonAggregateControl="false"/>
+      </trt:Capabilities>
+    </trt:GetServiceCapabilitiesResponse>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

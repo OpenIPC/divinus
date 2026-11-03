@@ -71,21 +71,23 @@ typedef struct {
     unsigned int overflow;
 } f2_isp_vistate;
 
-/* Native sensor output sizes, used to size the VI and the OSD plane. */
 typedef struct {
     const char *name;
     f2_common_dim dim;
-} f2_snr_info;
+    unsigned char fps;
+    unsigned int format;
+} f2_snr_mode;
 
-static const f2_snr_info f2_snrs[] = {
-    { "gc4653_mipi",    { .width = 1920, .height = 1080 } },
-    { "gc5603_mipi",    { .width = 2880, .height = 1616 } },
-    { "jxf32_mipi",     { .width = 1920, .height = 1080 } },
-    { "mn34425_mipi",   { .width = 1920, .height = 1080 } },
-    { "ovos02k_mipi",   { .width = 1920, .height = 1080 } },
-    { "ovos04c10_mipi", { .width = 2560, .height = 1440 } },
-    { "ovos05_mipi",    { .width = 2592, .height = 1944 } },
-    { "ovos08_mipi",    { .width = 3840, .height = 2160 } },
+static const f2_snr_mode f2_snr_modes[] = {
+    { "gc4653_mipi",    { .width = 1920, .height = 1080 }, 25, 0x203 },
+    { "gc4653_mipi",    { .width = 1920, .height = 1080 }, 30, 0x204 },
+    { "gc5603_mipi",    { .width = 2880, .height = 1616 },  0, F2_SNR_FMT },
+    { "jxf32_mipi",     { .width = 1920, .height = 1080 },  0, F2_SNR_FMT },
+    { "mn34425_mipi",   { .width = 1920, .height = 1080 },  0, F2_SNR_FMT },
+    { "ovos02k_mipi",   { .width = 1920, .height = 1080 },  0, F2_SNR_FMT },
+    { "ovos04c10_mipi", { .width = 2560, .height = 1440 },  0, F2_SNR_FMT },
+    { "ovos05_mipi",    { .width = 2592, .height = 1944 },  0, F2_SNR_FMT },
+    { "ovos08_mipi",    { .width = 3840, .height = 2160 },  0, F2_SNR_FMT },
 };
 
 typedef struct {
@@ -108,7 +110,7 @@ typedef struct {
     int (*fnUnregisterSensor)(unsigned int index);
 
     int (*fnAdvInit)(void);
-    int (*fnAdvSensorInit)(void);
+    int (*fnAdvSensorInit)(f2_isp_snrops *ops);
     int (*fnAdvSetColorMode)(int color);
     int (*fnGetSaturation)(void *sat);   /* record, byte 5 nonzero = colour */
     int (*fnSetSaturation)(void *sat);
@@ -204,7 +206,7 @@ static int f2_isp_load(f2_isp_impl *isp_lib) {
         hal_symbol_load("f2_isp", isp_lib->handleAdv, "FHAdv_Isp_Init")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnAdvSensorInit = (int(*)(void))
+    if (!(isp_lib->fnAdvSensorInit = (int(*)(f2_isp_snrops *))
         hal_symbol_load("f2_isp", isp_lib->handleAdv, "FHAdv_Isp_SensorInit")))
         return EXIT_FAILURE;
 
