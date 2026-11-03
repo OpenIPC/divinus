@@ -4,6 +4,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
+#include <errno.h>
+#include <poll.h>
 
 #include "rtsp_server.h"
 
@@ -13,6 +15,7 @@
 #include "thread.h"
 #include "bufpool.h"
 #include "mime.h"
+#include "../hal/tools.h"
 
 /******************************************************************************
  *              DEFINITIONS
@@ -58,6 +61,7 @@ enum __method_e {
     __METHOD_TEARDOWN,
     __METHOD_PAUSE,
     __METHOD_RECORDING,
+    __METHOD_GET_PARAMETER,
     __METHOD_AUTH,
     __METHOD_NONE,
     __METHOD_COUNT
@@ -98,7 +102,6 @@ typedef struct {
 struct connection_item_t {
     struct sockaddr_in addr;
     FILE *fp_tcp_read;
-    FILE *fp_tcp_write;
     int client_fd;
     int track_id;
     int cseq;
@@ -113,13 +116,46 @@ struct connection_item_t {
     unsigned long long given_session_id;
     unsigned int ssrc;
     pthread_mutex_t write_mutex;
-    /* Interleaved (TCP) output is staged here and written with one send()
-     * per frame: on small SoCs a send() costs ~100 us whatever its size */
+    /* Interleaved (TCP) output is queued here and written without blocking:
+     * tx_buf[tx_off..tx_len) is still to go, out of tx_cap. Whole frames are
+     * queued behind what is pending; the queue grows up to RTSP_TX_MAX for a
+     * client that lags, and one that lags further skips to the next keyframe */
     unsigned char *tx_buf;
+    unsigned int tx_cap;
+    unsigned int tx_off;
     unsigned int tx_len;
+    bool tx_frame;
+    bool tx_skip;
+    unsigned int tx_dropped;
+    unsigned int tx_stall_ms;
     struct list_t list_entry;
 };
-#define RTSP_TX_BATCH (64 * 1024)
+#define RTSP_TX_MIN (64 * 1024)
+#define RTSP_TX_MAX (1024 * 1024)
+/* What all client queues may hold together: clients that open sessions and
+ * stop reading must not run the camera out of memory */
+#ifndef RTSP_TX_BUDGET
+#define RTSP_TX_BUDGET (3 * 1024 * 1024)
+#endif
+
+extern unsigned int rtsp_tx_reserved;
+
+/* Takes size bytes of the queue budget; false when it is spent */
+static inline bool __tx_budget_take(unsigned int size)
+{
+    unsigned int now = __atomic_load_n(&rtsp_tx_reserved, __ATOMIC_RELAXED);
+    do {
+        if (now + size > RTSP_TX_BUDGET) return false;
+    } while (!__atomic_compare_exchange_n(&rtsp_tx_reserved, &now, now + size,
+        false, __ATOMIC_RELAXED, __ATOMIC_RELAXED));
+    return true;
+}
+
+static inline void __tx_budget_give(unsigned int size)
+{
+    __atomic_sub_fetch(&rtsp_tx_reserved, size, __ATOMIC_RELAXED);
+}
+#define RTSP_STALL_MS 5000
 
 struct transfer_item_t {
     struct list_t list_entry;
@@ -194,8 +230,9 @@ static inline int __read_line(struct connection_item_t *p, char *buf)
             ERR("message end before delimiter\n");
         }
 
+        /* the caller detaches: doing it here may reset the connection
+         * under its feet */
         p->con_state = __CON_S_DISCONNECTED;
-        ASSERT(bufpool_detach(p->pool, p) == SUCCESS, ERR("connection detach failed\n"));
         return FALSE;
     }
 
@@ -203,6 +240,104 @@ static inline int __read_line(struct connection_item_t *p, char *buf)
 
     /* check end of request */
     return !(SCMP(__TERM, buf));
+}
+
+static inline int __wait_out(int fd)
+{
+    struct pollfd p = { .fd = fd, .events = POLLOUT };
+    return poll(&p, 1, 100);
+}
+
+/* The client socket is non-blocking: retry until everything is queued. A peer
+ * that takes nothing for 5 s is shut down, as a partial write has already
+ * broken its stream, and the RTSP thread then sees EOF and drops it */
+static inline int __tcp_send_all(int fd, const unsigned char *buf, unsigned int len)
+{
+    unsigned int sent = 0;
+    int stalls = 0;
+    while (sent < len) {
+        int r = send(fd, buf + sent, len - sent, 0);
+        if (r > 0) { sent += r; stalls = 0; }
+        else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            if (__wait_out(fd) == 0 && ++stalls >= 50) {
+                shutdown(fd, SHUT_RDWR);
+                errno = ETIMEDOUT;
+                return FAILURE;
+            }
+        }
+        else return FAILURE;
+    }
+    return SUCCESS;
+}
+
+/* Writes what the queue holds without waiting. Something left pending is not
+ * an error; a peer that takes nothing for RTSP_STALL_MS, or a send error, is
+ * shut down and the RTSP thread then drops it. Called with write_mutex held */
+static inline int __tcp_pump(struct connection_item_t *con)
+{
+    while (con->tx_off < con->tx_len) {
+        int r = send(con->client_fd, con->tx_buf + con->tx_off, con->tx_len - con->tx_off, 0);
+        if (r > 0) {
+            con->tx_off += r;
+            con->tx_stall_ms = millis();
+            continue;
+        }
+        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            if (millis() - con->tx_stall_ms < RTSP_STALL_MS) return SUCCESS;
+            errno = ETIMEDOUT;
+        }
+        shutdown(con->client_fd, SHUT_RDWR);
+        con->tx_off = con->tx_len = 0;
+        return FAILURE;
+    }
+    con->tx_off = con->tx_len = 0;
+    return SUCCESS;
+}
+
+/* Makes room for size more bytes, moving what is pending to the front and
+ * doubling the queue up to RTSP_TX_MAX; false when even that is not enough.
+ * The queue is not shrunk while the client stays: a healthy one already needs
+ * a keyframe's worth, and the connection reset gives it all back */
+static inline bool __tcp_room(struct connection_item_t *con, unsigned int size)
+{
+    unsigned int pending = con->tx_len - con->tx_off;
+    if (con->tx_len + size <= con->tx_cap) return true;
+    if (pending + size > RTSP_TX_MAX) return false;
+    if (con->tx_off) {
+        memmove(con->tx_buf, con->tx_buf + con->tx_off, pending);
+        con->tx_off = 0;
+        con->tx_len = pending;
+    }
+    unsigned int cap = con->tx_cap;
+    while (pending + size > cap) cap *= 2;
+    if (cap > RTSP_TX_MAX) cap = RTSP_TX_MAX;
+    if (cap != con->tx_cap) {
+        if (!__tx_budget_take(cap - con->tx_cap)) return false;
+        unsigned char *buf = realloc(con->tx_buf, cap);
+        if (!buf) {
+            __tx_budget_give(cap - con->tx_cap);
+            return false;
+        }
+        con->tx_buf = buf;
+        con->tx_cap = cap;
+    }
+    return true;
+}
+
+/* Appends one interleaved packet; false when it does not fit */
+static inline bool __tcp_queue(struct connection_item_t *con, unsigned char channel,
+    const void *packet, unsigned int size)
+{
+    if (!__tcp_room(con, 4 + size)) return false;
+    if (con->tx_off == con->tx_len) con->tx_stall_ms = millis();
+    unsigned char *p = con->tx_buf + con->tx_len;
+    p[0] = '$';
+    p[1] = channel;
+    p[2] = (size >> 8) & 0xFF;
+    p[3] = size & 0xFF;
+    memcpy(p + 4, packet, size);
+    con->tx_len += 4 + size;
+    return true;
 }
 
 static inline unsigned long long __get_random_byte(unsigned *ctx)

@@ -1,0 +1,759 @@
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/select.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <signal.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <sys/resource.h>
+
+#ifndef SO_SNDBUFFORCE
+#define SO_SNDBUFFORCE SO_SNDBUF
+#endif
+
+/* Counts explicit close() calls on the client socket made by rtsp.c */
+static int watched_fd = -1, watched_closes;
+static int counted_close(int fd)
+{
+    if (fd == watched_fd) watched_closes++;
+    return (close)(fd);
+}
+#define close(fd) counted_close(fd)
+
+#include "check.h"
+#undef CHECK
+#include "rtsp/rtsp.c"
+#include "rtsp/rtp.h"
+#undef CHECK
+#define CHECK(cond) \
+    do { \
+        if (!(cond)) { \
+            fprintf(stderr, "%s:%d: CHECK failed: %s\n", __FILE__, __LINE__, #cond); \
+            checkFailures++; \
+        } \
+    } while (0)
+
+void request_idr(void) {}
+
+static rtsp_handle make_server(int max_con)
+{
+    rtsp_handle h = calloc(1, sizeof(*h));
+    pthread_mutex_init(&h->mutex, NULL);
+    h->audioPt = 255;
+    h->max_con = max_con;
+    h->con_pool = __connectionpool_create(max_con);
+    h->transfer_pool = __transpool_create(max_con);
+    return h;
+}
+
+/* Returns the client end of a socketpair accepted by the server */
+static int connect_client(rtsp_handle h, struct connection_item_t **con)
+{
+    int sv[2];
+    struct sockaddr_in addr = {};
+
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv)) return -1;
+    fcntl(sv[0], F_SETFL, fcntl(sv[0], F_GETFL) | O_NONBLOCK);
+    if (__connection_list_add(h->con_pool, &h->con_list, sv[0], addr) != SUCCESS) return -1;
+    for (int i = 0; i < h->max_con; i++)
+        if (__connection_pool[i].client_fd == sv[0]) *con = &__connection_pool[i];
+    return sv[1];
+}
+
+static void serve_once(rtsp_handle h)
+{
+    struct sock_select_t socks = {};
+    struct timeval tv = { .tv_sec = 1 };
+
+    socks.h_rtsp = h;
+    FD_ZERO(&socks.rfds);
+    list_map_inline(&h->con_list, __set_select_sock, &socks);
+    select(__find_fd_max(&h->con_list) + 1, &socks.rfds, NULL, NULL, &tv);
+    list_map_inline(&h->con_list, __message_proc_sock, &socks);
+    list_sweep(&h->con_list, __connection_is_dead);
+}
+
+static int pool_ref(rtsp_handle h, struct connection_item_t *con)
+{
+    return h->con_pool->elems[con - __connection_pool].ref_count;
+}
+
+static void send_str(int fd, const char *s)
+{
+    if (write(fd, s, strlen(s)) != (ssize_t)strlen(s)) perror("write");
+}
+
+/* A request cut short by the peer must drop the connection exactly once */
+static void test_truncated_request(void)
+{
+    const char *requests[] = {
+        "TEARDOWN rtsp://cam/ RTSP/1.0\r\nCSeq: 2\r\n",
+        "GARBAGE rtsp://cam/ RTSP/1.0\r\nCSeq: 2\r\n",
+    };
+
+    for (int i = 0; i < 2; i++) {
+        rtsp_handle h = make_server(1);
+        struct connection_item_t *con = NULL;
+        int peer = connect_client(h, &con);
+        CHECK(peer >= 0 && con);
+
+        send_str(peer, requests[i]);
+        shutdown(peer, SHUT_WR);
+        serve_once(h);
+
+        CHECK(con->con_state == __CON_S_DISCONNECTED);
+        CHECK(pool_ref(h, con) == 0);
+        CHECK(h->con_list.list == NULL);
+        CHECK(list_length(&h->con_pool->free_list) == 1);
+        close(peer);
+    }
+}
+
+struct drain_t {
+    int fd;
+    char tail[256];
+    int found;
+};
+
+/* Waits for the server to hit EAGAIN, then reads everything it sent */
+static void *drain_peer(void *v)
+{
+    struct drain_t *d = v;
+    char chunk[4096];
+    size_t tail_len = 0;
+
+    usleep(100 * 1000);
+    for (;;) {
+        struct pollfd pfd = { .fd = d->fd, .events = POLLIN };
+        if (poll(&pfd, 1, 1000) <= 0) break;
+        ssize_t r = read(d->fd, chunk, sizeof(chunk));
+        if (r <= 0) break;
+        for (ssize_t i = 0; i < r; i++) {
+            if (tail_len == sizeof(d->tail) - 1) {
+                memmove(d->tail, d->tail + 1, tail_len - 1);
+                tail_len--;
+            }
+            d->tail[tail_len++] = chunk[i];
+        }
+        d->tail[tail_len] = 0;
+        if (strstr(d->tail, "CSeq: 3\r\nPublic: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, GET_PARAMETER\r\n\r\n")) {
+            d->found = 1;
+            break;
+        }
+    }
+    return NULL;
+}
+
+/* A response must go out whole even when the socket buffer is full */
+static void test_response_on_full_socket(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    struct drain_t drain = {};
+    pthread_t thread;
+    char junk[1024];
+    int size = 4096;
+
+    drain.fd = connect_client(h, &con);
+    CHECK(drain.fd >= 0 && con);
+    setsockopt(con->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+    memset(junk, 'x', sizeof(junk));
+    while (write(con->client_fd, junk, sizeof(junk)) > 0);
+
+    send_str(drain.fd, "OPTIONS rtsp://cam/ RTSP/1.0\r\nCSeq: 3\r\n\r\n");
+    pthread_create(&thread, NULL, drain_peer, &drain);
+    serve_once(h);
+    pthread_join(thread, NULL);
+
+    CHECK(drain.found);
+    CHECK(con->con_state == __CON_S_INIT);
+    close(drain.fd);
+}
+
+/* A client that stops reading is given up on instead of holding the RTSP
+ * thread, and every stream with it, forever */
+static void test_response_to_stalled_client(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    char junk[1024];
+    int size = 4096;
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    setsockopt(con->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+    memset(junk, 'x', sizeof(junk));
+    while (write(con->client_fd, junk, sizeof(junk)) > 0);
+
+    send_str(peer, "OPTIONS rtsp://cam/ RTSP/1.0\r\nCSeq: 9\r\n\r\n");
+    serve_once(h);
+    CHECK(h->con_list.list != NULL);
+    serve_once(h);
+
+    CHECK(con->con_state == __CON_S_DISCONNECTED);
+    CHECK(h->con_list.list == NULL);
+    close(peer);
+}
+
+/* fclose() on the read stream already closes the client fd: closing it again
+ * would hit whichever socket the kernel has given that number meanwhile */
+static void test_client_fd_closed_once(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    int peer = connect_client(h, &con);
+    int fd = con->client_fd;
+
+    CHECK(peer >= 0 && con);
+    watched_fd = fd;
+    watched_closes = 0;
+    shutdown(peer, SHUT_WR);
+    serve_once(h);
+
+    CHECK(con->con_state == __CON_S_DISCONNECTED);
+    CHECK(fcntl(fd, F_GETFD) == -1);
+    CHECK(watched_closes == 0);
+    CHECK(con->client_fd == 0 && con->fp_tcp_read == NULL);
+    watched_fd = -1;
+    close(peer);
+}
+
+/* Interleaved tracks get the same RTCP pacing as UDP ones, and a reused
+ * connection slot starts with no transport left from the previous client */
+static void test_tcp_play_and_reuse(void)
+{
+    static const transport_t clean;
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    char reply[1024];
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    send_str(peer, "SETUP rtsp://cam/track=0 RTSP/1.0\r\nCSeq: 1\r\n"
+        "Transport: RTP/AVP/TCP;unicast;interleaved=0-1\r\n\r\n");
+    serve_once(h);
+    send_str(peer, "PLAY rtsp://cam/ RTSP/1.0\r\nCSeq: 2\r\n\r\n");
+    serve_once(h);
+    CHECK(read(peer, reply, sizeof(reply)) > 0);
+
+    CHECK(con->con_state == __CON_S_PLAYING);
+    CHECK(con->trans[0].is_tcp);
+    CHECK(con->trans[0].rtcp_tick_org == 150);
+    CHECK(con->trans[0].rtcp_tick == 150);
+
+    con->ssrc = 0x12345678;
+    shutdown(peer, SHUT_WR);
+    serve_once(h);
+    close(peer);
+
+    CHECK(con->con_state == __CON_S_DISCONNECTED);
+    CHECK(!memcmp(&con->trans[0], &clean, sizeof(clean)));
+    CHECK(!memcmp(&con->trans[1], &clean, sizeof(clean)));
+    CHECK(con->ssrc != 0x12345678);
+}
+
+static void *send_rest_later(void *v)
+{
+    usleep(30 * 1000);
+    send_str(*(int *)v, "defgh");
+    return NULL;
+}
+
+/* An interleaved packet from the client split across segments is skipped
+ * whole, and the request after it still gets its answer */
+static void test_split_interleaved_packet(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    pthread_t thread;
+    char reply[1024] = {};
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    CHECK(write(peer, "$\x01\x00\x08" "abc", 7) == 7);
+    pthread_create(&thread, NULL, send_rest_later, &peer);
+    serve_once(h);
+    pthread_join(thread, NULL);
+
+    send_str(peer, "OPTIONS rtsp://cam/ RTSP/1.0\r\nCSeq: 4\r\n\r\n");
+    serve_once(h);
+
+    CHECK(con->con_state == __CON_S_INIT);
+    CHECK(read(peer, reply, sizeof(reply) - 1) > 0);
+    CHECK(strstr(reply, "CSeq: 4\r\n"));
+    close(peer);
+}
+
+static void *trickle_packet(void *v)
+{
+    usleep(150 * 1000);
+    if (write(*(int *)v, "\x01\x00\x08", 3) != 3) perror("write");
+    usleep(150 * 1000);
+    /* fails once the server has given up on the packet */
+    send(*(int *)v, "abcdefgh", 8, 0);
+    return NULL;
+}
+
+/* A packet trickled in piece by piece gets one wait budget, not one per read */
+static void test_trickled_interleaved_packet(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    pthread_t thread;
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    CHECK(write(peer, "$", 1) == 1);
+    pthread_create(&thread, NULL, trickle_packet, &peer);
+    serve_once(h);
+    pthread_join(thread, NULL);
+
+    CHECK(con->con_state == __CON_S_DISCONNECTED);
+    CHECK(h->con_list.list == NULL);
+    close(peer);
+}
+
+static int tcp_connect(int port)
+{
+    struct sockaddr_in addr = { .sin_family = AF_INET, .sin_port = htons(port) };
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    if (fd < 0 || connect(fd, (struct sockaddr *)&addr, sizeof(addr))) return -1;
+    return fd;
+}
+
+static int accept_once(rtsp_handle h, int server_fd)
+{
+    struct sock_select_t socks = {};
+    struct timeval tv = { .tv_sec = 1 };
+
+    FD_ZERO(&socks.rfds);
+    FD_SET(server_fd, &socks.rfds);
+    select(server_fd + 1, &socks.rfds, NULL, NULL, &tv);
+    return __accept_proc_sock(h, server_fd, &socks);
+}
+
+/* 1 when the server closed its end, 0 when the connection stays open */
+static int peer_closed(int fd)
+{
+    struct pollfd pfd = { .fd = fd, .events = POLLIN };
+    char c;
+
+    return poll(&pfd, 1, 500) == 1 && read(fd, &c, 1) == 0;
+}
+
+/* Clients beyond the pool, or beyond the fd limit, are turned away while
+ * the server keeps serving; a freed slot is taken by the next client */
+static void test_connection_overflow(void)
+{
+    rtsp_handle h = make_server(RTSP_MAXIMUM_CONNECTIONS);
+    int server_fd = __bind_tcp(0);
+    struct sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+    int peers[RTSP_MAXIMUM_CONNECTIONS], extra, port;
+    struct rlimit old_lim, lim;
+    char reply[1024] = {};
+
+    CHECK(server_fd > 0);
+    getsockname(server_fd, (struct sockaddr *)&addr, &len);
+    port = ntohs(addr.sin_port);
+
+    for (int i = 0; i < RTSP_MAXIMUM_CONNECTIONS; i++) {
+        peers[i] = tcp_connect(port);
+        CHECK(peers[i] >= 0);
+        CHECK(accept_once(h, server_fd) == SUCCESS);
+    }
+    CHECK(list_length(&h->con_list) == RTSP_MAXIMUM_CONNECTIONS);
+    CHECK(h->con_pool->free_list.list == NULL);
+
+    extra = tcp_connect(port);
+    CHECK(extra >= 0);
+    CHECK(accept_once(h, server_fd) == SUCCESS);
+    CHECK(peer_closed(extra));
+    CHECK(list_length(&h->con_list) == RTSP_MAXIMUM_CONNECTIONS);
+    close(extra);
+
+    close(peers[0]);
+    serve_once(h);
+    CHECK(list_length(&h->con_list) == RTSP_MAXIMUM_CONNECTIONS - 1);
+
+    /* with no descriptor left the pending client is still accepted and dropped */
+    getrlimit(RLIMIT_NOFILE, &old_lim);
+    extra = tcp_connect(port);
+    CHECK(extra >= 0);
+    lim = old_lim;
+    lim.rlim_cur = dup(0);
+    close(lim.rlim_cur);
+    setrlimit(RLIMIT_NOFILE, &lim);
+    CHECK(accept_once(h, server_fd) == SUCCESS);
+    setrlimit(RLIMIT_NOFILE, &old_lim);
+    CHECK(peer_closed(extra));
+    CHECK(list_length(&h->con_list) == RTSP_MAXIMUM_CONNECTIONS - 1);
+    close(extra);
+
+    peers[0] = tcp_connect(port);
+    CHECK(peers[0] >= 0);
+    CHECK(accept_once(h, server_fd) == SUCCESS);
+    CHECK(list_length(&h->con_list) == RTSP_MAXIMUM_CONNECTIONS);
+    CHECK(!peer_closed(peers[0]));
+    send_str(peers[0], "OPTIONS rtsp://cam/ RTSP/1.0\r\nCSeq: 5\r\n\r\n");
+    serve_once(h);
+    CHECK(read(peers[0], reply, sizeof(reply) - 1) > 0);
+    CHECK(strstr(reply, "RTSP/1.0 200 OK\r\nCSeq: 5\r\n"));
+
+    for (int i = 0; i < RTSP_MAXIMUM_CONNECTIONS; i++) close(peers[i]);
+    for (int i = 0; i < 10 && h->con_list.list; i++) serve_once(h);
+    CHECK(h->con_list.list == NULL);
+    close(server_fd);
+}
+
+/* An empty GET_PARAMETER is a keepalive: answer it and keep the client */
+static void test_get_parameter_keepalive(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    char reply[256] = {};
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    send_str(peer, "GET_PARAMETER rtsp://cam/ RTSP/1.0\r\nCSeq: 6\r\n"
+        "Session: 1234abcd\r\n\r\n");
+    serve_once(h);
+
+    CHECK(con->con_state == __CON_S_INIT);
+    CHECK(h->con_list.list != NULL);
+    CHECK(read(peer, reply, sizeof(reply) - 1) > 0);
+    CHECK(!strcmp(reply, "RTSP/1.0 200 OK\r\nCSeq: 6\r\n\r\n"));
+    close(peer);
+}
+
+/* A body declared by Content-Length is consumed with its request instead of
+ * being read as the start of the next one */
+static void test_request_body_skipped(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    char reply[256] = {};
+    int peer = connect_client(h, &con);
+
+    CHECK(peer >= 0 && con);
+    send_str(peer, "GET_PARAMETER rtsp://cam/ RTSP/1.0\r\nCSeq: 7\r\n"
+        "Content-Type: text/parameters\r\nContent-Length: 10\r\n\r\nposition\r\n");
+    serve_once(h);
+    CHECK(read(peer, reply, sizeof(reply) - 1) > 0);
+    CHECK(!strcmp(reply, "RTSP/1.0 200 OK\r\nCSeq: 7\r\n\r\n"));
+
+    memset(reply, 0, sizeof(reply));
+    send_str(peer, "OPTIONS rtsp://cam/ RTSP/1.0\r\nCSeq: 8\r\n\r\n");
+    serve_once(h);
+    CHECK(con->con_state == __CON_S_INIT);
+    CHECK(read(peer, reply, sizeof(reply) - 1) > 0);
+    CHECK(strstr(reply, "RTSP/1.0 200 OK\r\nCSeq: 8\r\n"));
+    close(peer);
+}
+
+#define FRAME_NAL 12000
+#define FRAME_NAL_MAX 160000
+
+/* rtp_send_h26x reads the quit flag through the thread pool */
+static void attach_thread_pool(rtsp_handle h)
+{
+    h->pool = calloc(1, sizeof(*h->pool));
+    h->pool->sharedp = calloc(1, sizeof(*h->pool->sharedp));
+    h->pool->sharedp->gbl = gbl_create();
+}
+
+static int play_tcp_client(rtsp_handle h, struct connection_item_t **con)
+{
+    char reply[1024];
+    int peer = connect_client(h, con);
+
+    send_str(peer, "SETUP rtsp://cam/track=0 RTSP/1.0\r\nCSeq: 1\r\n"
+        "Transport: RTP/AVP/TCP;unicast;interleaved=0-1\r\n\r\n");
+    serve_once(h);
+    send_str(peer, "PLAY rtsp://cam/ RTSP/1.0\r\nCSeq: 2\r\n\r\n");
+    serve_once(h);
+    usleep(10 * 1000);
+    if (read(peer, reply, sizeof(reply)) <= 0) return -1;
+    return peer;
+}
+
+/* Frame n is one H.264 NAL stamped with (n + 1) seconds, so the receiver can
+ * tell frames apart by their RTP timestamp */
+static void send_sized_frame(rtsp_handle h, int n, int idr, unsigned int size)
+{
+    static unsigned char nal[4 + FRAME_NAL_MAX];
+    hal_vidpack pack = { .data = nal, .length = 4 + size,
+        .timestamp = (unsigned long long)(n + 1) * 1000000 };
+    hal_vidstream stream = { .pack = &pack, .count = 1 };
+
+    memset(nal, 0x55, sizeof(nal));
+    nal[0] = nal[1] = nal[2] = 0;
+    nal[3] = 1;
+    nal[4] = idr ? 0x65 : 0x41;
+    rtp_send_h26x(h, &stream, 0);
+}
+
+static void send_frame(rtsp_handle h, int n, int idr)
+{
+    send_sized_frame(h, n, idr, FRAME_NAL);
+}
+
+struct rtp_reader_t {
+    int fd, stop;
+    unsigned char buf[2048];
+    size_t have;
+    int frames[256], types[256], count;
+    int markers;
+    int seen, last_seq, seq_gaps;
+};
+
+/* Parses interleaved packets, recording each video frame start and marker */
+static void reader_feed(struct rtp_reader_t *r)
+{
+    for (;;) {
+        ssize_t got = read(r->fd, r->buf + r->have, sizeof(r->buf) - r->have);
+        if (got <= 0) return;
+        r->have += got;
+        while (r->have >= 4) {
+            size_t len = r->buf[2] << 8 | r->buf[3];
+            if (r->have < 4 + len) break;
+            unsigned char *rtp = r->buf + 4;
+            if (r->buf[0] == '$' && r->buf[1] == 0 && len > 14) {
+                unsigned int ts = rtp[4] << 24 | rtp[5] << 16 | rtp[6] << 8 | rtp[7];
+                int type = rtp[12] & 0x1F, start = 1;
+                if (type == 28) {
+                    start = rtp[13] & 0x80;
+                    type = rtp[13] & 0x1F;
+                }
+                if (start && r->count < 256) {
+                    r->frames[r->count] = ts / 90000 - 1;
+                    r->types[r->count++] = type;
+                }
+                if (rtp[1] & 0x80) r->markers++;
+                int seq = rtp[2] << 8 | rtp[3];
+                if (r->seen && seq != ((r->last_seq + 1) & 0xFFFF)) r->seq_gaps++;
+                r->seen = 1;
+                r->last_seq = seq;
+            }
+            memmove(r->buf, r->buf + 4 + len, r->have - 4 - len);
+            r->have -= 4 + len;
+        }
+    }
+}
+
+static void *reader_thread(void *v)
+{
+    struct rtp_reader_t *r = v;
+    while (!__atomic_load_n(&r->stop, __ATOMIC_SEQ_CST)) {
+        struct pollfd pfd = { .fd = r->fd, .events = POLLIN };
+        if (poll(&pfd, 1, 50) == 1) reader_feed(r);
+    }
+    reader_feed(r);
+    return NULL;
+}
+
+/* Lets the server see every peer gone, so the queues go back to the budget */
+static void release_clients(rtsp_handle h)
+{
+    for (int i = 0; i < 10 && h->con_list.list; i++) serve_once(h);
+}
+
+static void stall_sender(struct connection_item_t *con)
+{
+    int size = 4096;
+    setsockopt(con->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+}
+
+/* A client that stops reading must not hold up the encoder thread */
+static void test_stalled_reader_does_not_block(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    int peer;
+
+    attach_thread_pool(h);
+    peer = play_tcp_client(h, &con);
+    CHECK(peer >= 0 && con);
+    stall_sender(con);
+
+    unsigned long long start = millis();
+    for (int i = 0; i < 200; i++) send_frame(h, i, i % 30 == 0);
+    CHECK(millis() - start < 1000);
+    close(peer);
+    release_clients(h);
+}
+
+/* The reading client gets every frame whole while the other one is stalled */
+static void test_reader_unaffected_by_stalled_one(void)
+{
+    rtsp_handle h = make_server(2);
+    struct connection_item_t *stalled = NULL, *reading = NULL;
+    struct rtp_reader_t reader = {};
+    pthread_t thread;
+    int stalled_peer;
+
+    attach_thread_pool(h);
+    stalled_peer = play_tcp_client(h, &stalled);
+    reader.fd = play_tcp_client(h, &reading);
+    CHECK(stalled_peer >= 0 && reader.fd >= 0);
+    stall_sender(stalled);
+    fcntl(reader.fd, F_SETFL, fcntl(reader.fd, F_GETFL) | O_NONBLOCK);
+    pthread_create(&thread, NULL, reader_thread, &reader);
+
+    for (int i = 0; i < 200; i++) {
+        send_frame(h, i, i % 30 == 0);
+        usleep(2000);
+    }
+    usleep(200 * 1000);
+    __atomic_store_n(&reader.stop, 1, __ATOMIC_SEQ_CST);
+    pthread_join(thread, NULL);
+
+    CHECK(reader.markers == 200);
+    CHECK(reader.count == 200);
+    close(stalled_peer);
+    close(reader.fd);
+    release_clients(h);
+}
+
+/* A client that falls behind resumes on a keyframe, never mid-GOP */
+static void test_stalled_reader_resumes_on_idr(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    struct rtp_reader_t reader = {};
+    pthread_t thread;
+    int i, gaps = 0;
+
+    attach_thread_pool(h);
+    reader.fd = play_tcp_client(h, &con);
+    CHECK(reader.fd >= 0 && con);
+    stall_sender(con);
+    fcntl(reader.fd, F_SETFL, fcntl(reader.fd, F_GETFL) | O_NONBLOCK);
+
+    /* stalled for longer than the largest queue holds */
+    for (i = 0; i < 100; i++) send_frame(h, i, i == 0);
+    /* back to reading, with a kernel buffer like the cameras' */
+    int size = 160 * 1024;
+    setsockopt(con->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+    pthread_create(&thread, NULL, reader_thread, &reader);
+    for (; i < 160; i++) {
+        send_frame(h, i, i % 20 == 0);
+        usleep(5000);
+    }
+    usleep(200 * 1000);
+    __atomic_store_n(&reader.stop, 1, __ATOMIC_SEQ_CST);
+    pthread_join(thread, NULL);
+
+    /* frame 0 went out before the stall; after it, every gap ends on a keyframe */
+    CHECK(reader.count >= 2 && reader.frames[0] == 0);
+    for (i = 1; i < reader.count; i++) {
+        if (reader.frames[i] == reader.frames[i - 1] + 1) continue;
+        gaps++;
+        CHECK(reader.types[i] == 5);
+    }
+    CHECK(gaps > 0);
+    close(reader.fd);
+    release_clients(h);
+}
+
+/* A reader that pauses for 1.5 s, as measured on the cameras' clients, then
+ * catches up loses nothing: 9 KB frames at 20 fps, a 160 KB keyframe every 40 */
+static void test_paused_reader_loses_nothing(void)
+{
+    rtsp_handle h = make_server(1);
+    struct connection_item_t *con = NULL;
+    struct rtp_reader_t reader = {};
+    pthread_t thread;
+    int i;
+
+    attach_thread_pool(h);
+    reader.fd = play_tcp_client(h, &con);
+    CHECK(reader.fd >= 0 && con);
+    /* about what the kernel holds for a client on the cameras */
+    int size = 64 * 1024;
+    setsockopt(con->client_fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+    fcntl(reader.fd, F_SETFL, fcntl(reader.fd, F_GETFL) | O_NONBLOCK);
+
+    for (i = 0; i < 100; i++) {
+        if (i == 30) pthread_create(&thread, NULL, reader_thread, &reader);
+        send_sized_frame(h, i, i % 40 == 0, i % 40 ? 9000 : FRAME_NAL_MAX);
+        usleep(50 * 1000);
+    }
+    usleep(300 * 1000);
+    __atomic_store_n(&reader.stop, 1, __ATOMIC_SEQ_CST);
+    pthread_join(thread, NULL);
+
+    CHECK(reader.markers == 100);
+    CHECK(reader.count == 100);
+    CHECK(reader.seq_gaps == 0);
+    for (i = 1; i < reader.count; i++)
+        CHECK(reader.frames[i] == reader.frames[i - 1] + 1);
+    close(reader.fd);
+    release_clients(h);
+}
+
+/* Clients that stop reading together cannot take more queue memory than the
+ * budget, and the one still reading keeps getting every frame */
+static void test_stalled_clients_within_budget(void)
+{
+    enum { STALLED = 4 };
+    rtsp_handle h = make_server(STALLED + 1);
+    struct connection_item_t *stalled[STALLED], *reading = NULL;
+    struct rtp_reader_t reader = {};
+    pthread_t thread;
+    int peers[STALLED], over = 0;
+
+    attach_thread_pool(h);
+    for (int i = 0; i < STALLED; i++) {
+        peers[i] = play_tcp_client(h, &stalled[i]);
+        CHECK(peers[i] >= 0);
+        stall_sender(stalled[i]);
+    }
+    reader.fd = play_tcp_client(h, &reading);
+    CHECK(reader.fd >= 0);
+    fcntl(reader.fd, F_SETFL, fcntl(reader.fd, F_GETFL) | O_NONBLOCK);
+    pthread_create(&thread, NULL, reader_thread, &reader);
+
+    for (int n = 0; n < 150; n++) {
+        send_frame(h, n, n % 40 == 0);
+        unsigned int total = reading->tx_cap;
+        for (int i = 0; i < STALLED; i++) total += stalled[i]->tx_cap;
+        if (total > RTSP_TX_BUDGET) over++;
+        usleep(2000);
+    }
+    usleep(200 * 1000);
+    __atomic_store_n(&reader.stop, 1, __ATOMIC_SEQ_CST);
+    pthread_join(thread, NULL);
+
+    CHECK(over == 0);
+    CHECK(reader.markers == 150);
+    CHECK(reader.count == 150);
+    for (int i = 0; i < STALLED; i++) close(peers[i]);
+    close(reader.fd);
+    release_clients(h);
+}
+
+int main(void)
+{
+    signal(SIGPIPE, SIG_IGN);
+    test_truncated_request();
+    test_response_on_full_socket();
+    test_response_to_stalled_client();
+    test_client_fd_closed_once();
+    test_tcp_play_and_reuse();
+    test_split_interleaved_packet();
+    test_trickled_interleaved_packet();
+    test_connection_overflow();
+    test_get_parameter_keepalive();
+    test_request_body_skipped();
+    test_stalled_reader_does_not_block();
+    test_reader_unaffected_by_stalled_one();
+    test_stalled_reader_resumes_on_idr();
+    test_paused_reader_loses_nothing();
+    test_stalled_clients_within_budget();
+    CHECK_DONE();
+}
