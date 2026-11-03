@@ -155,17 +155,21 @@ int i6_channel_bind(char index, char framerate)
     {
         unsigned int device;
         if (ret = i6_venc.fnGetChannelDeviceId(index, &device))
-            return ret;
+            goto disable;
         i6_sys_bind source = { .module = I6_SYS_MOD_VPE,
             .device = _i6_vpe_dev, .channel = _i6_vpe_chn, .port = index };
         i6_sys_bind dest = { .module = I6_SYS_MOD_VENC,
             .device = device, .channel = index, .port = _i6_venc_port };
         if (ret = i6_sys.fnBindExt(&source, &dest, framerate, framerate,
             I6_SYS_LINK_FRAMEBASE, 0))
-            return ret;
+            goto disable;
     }
 
     return EXIT_SUCCESS;
+
+disable:
+    i6_vpe.fnDisablePort(_i6_vpe_chn, index);
+    return ret;
 }
 
 int i6_channel_create(char index, short width, short height, char jpeg)
@@ -177,6 +181,10 @@ int i6_channel_create(char index, short width, short height, char jpeg)
     port.flip = 0;
     port.compress = I6_COMPR_NONE;
     port.pixFmt = jpeg ? I6_PIXFMT_YUV422_YUYV : I6_PIXFMT_YUV420SP;
+    // The SSC32x JPE also takes 4:2:0 when the height is 16-aligned,
+    // a quarter less MMA than YUYV for the snapshot port
+    if (jpeg && series == 0xEF && !(height & 15))
+        port.pixFmt = I6_PIXFMT_YUV420SP;
 
     return i6_vpe.fnSetPortConfig(_i6_vpe_chn, index, &port);
 }
@@ -625,6 +633,17 @@ attach:
         (ret = i6_venc.fnStartReceiving(index)))
         return ret;
 
+    // The SSC32x MI_VENC maps the output ring in StartRecvPic only, not in
+    // StartRecvPicEx, so GetStream on a snapshot channel fails with
+    // ILLEGAL_PARAM unless it was started once; the mapping lasts until
+    // DestroyChn. The channel is not bound yet, nothing gets encoded
+    if (config->codec == HAL_VIDCODEC_JPG && series == 0xEF) {
+        if (ret = i6_venc.fnStartReceiving(index))
+            return ret;
+        if (ret = i6_venc.fnStopReceiving(index))
+            return ret;
+    }
+
     i6_state[index].payload = config->codec;
 
     return EXIT_SUCCESS;
@@ -679,112 +698,123 @@ void i6_video_request_idr(char index)
 
 int i6_video_snapshot_grab(char index, char quality, hal_jpegdata *jpeg)
 {
-    int ret;
+    int ret, fd;
+    int count = 1;
+    i6_venc_jpg param;
+    i6_venc_stat stat;
+    i6_venc_strm strm;
+    i6_venc_pack packs[8];
+    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
+    fd_set readFds;
+
+    memset(&param, 0, sizeof(param));
+    memset(&stat, 0, sizeof(stat));
+    memset(&strm, 0, sizeof(strm));
 
     if (ret = i6_channel_bind(index, 1)) {
         HAL_DANGER("i6_venc", "Binding the encoder channel "
             "%d failed with %#x!\n", index, ret);
-        goto abort;
+        return ret;
     }
 
-    i6_venc_jpg param;
-    memset(&param, 0, sizeof(param));
     if (ret = i6_venc.fnGetJpegParam(index, &param)) {
         HAL_DANGER("i6_venc", "Reading the JPEG settings "
             "%d failed with %#x!\n", index, ret);
-        goto abort;
+        goto unbind;
     }
 
     param.quality = quality;
     if (ret = i6_venc.fnSetJpegParam(index, &param)) {
         HAL_DANGER("i6_venc", "Writing the JPEG settings "
             "%d failed with %#x!\n", index, ret);
-        goto abort;
+        goto unbind;
     }
 
-    unsigned int count = 1;
     if (ret = i6_venc.fnStartReceivingEx(index, &count)) {
         HAL_DANGER("i6_venc", "Requesting one frame "
             "%d failed with %#x!\n", index, ret);
-        goto abort;
+        goto unbind;
     }
 
-    int fd = i6_venc.fnGetDescriptor(index);
+    fd = i6_venc.fnGetDescriptor(index);
+    if (fd < 0) {
+        HAL_DANGER("i6_venc", "Getting the encoder descriptor "
+            "%d failed with %#x!\n", index, fd);
+        ret = EXIT_FAILURE;
+        goto stop;
+    }
 
-    struct timeval timeout = { .tv_sec = 2, .tv_usec = 0 };
-    fd_set readFds;
     FD_ZERO(&readFds);
     FD_SET(fd, &readFds);
     ret = select(fd + 1, &readFds, NULL, NULL, &timeout);
-    if (ret < 0) {
-        HAL_DANGER("i6_venc", "Select operation failed!\n");
-        goto abort;
-    } else if (ret == 0) {
-        HAL_DANGER("i6_venc", "Capture stream timed out!\n");
-        goto abort;
+    if (ret <= 0) {
+        HAL_DANGER("i6_venc", ret ? "Select operation failed!\n" :
+            "Capture stream timed out!\n");
+        ret = EXIT_FAILURE;
+        goto free_fd;
     }
 
-    if (FD_ISSET(fd, &readFds)) {
-        i6_venc_stat stat;
-        if (ret = i6_venc.fnQuery(index, &stat)) {
-            HAL_DANGER("i6_venc", "Querying the encoder channel "
-                "%d failed with %#x!\n", index, ret);
-            goto abort;
-        }
+    if (ret = i6_venc.fnQuery(index, &stat)) {
+        HAL_DANGER("i6_venc", "Querying the encoder channel "
+            "%d failed with %#x!\n", index, ret);
+        goto free_fd;
+    }
 
-        if (!stat.curPacks) {
-            HAL_DANGER("i6_venc", "Current frame is empty, skipping it!\n");
-            goto abort;
-        }
+    if (!stat.curPacks) {
+        HAL_DANGER("i6_venc", "Current frame is empty, skipping it!\n");
+        ret = EXIT_FAILURE;
+        goto free_fd;
+    }
 
-        i6_venc_strm strm;
-        memset(&strm, 0, sizeof(strm));
-        i6_venc_pack packs[8];
-        if (stat.curPacks > 8)
-            strm.packet = (i6_venc_pack*)malloc(sizeof(i6_venc_pack) * stat.curPacks);
-        else
-            strm.packet = packs;
+    if (stat.curPacks > 8)
+        strm.packet = malloc(sizeof(i6_venc_pack) * stat.curPacks);
+    else
+        strm.packet = packs;
+    if (!strm.packet) {
+        HAL_DANGER("i6_venc", "Memory allocation on channel %d failed!\n", index);
+        ret = EXIT_FAILURE;
+        goto free_fd;
+    }
+    strm.count = stat.curPacks;
 
-        if (!strm.packet) {
-            HAL_DANGER("i6_venc", "Memory allocation on channel %d failed!\n", index);
-            goto abort;
-        }
-        strm.count = stat.curPacks;
+    // On a failure the SDK leaves the line of the failed check in the sequence
+    if (ret = i6_venc.fnGetStream(index, &strm, 40)) {
+        HAL_DANGER("i6_venc", "Getting the stream on channel %d failed "
+            "with %#x (curPacks %u, leftPics %u, seq %#x)!\n",
+            index, ret, stat.curPacks, stat.leftPics, strm.sequence);
+        goto free_packs;
+    }
 
-        if (ret = i6_venc.fnGetStream(index, &strm, stat.curPacks)) {
-            HAL_DANGER("i6_venc", "Getting the stream on "
-                "channel %d failed with %#x!\n", index, ret);
-            if (stat.curPacks > 8) free(strm.packet);
-            strm.packet = NULL;
-            goto abort;
-        }
+    jpeg->jpegSize = 0;
+    for (unsigned int i = 0; i < strm.count; i++) {
+        i6_venc_pack *pack = &strm.packet[i];
+        unsigned int packLen = pack->length - pack->offset;
+        unsigned int newLen = jpeg->jpegSize + packLen;
 
-        {
-            jpeg->jpegSize = 0;
-            for (unsigned int i = 0; i < strm.count; i++) {
-                i6_venc_pack *pack = &strm.packet[i];
-                unsigned int packLen = pack->length - pack->offset;
-                unsigned char *packData = pack->data + pack->offset;
-
-                unsigned int newLen = jpeg->jpegSize + packLen;
-                if (newLen > jpeg->length) {
-                    jpeg->data = realloc(jpeg->data, newLen);
-                    jpeg->length = newLen;
-                }
-                memcpy(jpeg->data + jpeg->jpegSize, packData, packLen);
-                jpeg->jpegSize += packLen;
+        if (newLen > jpeg->length) {
+            unsigned char *grown = realloc(jpeg->data, newLen);
+            if (!grown) {
+                HAL_DANGER("i6_venc", "Growing the JPEG buffer to %u bytes failed!\n", newLen);
+                ret = EXIT_FAILURE;
+                break;
             }
+            jpeg->data = grown;
+            jpeg->length = newLen;
         }
-
-abort:
-        i6_venc.fnFreeStream(index, &strm);
-        if (stat.curPacks > 8) free(strm.packet);
+        memcpy(jpeg->data + jpeg->jpegSize, pack->data + pack->offset, packLen);
+        jpeg->jpegSize += packLen;
     }
 
+    i6_venc.fnFreeStream(index, &strm);
+
+free_packs:
+    if (strm.packet != packs)
+        free(strm.packet);
+free_fd:
     i6_venc.fnFreeDescriptor(index);
-
+stop:
     i6_venc.fnStopReceiving(index);
-
+unbind:
     i6_channel_unbind(index);
 
     return ret;
