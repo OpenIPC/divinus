@@ -66,7 +66,7 @@ typedef struct {
     char font[32];
     char text[80];
     char img[64];
-    int outl;
+    int outl, bgcolor;
     double thick;
 } osd;
 
@@ -74,5 +74,6 @@ extern osd osds[MAX_OSD];
 extern char timefmt[64];
 
 void region_defaults(osd *o, int id);
+void region_prepare(void);
 int region_start();
 void region_stop();

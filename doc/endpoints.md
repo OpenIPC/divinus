@@ -241,10 +241,11 @@ Configures text or image overlays by their ID (0-9 at the moment).
 | GET    | `color`    | Font color (hex format, RGB555 format)             |
 | GET    | `opal`     | Opacity level (0-255)                              |
 | GET    | `pos`      | Position on main stream \[x,y\]                    |
-| GET    | `posx`     | X coordinate (write-only)                          |
+| GET    | `posx`     | X coordinate, -1 to center (write-only)            |
 | GET    | `posy`     | Y coordinate (write-only)                          |
 | GET    | `outl`     | Outline color (hex format, RGB555 format)          |
 | GET    | `thick`    | Outline thickness (0 to disable)                   |
+| GET    | `bgcolor`  | Background box color (hex format), `none` for none |
 | POST   | `file`     | Bitmap or PNG image to upload (replaces text)      |
 
 **Response**
@@ -258,7 +259,8 @@ Configures text or image overlays by their ID (0-9 at the moment).
   "size": 15.0,
   "text": "Backyard (%T)",
   "outl": "#8000",
-  "thick": 0.0
+  "thick": 0.0,
+  "bgcolor": "none"
 }
 ```
 

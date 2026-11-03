@@ -10,6 +10,7 @@ void region_defaults(osd *o, int id) {
     o->posx = DEF_POSX;
     o->posy = DEF_POSY + (DEF_SIZE * 3 / 2) * id;
     o->outl = DEF_OUTL;
+    o->bgcolor = 0;
     o->thick = DEF_THICK;
     o->updt = 0;
     strncpy(o->font, DEF_FONT, sizeof(o->font) - 1);
@@ -340,6 +341,60 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap) {
     return EXIT_SUCCESS;
 }
 
+static short region_frame(void) {
+    return app_config.mp4_enable ? app_config.mp4_width : app_config.mjpeg_width;
+}
+
+// A negative X centers the region on the main stream, the width is rounded
+// so a clock does not move, and get reattached, every second
+static short region_posx(char id, short width) {
+    if (osds[id].posx >= 0) return osds[id].posx;
+
+    return MAX(region_frame() - ((width + 31) & ~31), 0) / 2 & ~1;
+}
+
+static int region_font(const char *name, char *path) {
+    char *dirs[] = {
+        ".",
+        "/oem/usr/share",
+        "/usr/local/share/fonts",
+        "/usr/share/fonts/truetype",
+        "/usr/share/fonts",
+        NULL};
+
+    for (char **dir = dirs; *dir; dir++) {
+        sprintf(path, "%s/%s.ttf", *dir, name);
+        if (!access(path, F_OK)) return EXIT_SUCCESS;
+        sprintf(path, "%s/%s2.ttf", *dir, name);
+        if (!access(path, F_OK)) return EXIT_SUCCESS;
+    }
+
+    return EXIT_FAILURE;
+}
+
+// On infinity6 the text canvases have to exist before the video pipeline: made
+// later, they land in the MMA gaps the encoder's frame buffers come and go
+// from, and the main stream loses a third of its frames
+void region_prepare(void) {
+    if (!app_config.osd_enable || plat != HAL_PLATFORM_I6) return;
+
+#if defined(__ARM_PCS_VFP)
+    for (char id = 0; id < MAX_OSD; id++) {
+        char font[256], out[80] = {0};
+
+        if (EMPTY(osds[id].text) || region_font(osds[id].font, font)) continue;
+
+        strncpy(out, osds[id].text, sizeof(out) - 1);
+        region_fill_formatted(out);
+        hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color,
+            osds[id].outl, osds[id].thick, osds[id].bgcolor);
+        i6_region_prepare(id, bitmap.dim.width, bitmap.dim.height,
+            region_frame() - region_posx(id, bitmap.dim.width));
+        free(bitmap.data);
+    }
+#endif
+}
+
 void *region_thread(void) {
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
@@ -371,31 +426,18 @@ void *region_thread(void) {
 
                 if (osds[id].updt) {
                     char font[256];
-                    char *dirs[] = {
-                        ".",
-                        "/oem/usr/share",
-                        "/usr/local/share/fonts",
-                        "/usr/share/fonts/truetype",
-                        "/usr/share/fonts",
-                        NULL};
-                    char **dir = dirs;
-                    while (*dir) {
-                        sprintf(font, "%s/%s.ttf", *dir, osds[id].font);
-                        if (!access(font, F_OK)) goto found_font;
-                        sprintf(font, "%s/%s2.ttf", *dir++, osds[id].font);
-                        if (!access(font, F_OK)) goto found_font;
+                    if (region_font(osds[id].font, font)) {
+                        HAL_DANGER("region", "Font \"%s\" not found!\n", osds[id].font);
+                        continue;
                     }
-                    HAL_DANGER("region", "Font \"%s\" not found!\n", osds[id].font);
-                    continue;
-found_font:;
                     hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color,
-                        osds[id].outl, osds[id].thick);
+                        osds[id].outl, osds[id].thick, osds[id].bgcolor);
                     hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
-                        .x = osds[id].posx, .y = osds[id].posy };
+                        .x = region_posx(id, bitmap.dim.width), .y = osds[id].posy };
                     switch (plat) {
 #if defined(__ARM_PCS_VFP)
                         case HAL_PLATFORM_I6:
-                            i6_region_create(id, rect, osds[id].opal);
+                            i6_region_create(id, rect, osds[id].opal, region_frame() - rect.x);
                             i6_region_setbitmap(id, &bitmap);
                             break;
                         case HAL_PLATFORM_I6C:
@@ -477,11 +519,11 @@ found_font:;
                     if (!ret)
                     {
                         hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
-                            .x = osds[id].posx, .y = osds[id].posy };
+                            .x = region_posx(id, bitmap.dim.width), .y = osds[id].posy };
                         switch (plat) {
 #if defined(__ARM_PCS_VFP)
                             case HAL_PLATFORM_I6:
-                                i6_region_create(id, rect, osds[id].opal);
+                                i6_region_create(id, rect, osds[id].opal, region_frame() - rect.x);
                                 i6_region_setbitmap(id, &bitmap);
                                 break;
                             case HAL_PLATFORM_I6C:
