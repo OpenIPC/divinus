@@ -17,6 +17,8 @@ static int _s3l_fd = -1;
 static unsigned char *_s3l_bsb;
 static unsigned int _s3l_bsb_len;
 static unsigned short _s3l_main_w, _s3l_main_h;
+static unsigned short _s3l_sub_w = 640, _s3l_sub_h = 480;
+static char _s3l_mjpeg_buf = 1;
 
 static char _s3l_isp_path[128];
 static unsigned char *_s3l_img;
@@ -407,6 +409,14 @@ int s3l_channel_unbind(char index)
     return EXIT_SUCCESS;
 }
 
+void s3l_sub_size(short width, short height)
+{
+    if (width > 0 && height > 0) {
+        _s3l_sub_w = (width + 15) & ~15;
+        _s3l_sub_h = (height + 7) & ~7;
+    }
+}
+
 int s3l_pipeline_create(short width, short height, char mirror, char flip, char framerate)
 {
     static unsigned char buf[4096];
@@ -441,6 +451,13 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
     HAL_INFO("s3l_iav", "VIN %ux%u, main buffer %ux%u\n",
         info.width, info.height, _s3l_main_w, _s3l_main_h);
 
+    /* A sub-buffer must be smaller than the main one */
+    _s3l_mjpeg_buf = _s3l_sub_w < _s3l_main_w && _s3l_sub_h < _s3l_main_h;
+    if (!_s3l_mjpeg_buf) {
+        _s3l_sub_w = (_s3l_main_w / 2) & ~15;
+        _s3l_sub_h = (_s3l_main_h / 2) & ~7;
+    }
+
     memset(buf, 0, sizeof(buf));
     if (s3l_ioctl(S3L_IOC_GET_SYSRES, buf, "GET_SYSTEM_RESOURCE"))
         return EXIT_FAILURE;
@@ -449,7 +466,8 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
     v[0] = _s3l_main_w; v[1] = _s3l_main_h;
     memcpy(buf + S3L_SYSRES_BUF_MAX(0), v, 8);
     memcpy(buf + S3L_SYSRES_STREAM_MAX(0), v, 8);
-    v[0] = 704; v[1] = 576;
+    v[0] = _s3l_sub_w; v[1] = _s3l_sub_h;
+    memcpy(buf + S3L_SYSRES_BUF_MAX(1), v, 8);
     memcpy(buf + S3L_SYSRES_STREAM_MAX(1), v, 8);
     memset(buf + S3L_SYSRES_BUF_MAX(2), 0, 24);
     memset(buf + S3L_SYSRES_STREAM_MAX(2), 0, 16);
@@ -479,7 +497,7 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
         memcpy(buf + S3L_SRCBUF_SUB_INPUT(k), v, 8);
     v[0] = info.width; v[1] = info.height;
     memcpy(buf + S3L_SRCBUF_MAIN_WIN_B, v, 8);
-    v[0] = 640; v[1] = 480;
+    v[0] = _s3l_sub_w; v[1] = _s3l_sub_h;
     memcpy(buf + S3L_SRCBUF_SIZE(1), v, 8);
     if (s3l_ioctl(S3L_IOC_SET_SRCBUF_SETUP, buf, "SET_SRCBUF_SETUP"))
         return EXIT_FAILURE;
@@ -544,26 +562,38 @@ int s3l_video_create(char index, hal_vidconfig *config)
 
     if (index < 0 || index >= S3L_VENC_CHN_NUM)
         HAL_ERROR("s3l_venc", "Only %d encoder channel(s) are supported!\n", S3L_VENC_CHN_NUM);
-    if (config->codec != HAL_VIDCODEC_H264)
-        HAL_ERROR("s3l_venc", "Only H.264 is supported so far!\n");
+    if (config->codec != HAL_VIDCODEC_H264 && config->codec != HAL_VIDCODEC_MJPG)
+        HAL_ERROR("s3l_venc", "Only H.264 and MJPEG are supported so far!\n");
+    char mjpeg = config->codec == HAL_VIDCODEC_MJPG;
 
     memset(buf, 0, sizeof(buf));
     buf[S3L_STRFMT_ID] = index;
     if (s3l_ioctl(S3L_IOC_GET_STREAM_FORMAT, buf, "GET_STREAM_FORMAT"))
         return EXIT_FAILURE;
-    v[0] = S3L_STREAM_TYPE_H264;
+    v[0] = mjpeg ? S3L_STREAM_TYPE_MJPEG : S3L_STREAM_TYPE_H264;
     memcpy(buf + S3L_STRFMT_TYPE, v, 4);
-    v[0] = 0;
+    char sub = mjpeg && _s3l_mjpeg_buf;
+    v[0] = sub;
     memcpy(buf + S3L_STRFMT_BUF_ID, v, 4);
-    v[0] = _s3l_main_w; v[1] = _s3l_main_h; v[2] = 0; v[3] = 0;
+    v[0] = sub ? _s3l_sub_w : _s3l_main_w;
+    v[1] = sub ? _s3l_sub_h : _s3l_main_h;
+    v[2] = 0; v[3] = 0;
     memcpy(buf + S3L_STRFMT_ENC_WIN, v, 16);
     if (s3l_ioctl(S3L_IOC_SET_STREAM_FORMAT, buf, "SET_STREAM_FORMAT"))
         return EXIT_FAILURE;
 
     memset(buf, 0, sizeof(buf));
     buf[0] = index;
-    if (s3l_ioctl(S3L_IOC_GET_H264_CFG, buf, "GET_H264_CFG") ||
-        s3l_ioctl(S3L_IOC_SET_H264_CFG, buf, "SET_H264_CFG"))
+    if (mjpeg) {
+        if (s3l_ioctl(S3L_IOC_GET_MJPEG_CFG, buf, "GET_MJPEG_CFG"))
+            return EXIT_FAILURE;
+        unsigned char quality = MAX(config->minQual, config->maxQual);
+        if (quality >= 1 && quality <= 100)
+            buf[5] = quality;
+        if (s3l_ioctl(S3L_IOC_SET_MJPEG_CFG, buf, "SET_MJPEG_CFG"))
+            return EXIT_FAILURE;
+    } else if (s3l_ioctl(S3L_IOC_GET_H264_CFG, buf, "GET_H264_CFG") ||
+               s3l_ioctl(S3L_IOC_SET_H264_CFG, buf, "SET_H264_CFG"))
         return EXIT_FAILURE;
 
     if (s3l_ioctl_nosig(S3L_IOC_START_ENCODE, (void *)(1u << index)) < 0)
@@ -603,7 +633,7 @@ void *s3l_video_thread(void)
     unsigned int wrapLen = 0;
 
     while (keepRunning) {
-        if (!_s3l_bsb || !s3l_state[0].enable) { usleep(100000); continue; }
+        if (!_s3l_bsb || !(s3l_state[0].enable || s3l_state[1].enable)) { usleep(100000); continue; }
 
         memset(desc, 0, sizeof(desc));
         desc[0] = S3L_DESC_FRAME;
@@ -633,7 +663,8 @@ void *s3l_video_thread(void)
             data = wrapBuf;
         }
 
-        if (!s3l_vid_cb) continue;
+        unsigned int id = desc[S3L_DESC_W_ID];
+        if (!s3l_vid_cb || id >= S3L_VENC_CHN_NUM || !s3l_state[id].enable) continue;
 
         struct timespec ts;
         clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -650,7 +681,8 @@ void *s3l_video_thread(void)
         outPack[0].timestamp = ts.tv_sec * 1000000ull + ts.tv_nsec / 1000;
 
         unsigned int n = 0, sc, scanOff = 0;
-        while (n < 7 && (sc = nal_find_startcode(data, scanOff, size)) < size) {
+        while (desc[S3L_DESC_W_STREAM_TYPE] == S3L_STREAM_TYPE_H264 &&
+               n < 7 && (sc = nal_find_startcode(data, scanOff, size)) < size) {
             unsigned int scLen = (data[sc + 2] == 1) ? 3 : 4;
             if (sc + scLen >= size) break;
             outPack[0].nalu[n].type = data[sc + scLen] & 0x1F;
@@ -663,7 +695,7 @@ void *s3l_video_thread(void)
         for (unsigned int i = 0; i < n; i++)
             outPack[0].nalu[i].length = outPack[0].nalu[i + 1].offset - outPack[0].nalu[i].offset;
 
-        (*s3l_vid_cb)(0, &outStrm);
+        (*s3l_vid_cb)(id, &outStrm);
     }
 
     free(wrapBuf);

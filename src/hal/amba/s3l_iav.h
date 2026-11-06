@@ -17,6 +17,8 @@
 #define S3L_IOC_GET_STREAM_FORMAT   0xc0045634u
 #define S3L_IOC_SET_H264_CFG        0x40045638u
 #define S3L_IOC_GET_H264_CFG        0xc0045638u
+#define S3L_IOC_SET_MJPEG_CFG       0x40045639u
+#define S3L_IOC_GET_MJPEG_CFG       0xc0045639u
 #define S3L_IOC_GET_STATISTICS      0x80047080u
 #define S3L_IOC_IMG_CONFIG_STATISTICS 0x40047001u
 
@@ -41,6 +43,7 @@
 #define S3L_BUFFER_BSB          1
 #define S3L_DESC_FRAME          0
 #define S3L_STREAM_TYPE_H264    1
+#define S3L_STREAM_TYPE_MJPEG   2
 
 #define S3L_SRCBUF_TYPE_PREVIEW 2
 
@@ -73,6 +76,7 @@ struct s3l_vin_info { uint32_t vsrc_id, video_mode, width, height, fps, rsvd[4];
 #define S3L_DESC_W_ID               2
 #define S3L_DESC_W_TIMEOUT_MS       3
 #define S3L_DESC_W_DATA_OFF         4
+#define S3L_DESC_W_STREAM_TYPE      5
 #define S3L_DESC_W_PIC_TYPE         6
 #define S3L_DESC_W_FRAME_NUM        7
 #define S3L_DESC_W_SIZE             13
