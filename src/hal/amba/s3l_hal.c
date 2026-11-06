@@ -451,11 +451,18 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
     HAL_INFO("s3l_iav", "VIN %ux%u, main buffer %ux%u\n",
         info.width, info.height, _s3l_main_w, _s3l_main_h);
 
-    /* A sub-buffer must be smaller than the main one */
-    _s3l_mjpeg_buf = _s3l_sub_w < _s3l_main_w && _s3l_sub_h < _s3l_main_h;
+    /* A sub-buffer must be smaller than the main one, and the second one at most 720x720 */
+    if (_s3l_sub_w >= _s3l_main_w || _s3l_sub_h >= _s3l_main_h)
+        _s3l_mjpeg_buf = 0;
+    else if (_s3l_sub_w > S3L_SRCBUF1_MAX || _s3l_sub_h > S3L_SRCBUF1_MAX)
+        _s3l_mjpeg_buf = 2;
+    else
+        _s3l_mjpeg_buf = 1;
+    unsigned short b1w = _s3l_mjpeg_buf == 1 ? _s3l_sub_w : MIN(640, (_s3l_main_w / 2) & ~15);
+    unsigned short b1h = _s3l_mjpeg_buf == 1 ? _s3l_sub_h : MIN(480, (_s3l_main_h / 2) & ~7);
     if (!_s3l_mjpeg_buf) {
-        _s3l_sub_w = (_s3l_main_w / 2) & ~15;
-        _s3l_sub_h = (_s3l_main_h / 2) & ~7;
+        _s3l_sub_w = _s3l_main_w;
+        _s3l_sub_h = _s3l_main_h;
     }
 
     memset(buf, 0, sizeof(buf));
@@ -466,11 +473,14 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
     v[0] = _s3l_main_w; v[1] = _s3l_main_h;
     memcpy(buf + S3L_SYSRES_BUF_MAX(0), v, 8);
     memcpy(buf + S3L_SYSRES_STREAM_MAX(0), v, 8);
-    v[0] = _s3l_sub_w; v[1] = _s3l_sub_h;
-    memcpy(buf + S3L_SYSRES_BUF_MAX(1), v, 8);
-    memcpy(buf + S3L_SYSRES_STREAM_MAX(1), v, 8);
     memset(buf + S3L_SYSRES_BUF_MAX(2), 0, 24);
     memset(buf + S3L_SYSRES_STREAM_MAX(2), 0, 16);
+    v[0] = b1w; v[1] = b1h;
+    memcpy(buf + S3L_SYSRES_BUF_MAX(1), v, 8);
+    v[0] = _s3l_sub_w; v[1] = _s3l_sub_h;
+    if (_s3l_mjpeg_buf == 2)
+        memcpy(buf + S3L_SYSRES_BUF_MAX(2), v, 8);
+    memcpy(buf + S3L_SYSRES_STREAM_MAX(1), v, 8);
     v[0] = 1; memcpy(buf + S3L_SYSRES_C0, v, 4);
     v[0] = 0; memcpy(buf + S3L_SYSRES_DC, v, 4);
     memcpy(buf + S3L_SYSRES_EXTRA_A4, v, 4);
@@ -497,8 +507,15 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
         memcpy(buf + S3L_SRCBUF_SUB_INPUT(k), v, 8);
     v[0] = info.width; v[1] = info.height;
     memcpy(buf + S3L_SRCBUF_MAIN_WIN_B, v, 8);
-    v[0] = _s3l_sub_w; v[1] = _s3l_sub_h;
+    v[0] = b1w; v[1] = b1h;
     memcpy(buf + S3L_SRCBUF_SIZE(1), v, 8);
+    for (int i = 2; i < 4; i++) {
+        char used = i == 2 && _s3l_mjpeg_buf == 2;
+        v[0] = used ? _s3l_sub_w : 0; v[1] = used ? _s3l_sub_h : 0;
+        memcpy(buf + S3L_SRCBUF_SIZE(i), v, 8);
+        v[0] = used ? S3L_SRCBUF_TYPE_ENCODE : 0;
+        memcpy(buf + S3L_SRCBUF_TYPE(i), v, 4);
+    }
     if (s3l_ioctl(S3L_IOC_SET_SRCBUF_SETUP, buf, "SET_SRCBUF_SETUP"))
         return EXIT_FAILURE;
 
@@ -572,7 +589,7 @@ int s3l_video_create(char index, hal_vidconfig *config)
         return EXIT_FAILURE;
     v[0] = mjpeg ? S3L_STREAM_TYPE_MJPEG : S3L_STREAM_TYPE_H264;
     memcpy(buf + S3L_STRFMT_TYPE, v, 4);
-    char sub = mjpeg && _s3l_mjpeg_buf;
+    char sub = mjpeg ? _s3l_mjpeg_buf : 0;
     v[0] = sub;
     memcpy(buf + S3L_STRFMT_BUF_ID, v, 4);
     v[0] = sub ? _s3l_sub_w : _s3l_main_w;
