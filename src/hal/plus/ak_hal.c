@@ -1,7 +1,6 @@
 #if defined(__arm__) && !defined(__ARM_PCS_VFP)
 
 #include "ak_hal.h"
-#include "ak_osd.h"
 
 ak_aud_impl  ak_aud;
 ak_sys_impl  ak_sys;
@@ -407,7 +406,7 @@ int ak_system_init(char *snrConfig)
     return EXIT_SUCCESS;
 }
 
-static int ak_identify_board(void)
+static int ak_system_identify_board(void)
 {
     char compat[128] = {0};
     FILE *file = fopen("/proc/device-tree/compatible", "r");
@@ -423,15 +422,34 @@ static int ak_identify_board(void)
     return strstr(compat, "anyka,ak3918") != NULL;
 }
 
+static void ak_system_identify_sensor(void)
+{
+    struct dirent *entry;
+    DIR *dir = opendir("/sys/module");
+
+    if (!dir)
+        return;
+
+    while ((entry = readdir(dir))) {
+        if (strncmp(entry->d_name, "sensor_", 7))
+            continue;
+        snprintf(sensor, sizeof(sensor), "%s", entry->d_name + 7);
+        break;
+    }
+
+    closedir(dir);
+}
+
 int ak_system_identify(void)
 {
     unsigned int val = 0;
 
-    if (!ak_identify_board() ||
+    if (!ak_system_identify_board() ||
         !hal_registry(AK_SYS_REG_CHIP, &val, OP_READ))
         return 0;
 
     plat = HAL_PLATFORM_AK;
+    ak_system_identify_sensor();
     strcpy(chip, "AK3918E");
     switch (val) {
         case AK_SYS_CHIP_3918EV100: strcat(chip, "V100"); break;

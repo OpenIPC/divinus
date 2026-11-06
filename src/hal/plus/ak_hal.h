@@ -2,6 +2,7 @@
 
 #include "ak_common.h"
 #include "ak_aud.h"
+#include "ak_osd.h"
 #include "ak_sys.h"
 #include "ak_v4l2.h"
 
@@ -9,6 +10,7 @@
 #include "../tools.h"
 #include "../../app_config.h"
 
+#include <dirent.h>
 #include <pthread.h>
 #include <unistd.h>
 
