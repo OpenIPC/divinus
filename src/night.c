@@ -39,6 +39,13 @@ void night_irled(bool enable) {
     irled = enable;
 }
 
+static void night_lamp(bool enable) {
+#if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
+    if (plat == HAL_PLATFORM_F1)
+        fh_lamp_enable(enable ? app_config.night_lamp : HAL_LIGHT_NONE);
+#endif
+}
+
 void night_manual(bool enable) { manual = enable; }
 
 void night_mode(bool enable) {
@@ -50,17 +57,17 @@ void night_mode(bool enable) {
             night_grayscale(false);
             night_ircut(true);
             night_irled(false);
-            fh_lamp_enable(HAL_LIGHT_NONE);
+            night_lamp(false);
         } else if (lamp & HAL_LIGHT_WHITE) {
             night_grayscale(false);
             night_ircut(true);
             night_irled((lamp & HAL_LIGHT_IR) != 0);
-            fh_lamp_enable(lamp);
+            night_lamp(true);
         } else {
             night_grayscale(true);
             night_ircut(false);
             night_irled((lamp & HAL_LIGHT_IR) != 0);
-            fh_lamp_enable(lamp);
+            night_lamp(true);
         }
         return;
     }
@@ -74,7 +81,8 @@ void *night_thread(void) {
     gpio_init();
     usleep(10000);
 
-    night_mode(night_mode_on());
+    if (!manual) night_mode(night_mode_on());
+    else night_lamp(night_mode_on());
 
 #if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
     if (plat == HAL_PLATFORM_F1 && f1_night_available() &&
