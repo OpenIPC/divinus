@@ -1007,6 +1007,8 @@ int sdk_start(void) {
         case HAL_PLATFORM_S3L:
             s3l_aaa_options(app_config.auto_exposure, app_config.exposure_target,
                 app_config.auto_white_balance, app_config.antiflicker);
+            if (app_config.mjpeg_enable)
+                s3l_sub_size(app_config.mjpeg_width, app_config.mjpeg_height);
             ret = s3l_pipeline_create(width, height,
                 app_config.mirror, app_config.flip, framerate); break;
 #endif
@@ -1066,9 +1068,7 @@ int sdk_start(void) {
     if (app_config.mp4_enable && (ret = media_mp4_enable()))
         HAL_ERROR("media", "MP4 initialization failed with %#x!\n", ret);
 
-    if (app_config.mjpeg_enable && plat == HAL_PLATFORM_S3L)
-        HAL_WARNING("media", "MJPEG is not supported on this platform yet, skipping\n");
-    else if (app_config.mjpeg_enable && (ret = media_mjpeg_enable()))
+    if (app_config.mjpeg_enable && (ret = media_mjpeg_enable()))
         HAL_ERROR("media", "MJPEG initialization failed with %#x!\n", ret);
 
     if (app_config.jpeg_enable && (ret = jpeg_init()))

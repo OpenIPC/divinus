@@ -15,7 +15,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define S3L_VENC_CHN_NUM 1
+#define S3L_VENC_CHN_NUM 2
 
 extern hal_chnstate s3l_state[S3L_VENC_CHN_NUM];
 extern int (*s3l_aud_cb)(hal_audframe*);
@@ -28,6 +28,7 @@ void s3l_channel_grayscale(char enable);
 int s3l_channel_bind(char index);
 int s3l_channel_unbind(char index);
 
+void s3l_sub_size(short width, short height);
 int s3l_pipeline_create(short width, short height, char mirror, char flip, char framerate);
 void s3l_pipeline_destroy(void);
 
