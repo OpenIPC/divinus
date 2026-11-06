@@ -581,16 +581,16 @@ int s3l_video_create(char index, hal_vidconfig *config)
 
     if (index < 0 || index >= S3L_VENC_CHN_NUM)
         HAL_ERROR("s3l_venc", "Only %d encoder channel(s) are supported!\n", S3L_VENC_CHN_NUM);
-    if (config->codec != HAL_VIDCODEC_H264 && config->codec != HAL_VIDCODEC_MJPG &&
-        config->codec != HAL_VIDCODEC_JPG)
-        HAL_ERROR("s3l_venc", "Only H.264, MJPEG and JPEG are supported so far!\n");
-    char mjpeg = config->codec != HAL_VIDCODEC_H264;
+    char h265 = config->codec == HAL_VIDCODEC_H265;
+    char mjpeg = config->codec == HAL_VIDCODEC_MJPG || config->codec == HAL_VIDCODEC_JPG;
+    if (config->codec != HAL_VIDCODEC_H264 && !h265 && !mjpeg)
+        HAL_ERROR("s3l_venc", "Only H.264, H.265, MJPEG and JPEG are supported!\n");
 
     memset(buf, 0, sizeof(buf));
     buf[S3L_STRFMT_ID] = index;
     if (s3l_ioctl(S3L_IOC_GET_STREAM_FORMAT, buf, "GET_STREAM_FORMAT"))
         return EXIT_FAILURE;
-    v[0] = mjpeg ? S3L_STREAM_TYPE_MJPEG : S3L_STREAM_TYPE_H264;
+    v[0] = mjpeg ? S3L_STREAM_TYPE_MJPEG : h265 ? S3L_STREAM_TYPE_H265 : S3L_STREAM_TYPE_H264;
     memcpy(buf + S3L_STRFMT_TYPE, v, 4);
     char sub = mjpeg ? _s3l_mjpeg_buf : 0;
     v[0] = sub;
@@ -614,19 +614,22 @@ int s3l_video_create(char index, hal_vidconfig *config)
             return EXIT_FAILURE;
     } else {
         uint32_t *w = (uint32_t *)buf;
-        if (s3l_ioctl(S3L_IOC_GET_H264_CFG, buf, "GET_H264_CFG"))
+        if (s3l_ioctl(h265 ? S3L_IOC_GET_H265_CFG : S3L_IOC_GET_H264_CFG, buf, "GET_H26X_CFG"))
             return EXIT_FAILURE;
         if (config->gop > 0)
             w[S3L_H264_W_GOP] = (w[S3L_H264_W_GOP] & 0xffff) | (uint32_t)config->gop << 16;
-        /* IAV's 1 Main and 2 High: the S3L's has no Baseline (0 is refused) */
-        if (config->profile == HAL_VIDPROFILE_BASELINE)
-            HAL_WARNING("s3l_venc", "No H.264 Baseline profile on S3L, encoding Main\n");
-        w[S3L_H264_W_IDR_PROFILE] = (w[S3L_H264_W_IDR_PROFILE] & ~0xffffu) | 1 |
-            (uint32_t)(config->profile == HAL_VIDPROFILE_HIGH ? 2 : 1) << 8;
-        if (s3l_ioctl(S3L_IOC_SET_H264_CFG, buf, "SET_H264_CFG"))
+        w[S3L_H264_W_IDR_PROFILE] = (w[S3L_H264_W_IDR_PROFILE] & ~0xffu) | 1;
+        if (!h265) {
+            /* IAV's 1 Main and 2 High: the S3L's has no Baseline (0 is refused) */
+            if (config->profile == HAL_VIDPROFILE_BASELINE)
+                HAL_WARNING("s3l_venc", "No H.264 Baseline profile on S3L, encoding Main\n");
+            w[S3L_H264_W_IDR_PROFILE] = (w[S3L_H264_W_IDR_PROFILE] & ~0xff00u) |
+                (uint32_t)(config->profile == HAL_VIDPROFILE_HIGH ? 2 : 1) << 8;
+        }
+        if (s3l_ioctl(h265 ? S3L_IOC_SET_H265_CFG : S3L_IOC_SET_H264_CFG, buf, "SET_H26X_CFG"))
             return EXIT_FAILURE;
 
-        uint32_t rc[32] = { (uint32_t)index, S3L_STMCFG_H264_BITRATE };
+        uint32_t rc[32] = { (uint32_t)index, h265 ? S3L_STMCFG_H265_BITRATE : S3L_STMCFG_H264_BITRATE };
         if (config->bitrate > 0 && !s3l_ioctl(S3L_IOC_GET_STREAM_CFG, rc, "GET_STREAM_CFG(bitrate)")) {
             rc[3] = config->bitrate * 1000;
             if (config->mode == HAL_VIDMODE_CBR || config->mode == HAL_VIDMODE_VBR)
@@ -708,19 +711,21 @@ int s3l_video_snapshot_grab(hal_jpegdata *jpeg)
 
 void s3l_video_request_idr(char index)
 {
-    uint32_t cfg[32] = { (uint32_t)index, S3L_STMCFG_H264_FORCE_IDR, 1 };
-
     if (index < 0 || index >= S3L_VENC_CHN_NUM || !s3l_state[index].enable ||
-        s3l_state[index].payload != HAL_VIDCODEC_H264)
+        (s3l_state[index].payload != HAL_VIDCODEC_H264 && s3l_state[index].payload != HAL_VIDCODEC_H265))
         return;
+    uint32_t cfg[32] = { (uint32_t)index, s3l_state[index].payload == HAL_VIDCODEC_H265 ?
+        S3L_STMCFG_H265_FORCE_IDR : S3L_STMCFG_H264_FORCE_IDR, 1 };
     s3l_ioctl(S3L_IOC_SET_STREAM_CFG, cfg, "SET_STREAM_CFG(force IDR)");
 }
 
 void *s3l_video_thread(void)
 {
     static uint32_t desc[S3L_SZ_QUERYDESC / 4 + 64];
-    unsigned char *wrapBuf = NULL;
-    unsigned int wrapLen = 0;
+    unsigned char *wrapBuf = NULL, *frameBuf = NULL;
+    unsigned int wrapLen = 0, frameLen = 0, frameCap = 0;
+    int frameNext = -1;
+    unsigned int frameId = 0;
 
     while (keepRunning) {
         if (!_s3l_bsb || !(s3l_state[0].enable || s3l_state[1].enable)) { usleep(100000); continue; }
@@ -756,6 +761,25 @@ void *s3l_video_thread(void)
         unsigned int id = desc[S3L_DESC_W_ID];
         if (!s3l_vid_cb || id >= S3L_VENC_CHN_NUM || !s3l_state[id].enable) continue;
 
+        if (desc[S3L_DESC_W_STREAM_TYPE] == S3L_STREAM_TYPE_H265) {
+            unsigned int slice = (desc[S3L_DESC_W_SLICE] >> 16) & 3, slices = (desc[S3L_DESC_W_SLICE] >> 18) & 3;
+            if (!slice) frameNext = 0, frameLen = 0, frameId = id;
+            if (slice != frameNext || id != frameId) { frameNext = -1; continue; }
+            if (frameLen + size > frameCap) {
+                unsigned char *grown = realloc(frameBuf, frameLen + size);
+                if (!grown) { frameNext = -1; continue; }
+                frameBuf = grown;
+                frameCap = frameLen + size;
+            }
+            memcpy(frameBuf + frameLen, data, size);
+            frameLen += size;
+            frameNext++;
+            if (frameNext < (int)slices) continue;
+            frameNext = -1;
+            data = frameBuf;
+            size = frameLen;
+        }
+
         struct timespec ts;
         clock_gettime(CLOCK_MONOTONIC, &ts);
 
@@ -771,11 +795,12 @@ void *s3l_video_thread(void)
         outPack[0].timestamp = ts.tv_sec * 1000000ull + ts.tv_nsec / 1000;
 
         unsigned int n = 0, sc, scanOff = 0;
-        while (desc[S3L_DESC_W_STREAM_TYPE] == S3L_STREAM_TYPE_H264 &&
+        char hevc = desc[S3L_DESC_W_STREAM_TYPE] == S3L_STREAM_TYPE_H265;
+        while ((desc[S3L_DESC_W_STREAM_TYPE] == S3L_STREAM_TYPE_H264 || hevc) &&
                n < 7 && (sc = nal_find_startcode(data, scanOff, size)) < size) {
             unsigned int scLen = (data[sc + 2] == 1) ? 3 : 4;
             if (sc + scLen >= size) break;
-            outPack[0].nalu[n].type = data[sc + scLen] & 0x1F;
+            outPack[0].nalu[n].type = hevc ? (data[sc + scLen] >> 1) & 0x3F : data[sc + scLen] & 0x1F;
             outPack[0].nalu[n].offset = sc;
             n++;
             scanOff = sc + scLen;
@@ -806,6 +831,7 @@ void *s3l_video_thread(void)
     }
 
     free(wrapBuf);
+    free(frameBuf);
     HAL_INFO("s3l_venc", "Shutting down encoding thread...\n");
     return NULL;
 }
