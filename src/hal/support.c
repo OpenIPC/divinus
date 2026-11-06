@@ -17,6 +17,9 @@ unsigned long long lastMillisTemp = 0;
 float lastReadTemp = 0.0 / 0.0;
 
 void hal_identify(void) {
+#if defined(__arm__)
+    if (s3l_system_identify()) return;
+#endif
 #if defined(__ARM_PCS_VFP)
     if (i6_system_identify()) return;
     if (i6c_system_identify()) return;
