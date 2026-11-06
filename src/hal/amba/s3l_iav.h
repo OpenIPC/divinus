@@ -97,6 +97,7 @@ struct s3l_vin_info { uint32_t vsrc_id, video_mode, width, height, fps, rsvd[4];
 #define S3L_DESC_W_SLICE            16
 #define S3L_DESC_W_PIC_TYPE         6
 #define S3L_DESC_W_FRAME_NUM        7
+#define S3L_DESC_W_PTS              8
 #define S3L_DESC_W_SIZE             13
 
 #define S3L_BUFFER_IMG          8
