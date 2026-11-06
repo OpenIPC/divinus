@@ -753,6 +753,7 @@ void *s3l_video_thread(void)
             size = frameLen;
         }
 
+        unsigned long long pts = (unsigned long long)desc[S3L_DESC_W_PTS + 1] << 32 | desc[S3L_DESC_W_PTS];
         struct timespec ts;
         clock_gettime(CLOCK_MONOTONIC, &ts);
 
@@ -765,7 +766,8 @@ void *s3l_video_thread(void)
         outPack[0].data = data;
         outPack[0].length = size;
         outPack[0].offset = 0;
-        outPack[0].timestamp = ts.tv_sec * 1000000ull + ts.tv_nsec / 1000;
+        /* The encoder's PTS counts 90 kHz ticks; Divinus wants microseconds */
+        outPack[0].timestamp = pts ? pts * 100 / 9 : ts.tv_sec * 1000000ull + ts.tv_nsec / 1000;
 
         unsigned int n = 0, sc, scanOff = 0;
         char hevc = desc[S3L_DESC_W_STREAM_TYPE] == S3L_STREAM_TYPE_H265;
