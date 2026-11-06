@@ -570,9 +570,25 @@ int s3l_video_create(char index, hal_vidconfig *config)
             buf[5] = quality;
         if (s3l_ioctl(S3L_IOC_SET_MJPEG_CFG, buf, "SET_MJPEG_CFG"))
             return EXIT_FAILURE;
-    } else if (s3l_ioctl(S3L_IOC_GET_H264_CFG, buf, "GET_H264_CFG") ||
-               s3l_ioctl(S3L_IOC_SET_H264_CFG, buf, "SET_H264_CFG"))
-        return EXIT_FAILURE;
+    } else {
+        uint32_t *w = (uint32_t *)buf;
+        if (s3l_ioctl(S3L_IOC_GET_H264_CFG, buf, "GET_H264_CFG"))
+            return EXIT_FAILURE;
+        if (config->gop > 0)
+            w[S3L_H264_W_GOP] = (w[S3L_H264_W_GOP] & 0xffff) | (uint32_t)config->gop << 16;
+        w[S3L_H264_W_IDR_PROFILE] = (w[S3L_H264_W_IDR_PROFILE] & ~0xffffu) | 1 |
+            (uint32_t)(config->profile <= HAL_VIDPROFILE_HIGH ? config->profile : HAL_VIDPROFILE_MAIN) << 8;
+        if (s3l_ioctl(S3L_IOC_SET_H264_CFG, buf, "SET_H264_CFG"))
+            return EXIT_FAILURE;
+
+        uint32_t rc[32] = { (uint32_t)index, S3L_STMCFG_H264_BITRATE };
+        if (config->bitrate > 0 && !s3l_ioctl(S3L_IOC_GET_STREAM_CFG, rc, "GET_STREAM_CFG(bitrate)")) {
+            rc[3] = config->bitrate * 1000;
+            if (config->mode == HAL_VIDMODE_CBR || config->mode == HAL_VIDMODE_VBR)
+                rc[4] = (rc[4] & ~0xffu) | (config->mode == HAL_VIDMODE_CBR ? S3L_BRC_CBR : S3L_BRC_VBR);
+            s3l_ioctl(S3L_IOC_SET_STREAM_CFG, rc, "SET_STREAM_CFG(bitrate)");
+        }
+    }
 
     if (s3l_ioctl_nosig(S3L_IOC_START_ENCODE, (void *)(1u << index)) < 0)
         HAL_ERROR("s3l_venc", "Starting encoder %d failed: %s\n", index, strerror(errno));
@@ -601,7 +617,12 @@ int s3l_video_destroy_all(void)
 
 void s3l_video_request_idr(char index)
 {
-    (void)index;
+    uint32_t cfg[32] = { (uint32_t)index, S3L_STMCFG_H264_FORCE_IDR, 1 };
+
+    if (index < 0 || index >= S3L_VENC_CHN_NUM || !s3l_state[index].enable ||
+        s3l_state[index].payload != HAL_VIDCODEC_H264)
+        return;
+    s3l_ioctl(S3L_IOC_SET_STREAM_CFG, cfg, "SET_STREAM_CFG(force IDR)");
 }
 
 void *s3l_video_thread(void)
