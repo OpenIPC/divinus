@@ -74,7 +74,7 @@ void *night_thread(void) {
     gpio_init();
     usleep(10000);
 
-    night_mode(night_mode_on());
+    if (!manual) night_mode(night_mode_on());
 
 #if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
     if (plat == HAL_PLATFORM_F1 && f1_night_available() &&
