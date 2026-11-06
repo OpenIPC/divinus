@@ -14,6 +14,8 @@
 #include <sys/mman.h>
 #include <linux/videodev2.h>
 
+#include "../tools.h"
+
 #define CAP_BUFS 4
 #define ENC_BUFS 2
 
@@ -87,8 +89,8 @@ static int mmap_bufs(int fd, unsigned type, struct v4l2_buf *bufs, int n)
             return -1;
         }
         bufs[i].len = b.length;
-        bufs[i].addr = mmap(NULL, b.length, PROT_READ | PROT_WRITE,
-                            MAP_SHARED, fd, b.m.offset);
+        bufs[i].addr = mmap64(NULL, b.length, PROT_READ | PROT_WRITE,
+                              MAP_SHARED, fd, b.m.offset);
         if (bufs[i].addr == MAP_FAILED) {
             fprintf(stderr, "mmap_bufs: mmap fd=%d type=%u idx=%d len=%zu off=%u errno=%d\n",
                     fd, type, i, (size_t)b.length, (unsigned)b.m.offset, errno);
