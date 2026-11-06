@@ -839,7 +839,7 @@ void respond_request(http_request_t *req) {
                     }
                     else if (EQUALS(key, "qfactor")) {
                         short result = strtol(value, &remain, 10);
-                        if (remain != value)
+                        if (remain != value && result >= 1 && result <= 99)
                             task->qfactor = result;
                     }
                     else if (EQUALS(key, "color2gray") || EQUALS(key, "gray")) {
@@ -1011,7 +1011,7 @@ void respond_request(http_request_t *req) {
                         app_config.jpeg_height = result;
                 } else if (EQUALS(key, "qfactor")) {
                     short result = strtol(value, &remain, 10);
-                    if (remain != value)
+                    if (remain != value && result >= 1 && result <= 99)
                         app_config.jpeg_qfactor = result;
                 }
             }
@@ -1064,7 +1064,7 @@ void respond_request(http_request_t *req) {
                         app_config.mjpeg_bitrate = result;
                 } else if (EQUALS(key, "qfactor")) {
                     short result = strtol(value, &remain, 10);
-                    if (remain != value)
+                    if (remain != value && result >= 1 && result <= 99)
                         app_config.mjpeg_qfactor = result;
                 } else if (EQUALS(key, "mode")) {
                     if (EQUALS_CASE(value, "CBR"))
