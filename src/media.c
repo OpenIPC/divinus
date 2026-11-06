@@ -666,6 +666,7 @@ int media_mjpeg_enable(void) {
         config.height = app_config.mjpeg_height;
         config.codec = HAL_VIDCODEC_MJPG;
         config.mode = app_config.mjpeg_mode;
+        config.minQual = config.maxQual = app_config.mjpeg_qfactor;
         config.framerate = app_config.mjpeg_fps;
         config.bitrate = app_config.mjpeg_bitrate;
         config.maxBitrate = app_config.mjpeg_bitrate * 5 / 4;
