@@ -33,6 +33,7 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
 void s3l_pipeline_destroy(void);
 
 int s3l_video_create(char index, hal_vidconfig *config);
+int s3l_video_snapshot_grab(hal_jpegdata *jpeg);
 int s3l_video_destroy(char index);
 int s3l_video_destroy_all(void);
 void s3l_video_request_idr(char index);

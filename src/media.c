@@ -1009,6 +1009,8 @@ int sdk_start(void) {
                 app_config.auto_white_balance, app_config.antiflicker);
             if (app_config.mjpeg_enable)
                 s3l_sub_size(app_config.mjpeg_width, app_config.mjpeg_height);
+            else if (app_config.jpeg_enable)
+                s3l_sub_size(app_config.jpeg_width, app_config.jpeg_height);
             ret = s3l_pipeline_create(width, height,
                 app_config.mirror, app_config.flip, framerate); break;
 #endif
