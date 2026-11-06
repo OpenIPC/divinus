@@ -24,7 +24,7 @@
 #include "server.h"
 #include "stream.h"
 
-extern rtsp_handle rtspHandle;
+extern rtsp_handle rtspHandle, rtspSubHandle;
 
 int sdk_start(void);
 int sdk_stop(void);
@@ -49,3 +49,4 @@ int media_mp4_disable(void);
 int media_mp4_enable(void);
 
 void rtsp_latch_audio_codec(void);
+int media_sub_rate(void);

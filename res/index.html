@@ -177,6 +177,13 @@
 						'=' + encodeURIComponent(elems[i].value) + '&';
 			}
 			dest = dest.slice(0, -1);
+			// An applied setting is also written to the config file, so it is still
+			// there after a restart. Several applies in a row make one save.
+			req.onreadystatechange = function() {
+				if (this.readyState != 4 || this.status != 200) return;
+				clearTimeout(window.saveTimer);
+				window.saveTimer = setTimeout(saveConfig, 700);
+			};
 			req.open('GET', dest);
 			req.send();
 		}
@@ -295,32 +302,259 @@
 				apiApply('osd/' + i);
 		}
 
+		// Each time setting is sent on its own: sending the stale clock value
+		// from the form along with another change would set the clock back.
+		function timeSend(q, save) {
+			var req = new XMLHttpRequest();
+			req.onreadystatechange = function() {
+				if (this.readyState != 4 || this.status != 200) return;
+				apiRead('time');
+				if (save) saveConfig();
+			};
+			req.open('GET', '/api/time?' + q);
+			req.send();
+		}
+
 		function setFormatTime() {
-			var fmt = document.getElementById('time_fmt').value;
-			apiRead('time');
-			document.getElementById('time_fmt').value = fmt;
-			apiApply('time');
+			timeSend('fmt=' + encodeURIComponent(document.getElementById('time_fmt').value), true);
+		}
+
+		function setTimezone() {
+			timeSend('tz=' + encodeURIComponent(document.getElementById('time_tz').value), false);
 		}
 
 		function setLocalTime() {
-			var ts = Math.floor(new Date().getTime() / 1000);
-			document.getElementById('time_ts').value = ts;
-			apiApply('time');
-			apiRead('time');
+			timeSend('ts=' + Math.floor(new Date().getTime() / 1000), false);
 		}
 
+		function setManualTime() {
+			timeSend('ts=' + encodeURIComponent(document.getElementById('time_ts').value), false);
+		}
+
+		// Live MP4 through Media Source Extensions: the page feeds the stream to the
+		// decoder itself, so it can jump to the newest frame instead of sitting
+		// seconds behind in the browser's progressive-download buffer.
+		// Talk-back: microphone -> 16 kHz mono PCM -> POST api/speak in small pieces
+		var talk = { on: false, ctx: null, stream: null, node: null, buf: [], timer: null };
+		function talkSay(t) { document.getElementById('talkstate').textContent = t; }
+		function talkVolume(v) {
+			document.getElementById('talkvolval').textContent = v;
+			try { localStorage.setItem('talkvol', v); } catch (e) {}
+			clearTimeout(talk.volTimer);
+			talk.volTimer = setTimeout(function() { fetch('api/speak?volume=' + v).catch(function(){}); }, 150);
+		}
+		function talkVolumeInit() {
+			var v = 70;
+			try { v = parseInt(localStorage.getItem('talkvol')) || 70; } catch (e) {}
+			document.getElementById('talkvol').value = v;
+			talkVolume(v);
+		}
+		// Fill the microphone list (names are only available once access was granted)
+		function talkMics() {
+			if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+			navigator.mediaDevices.enumerateDevices().then(function(devs) {
+				var sel = document.getElementById('talkmic'), cur = sel.value, saved = '';
+				try { saved = localStorage.getItem('talkmic') || ''; } catch (e) {}
+				sel.innerHTML = '<option value="">Default microphone</option>';
+				devs.forEach(function(d) {
+					if (d.kind != 'audioinput' || d.deviceId == 'default' || d.deviceId == 'communications') return;
+					var o = document.createElement('option');
+					o.value = d.deviceId; o.textContent = d.label || 'Microphone ' + sel.length;
+					sel.appendChild(o);
+				});
+				sel.value = cur || saved;
+				if (sel.selectedIndex < 0) sel.value = '';
+			}).catch(function(){});
+		}
+		function talkSend() {
+			if (!talk.buf.length) return;
+			var n = 0, i, o = 0;
+			for (i = 0; i < talk.buf.length; i++) n += talk.buf[i].length;
+			var pcm = new Int16Array(n);
+			for (i = 0; i < talk.buf.length; i++) { pcm.set(talk.buf[i], o); o += talk.buf[i].length; }
+			talk.buf = [];
+			fetch('api/speak', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: pcm.buffer })
+				.then(function(r) { if (!r.ok) talkSay('camera refused the audio'); })
+				.catch(function() { talkSay('no answer from camera'); });
+		}
+		function liveTalk(on) {
+			if (on == talk.on) return;
+			talk.on = on;
+			if (!on) {
+				if (talk.timer) { clearInterval(talk.timer); talk.timer = null; }
+				talkSend();
+				if (talk.node) { talk.node.disconnect(); talk.node = null; }
+				if (talk.stream) { talk.stream.getTracks().forEach(function(t) { t.stop(); }); talk.stream = null; }
+				if (talk.ctx) { talk.ctx.close(); talk.ctx = null; }
+				talkSay('');
+				return;
+			}
+			if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+				talk.on = false;
+				talkSay('Microphone blocked: this page is not HTTPS. In Chrome open chrome://flags/#unsafely-treat-insecure-origin-as-secure, add ' + location.origin + ', enable it and relaunch.');
+				return;
+			}
+			talkSay('asking for the microphone...');
+			var micId = document.getElementById('talkmic').value, want = { echoCancellation: true, noiseSuppression: true };
+			if (micId) want.deviceId = { exact: micId };
+			navigator.mediaDevices.getUserMedia({ audio: want }).then(function(stream) {
+				talkMics();
+				if (!talk.on) { stream.getTracks().forEach(function(t) { t.stop(); }); return; }
+				talk.stream = stream;
+				talk.ctx = new (window.AudioContext || window.webkitAudioContext)();
+				var src = talk.ctx.createMediaStreamSource(stream), step = talk.ctx.sampleRate / 16000, pos = 0;
+				talk.node = talk.ctx.createScriptProcessor(4096, 1, 1);
+				talk.node.onaudioprocess = function(e) {
+					var inp = e.inputBuffer.getChannelData(0), out = [], acc = 0, cnt = 0;
+					// Average the samples that fall into each 16 kHz slot
+					for (var i = 0; i < inp.length; i++) {
+						acc += inp[i]; cnt++; pos += 1;
+						if (pos >= step) { pos -= step; var s = acc / cnt; acc = 0; cnt = 0;
+							out.push(Math.max(-32768, Math.min(32767, Math.round(s * 32767)))); }
+					}
+					talk.buf.push(Int16Array.from(out));
+					var pk = 0; for (var j = 0; j < out.length; j++) pk = Math.max(pk, Math.abs(out[j]));
+					talkSay('talking... microphone level ' + Math.round(pk / 327.67) + '%');
+				};
+				src.connect(talk.node);
+				talk.node.connect(talk.ctx.destination);
+				talk.timer = setInterval(talkSend, 200);
+				talkSay('talking...');
+			}).catch(function(e) { talk.on = false; talkSay('microphone not available: ' + e.name); });
+		}
+		function liveLamp(q) {
+			fetch('api/lamp?' + q).then(function(r) { return r.json(); }).then(function(j) {
+				document.getElementById('lampstate').textContent = 'Lamp is ' + (j.on ? 'ON' : 'OFF');
+			}).catch(function() { document.getElementById('lampstate').textContent = 'no answer from camera'; });
+		}
+		// Add ?debug to the page address to see the player state under the picture.
+		var liveDebug = location.search.indexOf('debug') > -1;
+		function liveStop() {
+			if (window.liveTimer) { clearInterval(window.liveTimer); window.liveTimer = null; }
+			if (window.liveAbort) { try { window.liveAbort.abort(); } catch (e) {} window.liveAbort = null; }
+		}
+		function liveCodecs(u8) {
+			function find(tag) {
+				for (var i = 0; i + 4 <= u8.length; i++)
+					if (u8[i] == tag.charCodeAt(0) && u8[i+1] == tag.charCodeAt(1) &&
+						u8[i+2] == tag.charCodeAt(2) && u8[i+3] == tag.charCodeAt(3)) return i;
+				return -1;
+			}
+			function hex(n) { return (n < 16 ? '0' : '') + n.toString(16).toUpperCase(); }
+			var c = [], i = find('avcC');
+			if (i >= 0) c.push('avc1.' + hex(u8[i+5]) + hex(u8[i+6]) + hex(u8[i+7]));
+			else if (find('hvcC') >= 0) c.push('hvc1.1.6.L120.90');
+			if (find('Opus') >= 0) c.push('opus');
+			else if (find('mp4a') >= 0) c.push('mp4a.69');
+			return 'video/mp4; codecs="' + c.join(', ') + '"';
+		}
+		function liveMse(id, src) {
+			var frame = document.getElementById(id);
+			frame.innerHTML = '<video id="player" width="100%" autoplay muted playsinline controls></video>' +
+				'<div id="playerdbg" style="font:12px monospace;opacity:.6' + (liveDebug ? '' : ';display:none') + '"></div>';
+			var v = document.getElementById('player'), ms = new MediaSource(), sb = null, queue = [], dead = false;
+			var ctl = new AbortController(), last = -1, stuck = 0, note = '';
+			window.liveAbort = ctl;
+			v.src = URL.createObjectURL(ms);
+			function restart(why) {
+				if (dead) return; dead = true;
+				setTimeout(function() { if (document.getElementById('player') === v) setSource(id, src); }, 500);
+			}
+			function pump() {
+				if (!sb || sb.updating || !queue.length || dead) return;
+				try { sb.appendBuffer(queue.shift()); } catch (e) { restart('append ' + e.name); }
+			}
+			ms.addEventListener('sourceopen', function() {
+				fetch(src, { signal: ctl.signal }).then(function(r) {
+					var rd = r.body.getReader();
+					(function next() {
+						rd.read().then(function(x) {
+							if (x.done) { restart('stream ended'); return; }
+							if (!sb) {
+								var type = liveCodecs(x.value);
+								if (!MediaSource.isTypeSupported(type)) { note = 'unsupported ' + type; dead = true; return; }
+								sb = ms.addSourceBuffer(type);
+								sb.mode = 'segments';
+								sb.addEventListener('updateend', pump);
+								sb.addEventListener('error', function() { restart('buffer error'); });
+							}
+							queue.push(x.value);
+							pump();
+							next();
+						}).catch(function(e) { if (e.name != 'AbortError') restart('read ' + e.name); });
+					})();
+				}).catch(function(e) { if (e.name != 'AbortError') restart('fetch ' + e.name); });
+			});
+			window.liveTimer = setInterval(function() {
+				if (dead || document.getElementById('player') !== v) return;
+				var b = v.buffered, lag = -1;
+				if (b.length) {
+					var start = b.start(b.length - 1), end = b.end(b.length - 1);
+					lag = end - v.currentTime;
+					// Jump to the newest data when behind (or before the first keyframe)
+					if (lag > 0.7 || v.currentTime < start) v.currentTime = Math.max(start, end - 0.25);
+					if (v.paused) { var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+					// Forget what was already shown
+					if (sb && !sb.updating && !queue.length && v.currentTime - b.start(0) > 20)
+						try { sb.remove(0, v.currentTime - 5); } catch (e) {}
+				}
+				if (v.currentTime == last) stuck++; else stuck = 0;
+				last = v.currentTime;
+				var st = 'mse t=' + v.currentTime.toFixed(1) + ' lag=' + lag.toFixed(2) + ' rs=' + v.readyState +
+					' q=' + queue.length + ' ' + v.videoWidth + 'x' + v.videoHeight +
+					' drop=' + (v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality().droppedVideoFrames : '?') +
+					' err=' + (v.error ? v.error.code + ':' + v.error.message : 'none') + ' ' + note;
+				var d = document.getElementById('playerdbg'); if (d) d.textContent = st;
+				if (v.error) restart('error ' + v.error.message);
+				else if (stuck >= 16) restart('stuck');
+			}, 250);
+		}
 		function setSource(id, src) {
 			var frame = document.getElementById(id), ext = '.mp4';
-			if (frame.firstChild) frame.firstChild.src = "#";
-			if (src.indexOf(ext, src.length - ext.length) > -1)
-				frame.innerHTML = '<video id="player" width="100%" autoplay controls> \
-					<source src="' + src + '" type="video/mp4"> \
-					<p>Please update your browser to view this content.</p> \
-					</video>';
+			liveStop();
+			if (frame.firstChild && frame.firstChild.tagName == 'IMG') frame.firstChild.src = "#";
+			if (src.indexOf(ext, src.length - ext.length) > -1) {
+				if (window.MediaSource && window.fetch && window.AbortController && window.ReadableStream)
+					liveMse(id, src);
+				else
+					frame.innerHTML = '<video id="player" width="100%" autoplay muted playsinline controls> \
+						<source src="' + src + '" type="video/mp4"> \
+						<p>Please update your browser to view this content.</p> \
+						</video>';
+			}
 			else if (src)
 				frame.innerHTML = '<img src="' + src + '" width="100%">';
 			else
 				while (frame.firstChild) frame.removeChild(frame.firstChild);
+		}
+
+		function clipList() {
+			var box = document.getElementById('record_clips'), req = new XMLHttpRequest();
+			box.textContent = 'Loading...';
+			req.onreadystatechange = function() {
+				if (this.readyState != 4) return;
+				if (this.status != 200) { box.textContent = 'Could not read the clip list.'; return; }
+				var files = JSON.parse(req.responseText).files || [];
+				if (!files.length) { box.textContent = 'No recordings on the card.'; return; }
+				var tbl = document.createElement('table');
+				tbl.className = 'w-100';
+				files.forEach(function(f) {
+					var row = tbl.insertRow(), url = '/recordings/' + encodeURIComponent(f.name);
+					// recording_20261010-212517.mp4 -> 2026-10-10 21:25:17
+					var m = f.name.match(/_(\d{4})(\d\d)(\d\d)-(\d\d)(\d\d)(\d\d)/);
+					row.insertCell().textContent = m ? m[1] + '-' + m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5] + ':' + m[6] : f.name;
+					row.insertCell().textContent = (f.size / 1048576).toFixed(1) + ' MB';
+					var play = document.createElement('a'), save = document.createElement('a');
+					play.href = url; play.target = '_blank'; play.textContent = 'Play';
+					save.href = url + '?download'; save.textContent = 'Download';
+					row.insertCell().appendChild(play);
+					row.insertCell().appendChild(save);
+				});
+				box.textContent = '';
+				box.appendChild(tbl);
+			};
+			req.open('GET', '/api/recordings');
+			req.send();
 		}
 
 		function toggleRecord(btn) {
@@ -332,6 +566,7 @@
 				var dec = JSON.parse(req.responseText);
 				for (var key in dec) {
 					if (!dec.hasOwnProperty(key)) continue;
+					if (key == 'storage') document.getElementById('record_storage').value = dec[key];
 					if (key != 'recording') continue;
 					if (dec[key] == true) {
 						btn.innerHTML = 'Stop';
@@ -374,6 +609,7 @@
 			apiRead('onvif');
 			apiRead('record');
 			apiRead('rtsp');
+			apiRead('sub');
 			toggleRecord(document.getElementById('record_state'));
 			apiRead('time');
 
@@ -386,7 +622,7 @@
 		}
 	</script>
 </head>
-<body class="m0" onload="onLoad()">
+<body class="m0" onload="onLoad();talkVolumeInit();talkMics()">
 	<svg id="backdrop" width="100%" height="100%" viewBox="0 0 1920 1080" aria-hidden="true"
      style="position:fixed;top:0;left:0;z-index:-1;pointer-events:none">
 		<defs>
@@ -422,6 +658,19 @@
 		<div class="c cont">
 			<h2 class="unl">Live</h2>
 			<div id="preview" width="100%"></div>
+			<p>
+				<a href="javascript:liveLamp('on=1')" class="btn primary">Lamp on</a>
+				<a href="javascript:liveLamp('on=0')" class="btn">Lamp off</a>
+				<span id="lampstate" class="ph2"></span>
+			</p>
+			<p>
+				<a href="javascript:void(0)" id="talkbtn" class="btn primary" onmousedown="liveTalk(true)" onmouseup="liveTalk(false)" onmouseleave="liveTalk(false)" ontouchstart="liveTalk(true);return false" ontouchend="liveTalk(false)">Hold to talk</a>
+				<label for="talkvol" class="ph2">Speaker volume</label>
+				<input type="range" id="talkvol" min="30" max="94" value="70" style="vertical-align:middle;width:12em" oninput="talkVolume(this.value)">
+				<span id="talkvolval">70</span>
+				<select id="talkmic" style="max-width:16em" onchange="try{localStorage.setItem('talkmic',this.value)}catch(e){}"><option value="">Default microphone</option></select>
+				<span id="talkstate" class="ph2"></span>
+			</p>
 		</div>
 	</div>
 	<input type="checkbox" id="media-modal">
@@ -472,6 +721,10 @@
 						<legend>Recordings</legend>
 						<table class="w-100">
 							<tr>
+								<td><label for="record_storage">SD card</label></td>
+								<td><input type="text" id="record_storage" readonly></td>
+							</tr>
+							<tr>
 								<td><label for="record_enable">Enabled</label></td>
 								<td><select id="record_enable">
 									<option value="false">OFF</option>
@@ -501,8 +754,14 @@
 								<td><label for="record_segment_size">Segment size&nbsp;(bytes)</label></td>
 								<td><input type="number" id="record_segment_size"></td>
 							</tr>
+							<tr>
+								<td><label for="record_reserve">Keep free&nbsp;(MB)</label></td>
+								<td><input type="number" id="record_reserve"></td>
+							</tr>
 						</table>
+						<div id="record_clips" style="max-height:16em;overflow:auto;margin:.5em 0"></div>
 						<button id="record_state" class="btn" onclick="toggleRecord(this)"></button>
+						<a href="javascript:clipList()" class="btn">Show clips</a>
 						<a href="javascript:apiApply('record')" class="btn right">Apply</a>
 					</fieldset>
 				</div>
@@ -660,6 +919,7 @@
 								<td><input type="number" id="mjpeg_qfactor" min="1" max="99"></td>
 							</tr>
 						</table>
+						<small>Not available while the sub-stream is on.</small>
 						<a href="javascript:apiApply('mjpeg')" class="btn right">Apply</a>
 					</fieldset>
 				</div>
@@ -704,7 +964,12 @@
 					<div class="p2 osd_body">
 						<table class="w-100">
 							<tr><td><label for="osd_text">Text</label></td><td><input type="text" id="osd_text" oninput="updateOsdSummary(this.id)"></td></tr>
-							<tr><td><label for="osd_pos">Position</label></td><td><input type="text" id="osd_pos"></td></tr>
+							<tr><td><label for="osd_anchor">Position</label></td><td><select id="osd_anchor">
+								<option value="top-left">Top left</option><option value="top">Top</option><option value="top-right">Top right</option>
+								<option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
+								<option value="bottom-left">Bottom left</option><option value="bottom">Bottom</option><option value="bottom-right">Bottom right</option>
+							</select></td></tr>
+							<tr><td><label for="osd_pos">Offset from it (x,y)</label></td><td><input type="text" id="osd_pos"></td></tr>
 							<tr><td><label for="osd_font">Font family</label></td><td><input type="text" id="osd_font"></td></tr>
 							<tr><td><label for="osd_size">Size</label></td><td><input type="number" id="osd_size" step="0.1"></td></tr>
 							<tr><td><label for="osd_color">Color</label></td><td><input type="color" id="osd_color" class="w-100 p0 color-input"></td></tr>
@@ -738,6 +1003,46 @@
 		<div class="c cont">
 			<h2 class="unl">Network</h2>
 			<div class="row">
+				<div class="6 col box">
+					<fieldset>
+						<legend>Sub-stream</legend>
+						<table class="w-100">
+							<tr>
+								<td><label for="sub_enable">Enabled</label></td>
+								<td><select id="sub_enable">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="sub_size">Size</label></td>
+								<td><select id="sub_size">
+									<option value="640x360">640x360</option>
+									<option value="640x480">640x480</option>
+									<option value="704x576">704x576</option>
+								</select></td>
+							</tr>
+							<tr>
+								<td><label for="sub_measured">Framerate</label></td>
+								<td><input type="text" id="sub_measured" readonly></td>
+							</tr>
+							<tr>
+								<td><label for="sub_gop">Keyframe interval&nbsp;(frames)</label></td>
+								<td><input type="number" id="sub_gop" min="1" max="300"></td>
+							</tr>
+							<tr>
+								<td><label for="sub_bitrate">Bitrate&nbsp;(kbps)</label></td>
+								<td><input type="number" id="sub_bitrate" min="32" max="8192"></td>
+							</tr>
+							<tr>
+								<td><label for="sub_rtsp_port">RTSP port</label></td>
+								<td><input type="number" id="sub_rtsp_port" min="1" max="65535"></td>
+							</tr>
+						</table>
+						<small>H.264 over RTSP only, at the main stream's frame rate. Changing a value restarts the streamer (about 20 seconds).</small>
+						<a href="javascript:apiApply('sub')" class="btn right">Apply</a>
+					</fieldset>
+				</div>
 				<div class="6 col box">
 					<fieldset>
 						<legend>RTSP</legend>
@@ -867,6 +1172,13 @@
 								</select></td>
 							</tr>
 							<tr>
+								<td><label for="night_whiteled">White lamp</label></td>
+								<td><select id="night_whiteled">
+									<option value="false">OFF</option>
+									<option value="true">ON</option>
+								</select></td>
+							</tr>
+							<tr>
 								<td><label for="night_irled_pin">IR LED - pin</label></td>
 								<td><input type="number" id="night_irled_pin"></td>
 							</tr>
@@ -902,8 +1214,38 @@
 								<td><input type="text" id="time_ts"></td>
 								<td>
 									<a href="javascript:setLocalTime()" class="btn cell">Sync</a>
-									<a href="javascript:apiApply('time')" class="btn cell">Apply</a>
+									<a href="javascript:setManualTime()" class="btn cell">Apply</a>
 								</td>
+							</tr>
+							<tr>
+								<td><label for="time_tz">Time zone</label></td>
+								<td><select id="time_tz">
+									<option value="GMT0">UTC</option>
+									<option value="HST10">US Hawaii</option>
+									<option value="AKST9AKDT,M3.2.0,M11.1.0">US Alaska</option>
+									<option value="PST8PDT,M3.2.0,M11.1.0">US Pacific</option>
+									<option value="MST7MDT,M3.2.0,M11.1.0">US Mountain</option>
+									<option value="MST7">US Arizona</option>
+									<option value="CST6CDT,M3.2.0,M11.1.0">US Central</option>
+									<option value="EST5EDT,M3.2.0,M11.1.0">US Eastern</option>
+									<option value="AST4ADT,M3.2.0,M11.1.0">Canada Atlantic</option>
+									<option value="CST6">Mexico City / Central America</option>
+									<option value="<-05>5">Bogota / Lima</option>
+									<option value="<-03>3">Sao Paulo / Buenos Aires</option>
+									<option value="GMT0BST,M3.5.0/1,M10.5.0">UK / Ireland / Portugal</option>
+									<option value="CET-1CEST,M3.5.0,M10.5.0/3">Central Europe</option>
+									<option value="EET-2EEST,M3.5.0/3,M10.5.0/4">Eastern Europe</option>
+									<option value="<+03>-3">Moscow / Istanbul / Riyadh</option>
+									<option value="<+04>-4">Dubai</option>
+									<option value="IST-5:30">India</option>
+									<option value="<+07>-7">Bangkok / Jakarta</option>
+									<option value="CST-8">China / Singapore / Perth</option>
+									<option value="JST-9">Japan / Korea</option>
+									<option value="AEST-10AEDT,M10.1.0,M4.1.0/3">Sydney / Melbourne</option>
+									<option value="AEST-10">Brisbane</option>
+									<option value="NZST-12NZDT,M9.5.0,M4.1.0/3">New Zealand</option>
+								</select></td>
+								<td><a href="javascript:setTimezone()" class="btn cell">Set</a></td>
 							</tr>
 						</table>
 						<a href="javascript:apiRead('time')" class="btn right">Refresh</a>

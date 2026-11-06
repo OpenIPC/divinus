@@ -22,7 +22,11 @@ bool night_mode_on(void);
 void night_grayscale(bool enable);
 void night_ircut(bool enable);
 void night_irled(bool enable);
+bool night_whiteled_on(void);
+void night_whiteled(bool enable);
 void night_manual(bool enable);
+int night_exposure(unsigned int *sensorGain, unsigned int *ispGain,
+    unsigned int *shutterUs, unsigned int *avgY, int *bv);
 void night_mode(bool enable);
 
 void night_disable(void);

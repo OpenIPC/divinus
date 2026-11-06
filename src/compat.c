@@ -35,18 +35,23 @@ int stat(const char *restrict path, struct stat *restrict buf)
 
 void __assert(void) {}
 void akuio_clean_invalidate_dcache(void) {}
-#ifndef __GLIBC__
+// GLIBC_COMPAT: linked against OpenIPC's glibc-compat shim (infinity3 on
+// musl), which, with musl, has working versions of these; an empty one here
+// would be found first and break the vendor libraries that call them.
+#if !defined(__GLIBC__) && !defined(GLIBC_COMPAT)
 void backtrace(void) {}
 void backtrace_symbols(void) {}
 #endif
 void __ctype_b(void) {}
-#ifndef __GLIBC__
+#if !defined(__GLIBC__) && !defined(GLIBC_COMPAT)
 void __ctype_b_loc(void) {}
 void __ctype_tolower(void) {}
 #endif
 void _MI_PRINT_GetDebugLevel(void) {}
+#ifndef GLIBC_COMPAT
 void __pthread_register_cancel(void) {}
 void __pthread_unregister_cancel(void) {}
+#endif
 #ifndef __UCLIBC__
 void _stdlib_mb_cur_max(void) {}
 #endif
