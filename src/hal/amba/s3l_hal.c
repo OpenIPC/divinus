@@ -17,6 +17,7 @@ static int _s3l_fd = -1;
 static unsigned char *_s3l_bsb;
 static unsigned int _s3l_bsb_len;
 static unsigned short _s3l_main_w, _s3l_main_h;
+static char _s3l_fps = 30;
 static unsigned short _s3l_sub_w = 640, _s3l_sub_h = 480;
 static char _s3l_mjpeg_buf = 1;
 
@@ -544,7 +545,8 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
         s3l_aaa_config(_s3l_fd);
     }
     _s3l_previewing = 1;
-    s3l_ae_start(_s3l_fd, framerate > 0 ? framerate : 30);
+    _s3l_fps = framerate > 0 ? framerate : 30;
+    s3l_ae_start(_s3l_fd, _s3l_fps);
 
     {
         uint32_t qb[16] = { S3L_BUFFER_BSB };
@@ -579,9 +581,10 @@ int s3l_video_create(char index, hal_vidconfig *config)
 
     if (index < 0 || index >= S3L_VENC_CHN_NUM)
         HAL_ERROR("s3l_venc", "Only %d encoder channel(s) are supported!\n", S3L_VENC_CHN_NUM);
-    if (config->codec != HAL_VIDCODEC_H264 && config->codec != HAL_VIDCODEC_MJPG)
-        HAL_ERROR("s3l_venc", "Only H.264 and MJPEG are supported so far!\n");
-    char mjpeg = config->codec == HAL_VIDCODEC_MJPG;
+    if (config->codec != HAL_VIDCODEC_H264 && config->codec != HAL_VIDCODEC_MJPG &&
+        config->codec != HAL_VIDCODEC_JPG)
+        HAL_ERROR("s3l_venc", "Only H.264, MJPEG and JPEG are supported so far!\n");
+    char mjpeg = config->codec != HAL_VIDCODEC_H264;
 
     memset(buf, 0, sizeof(buf));
     buf[S3L_STRFMT_ID] = index;
@@ -637,6 +640,13 @@ int s3l_video_create(char index, hal_vidconfig *config)
     if (s3l_ioctl_nosig(S3L_IOC_START_ENCODE, (void *)(1u << index)) < 0)
         HAL_ERROR("s3l_venc", "Starting encoder %d failed: %s\n", index, strerror(errno));
 
+    uint32_t fps[32] = { (uint32_t)index, S3L_STMCFG_FPS };
+    if (!s3l_ioctl(S3L_IOC_GET_STREAM_CFG, fps, "GET_STREAM_CFG(fps)")) {
+        fps[2] = 1;
+        fps[3] = config->codec == HAL_VIDCODEC_JPG ? _s3l_fps : 1;
+        s3l_ioctl(S3L_IOC_SET_STREAM_CFG, fps, "SET_STREAM_CFG(fps)");
+    }
+
     s3l_state[index].payload = config->codec;
     s3l_state[index].enable = 1;
     return EXIT_SUCCESS;
@@ -657,6 +667,43 @@ int s3l_video_destroy_all(void)
     for (char i = 0; i < S3L_VENC_CHN_NUM; i++)
         s3l_video_destroy(i);
     return EXIT_SUCCESS;
+}
+
+static pthread_mutex_t _s3l_snap_mtx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t _s3l_snap_cond = PTHREAD_COND_INITIALIZER;
+/* One snapshot at a time: jpeg_get() serialises callers with jpeg_mutex */
+static hal_jpegdata *_s3l_snap;
+static int _s3l_snap_id, _s3l_snap_ret;
+
+int s3l_video_snapshot_grab(hal_jpegdata *jpeg)
+{
+    struct timespec until;
+    int id = -1, ret;
+
+    for (int i = 0; i < S3L_VENC_CHN_NUM; i++) {
+        if (!s3l_state[i].enable) continue;
+        if (s3l_state[i].payload == HAL_VIDCODEC_JPG) { id = i; break; }
+        if (s3l_state[i].payload == HAL_VIDCODEC_MJPG) id = i;
+    }
+    if (id < 0)
+        HAL_ERROR("s3l_venc", "No MJPEG or JPEG stream to take a snapshot from!\n");
+    if (s3l_state[id].payload == HAL_VIDCODEC_MJPG) {
+        static char told;
+        if (!told++)
+            HAL_INFO("s3l_venc", "Snapshots come from the MJPEG stream, at its size and quality\n");
+    }
+
+    clock_gettime(CLOCK_REALTIME, &until);
+    until.tv_sec += 2;
+    pthread_mutex_lock(&_s3l_snap_mtx);
+    _s3l_snap = jpeg;
+    _s3l_snap_id = id;
+    _s3l_snap_ret = EXIT_FAILURE;
+    while (_s3l_snap && !pthread_cond_timedwait(&_s3l_snap_cond, &_s3l_snap_mtx, &until));
+    _s3l_snap = NULL;
+    ret = _s3l_snap_ret;
+    pthread_mutex_unlock(&_s3l_snap_mtx);
+    return ret;
 }
 
 void s3l_video_request_idr(char index)
@@ -738,7 +785,24 @@ void *s3l_video_thread(void)
         for (unsigned int i = 0; i < n; i++)
             outPack[0].nalu[i].length = outPack[0].nalu[i + 1].offset - outPack[0].nalu[i].offset;
 
-        (*s3l_vid_cb)(id, &outStrm);
+        pthread_mutex_lock(&_s3l_snap_mtx);
+        if (_s3l_snap && _s3l_snap_id == (int)id) {
+            if (_s3l_snap->length < size) {
+                unsigned char *grown = realloc(_s3l_snap->data, size);
+                if (grown) { _s3l_snap->data = grown; _s3l_snap->length = size; }
+            }
+            if (_s3l_snap->length >= size) {
+                memcpy(_s3l_snap->data, data, size);
+                _s3l_snap->jpegSize = size;
+                _s3l_snap_ret = EXIT_SUCCESS;
+            }
+            _s3l_snap = NULL;
+            pthread_cond_signal(&_s3l_snap_cond);
+        }
+        pthread_mutex_unlock(&_s3l_snap_mtx);
+
+        if (s3l_state[id].payload != HAL_VIDCODEC_JPG)
+            (*s3l_vid_cb)(id, &outStrm);
     }
 
     free(wrapBuf);

@@ -1010,6 +1010,8 @@ int sdk_start(void) {
                 app_config.auto_white_balance, app_config.antiflicker);
             if (app_config.mjpeg_enable)
                 s3l_sub_size(app_config.mjpeg_width, app_config.mjpeg_height);
+            else if (app_config.jpeg_enable)
+                s3l_sub_size(app_config.jpeg_width, app_config.jpeg_height);
             /* The main buffer is the H.264/H.265 stream's: a larger MJPEG shares it at its size */
             ret = s3l_pipeline_create(app_config.mp4_enable ? app_config.mp4_width : width,
                 app_config.mp4_enable ? app_config.mp4_height : height, app_config.mirror, app_config.flip,

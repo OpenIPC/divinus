@@ -47,6 +47,7 @@
 #define S3L_STREAM_TYPE_H264    1
 #define S3L_STREAM_TYPE_MJPEG   2
 
+#define S3L_STMCFG_FPS              0x0000
 #define S3L_STMCFG_H264_BITRATE     0x1001
 #define S3L_STMCFG_H264_FORCE_IDR   0x1002
 #define S3L_BRC_CBR                 1

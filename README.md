@@ -48,7 +48,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | infinity6c[^18]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | mercury6[^19]           | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | sun8iw21p1[^20]         | ↻            | ↻            | ↻           | ↻           | ↻                 |
-| S3L[^21]                | ↻            | ↻            | ↻           | ✔️          | ↻                 |
+| S3L[^21]                | ↻            | ✔️           | ✔️          | ✔️          | ↻                 |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
