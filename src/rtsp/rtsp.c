@@ -196,26 +196,23 @@ static void __method_describe(struct connection_item_t *p, rtsp_handle h)
     }
 
     if (h->isH265 &&
-        h->sprop_vps_b64 && h->sprop_sps_b64 && h->sprop_sps_b16 && h->sprop_pps_b64) {
+        h->sprop_vps_b64 && h->sprop_sps_b64 && h->sprop_pps_b64) {
         DASSERT(h->sprop_vps_b64->result, return);
         DASSERT(h->sprop_sps_b64->result, return);
-        DASSERT(h->sprop_sps_b16->result, return);
         DASSERT(h->sprop_pps_b64->result, return);
 
         DBG("VPS BASE64:%s\n", h->sprop_vps_b64->result);
         DBG("SPS BASE64:%s\n", h->sprop_sps_b64->result);
-        DBG("SPS BASE16:%s\n", h->sprop_sps_b16->result);
         DBG("PPS BASE64:%s\n", h->sprop_pps_b64->result);
 
         snprintf(sdp, __RTSP_TCP_BUF_SIZE- 1,
                 "%sm=video 0 RTP/AVP 96\r\n"
                 "a=control:track=0\r\n"
                 "a=rtpmap:96 H265/90000\r\n"
-                "a=fmtp:96 profile-level-id=%s;"
-                " packetization-mode=1;"
-                " sprop-parameter-sets=%s,%s,%s;%s",
+                "a=fmtp:96 sprop-vps=%s;"
+                " sprop-sps=%s;"
+                " sprop-pps=%s;%s",
                 baseRtp,
-                h->sprop_sps_b16->result,
                 h->sprop_vps_b64->result,
                 h->sprop_sps_b64->result,
                 h->sprop_pps_b64->result,
