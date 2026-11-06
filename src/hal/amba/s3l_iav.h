@@ -17,6 +17,8 @@
 #define S3L_IOC_GET_STREAM_FORMAT   0xc0045634u
 #define S3L_IOC_SET_H264_CFG        0x40045638u
 #define S3L_IOC_GET_H264_CFG        0xc0045638u
+#define S3L_IOC_SET_STREAM_CFG      0x40045636u
+#define S3L_IOC_GET_STREAM_CFG      0xc0045636u
 #define S3L_IOC_SET_MJPEG_CFG       0x40045639u
 #define S3L_IOC_GET_MJPEG_CFG       0xc0045639u
 #define S3L_IOC_GET_STATISTICS      0x80047080u
@@ -45,6 +47,13 @@
 #define S3L_STREAM_TYPE_H264    1
 #define S3L_STREAM_TYPE_MJPEG   2
 
+#define S3L_STMCFG_H264_BITRATE     0x1001
+#define S3L_STMCFG_H264_FORCE_IDR   0x1002
+#define S3L_BRC_CBR                 1
+#define S3L_BRC_VBR                 3
+
+#define S3L_H264_W_GOP              1
+#define S3L_H264_W_IDR_PROFILE      2
 #define S3L_SRCBUF_TYPE_PREVIEW 2
 
 #define S3L_VIN_FPS(fps)        ((uint32_t)((512000000ull + (fps) / 2) / (fps)))
