@@ -253,6 +253,14 @@ int save_video_stream(char index, hal_vidstream *stream) {
 int media_start(void) {
     int ret = EXIT_SUCCESS;
 
+#if defined(__arm__)
+    /* Before the stream destinations are told about an audio track */
+    if (plat == HAL_PLATFORM_S3L && app_config.audio_enable) {
+        HAL_WARNING("media", "No audio on this platform yet, continuing without it\n");
+        app_config.audio_enable = false;
+    }
+#endif
+
     for (int i = 0; app_config.stream_dests[i] && *app_config.stream_dests[i]; i++) {
         if (STARTS_WITH(app_config.stream_dests[i], "rtmp://")) {
             flv_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
@@ -327,6 +335,9 @@ void request_idr(void) {
         break;
     }
     if (index != -1) switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: s3l_video_request_idr(index); break;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_video_request_idr(index); break;
         case HAL_PLATFORM_I6C: i6c_video_request_idr(index); break;
@@ -355,6 +366,9 @@ void request_idr(void) {
 void set_grayscale(bool active) {
     pthread_mutex_lock(&chnMtx);
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: s3l_channel_grayscale(active); break;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_channel_grayscale(active); break;
         case HAL_PLATFORM_I6C: i6c_channel_grayscale(active); break;
@@ -394,6 +408,9 @@ int take_next_free_channel(bool mainLoop) {
 
 int create_channel(char index, short width, short height, char framerate, char jpeg) {
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: return EXIT_SUCCESS;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_channel_create(index, width, height, jpeg);
         case HAL_PLATFORM_I6C: return i6c_channel_create(index, width, height, jpeg);
@@ -427,6 +444,9 @@ int create_channel(char index, short width, short height, char framerate, char j
 
 int bind_channel(char index, char framerate, char jpeg) {
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: return s3l_channel_bind(index);
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_channel_bind(index, framerate);
         case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate);
@@ -453,6 +473,9 @@ int bind_channel(char index, char framerate, char jpeg) {
 
 int unbind_channel(char index, char jpeg) {
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: return s3l_channel_unbind(index);
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_channel_unbind(index);
         case HAL_PLATFORM_I6C: return i6c_channel_unbind(index);
@@ -479,6 +502,9 @@ int unbind_channel(char index, char jpeg) {
 
 int media_video_disable(char index, char jpeg) {
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: return s3l_video_destroy(index);
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_video_destroy(index);
         case HAL_PLATFORM_I6C: return i6c_video_destroy(index);
@@ -543,6 +569,15 @@ int media_audio_enable(void) {
     int ret = EXIT_SUCCESS;
 
     if (audioOn) return ret;
+
+#if defined(__arm__)
+    /* No audio on S3L yet: off for this run, so nothing serves or advertises an empty track */
+    if (plat == HAL_PLATFORM_S3L) {
+        HAL_WARNING("media", "No audio on this platform yet, continuing without it\n");
+        app_config.audio_enable = false;
+        return EXIT_SUCCESS;
+    }
+#endif
 
     if (ringbuf_init(&audRing, AUD_RING_CAP))
         HAL_ERROR("media", "Audio queue initialization failed!\n");
@@ -661,7 +696,7 @@ int media_mjpeg_enable(void) {
     }
 
     {
-        hal_vidconfig config;
+        hal_vidconfig config = { 0 };
         config.width = app_config.mjpeg_width;
         config.height = app_config.mjpeg_height;
         config.codec = HAL_VIDCODEC_MJPG;
@@ -671,6 +706,9 @@ int media_mjpeg_enable(void) {
         config.maxBitrate = app_config.mjpeg_bitrate * 5 / 4;
 
         switch (plat) {
+#if defined(__arm__)
+            case HAL_PLATFORM_S3L: ret = s3l_video_create(index, &config); break;
+#endif
 #if defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
@@ -764,6 +802,9 @@ int media_mp4_enable(void) {
         config.maxBitrate = app_config.mp4_bitrate * 5 / 4;
 
         switch (plat) {
+#if defined(__arm__)
+            case HAL_PLATFORM_S3L: ret = s3l_video_create(index, &config); break;
+#endif
 #if defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
@@ -817,6 +858,9 @@ int sdk_start(void) {
     int ret;
 
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: ret = s3l_hal_init(); break;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I3:  ret = i3_hal_init(); break;
         case HAL_PLATFORM_I6:  ret = i6_hal_init(); break;
@@ -845,6 +889,12 @@ int sdk_start(void) {
             ret, errstr(ret));
 
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L:
+            s3l_aud_cb = save_audio_stream;
+            s3l_vid_cb = save_video_stream;
+            break;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:
             i6_aud_cb = save_audio_stream;
@@ -911,6 +961,9 @@ int sdk_start(void) {
     }
 
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: ret = s3l_system_init(app_config.sensor_config); break;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I3:  ret = i3_system_init(); break;
         case HAL_PLATFORM_I6:  ret = i6_system_init(); break;
@@ -950,6 +1003,17 @@ int sdk_start(void) {
     short framerate = MAX(app_config.mp4_fps, app_config.mjpeg_fps);
 
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L:
+            s3l_aaa_options(app_config.auto_exposure, app_config.exposure_target,
+                app_config.auto_white_balance, app_config.antiflicker);
+            if (app_config.mjpeg_enable)
+                s3l_sub_size(app_config.mjpeg_width, app_config.mjpeg_height);
+            else if (app_config.jpeg_enable)
+                s3l_sub_size(app_config.jpeg_width, app_config.jpeg_height);
+            ret = s3l_pipeline_create(width, height,
+                app_config.mirror, app_config.flip, framerate); break;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  ret = i6_pipeline_create(0, width,
             height, app_config.mirror, app_config.flip, framerate); break;
@@ -1033,7 +1097,8 @@ int sdk_start(void) {
         pthread_attr_destroy(&thread_attr);
     }
 
-    if (!access(app_config.sensor_config, F_OK) && !sleep(1))
+    /* S3L reads its ISP configuration itself, when the pipeline is created */
+    if (plat != HAL_PLATFORM_S3L && !access(app_config.sensor_config, F_OK) && !sleep(1))
         switch (plat) {
 #if defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_I3:  i3_config_load(app_config.sensor_config); break;
@@ -1060,6 +1125,9 @@ int sdk_stop(void) {
         jpeg_deinit();
 
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: s3l_video_destroy_all(); break;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_video_destroy_all(); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy_all(); break;
@@ -1084,6 +1152,9 @@ int sdk_stop(void) {
     }
 
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: s3l_pipeline_destroy(); break;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_pipeline_destroy(); break;
         case HAL_PLATFORM_I6C: i6c_pipeline_destroy(); break;
@@ -1114,6 +1185,9 @@ int sdk_stop(void) {
         pthread_join(ispPid, NULL);
 
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: s3l_system_deinit(); break;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I3:  i3_system_deinit(); break;
         case HAL_PLATFORM_I6:  i6_system_deinit(); break;
@@ -1148,6 +1222,9 @@ int sdk_stop(void) {
     }
 
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: s3l_hal_deinit(); break;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I3:  i3_hal_deinit(); break;
         case HAL_PLATFORM_I6:  i6_hal_deinit(); break;

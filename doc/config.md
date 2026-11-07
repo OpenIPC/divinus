@@ -4,7 +4,7 @@ This document describes the fields that can be found within a configuration file
 
 ## System section
 
-- **sensor_config**: Path to the sensor calibration or configuration file, if applicable (e.g., `/etc/sensors/imx415.bin`).
+- **sensor_config**: Path to the sensor calibration or configuration file, if applicable (e.g., `/etc/sensors/imx415.bin`). On Ambarella S3L, an ISP configuration file (S3LISP01/02); `/etc/sensors/s3l_isp.bin` is used when it is missing.
 - **web_port**: Port number for the web server (default: `80`).
 - **web_whitelist**: Array of up to 4 IP addresses or domains allowed to access the web server.
 - **web_enable_auth**: Boolean to enable authentication on the API, live stream and WebUI endpoints (default: `false`).
@@ -35,7 +35,10 @@ This document describes the fields that can be found within a configuration file
 
 - **mirror**: Boolean to turn on image mirroring (default: `false`).
 - **flip**: Boolean to turn on image flipping (default: `false`).
-- **antiflicker**: Antiflicker setting in Hz (default: `60`).
+- **antiflicker**: Antiflicker setting in Hz (default: `60`); the S3L's own auto exposure honours 50 or 60 and treats anything else as off.
+- **auto_exposure**: Boolean, Divinus's own auto exposure on platforms whose HAL runs its 3A itself (Ambarella S3L; default: `true`).
+- **exposure_target**: Target mean luma for that auto exposure, up to 235; 0 or anything below 17 uses the platform default (55 on the S3L; default: `0`).
+- **auto_white_balance**: Boolean, Divinus's own auto white balance on those platforms (default: `true`).
 
 ## mDNS section
 

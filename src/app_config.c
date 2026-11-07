@@ -119,6 +119,9 @@ int app_config_save(void) {
     fprintf(file, "  mirror: %s\n", app_config.mirror ? "true" : "false");
     fprintf(file, "  flip: %s\n", app_config.flip ? "true" : "false");
     fprintf(file, "  antiflicker: %d\n", app_config.antiflicker);
+    fprintf(file, "  auto_exposure: %s\n", app_config.auto_exposure ? "true" : "false");
+    fprintf(file, "  exposure_target: %d\n", app_config.exposure_target);
+    fprintf(file, "  auto_white_balance: %s\n", app_config.auto_white_balance ? "true" : "false");
 
     fprintf(file, "mdns:\n");
     fprintf(file, "  enable: %s\n", app_config.mdns_enable ? "true" : "false");
@@ -280,6 +283,9 @@ enum ConfigError app_config_parse(void) {
     app_config.mirror = false;
     app_config.flip = false;
     app_config.antiflicker = 0;
+    app_config.auto_exposure = true;
+    app_config.exposure_target = 0;
+    app_config.auto_white_balance = true;
 
     app_config.night_mode_enable = false;
     app_config.ir_sensor_pin = 999;
@@ -412,6 +418,9 @@ enum ConfigError app_config_parse(void) {
     if (err != CONFIG_OK)
         goto RET_ERR;
     parse_int(&ini, "isp", "antiflicker", -1, 60, &app_config.antiflicker);
+    parse_bool(&ini, "isp", "auto_exposure", &app_config.auto_exposure);
+    parse_int(&ini, "isp", "exposure_target", 0, 235, &app_config.exposure_target);
+    parse_bool(&ini, "isp", "auto_white_balance", &app_config.auto_white_balance);
 
     parse_bool(&ini, "mdns", "enable", &app_config.mdns_enable);
 
