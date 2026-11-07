@@ -38,6 +38,11 @@ struct AppConfig {
     hal_light night_lamp;
     int adc_threshold;
 
+    // [motion_detect]
+    bool motion_detect_enable;
+    int motion_detect_sensitivity;
+    int motion_detect_hold_s;
+
     // [isp]
     bool mirror;
     bool flip;
