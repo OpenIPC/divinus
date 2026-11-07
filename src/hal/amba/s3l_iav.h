@@ -63,6 +63,7 @@
 #define S3L_SRCBUF_TYPE_ENCODE  1
 #define S3L_SRCBUF_TYPE_PREVIEW 2
 #define S3L_SRCBUF1_MAX         720
+#define S3L_SRCBUF_MIN          240
 
 #define S3L_VIN_FPS(fps)        ((uint32_t)((512000000ull + (fps) / 2) / (fps)))
 

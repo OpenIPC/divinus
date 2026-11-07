@@ -22,6 +22,7 @@ static unsigned short _s3l_sub_w, _s3l_sub_h;
 static char _s3l_mjpeg_buf = 1;
 static unsigned short _s3l_buf1_w, _s3l_buf1_h;
 static unsigned int _s3l_load[S3L_VENC_CHN_NUM];
+static unsigned short _s3l_crop_w, _s3l_crop_h;
 
 static char _s3l_isp_path[128];
 static unsigned char *_s3l_img;
@@ -444,6 +445,25 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
 
     _s3l_main_w = (width > 0 && width < (int)info.width) ? width : info.width;
     _s3l_main_h = (height > 0 && height < (int)info.height) ? height : info.height;
+    /* The main buffer scales down by less than 4: a smaller main stream is a centred window
+       of the smallest main buffer there can be */
+    _s3l_crop_w = _s3l_crop_h = 0;
+    if (_s3l_main_w * 4 <= info.width || _s3l_main_h * 4 <= info.height) {
+        _s3l_crop_w = _s3l_main_w;
+        _s3l_crop_h = _s3l_main_h;
+        _s3l_main_w = MIN((MAX(_s3l_main_w, (info.width / 4 + 16) & ~15) + 15) & ~15, info.width);
+        _s3l_main_h = MIN((MAX(_s3l_main_h, (info.height / 4 + 8) & ~7) + 7) & ~7, info.height);
+        HAL_WARNING("s3l_iav", "%ux%u is 4 times or more below the VIN, cropping it from %ux%u\n",
+            _s3l_crop_w, _s3l_crop_h, _s3l_main_w, _s3l_main_h);
+    }
+    /* Buffers and streams are a multiple of 16 wide and of 8 high: other sizes are rounded up */
+    unsigned short *rw = _s3l_crop_w ? &_s3l_crop_w : &_s3l_main_w, *rh = _s3l_crop_w ? &_s3l_crop_h : &_s3l_main_h;
+    if ((*rw & 15) || (*rh & 7)) {
+        unsigned short ow = *rw, oh = *rh;
+        *rw = MIN((*rw + 15) & ~15, info.width);
+        *rh = MIN((*rh + 7) & ~7, info.height);
+        HAL_WARNING("s3l_iav", "%ux%u is not a multiple of 16x8, encoding %ux%u\n", ow, oh, *rw, *rh);
+    }
     HAL_INFO("s3l_iav", "VIN %ux%u, main buffer %ux%u\n",
         info.width, info.height, _s3l_main_w, _s3l_main_h);
 
@@ -459,11 +479,15 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
        MJPEG or the snapshots when they were not given a size */
     unsigned short b1w = _s3l_mjpeg_buf == 1 && sized ? _s3l_sub_w : MIN(640, (_s3l_main_w / 2) & ~15);
     unsigned short b1h = _s3l_mjpeg_buf == 1 && sized ? _s3l_sub_h : (b1w * _s3l_main_h / _s3l_main_w + 7) & ~7;
+    /* Sub-buffers are at least 240x240: below a 480x480 main buffer the second one is left off */
+    if (!(_s3l_mjpeg_buf == 1 && sized) && (b1w < S3L_SRCBUF_MIN || b1h < S3L_SRCBUF_MIN))
+        b1w = b1h = 0;
     _s3l_buf1_w = b1w;
     _s3l_buf1_h = b1h;
     if (!sized) {
-        _s3l_sub_w = b1w;
-        _s3l_sub_h = b1h;
+        _s3l_mjpeg_buf = b1w ? 1 : 0;
+        _s3l_sub_w = b1w ? b1w : _s3l_main_w;
+        _s3l_sub_h = b1h ? b1h : _s3l_main_h;
     }
     if (!_s3l_mjpeg_buf) {
         _s3l_sub_w = _s3l_main_w;
@@ -517,6 +541,9 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
     memcpy(buf + S3L_SRCBUF_MAIN_WIN_B, v, 8);
     v[0] = b1w; v[1] = b1h;
     memcpy(buf + S3L_SRCBUF_SIZE(1), v, 8);
+    /* IAV keeps the types across runs, so set them every time */
+    v[0] = b1w ? S3L_SRCBUF_TYPE_ENCODE : 0;
+    memcpy(buf + S3L_SRCBUF_TYPE(1), v, 4);
     for (int i = 2; i < 4; i++) {
         char used = i == 2 && _s3l_mjpeg_buf == 2;
         v[0] = used ? _s3l_sub_w : 0; v[1] = used ? _s3l_sub_h : 0;
@@ -603,22 +630,30 @@ int s3l_video_create(char index, hal_vidconfig *config)
     v[0] = mjpeg ? S3L_STREAM_TYPE_MJPEG : h265 ? S3L_STREAM_TYPE_H265 : S3L_STREAM_TYPE_H264;
     memcpy(buf + S3L_STRFMT_TYPE, v, 4);
     char sub = mjpeg ? _s3l_mjpeg_buf : 0;
-    unsigned short w = sub ? _s3l_sub_w : _s3l_main_w, h = sub ? _s3l_sub_h : _s3l_main_h;
-    if (!mjpeg && config->width && config->height &&
-        (config->width < _s3l_main_w || config->height < _s3l_main_h)) {
-        if (config->width == _s3l_buf1_w && config->height == _s3l_buf1_h)
+    unsigned short w = sub ? _s3l_sub_w : _s3l_main_w, h = sub ? _s3l_sub_h : _s3l_main_h, x = 0, y = 0;
+    /* Requested sizes are rounded up to 16x8 as the buffers were */
+    unsigned short cw = (config->width + 15) & ~15, ch = (config->height + 7) & ~7;
+    if (!mjpeg && _s3l_crop_w && cw == _s3l_crop_w && ch == _s3l_crop_h) {
+        w = _s3l_crop_w;
+        h = _s3l_crop_h;
+        x = ((_s3l_main_w - w) / 2) & ~1;
+        y = ((_s3l_main_h - h) / 2) & ~1;
+    } else if (!mjpeg && config->width && config->height &&
+        (cw < _s3l_main_w || ch < _s3l_main_h)) {
+        if (cw == _s3l_buf1_w && ch == _s3l_buf1_h)
             sub = 1, w = _s3l_buf1_w, h = _s3l_buf1_h;
-        else if (_s3l_mjpeg_buf == 2 && config->width == _s3l_sub_w && config->height == _s3l_sub_h)
+        else if (_s3l_mjpeg_buf == 2 && cw == _s3l_sub_w && ch == _s3l_sub_h)
             sub = 2, w = _s3l_sub_w, h = _s3l_sub_h;
         else
-            HAL_ERROR("s3l_venc", "No source buffer is %dx%d (main %ux%u, second %ux%u)\n",
-                config->width, config->height, _s3l_main_w, _s3l_main_h, _s3l_buf1_w, _s3l_buf1_h);
+            HAL_ERROR("s3l_venc", "No source buffer is %ux%u (main %ux%u, second %ux%u)\n",
+                cw, ch, _s3l_main_w, _s3l_main_h, _s3l_buf1_w, _s3l_buf1_h);
     }
     v[0] = sub;
     memcpy(buf + S3L_STRFMT_BUF_ID, v, 4);
     v[0] = w;
     v[1] = h;
-    v[2] = 0; v[3] = 0;
+    v[2] = x;
+    v[3] = y;
     memcpy(buf + S3L_STRFMT_ENC_WIN, v, 16);
     if (s3l_ioctl(S3L_IOC_SET_STREAM_FORMAT, buf, "SET_STREAM_FORMAT"))
         return EXIT_FAILURE;
@@ -852,15 +887,17 @@ int s3l_region_setbitmap(char handle, hal_bitmap *bitmap)
     }
 
     // Areas start at an even x and a y multiple of 4, span an even width and a height multiple of 4
+    /* Clipped to the main stream: the whole main buffer, or the window of it a smaller one is */
+    unsigned int sw = _s3l_crop_w ? _s3l_crop_w : _s3l_main_w, sh = _s3l_crop_w ? _s3l_crop_h : _s3l_main_h;
     unsigned int x = _s3l_rgn[handle].rect.x & ~1, y = _s3l_rgn[handle].rect.y & ~3;
-    if (x >= _s3l_main_w || y >= _s3l_main_h) {
+    if (x >= sw || y >= sh) {
         _s3l_rgn[handle].set = 0;
         s3l_region_apply();
         pthread_mutex_unlock(&_s3l_rgn_mtx);
         return EXIT_FAILURE;
     }
-    unsigned int w = MIN(bitmap->dim.width, _s3l_main_w - x);
-    unsigned int h = MIN(bitmap->dim.height, (_s3l_main_h - y) & ~3);
+    unsigned int w = MIN(bitmap->dim.width, sw - x);
+    unsigned int h = MIN(bitmap->dim.height, (sh - y) & ~3);
     unsigned int width = (w + 1) & ~1, height = (h + 3) & ~3, pitch = (width + 31) & ~31;
     if (pitch * height > _s3l_ovl_slot) {
         height = (_s3l_ovl_slot / pitch) & ~3;

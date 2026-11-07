@@ -74,7 +74,7 @@ _* At the moment, text, RGB or bitfield bitmaps and PNG overlays are handled, mo
 [^18]: SSC377\(D/DE/QE\) and SSC378\[DE/QE\]
 [^19]: SSC359G
 [^20]: V851S\(E\) and V853
-[^21]: Ambarella S3L (S3LM), via the IAV driver; the ISP configuration and 3A (AE, AWB) run in Divinus; the on-screen display is drawn on the H.264/H.265 stream
+[^21]: Ambarella S3L (S3LM), via the IAV driver; the ISP configuration and 3A (AE, AWB) run in Divinus; the on-screen display is drawn on the H.264/H.265 stream; JPEG snapshots are frames of the MJPEG stream, at its size, quality and colour; changing a stream's size, or raising its frame rate, needs a restart of Divinus
 
 
 ### Documentation
