@@ -29,6 +29,17 @@ static int _s3l_nl_sock = -1;
 static pthread_t _s3l_nl_tid, _s3l_stats_tid;
 static volatile char _s3l_aaa_run, _s3l_stats_seen, _s3l_previewing;
 
+static unsigned char *_s3l_ovl;
+static unsigned int _s3l_ovl_len, _s3l_ovl_slot;
+static struct {
+    hal_rect rect;
+    unsigned char opacity, page, set;
+    struct s3l_ovl_area area;
+} _s3l_rgn[S3L_OVL_AREAS];
+static pthread_mutex_t _s3l_rgn_mtx = PTHREAD_MUTEX_INITIALIZER;
+
+static void s3l_region_apply(void);
+
 static unsigned int s3l_state_get(void)
 {
     unsigned int state = 0xdeadbeef;
@@ -507,6 +518,12 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
     if (s3l_ioctl(S3L_IOC_ENABLE_PREVIEW, 0, "ENABLE_PREVIEW"))
         return EXIT_FAILURE;
 
+    /* IAV keeps overlays across runs, and one that does not fit a stream stops it from starting */
+    for (uint32_t i = 0; i < S3L_VENC_CHN_NUM; i++) {
+        struct s3l_ovl off = { .stream = i };
+        ioctl(_s3l_fd, S3L_IOC_SET_OVERLAY, &off);
+    }
+
     /* Newer microcode (279928 on, such as the SDK's 2018/10/28 284712) only makes room for 3A
        statistics if they are on when preview starts, and they can only be set up once it has: the
        first preview after the microcode is loaded has none, the next ones do. So if none arrive
@@ -624,6 +641,11 @@ int s3l_video_create(char index, hal_vidconfig *config)
 
     s3l_state[index].payload = config->codec;
     s3l_state[index].enable = 1;
+    if (!mjpeg) {
+        pthread_mutex_lock(&_s3l_rgn_mtx);
+        s3l_region_apply();
+        pthread_mutex_unlock(&_s3l_rgn_mtx);
+    }
     return EXIT_SUCCESS;
 }
 
@@ -690,6 +712,168 @@ void s3l_video_request_idr(char index)
     uint32_t cfg[32] = { (uint32_t)index, s3l_state[index].payload == HAL_VIDCODEC_H265 ?
         S3L_STMCFG_H265_FORCE_IDR : S3L_STMCFG_H264_FORCE_IDR, 1 };
     s3l_ioctl(S3L_IOC_SET_STREAM_CFG, cfg, "SET_STREAM_CFG(force IDR)");
+}
+
+static int s3l_region_map(void)
+{
+    if (_s3l_ovl)
+        return EXIT_SUCCESS;
+    uint32_t qb[16] = { S3L_BUFFER_OVERLAY };
+    if (s3l_ioctl(S3L_IOC_QUERY_BUF, qb, "QUERY_BUF(overlay)"))
+        return EXIT_FAILURE;
+    if (qb[1] <= S3L_OVL_DATA_OFF) {
+        HAL_DANGER("s3l_rgn", "The overlay buffer is too small (%#x)\n", qb[1]);
+        return EXIT_FAILURE;
+    }
+    unsigned char *m = mmap64(NULL, qb[1], PROT_READ | PROT_WRITE, MAP_SHARED, _s3l_fd, qb[2]);
+    if (m == MAP_FAILED) {
+        HAL_DANGER("s3l_rgn", "Mapping the overlay buffer failed: %s\n", strerror(errno));
+        return EXIT_FAILURE;
+    }
+    _s3l_ovl = m;
+    _s3l_ovl_len = qb[1];
+    // Two pages per region, so an update never rewrites what the DSP is reading
+    _s3l_ovl_slot = ((qb[1] - S3L_OVL_DATA_OFF) / (S3L_OVL_AREAS * 2)) & ~31u;
+    return EXIT_SUCCESS;
+}
+
+// The overlay is per stream: put the regions on every running H.264/H.265 stream
+static void s3l_region_apply(void)
+{
+    struct s3l_ovl ovl;
+
+    if (!_s3l_ovl)
+        return;
+    for (char i = 0; i < S3L_VENC_CHN_NUM; i++) {
+        if (!s3l_state[i].enable || (s3l_state[i].payload != HAL_VIDCODEC_H264 &&
+            s3l_state[i].payload != HAL_VIDCODEC_H265))
+            continue;
+        memset(&ovl, 0, sizeof(ovl));
+        ovl.stream = i;
+        for (int a = 0; a < S3L_OVL_AREAS; a++)
+            if (_s3l_rgn[a].set) {
+                ovl.area[a] = _s3l_rgn[a].area;
+                ovl.flags = 1;
+            }
+        s3l_ioctl(S3L_IOC_SET_OVERLAY, &ovl, "SET_OVERLAY_INSERT");
+    }
+}
+
+// ARGB1555 to a CLUT entry: V, U, Y (BT.601, limited range), alpha
+static void s3l_region_clut(unsigned char *e, unsigned short px, unsigned char alpha)
+{
+    int r = (px >> 10 & 31) * 255 / 31, g = (px >> 5 & 31) * 255 / 31, b = (px & 31) * 255 / 31;
+    e[0] = 128 + ((112 * r - 94 * g - 18 * b + 128) >> 8);
+    e[1] = 128 + ((-38 * r - 74 * g + 112 * b + 128) >> 8);
+    e[2] = 16 + ((66 * r + 129 * g + 25 * b + 128) >> 8);
+    e[3] = alpha;
+}
+
+int s3l_region_create(char handle, hal_rect rect, short opacity)
+{
+    if (handle < 0 || handle >= S3L_OVL_AREAS)
+        return EXIT_FAILURE;
+    pthread_mutex_lock(&_s3l_rgn_mtx);
+    _s3l_rgn[handle].rect = rect;
+    _s3l_rgn[handle].opacity = MIN(MAX(opacity, 0), 255);
+    pthread_mutex_unlock(&_s3l_rgn_mtx);
+    return EXIT_SUCCESS;
+}
+
+int s3l_region_setbitmap(char handle, hal_bitmap *bitmap)
+{
+    static short index[32768];
+    unsigned short *src = bitmap ? bitmap->data : NULL;
+
+    if (handle < 0 || handle >= S3L_OVL_AREAS || !src || !bitmap->dim.width || !bitmap->dim.height)
+        return EXIT_FAILURE;
+    pthread_mutex_lock(&_s3l_rgn_mtx);
+    if (s3l_region_map()) {
+        pthread_mutex_unlock(&_s3l_rgn_mtx);
+        return EXIT_FAILURE;
+    }
+
+    // Areas start at an even x and a y multiple of 4, span an even width and a height multiple of 4
+    unsigned int x = _s3l_rgn[handle].rect.x & ~1, y = _s3l_rgn[handle].rect.y & ~3;
+    if (x >= _s3l_main_w || y >= _s3l_main_h) {
+        _s3l_rgn[handle].set = 0;
+        s3l_region_apply();
+        pthread_mutex_unlock(&_s3l_rgn_mtx);
+        return EXIT_FAILURE;
+    }
+    unsigned int w = MIN(bitmap->dim.width, _s3l_main_w - x);
+    unsigned int h = MIN(bitmap->dim.height, (_s3l_main_h - y) & ~3);
+    unsigned int width = (w + 1) & ~1, height = (h + 3) & ~3, pitch = (width + 31) & ~31;
+    if (pitch * height > _s3l_ovl_slot) {
+        height = (_s3l_ovl_slot / pitch) & ~3;
+        h = MIN(h, height);
+        HAL_WARNING("s3l_rgn", "Region %d is too large, keeping its first %u rows\n", handle, h);
+    }
+    if (!h) {
+        _s3l_rgn[handle].set = 0;
+        s3l_region_apply();
+        pthread_mutex_unlock(&_s3l_rgn_mtx);
+        return EXIT_FAILURE;
+    }
+
+    unsigned char page = _s3l_rgn[handle].page ^ 1, alpha = _s3l_rgn[handle].opacity;
+    unsigned int slot = handle * 2 + page;
+    unsigned char *clut = _s3l_ovl + slot * S3L_OVL_CLUT_LEN;
+    unsigned char *dst = _s3l_ovl + S3L_OVL_DATA_OFF + slot * _s3l_ovl_slot;
+
+    // Index 0 is transparent; up to 255 colours exactly, beyond that 3-3-2
+    memset(clut, 0, S3L_OVL_CLUT_LEN);
+    clut[0] = clut[1] = 128;
+    clut[2] = 16;
+    memset(index, 0xff, sizeof(index));
+    int colours = 0, quantise = 0;
+    for (unsigned int i = 0; i < w * h && !quantise; i++) {
+        unsigned short px = src[(i / w) * bitmap->dim.width + i % w];
+        if (!(px & 0x8000) || index[px & 0x7fff] >= 0)
+            continue;
+        if (colours == 255)
+            quantise = 1;
+        else {
+            index[px & 0x7fff] = ++colours;
+            s3l_region_clut(clut + 4 * colours, px, alpha);
+        }
+    }
+    if (quantise)
+        for (int i = 1; i < 256; i++) {
+            int r = (i - 1) >> 5 & 7, g = (i - 1) >> 2 & 7, b = (i - 1) & 3;
+            s3l_region_clut(clut + 4 * i, (r * 31 / 7) << 10 | (g * 31 / 7) << 5 | b * 31 / 3, alpha);
+        }
+
+    memset(dst, 0, pitch * height);
+    for (unsigned int r = 0; r < h; r++)
+        for (unsigned int c = 0; c < w; c++) {
+            unsigned short px = src[r * bitmap->dim.width + c];
+            if (!(px & 0x8000))
+                continue;
+            dst[r * pitch + c] = quantise ? MIN(1 + ((px >> 12 & 7) << 5 | (px >> 7 & 7) << 2 | (px >> 3 & 3)), 255) :
+                index[px & 0x7fff];
+        }
+
+    _s3l_rgn[handle].area = (struct s3l_ovl_area){ .enable = 1, .width = width, .pitch = pitch,
+        .height = height, .size = pitch * height, .x = x, .y = y,
+        .clut = slot * S3L_OVL_CLUT_LEN, .data = dst - _s3l_ovl };
+    _s3l_rgn[handle].page = page;
+    _s3l_rgn[handle].set = 1;
+    s3l_region_apply();
+    pthread_mutex_unlock(&_s3l_rgn_mtx);
+    return EXIT_SUCCESS;
+}
+
+void s3l_region_destroy(char handle)
+{
+    if (handle < 0 || handle >= S3L_OVL_AREAS)
+        return;
+    pthread_mutex_lock(&_s3l_rgn_mtx);
+    if (_s3l_rgn[handle].set) {
+        _s3l_rgn[handle].set = 0;
+        s3l_region_apply();
+    }
+    pthread_mutex_unlock(&_s3l_rgn_mtx);
 }
 
 void *s3l_video_thread(void)

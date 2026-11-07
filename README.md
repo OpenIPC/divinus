@@ -48,7 +48,7 @@ In spite of these design choices, Divinus boasts numerous features that cater to
 | infinity6c[^18]         | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | mercury6[^19]           | ✔️           | ✔️           | ✔️          | ✔️          | ✔️                |
 | sun8iw21p1[^20]         | ↻            | ↻            | ↻           | ↻           | ↻                 |
-| S3L[^21]                | ↻            | ✔️           | ✔️          | ✔️          | ↻                 |
+| S3L[^21]                | ↻            | ✔️           | ✔️          | ✔️          | ✔️                |
 
 _✔️ - supported, ↻ - in development, ✗ - unsupported, ⁿ/ₐ - not supported by hardware_
 
@@ -74,7 +74,7 @@ _* At the moment, text, RGB or bitfield bitmaps and PNG overlays are handled, mo
 [^18]: SSC377\(D/DE/QE\) and SSC378\[DE/QE\]
 [^19]: SSC359G
 [^20]: V851S\(E\) and V853
-[^21]: Ambarella S3L (S3LM), via the IAV driver; the ISP configuration and 3A (AE, AWB) run in Divinus
+[^21]: Ambarella S3L (S3LM), via the IAV driver; the ISP configuration and 3A (AE, AWB) run in Divinus; the on-screen display is drawn on the H.264/H.265 stream
 
 
 ### Documentation
