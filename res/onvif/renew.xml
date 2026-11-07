@@ -1,0 +1,4 @@
+    <wsnt:RenewResponse>
+      <wsnt:TerminationTime>%s</wsnt:TerminationTime>
+      <wsnt:CurrentTime>%s</wsnt:CurrentTime>
+    </wsnt:RenewResponse>

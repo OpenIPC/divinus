@@ -34,6 +34,14 @@ void media_stop(void);
 
 void request_idr(void);
 void set_grayscale(bool active);
+
+int raw_create(short width, short height);
+int raw_reopen(short width, short height);
+int raw_get(hal_rawframe *frame);
+int raw_release(hal_rawframe *frame);
+void raw_destroy(void);
+
+int get_isp_gain(unsigned int *gain);
 int take_next_free_channel(bool mainLoop);
 
 int create_channel(char index, short width, short height, char framerate, char jpeg);

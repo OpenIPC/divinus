@@ -12,6 +12,7 @@
 #include "hal/macros.h"
 #include "hal/support.h"
 #include "media.h"
+#include "motion.h"
 
 bool night_grayscale_on(void);
 bool night_ircut_on(void);
