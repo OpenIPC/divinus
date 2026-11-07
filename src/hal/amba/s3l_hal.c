@@ -18,8 +18,9 @@ static unsigned char *_s3l_bsb;
 static unsigned int _s3l_bsb_len;
 static unsigned short _s3l_main_w, _s3l_main_h;
 static char _s3l_fps = 30;
-static unsigned short _s3l_sub_w = 640, _s3l_sub_h = 480;
+static unsigned short _s3l_sub_w, _s3l_sub_h;
 static char _s3l_mjpeg_buf = 1;
+static unsigned short _s3l_buf1_w, _s3l_buf1_h;
 
 static char _s3l_isp_path[128];
 static unsigned char *_s3l_img;
@@ -37,6 +38,7 @@ static struct {
     struct s3l_ovl_area area;
 } _s3l_rgn[S3L_OVL_AREAS];
 static pthread_mutex_t _s3l_rgn_mtx = PTHREAD_MUTEX_INITIALIZER;
+static char _s3l_chn_buf[S3L_VENC_CHN_NUM];
 
 static void s3l_region_apply(void);
 
@@ -464,14 +466,23 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
         info.width, info.height, _s3l_main_w, _s3l_main_h);
 
     /* A sub-buffer must be smaller than the main one, and the second one at most 720x720 */
-    if (_s3l_sub_w >= _s3l_main_w || _s3l_sub_h >= _s3l_main_h)
+    char sized = _s3l_sub_w && _s3l_sub_h;
+    if (sized && (_s3l_sub_w >= _s3l_main_w || _s3l_sub_h >= _s3l_main_h))
         _s3l_mjpeg_buf = 0;
-    else if (_s3l_sub_w > S3L_SRCBUF1_MAX || _s3l_sub_h > S3L_SRCBUF1_MAX)
+    else if (sized && (_s3l_sub_w > S3L_SRCBUF1_MAX || _s3l_sub_h > S3L_SRCBUF1_MAX))
         _s3l_mjpeg_buf = 2;
     else
         _s3l_mjpeg_buf = 1;
-    unsigned short b1w = _s3l_mjpeg_buf == 1 ? _s3l_sub_w : MIN(640, (_s3l_main_w / 2) & ~15);
-    unsigned short b1h = _s3l_mjpeg_buf == 1 ? _s3l_sub_h : MIN(480, (_s3l_main_h / 2) & ~7);
+    /* Otherwise the second buffer is 640 wide at the main aspect, shared by a sub-stream and
+       MJPEG or the snapshots when they were not given a size */
+    unsigned short b1w = _s3l_mjpeg_buf == 1 && sized ? _s3l_sub_w : MIN(640, (_s3l_main_w / 2) & ~15);
+    unsigned short b1h = _s3l_mjpeg_buf == 1 && sized ? _s3l_sub_h : (b1w * _s3l_main_h / _s3l_main_w + 7) & ~7;
+    _s3l_buf1_w = b1w;
+    _s3l_buf1_h = b1h;
+    if (!sized) {
+        _s3l_sub_w = b1w;
+        _s3l_sub_h = b1h;
+    }
     if (!_s3l_mjpeg_buf) {
         _s3l_sub_w = _s3l_main_w;
         _s3l_sub_h = _s3l_main_h;
@@ -481,7 +492,7 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
     if (s3l_ioctl(S3L_IOC_GET_SYSRES, buf, "GET_SYSTEM_RESOURCE"))
         return EXIT_FAILURE;
     buf[S3L_SYSRES_ENC_MODE] = 0;
-    buf[S3L_SYSRES_MAX_NUM_ENC] = 2;
+    buf[S3L_SYSRES_MAX_NUM_ENC] = S3L_VENC_CHN_NUM;
     v[0] = _s3l_main_w; v[1] = _s3l_main_h;
     memcpy(buf + S3L_SYSRES_BUF_MAX(0), v, 8);
     memcpy(buf + S3L_SYSRES_STREAM_MAX(0), v, 8);
@@ -492,7 +503,10 @@ int s3l_pipeline_create(short width, short height, char mirror, char flip, char 
     v[0] = _s3l_sub_w; v[1] = _s3l_sub_h;
     if (_s3l_mjpeg_buf == 2)
         memcpy(buf + S3L_SYSRES_BUF_MAX(2), v, 8);
+    /* Streams 1 and 2 each take MJPEG, the snapshots or a sub-stream */
+    v[0] = MAX(_s3l_sub_w, b1w); v[1] = MAX(_s3l_sub_h, b1h);
     memcpy(buf + S3L_SYSRES_STREAM_MAX(1), v, 8);
+    memcpy(buf + S3L_SYSRES_STREAM_MAX(2), v, 8);
     v[0] = 1; memcpy(buf + S3L_SYSRES_C0, v, 4);
     v[0] = 0; memcpy(buf + S3L_SYSRES_DC, v, 4);
     memcpy(buf + S3L_SYSRES_EXTRA_A4, v, 4);
@@ -610,10 +624,21 @@ int s3l_video_create(char index, hal_vidconfig *config)
     v[0] = mjpeg ? S3L_STREAM_TYPE_MJPEG : h265 ? S3L_STREAM_TYPE_H265 : S3L_STREAM_TYPE_H264;
     memcpy(buf + S3L_STRFMT_TYPE, v, 4);
     char sub = mjpeg ? _s3l_mjpeg_buf : 0;
+    unsigned short w = sub ? _s3l_sub_w : _s3l_main_w, h = sub ? _s3l_sub_h : _s3l_main_h;
+    if (!mjpeg && config->width && config->height &&
+        (config->width < _s3l_main_w || config->height < _s3l_main_h)) {
+        if (config->width == _s3l_buf1_w && config->height == _s3l_buf1_h)
+            sub = 1, w = _s3l_buf1_w, h = _s3l_buf1_h;
+        else if (_s3l_mjpeg_buf == 2 && config->width == _s3l_sub_w && config->height == _s3l_sub_h)
+            sub = 2, w = _s3l_sub_w, h = _s3l_sub_h;
+        else
+            HAL_ERROR("s3l_venc", "No source buffer is %dx%d (main %ux%u, second %ux%u)\n",
+                config->width, config->height, _s3l_main_w, _s3l_main_h, _s3l_buf1_w, _s3l_buf1_h);
+    }
     v[0] = sub;
     memcpy(buf + S3L_STRFMT_BUF_ID, v, 4);
-    v[0] = sub ? _s3l_sub_w : _s3l_main_w;
-    v[1] = sub ? _s3l_sub_h : _s3l_main_h;
+    v[0] = w;
+    v[1] = h;
     v[2] = 0; v[3] = 0;
     memcpy(buf + S3L_STRFMT_ENC_WIN, v, 16);
     if (s3l_ioctl(S3L_IOC_SET_STREAM_FORMAT, buf, "SET_STREAM_FORMAT"))
@@ -667,6 +692,7 @@ int s3l_video_create(char index, hal_vidconfig *config)
         s3l_ioctl(S3L_IOC_SET_STREAM_CFG, fps, "SET_STREAM_CFG(fps)");
     }
 
+    _s3l_chn_buf[index] = sub;
     s3l_state[index].payload = config->codec;
     s3l_state[index].enable = 1;
     if (!mjpeg) {
@@ -764,7 +790,7 @@ static int s3l_region_map(void)
     return EXIT_SUCCESS;
 }
 
-// The overlay is per stream: put the regions on every running H.264/H.265 stream
+// The overlay is per stream: put the regions on the H.264/H.265 streams from the main buffer
 static void s3l_region_apply(void)
 {
     struct s3l_ovl ovl;
@@ -772,7 +798,7 @@ static void s3l_region_apply(void)
     if (!_s3l_ovl)
         return;
     for (char i = 0; i < S3L_VENC_CHN_NUM; i++) {
-        if (!s3l_state[i].enable || (s3l_state[i].payload != HAL_VIDCODEC_H264 &&
+        if (!s3l_state[i].enable || _s3l_chn_buf[i] || (s3l_state[i].payload != HAL_VIDCODEC_H264 &&
             s3l_state[i].payload != HAL_VIDCODEC_H265))
             continue;
         memset(&ovl, 0, sizeof(ovl));
@@ -912,7 +938,10 @@ void *s3l_video_thread(void)
     unsigned int frameId = 0;
 
     while (keepRunning) {
-        if (!_s3l_bsb || !(s3l_state[0].enable || s3l_state[1].enable)) { usleep(100000); continue; }
+        char active = 0;
+        for (char i = 0; i < S3L_VENC_CHN_NUM; i++)
+            active |= s3l_state[i].enable;
+        if (!_s3l_bsb || !active) { usleep(100000); continue; }
 
         memset(desc, 0, sizeof(desc));
         desc[0] = S3L_DESC_FRAME;

@@ -16,7 +16,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define S3L_VENC_CHN_NUM 2
+#define S3L_VENC_CHN_NUM 3
 
 extern hal_chnstate s3l_state[S3L_VENC_CHN_NUM];
 extern int (*s3l_aud_cb)(hal_audframe*);
