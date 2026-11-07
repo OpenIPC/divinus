@@ -113,6 +113,9 @@ struct s3l_vin_info { uint32_t vsrc_id, video_mode, width, height, fps, rsvd[4];
 struct s3l_isp_hdr { char magic[8]; uint32_t ops, img_len, img_off, rels; };
 struct s3l_isp_op  { uint8_t kind, nr, rsvd[2]; uint32_t offset, flags; };
 
+/* Encoder load limit, in macroblocks per second over all streams (IAV: "1080p60 + 480p60") */
+#define S3L_ENC_LOAD_MAX        570600
+
 #define S3L_IOC_SET_OVERLAY     0x40045660u
 #define S3L_IOC_GET_OVERLAY     0xc0045660u
 #define S3L_BUFFER_OVERLAY      4
