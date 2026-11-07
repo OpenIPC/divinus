@@ -21,6 +21,7 @@ static char _s3l_fps = 30;
 static unsigned short _s3l_sub_w, _s3l_sub_h;
 static char _s3l_mjpeg_buf = 1;
 static unsigned short _s3l_buf1_w, _s3l_buf1_h;
+static unsigned int _s3l_load[S3L_VENC_CHN_NUM];
 
 static char _s3l_isp_path[128];
 static unsigned char *_s3l_img;
@@ -654,19 +655,49 @@ int s3l_video_create(char index, hal_vidconfig *config)
         }
     }
 
-    if (s3l_ioctl_nosig(S3L_IOC_START_ENCODE, (void *)(1u << index)) < 0)
-        HAL_ERROR("s3l_venc", "Starting encoder %d failed: %s\n", index, strerror(errno));
-
+    /* Frame rate as a fraction of the VIN's, set before the start: IAV checks the total encoder
+       load (macroblocks per second over all streams) against what the DSP can do */
+    unsigned int multi = 1, div = 1, mbs = ((w + 15) >> 4) * ((h + 15) >> 4), others = 0;
+    if (config->codec == HAL_VIDCODEC_JPG)
+        div = _s3l_fps;
+    else if (config->framerate > 0 && config->framerate < _s3l_fps)
+        multi = config->framerate, div = _s3l_fps;
+    else if (config->framerate > _s3l_fps)
+        HAL_WARNING("s3l_venc", "Stream %d runs at %d fps, the rate the pipeline was started with, "
+            "until Divinus restarts\n", index, _s3l_fps);
+    for (char i = 0; i < S3L_VENC_CHN_NUM; i++)
+        if (i != index && s3l_state[i].enable)
+            others += _s3l_load[i];
+    if (others + mbs * _s3l_fps * multi / div > S3L_ENC_LOAD_MAX) {
+        unsigned int fit = others < S3L_ENC_LOAD_MAX ? (S3L_ENC_LOAD_MAX - others) / mbs : 0;
+        if (!mjpeg || !fit)
+            HAL_ERROR("s3l_venc", "Encoder %d (%ux%u at %u fps) exceeds the encoder load left "
+                "(%u of %u macroblocks/s)\n", index, w, h, _s3l_fps * multi / div,
+                S3L_ENC_LOAD_MAX - MIN(others, S3L_ENC_LOAD_MAX), S3L_ENC_LOAD_MAX);
+        HAL_WARNING("s3l_venc", "Encoder %d (%ux%u) runs at %u fps to fit the encoder load\n",
+            index, w, h, fit);
+        multi = fit, div = _s3l_fps;
+    }
     uint32_t fps[32] = { (uint32_t)index, S3L_STMCFG_FPS };
     if (!s3l_ioctl(S3L_IOC_GET_STREAM_CFG, fps, "GET_STREAM_CFG(fps)")) {
-        fps[2] = 1;
-        fps[3] = config->codec == HAL_VIDCODEC_JPG ? _s3l_fps : 1;
+        fps[2] = multi;
+        fps[3] = div;
         s3l_ioctl(S3L_IOC_SET_STREAM_CFG, fps, "SET_STREAM_CFG(fps)");
     }
 
+    /* Enabled first, so the frame thread keeps the stream's first frames (its IDR); its buffer
+       is known by then, for the on-screen display */
+    pthread_mutex_lock(&_s3l_rgn_mtx);
     _s3l_chn_buf[index] = sub;
     s3l_state[index].payload = config->codec;
     s3l_state[index].enable = 1;
+    pthread_mutex_unlock(&_s3l_rgn_mtx);
+    if (s3l_ioctl_nosig(S3L_IOC_START_ENCODE, (void *)(1u << index)) < 0) {
+        s3l_state[index].enable = 0;
+        HAL_ERROR("s3l_venc", "Starting encoder %d failed: %s\n", index, strerror(errno));
+    }
+
+    _s3l_load[index] = mbs * _s3l_fps * multi / div;
     if (!mjpeg) {
         pthread_mutex_lock(&_s3l_rgn_mtx);
         s3l_region_apply();
@@ -682,6 +713,7 @@ int s3l_video_destroy(char index)
         s3l_ioctl_nosig(S3L_IOC_STOP_ENCODE, (void *)(1u << index));
     s3l_state[index].enable = 0;
     s3l_state[index].payload = HAL_VIDCODEC_UNSPEC;
+    _s3l_load[index] = 0;
     return EXIT_SUCCESS;
 }
 
