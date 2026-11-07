@@ -40,6 +40,10 @@ int s3l_video_destroy_all(void);
 void s3l_video_request_idr(char index);
 void *s3l_video_thread(void);
 
+int s3l_region_create(char handle, hal_rect rect, short opacity);
+int s3l_region_setbitmap(char handle, hal_bitmap *bitmap);
+void s3l_region_destroy(char handle);
+
 int s3l_aaa_config(int fd);
 int s3l_ae_start(int fd, int fps);
 int s3l_isp_set_wb(double r, double b);

@@ -113,6 +113,16 @@ struct s3l_vin_info { uint32_t vsrc_id, video_mode, width, height, fps, rsvd[4];
 struct s3l_isp_hdr { char magic[8]; uint32_t ops, img_len, img_off, rels; };
 struct s3l_isp_op  { uint8_t kind, nr, rsvd[2]; uint32_t offset, flags; };
 
+#define S3L_IOC_SET_OVERLAY     0x40045660u
+#define S3L_IOC_GET_OVERLAY     0xc0045660u
+#define S3L_BUFFER_OVERLAY      4
+#define S3L_OVL_AREAS           10
+#define S3L_OVL_CLUT_LEN        1024
+#define S3L_OVL_DATA_OFF        0x8000
+struct s3l_ovl_area { uint16_t enable, width, pitch, height; uint32_t size; uint16_t x, y; uint32_t clut, data; };
+struct s3l_ovl { uint32_t stream, flags; struct s3l_ovl_area area[S3L_OVL_AREAS]; };
+_Static_assert(sizeof(struct s3l_ovl) == 248, "IAV overlay insert is 248 bytes on S3L");
+
 #define S3L_NL_PORT_IMAGE   20
 #define S3L_NL_MSG_LEN      128
 struct s3l_nl_msg { uint32_t pid, port, type, dir, cmd, status; uint8_t pad[S3L_NL_MSG_LEN - 24]; };
