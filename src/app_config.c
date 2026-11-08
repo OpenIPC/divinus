@@ -318,8 +318,9 @@ enum ConfigError app_config_parse(void) {
     if (err != CONFIG_OK)
         goto RET_ERR;
     app_config.web_port = (unsigned short)port;
+    /* Keep the last entry free for the empty terminator. */
     parse_list(&ini, "system", "web_whitelist",
-        sizeof(app_config.web_whitelist) / sizeof(*app_config.web_whitelist),
+        sizeof(app_config.web_whitelist) / sizeof(*app_config.web_whitelist) - 1,
         &count, app_config.web_whitelist);
     *app_config.web_whitelist[count] = '\0';
     parse_bool(&ini, "system", "web_enable_auth", &app_config.web_enable_auth);
@@ -496,7 +497,7 @@ enum ConfigError app_config_parse(void) {
         err = parse_int(&ini, "stream", "udp_srcport", 0, USHRT_MAX, &val);
         if (err == CONFIG_OK) app_config.stream_udp_srcport = (unsigned short)val;
         parse_list(&ini, "stream", "dest",
-            sizeof(app_config.stream_dests) / sizeof(*app_config.stream_dests),
+            sizeof(app_config.stream_dests) / sizeof(*app_config.stream_dests) - 1,
             &count, app_config.stream_dests);
         *app_config.stream_dests[count] = '\0';
     }
