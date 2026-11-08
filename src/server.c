@@ -907,6 +907,10 @@ void respond_request(http_request_t *req) {
 
             media_audio_disable();
             if (app_config.audio_enable) media_audio_enable();
+            if (app_config.mp4_enable) {
+                media_mp4_config();
+                request_idr();
+            }
         }
 
         respLen = sprintf(response,

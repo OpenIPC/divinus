@@ -740,6 +740,14 @@ int media_mp4_disable(void) {
     return EXIT_SUCCESS;
 }
 
+void media_mp4_config(void) {
+    pthread_mutex_lock(&mp4Mtx);
+    mp4_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
+        app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC,
+        app_config.audio_bitrate, 1, app_config.audio_srate);
+    pthread_mutex_unlock(&mp4Mtx);
+}
+
 int media_mp4_enable(void) {
     int ret;
 
@@ -800,9 +808,7 @@ int media_mp4_enable(void) {
                 index, ret, errstr(ret));
         }
 
-        mp4_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
-            app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC,
-            app_config.audio_bitrate, 1, app_config.audio_srate);
+        media_mp4_config();
     }
 
     if (ret = bind_channel(index, app_config.mp4_fps, 0))
