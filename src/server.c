@@ -1397,6 +1397,7 @@ void respond_request(http_request_t *req) {
                 fwrite(payloadb, sizeof(char), payloade - payloadb, img);
                 fclose(img);
 
+                strcpy(osds[id].img, path);
                 strcpy(osds[id].text, "");
                 osds[id].updt = 1;
             } else {
