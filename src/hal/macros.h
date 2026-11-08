@@ -1,5 +1,6 @@
 #pragma once
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -26,7 +27,15 @@
     ".balign 4\n"                           /* Word alignment */\
     ".section \".text\"\n")                 /* Restore section */
 
-#define HAL_COLOR(seq) (isatty(STDERR_FILENO) ? (seq) : "")
+/* isatty() sets errno (ENOTTY) when stderr is not a terminal, and the colour test runs before a message's
+   arguments are evaluated: keep errno, or every strerror(errno) logged to a file or pipe reads "Not a tty" */
+static inline int hal_stderr_is_tty(void) {
+    int err = errno, tty = isatty(STDERR_FILENO);
+    errno = err;
+    return tty;
+}
+
+#define HAL_COLOR(seq) (hal_stderr_is_tty() ? (seq) : "")
 
 #define HAL_DANGER(mod, x, ...) \
     do { \
