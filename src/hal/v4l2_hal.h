@@ -3,7 +3,7 @@
 #include "types.h"
 
 /* Standard Linux backend: a V4L2 capture node feeding V4L2 memory-to-memory
- * encoders and ALSA for audio capture.
+ * encoders, V4L2 output nodes for overlays and ALSA for audio capture.
  * It is built only with -DDIVINUS_V4L2; otherwise every call is a stub and
  * v4l2_system_identify() never claims the platform. */
 
@@ -26,6 +26,10 @@ int v4l2_channel_unbind(char index);
 int v4l2_pipeline_create(short width, short height, char mirror, char flip,
     char framerate, int antiflicker);
 void v4l2_pipeline_destroy(void);
+
+int v4l2_region_create(char handle, hal_rect rect, short opacity);
+void v4l2_region_destroy(char handle);
+int v4l2_region_setbitmap(char handle, hal_bitmap *bitmap);
 
 int v4l2_video_create(char index, hal_vidconfig *config);
 int v4l2_video_destroy(char index);

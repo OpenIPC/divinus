@@ -23,6 +23,7 @@ int (*v4l2_vid_cb)(char, hal_vidstream*);
 
 #define V4L2_CHN_NUM 4
 #define V4L2_BUF_NUM 4
+#define V4L2_OSD_NUM 32
 #define V4L2_DEV_NUM 64
 #define V4L2_WAIT_MS 2000
 
@@ -49,9 +50,19 @@ typedef struct {
     unsigned long long nextDue;
 } v4l2_enc;
 
+typedef struct {
+    int fd;
+    hal_rect rect;
+    unsigned int stride;
+    size_t length;
+    void *pixels;
+    char streaming, queued;
+} v4l2_osd;
+
 static hal_chnstate _v4l2_state[V4L2_CHN_NUM];
 static v4l2_enc _v4l2_enc[V4L2_CHN_NUM];
 static char _v4l2_idr[V4L2_CHN_NUM];
+static v4l2_osd _v4l2_osd[V4L2_OSD_NUM];
 
 static char _v4l2_capPath[32], _v4l2_h264Path[32], _v4l2_h265Path[32],
     _v4l2_jpegPath[32], _v4l2_mjpegPath[32];
@@ -61,6 +72,7 @@ static unsigned int _v4l2_capCount;
 static v4l2_map _v4l2_capMap[V4L2_BUF_NUM];
 
 static pthread_mutex_t _v4l2_pipeLock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t _v4l2_osdLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _v4l2_snapLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t _v4l2_snapCond = PTHREAD_COND_INITIALIZER;
 static unsigned int _v4l2_snapReq, _v4l2_snapDone, _v4l2_snapQuality;
@@ -156,6 +168,7 @@ int v4l2_system_identify(void)
     char card[32] = {0};
 
     for (unsigned int i = 0; i < V4L2_CHN_NUM; i++) _v4l2_enc[i].fd = -1;
+    for (unsigned int i = 0; i < V4L2_OSD_NUM; i++) _v4l2_osd[i].fd = -1;
 
     for (unsigned int n = 0; n < V4L2_DEV_NUM; n++) {
         char path[32];
@@ -416,6 +429,164 @@ void v4l2_pipeline_destroy(void)
     pthread_mutex_lock(&_v4l2_pipeLock);
     v4l2_pipeline_close();
     pthread_mutex_unlock(&_v4l2_pipeLock);
+}
+
+static void v4l2_osd_close(v4l2_osd *osd)
+{
+    if (osd->fd >= 0) {
+        unsigned int type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+        v4l2_ioctl(osd->fd, VIDIOC_STREAMOFF, &type);
+        if (osd->pixels && osd->pixels != MAP_FAILED)
+            munmap(osd->pixels, osd->length);
+        v4l2_release_buffers(osd->fd, type, V4L2_MEMORY_MMAP);
+        close(osd->fd);
+    }
+    memset(osd, 0, sizeof(*osd));
+    osd->fd = -1;
+}
+
+/* Take the first matching overlay output whose queue nobody else owns. */
+static int v4l2_osd_claim(void)
+{
+    /* Overlay nodes may each serve a different scaler channel */
+    const char *card = getenv("DIVINUS_V4L2_OSD_CARD");
+
+    for (unsigned int n = 0; n < V4L2_DEV_NUM; n++) {
+        char path[32];
+        struct v4l2_capability cap;
+        snprintf(path, sizeof(path), "/dev/video%u", n);
+        int fd = open(path, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+        if (fd < 0) continue;
+
+        unsigned int caps = v4l2_caps(fd, &cap);
+        if ((!card || !strcmp(card, (char*)cap.card)) &&
+            (caps & V4L2_CAP_VIDEO_OUTPUT) && (caps & V4L2_CAP_STREAMING) &&
+            !(caps & (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_M2M)) &&
+            v4l2_has_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT, V4L2_PIX_FMT_ARGB555)) {
+            struct v4l2_requestbuffers req = { .count = 1,
+                .type = V4L2_BUF_TYPE_VIDEO_OUTPUT, .memory = V4L2_MEMORY_MMAP };
+            if (!v4l2_ioctl(fd, VIDIOC_REQBUFS, &req)) {
+                req.count = 0;
+                if (!v4l2_ioctl(fd, VIDIOC_REQBUFS, &req)) return fd;
+            }
+        }
+        close(fd);
+    }
+    errno = ENODEV;
+    return -1;
+}
+
+static int v4l2_osd_reclaim(v4l2_osd *osd)
+{
+    struct v4l2_buffer buf = { .type = V4L2_BUF_TYPE_VIDEO_OUTPUT,
+        .memory = V4L2_MEMORY_MMAP };
+    struct pollfd pfd = { .fd = osd->fd, .events = POLLOUT };
+
+    if (!osd->queued) return 0;
+    if (poll(&pfd, 1, 500) <= 0 || v4l2_ioctl(osd->fd, VIDIOC_DQBUF, &buf)) return -1;
+    osd->queued = 0;
+    return 0;
+}
+
+int v4l2_region_create(char handle, hal_rect rect, short opacity)
+{
+    if (handle < 0 || handle >= V4L2_OSD_NUM || !rect.width || !rect.height)
+        return EXIT_FAILURE;
+
+    pthread_mutex_lock(&_v4l2_osdLock);
+    v4l2_osd *osd = &_v4l2_osd[(unsigned char)handle];
+    unsigned int type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+
+    /* A new bitmap size needs a new format, which needs a released queue. */
+    if (osd->fd >= 0 && (osd->rect.width != rect.width || osd->rect.height != rect.height))
+        v4l2_osd_close(osd);
+
+    if (osd->fd < 0) {
+        struct v4l2_format fmt = { .type = type };
+        struct v4l2_requestbuffers req = { .count = 1, .type = type,
+            .memory = V4L2_MEMORY_MMAP };
+        struct v4l2_buffer buf = { .type = type, .memory = V4L2_MEMORY_MMAP };
+
+        if ((osd->fd = v4l2_osd_claim()) < 0) goto failed;
+        fmt.fmt.pix.width = rect.width;
+        fmt.fmt.pix.height = rect.height;
+        fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB555;
+        if (v4l2_ioctl(osd->fd, VIDIOC_S_FMT, &fmt) ||
+            fmt.fmt.pix.width != rect.width || fmt.fmt.pix.height != rect.height ||
+            fmt.fmt.pix.pixelformat != V4L2_PIX_FMT_ARGB555) goto failed;
+        osd->stride = fmt.fmt.pix.bytesperline ? fmt.fmt.pix.bytesperline : rect.width * 2;
+        if (v4l2_ioctl(osd->fd, VIDIOC_REQBUFS, &req) || !req.count ||
+            v4l2_ioctl(osd->fd, VIDIOC_QUERYBUF, &buf)) goto failed;
+        osd->length = buf.length;
+        osd->pixels = mmap(NULL, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED,
+            osd->fd, buf.m.offset);
+        if (osd->pixels == MAP_FAILED || buf.length < osd->stride * rect.height)
+            goto failed;
+    }
+
+    struct v4l2_selection sel = { .type = type, .target = V4L2_SEL_TGT_COMPOSE,
+        .r = { .left = rect.x & ~1, .top = rect.y & ~1,
+               .width = rect.width, .height = rect.height } };
+    if (v4l2_ioctl(osd->fd, VIDIOC_S_SELECTION, &sel))
+        HAL_WARNING("v4l2_osd", "Placing region %d failed: %s\n", handle, strerror(errno));
+    v4l2_control(osd->fd, V4L2_CID_ALPHA_COMPONENT, opacity < 0 ? 0 : opacity > 255 ? 255 : opacity);
+    osd->rect = rect;
+
+    pthread_mutex_unlock(&_v4l2_osdLock);
+    return EXIT_SUCCESS;
+
+failed:
+    HAL_DANGER("v4l2_osd", "Region %d is unavailable: %s\n", handle, strerror(errno));
+    v4l2_osd_close(osd);
+    pthread_mutex_unlock(&_v4l2_osdLock);
+    return EXIT_FAILURE;
+}
+
+void v4l2_region_destroy(char handle)
+{
+    if (handle < 0 || handle >= V4L2_OSD_NUM) return;
+    pthread_mutex_lock(&_v4l2_osdLock);
+    v4l2_osd_close(&_v4l2_osd[(unsigned char)handle]);
+    pthread_mutex_unlock(&_v4l2_osdLock);
+}
+
+int v4l2_region_setbitmap(char handle, hal_bitmap *bitmap)
+{
+    if (handle < 0 || handle >= V4L2_OSD_NUM || !bitmap || !bitmap->data)
+        return EXIT_FAILURE;
+
+    pthread_mutex_lock(&_v4l2_osdLock);
+    v4l2_osd *osd = &_v4l2_osd[(unsigned char)handle];
+    unsigned int type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    struct v4l2_buffer buf = { .type = type, .memory = V4L2_MEMORY_MMAP,
+        .bytesused = osd->stride * osd->rect.height };
+
+    if (osd->fd < 0 || bitmap->dim.width != osd->rect.width ||
+        bitmap->dim.height != osd->rect.height || v4l2_osd_reclaim(osd)) {
+        pthread_mutex_unlock(&_v4l2_osdLock);
+        return EXIT_FAILURE;
+    }
+
+    for (unsigned int y = 0; y < osd->rect.height; y++)
+        memcpy((char*)osd->pixels + y * osd->stride,
+            (char*)bitmap->data + y * osd->rect.width * 2, osd->rect.width * 2);
+
+    if (v4l2_ioctl(osd->fd, VIDIOC_QBUF, &buf)) goto failed;
+    osd->queued = 1;
+    if (!osd->streaming) {
+        if (v4l2_ioctl(osd->fd, VIDIOC_STREAMON, &type)) goto failed;
+        osd->streaming = 1;
+    }
+    v4l2_osd_reclaim(osd);
+
+    pthread_mutex_unlock(&_v4l2_osdLock);
+    return EXIT_SUCCESS;
+
+failed:
+    HAL_DANGER("v4l2_osd", "Updating region %d failed: %s\n", handle, strerror(errno));
+    v4l2_osd_close(osd);
+    pthread_mutex_unlock(&_v4l2_osdLock);
+    return EXIT_FAILURE;
 }
 
 static void v4l2_enc_close(v4l2_enc *enc)
@@ -854,6 +1025,9 @@ int v4l2_channel_unbind(char index) { return EXIT_FAILURE; }
 int v4l2_pipeline_create(short width, short height, char mirror, char flip,
     char framerate, int antiflicker) { return EXIT_FAILURE; }
 void v4l2_pipeline_destroy(void) {}
+int v4l2_region_create(char handle, hal_rect rect, short opacity) { return EXIT_FAILURE; }
+void v4l2_region_destroy(char handle) {}
+int v4l2_region_setbitmap(char handle, hal_bitmap *bitmap) { return EXIT_FAILURE; }
 int v4l2_video_create(char index, hal_vidconfig *config) { return EXIT_FAILURE; }
 int v4l2_video_destroy(char index) { return EXIT_FAILURE; }
 int v4l2_video_destroy_all(void) { return EXIT_FAILURE; }
