@@ -160,7 +160,7 @@ static void __method_options(struct connection_item_t *p, rtsp_handle h)
 {
     __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
             "CSeq: %d\r\n"
-            "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n"
+            "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY\r\n"
             "\r\n", p->cseq);
 }
 
@@ -299,19 +299,25 @@ static void __method_setup(struct connection_item_t *p, rtsp_handle h)
 static void __method_pause(struct connection_item_t *p, rtsp_handle h)
 {
     __rtsp_write(p,
-        "RTSP/1.0 "__RESPONCE_STR_METHODNOTALLOWED "\r\n");
+        "RTSP/1.0 " __RESPONCE_STR_METHODNOTALLOWED "\r\n"
+        "CSeq: %d\r\n"
+        "\r\n", p->cseq);
 }
 
 static void __method_record(struct connection_item_t *p, rtsp_handle h)
 {
     __rtsp_write(p,
-        "RTSP/1.0 " __RESPONCE_STR_METHODNOTALLOWED "\r\n");
+        "RTSP/1.0 " __RESPONCE_STR_METHODNOTALLOWED "\r\n"
+        "CSeq: %d\r\n"
+        "\r\n", p->cseq);
 }
 
 static void __method_error(struct connection_item_t *p, rtsp_handle h)
 {
     __rtsp_write(p,
-        "RTSP/1.0 " __RESPONCE_STR_SERVERERROR "\r\n");
+        "RTSP/1.0 " __RESPONCE_STR_SERVERERROR "\r\n"
+        "CSeq: %d\r\n"
+        "\r\n", p->cseq);
 }
 
 static void __method_play(struct connection_item_t *p, rtsp_handle h)
