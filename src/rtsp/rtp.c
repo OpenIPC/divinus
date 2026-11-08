@@ -38,23 +38,37 @@ struct __transfer_set_t {
 
 static unsigned int __frame_ts_video, __frame_ts_audio;
 
-static inline void __wait_out(int fd)
+/* A client that accepts no data for 20 polls of 100 ms is dropped. */
+#define TCP_STALL_POLLS 20
+
+static int __tcp_send_all(int fd, const char *buf, size_t len)
 {
-    struct pollfd p = { .fd = fd, .events = POLLOUT };
-    poll(&p, 1, 100);
+    int stalls = 0;
+
+    while (len) {
+        int r = send(fd, buf, len, 0);
+        if (r > 0) {
+            buf += r;
+            len -= r;
+            stalls = 0;
+        } else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK) &&
+            stalls++ < TCP_STALL_POLLS) {
+            struct pollfd p = { .fd = fd, .events = POLLOUT };
+            poll(&p, 1, 100);
+        } else {
+            /* Let the RTSP thread see EOF and tear the session down. */
+            shutdown(fd, SHUT_RDWR);
+            return FAILURE;
+        }
+    }
+    return SUCCESS;
 }
 
 static int __tcp_flush(struct connection_item_t *con)
 {
-    unsigned int sent = 0;
-    while (sent < con->tx_len) {
-        int r = send(con->client_fd, con->tx_buf + sent, con->tx_len - sent, 0);
-        if (r > 0) sent += r;
-        else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
-        else { con->tx_len = 0; return FAILURE; }
-    }
+    int ret = __tcp_send_all(con->client_fd, (char *)con->tx_buf, con->tx_len);
     con->tx_len = 0;
-    return SUCCESS;
+    return ret;
 }
 
 static int __tcp_flush_each(struct list_t *e, void *v)
@@ -68,9 +82,10 @@ static int __tcp_flush_each(struct list_t *e, void *v)
      * Testing track 0 here never flushed a client that set up audio alone. */
     if (!con->tx_buf || !con->tx_len) return SUCCESS;
     pthread_mutex_lock(&con->write_mutex);
-    int ret = __tcp_flush(con);
+    __tcp_flush(con);
     pthread_mutex_unlock(&con->write_mutex);
-    return ret;
+    /* A failed client is shut down; keep flushing the others. */
+    return SUCCESS;
 }
 
 /******************************************************************************
@@ -253,34 +268,20 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
                 return SUCCESS;
             }
             ERR("send (staged):%s\n", strerror(errno));
-            return FAILURE;
-        }
-        int sent_h = 0;
-        while (sent_h < 4) {
-            int r = send(con->client_fd, head + sent_h, 4 - sent_h, 0);
-            if (r > 0) sent_h += r;
-            else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
-            else { sent_h = -1; break; }
-        }
-        if (sent_h == 4) {
-            int sent_b = 0;
-            while (sent_b < rtp->rtpsize) {
-                int r = send(con->client_fd, (char*)&(rtp->packet) + sent_b, rtp->rtpsize - sent_b, 0);
-                if (r > 0) sent_b += r;
-                else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
-                else { sent_b = -1; break; }
-            }
-            send_bytes = sent_b;
-        } else {
-            send_bytes = -1;
-        }
-        pthread_mutex_unlock(&con->write_mutex);
-
-        if (send_bytes == rtp->rtpsize) {
-            con->trans[track_id].rtcp_packet_cnt += 1;
-            con->trans[track_id].rtcp_octet += rtp->rtpsize;
+            /* The client is shut down; keep sending to the others. */
             return SUCCESS;
         }
+        int ok = __tcp_send_all(con->client_fd, (char *)head, 4) == SUCCESS &&
+            __tcp_send_all(con->client_fd, (char *)&(rtp->packet), rtp->rtpsize) == SUCCESS;
+        pthread_mutex_unlock(&con->write_mutex);
+
+        if (ok) {
+            con->trans[track_id].rtcp_packet_cnt += 1;
+            con->trans[track_id].rtcp_octet += rtp->rtpsize;
+        } else
+            ERR("send:%s\n", strerror(errno));
+        /* A failed client is shut down; keep sending to the others. */
+        return SUCCESS;
     } else {
         char attempts = 0;
         do  {
