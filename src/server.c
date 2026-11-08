@@ -1400,7 +1400,9 @@ void respond_request(http_request_t *req) {
                 if (!value || !*value) continue;
                 unescape_uri(value);
                 char *key = split(&value, "=");
-                if (!key || !*key || !value || !*value) continue;
+                if (!key || !*key || !value) continue;
+                // An empty text removes the region's text; every other key needs a value
+                if (!*value && !EQUALS(key, "text")) continue;
                 if (EQUALS(key, "img"))
                     strncpy(osds[id].img, value,
                         sizeof(osds[id].img) - 1);
