@@ -521,6 +521,7 @@ void media_audio_disable(void) {
     shine_close(mp3Enc);
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2: v4l2_audio_deinit(); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_audio_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_audio_deinit(); break;
@@ -554,6 +555,7 @@ int media_audio_enable(void) {
         HAL_ERROR("media", "Audio queue initialization failed!\n");
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2: ret = v4l2_audio_init(app_config.audio_srate); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  ret = i6_audio_init(app_config.audio_srate, app_config.audio_gain); break;
         case HAL_PLATFORM_I6C: ret = i6c_audio_init(app_config.audio_srate, app_config.audio_gain); break;
@@ -861,6 +863,7 @@ int sdk_start(void) {
 
     switch (plat) {
         case HAL_PLATFORM_V4L2:
+            v4l2_aud_cb = save_audio_stream;
             v4l2_vid_cb = save_video_stream;
             break;
 #if defined(__ARM_PCS_VFP)

@@ -1,5 +1,6 @@
 #include "v4l2_hal.h"
 
+int (*v4l2_aud_cb)(hal_audframe*);
 int (*v4l2_vid_cb)(char, hal_vidstream*);
 
 #ifdef DIVINUS_V4L2
@@ -7,6 +8,7 @@ int (*v4l2_vid_cb)(char, hal_vidstream*);
 #include "support.h"
 #include "../app_config.h"
 
+#include <alsa/asoundlib.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/videodev2.h>
@@ -64,6 +66,8 @@ static pthread_cond_t _v4l2_snapCond = PTHREAD_COND_INITIALIZER;
 static unsigned int _v4l2_snapReq, _v4l2_snapDone, _v4l2_snapQuality;
 static void *_v4l2_snapData;
 static size_t _v4l2_snapSize;
+
+static snd_pcm_t *_v4l2_pcm;
 
 static int v4l2_ioctl(int fd, unsigned long request, void *arg)
 {
@@ -195,7 +199,7 @@ int v4l2_system_identify(void)
     plat = HAL_PLATFORM_V4L2;
     chnCount = V4L2_CHN_NUM;
     chnState = _v4l2_state;
-    aud_thread = NULL;
+    aud_thread = v4l2_audio_thread;
     isp_thread = NULL;
     vid_thread = v4l2_video_thread;
     return 1;
@@ -212,6 +216,73 @@ int v4l2_hal_init(void)
 }
 
 void v4l2_hal_deinit(void) {}
+
+int v4l2_audio_init(int samplerate)
+{
+    const char *device = getenv("DIVINUS_ALSA_DEVICE");
+    int ret;
+
+    if (!device) device = "default";
+    if ((ret = snd_pcm_open(&_v4l2_pcm, device, SND_PCM_STREAM_CAPTURE,
+        SND_PCM_NONBLOCK)) < 0) {
+        HAL_DANGER("v4l2_aud", "Opening %s failed: %s\n", device, snd_strerror(ret));
+        _v4l2_pcm = NULL;
+        return ret;
+    }
+    /* The default device converts format, rate and channel count as needed. */
+    if ((ret = snd_pcm_set_params(_v4l2_pcm, SND_PCM_FORMAT_S16_LE,
+        SND_PCM_ACCESS_RW_INTERLEAVED, 1, samplerate, 1, 100000)) < 0) {
+        HAL_DANGER("v4l2_aud", "Mono S16 %d Hz on %s failed: %s\n",
+            samplerate, device, snd_strerror(ret));
+        snd_pcm_close(_v4l2_pcm);
+        _v4l2_pcm = NULL;
+        return ret;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+void v4l2_audio_deinit(void)
+{
+    if (_v4l2_pcm) snd_pcm_close(_v4l2_pcm);
+    _v4l2_pcm = NULL;
+}
+
+void *v4l2_audio_thread(void)
+{
+    static short samples[1024];
+    unsigned int sequence = 0;
+
+    while (keepRunning && audioOn && _v4l2_pcm) {
+        /* A prepared capture stream never becomes readable on its own. */
+        if (snd_pcm_state(_v4l2_pcm) == SND_PCM_STATE_PREPARED)
+            snd_pcm_start(_v4l2_pcm);
+        int ret = snd_pcm_wait(_v4l2_pcm, 200);
+        if (!ret) continue;
+
+        snd_pcm_sframes_t count = ret < 0 ? ret :
+            snd_pcm_readi(_v4l2_pcm, samples, sizeof(samples) / sizeof(*samples));
+        if (count == -EAGAIN || !count) continue;
+        if (count < 0) {
+            if (snd_pcm_recover(_v4l2_pcm, count, 1) < 0) {
+                HAL_WARNING("v4l2_aud", "Capture failed: %s\n", snd_strerror(count));
+                usleep(100000);
+                snd_pcm_prepare(_v4l2_pcm);
+            }
+            continue;
+        }
+
+        if (v4l2_aud_cb) {
+            hal_audframe frame = { .channelCnt = 1, .interleavedOn = 1,
+                .data = { (unsigned char*)samples },
+                .length = { count * sizeof(*samples) },
+                .seq = sequence++, .timestamp = millis() };
+            (*v4l2_aud_cb)(&frame);
+        }
+    }
+
+    return NULL;
+}
 
 int v4l2_channel_bind(char index) { return EXIT_SUCCESS; }
 
@@ -773,6 +844,9 @@ void *v4l2_video_thread(void)
 int v4l2_system_identify(void) { return 0; }
 int v4l2_hal_init(void) { return EXIT_FAILURE; }
 void v4l2_hal_deinit(void) {}
+int v4l2_audio_init(int samplerate) { return EXIT_FAILURE; }
+void v4l2_audio_deinit(void) {}
+void *v4l2_audio_thread(void) { return NULL; }
 int v4l2_channel_bind(char index) { return EXIT_FAILURE; }
 int v4l2_channel_create(char index, short width, short height, char jpeg) { return EXIT_FAILURE; }
 void v4l2_channel_grayscale(char enable) {}

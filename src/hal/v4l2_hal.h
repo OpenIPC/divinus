@@ -3,15 +3,20 @@
 #include "types.h"
 
 /* Standard Linux backend: a V4L2 capture node feeding V4L2 memory-to-memory
- * encoders.
+ * encoders and ALSA for audio capture.
  * It is built only with -DDIVINUS_V4L2; otherwise every call is a stub and
  * v4l2_system_identify() never claims the platform. */
 
+extern int (*v4l2_aud_cb)(hal_audframe*);
 extern int (*v4l2_vid_cb)(char, hal_vidstream*);
 
 int v4l2_system_identify(void);
 int v4l2_hal_init(void);
 void v4l2_hal_deinit(void);
+
+int v4l2_audio_init(int samplerate);
+void v4l2_audio_deinit(void);
+void *v4l2_audio_thread(void);
 
 int v4l2_channel_bind(char index);
 int v4l2_channel_create(char index, short width, short height, char jpeg);
