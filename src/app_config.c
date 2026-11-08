@@ -11,8 +11,8 @@ static inline void app_config_open(FILE **file, const char *flags) {
 
     ssize_t exe_len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
     if (exe_len != -1) {
-        char *dir = dirname(exe_path);
         exe_path[exe_len] = '\0';
+        char *dir = dirname(exe_path);
         snprintf(conf_path, sizeof(conf_path), "%s/divinus.yaml", dir);
         if (!access(conf_path, F_OK)) {
             if (*flags == 'w') {
@@ -44,8 +44,8 @@ void app_config_restore(void) {
 
     ssize_t exe_len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
     if (exe_len != -1) {
-        char bak_path[PATH_MAX], *dir = dirname(exe_path);
         exe_path[exe_len] = '\0';
+        char bak_path[PATH_MAX], *dir = dirname(exe_path);
         snprintf(conf_path, sizeof(conf_path), "%s/divinus.yaml", dir);
         sprintf(bak_path, "%s.bak", conf_path);
         if (!access(bak_path, F_OK)) {
