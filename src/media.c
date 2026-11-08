@@ -71,14 +71,12 @@ static char rtsp_g711_active(void) { return EQUALS(rtsp_codec, "pcma") || EQUALS
 static void rtsp_pcma_feed(short *pcm, unsigned int samples)
 {
     static unsigned char alaw[160];
-    static unsigned int fill, phase, step;
+    static unsigned int fill, phase;
     static int acc, count;
     char ulaw = EQUALS(rtsp_codec, "pcmu");
-    if (!step) {
-        unsigned int srate = app_config.audio_srate > 0 ? app_config.audio_srate : 8000;
-        step = (srate << 16) / 8000;
-        if (!step) step = 1 << 16;
-    }
+    unsigned int srate = app_config.audio_srate > 0 ? app_config.audio_srate : 8000;
+    /* Input samples per 8 kHz output sample in Q16, i.e. (srate << 16) / 8000 */
+    unsigned int step = srate * 1024 / 125;
     for (unsigned int i = 0; i < samples; i++) {
         acc += pcm[i];
         count++;
