@@ -233,7 +233,9 @@ static void *s3l_ae_thread(void *arg)
         }
 
         if (!ae) { s3l_isp_flush(); continue; }
-        double tgt = target * fmin(1.0, fmax(0.6, 1 - 4 * (clip_frac - 0.01)));
+        /* Highlight protection only for scenes that are mostly blown out (a sunlit wall or sky routinely
+         * clips 5 to 10% of the frame and must not darken the rest of it) */
+        double tgt = target * fmin(1.0, fmax(0.7, 1 - 2 * (clip_frac - 0.15)));
         if (fabs(mean - tgt) < 3) { s3l_isp_flush(); continue; }
         double cur = pow(fmax(mean - 16, 0.5) / 219, 1 / 0.45), want = pow((tgt - 16) / 219, 1 / 0.45);
         double ratio = sqrt(fmin(1.6, fmax(0.6, want / cur)));
