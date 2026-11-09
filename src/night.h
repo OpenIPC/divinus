@@ -25,5 +25,7 @@ void night_irled(bool enable);
 void night_manual(bool enable);
 void night_mode(bool enable);
 
+int night_pins(short *pins);
+
 void night_disable(void);
 int night_enable(void);

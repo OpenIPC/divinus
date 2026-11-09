@@ -36,6 +36,16 @@ static int fake_open(const char *path, int flags, ...) {
     return open(path, flags);
 }
 
+static void make_node(int pin) {
+    char dir[96], file[112];
+    snprintf(dir, sizeof(dir), "%s/%s%d", root, upperNodes ? "GPIO" : "gpio", pin);
+    mkdir(dir, 0755);
+    snprintf(file, sizeof(file), "%s/direction", dir);
+    close(open(file, O_WRONLY | O_CREAT, 0644));
+    snprintf(file, sizeof(file), "%s/value", dir);
+    close(open(file, O_WRONLY | O_CREAT, 0644));
+}
+
 static ssize_t fake_write(int fd, const void *buf, size_t len) {
     if (fd != specialFd) return write(fd, buf, len);
     int pin = atoi(buf);
@@ -102,6 +112,37 @@ static void run(int upper) {
     gpio_release(5);
     gpio_release(9);
     CHECK(unexportCalls == 1);
+
+    /* A pin somebody else exported is never ours to unexport: writing to it works, but releasing it, by name or
+     * with everything-unused, leaves it alone */
+    make_node(9);
+    CHECK(gpio_write(9, true) == EXIT_SUCCESS);
+    CHECK(exportCalls == 1);
+    gpio_release(9);
+    gpio_release_unused(NULL, 0);
+    CHECK(exists(node, 9));
+    CHECK(unexportCalls == 1);
+
+    /* Everything this process exported goes, except what is still in use. This is also the case of a pin assigned
+     * and driven in one request and not kept: it was exported here, so it is let go of */
+    CHECK(gpio_write(5, true) == EXIT_SUCCESS);
+    CHECK(gpio_write(6, true) == EXIT_SUCCESS);
+    CHECK(gpio_write(7, true) == EXIT_SUCCESS);
+    short keep[] = { 6, 999 };
+    gpio_release_unused(keep, 2);
+    CHECK(!exists(node, 5) && exists(node, 6) && !exists(node, 7));
+    CHECK(exists(node, 9));
+    gpio_release_unused(NULL, 0);
+    CHECK(!exists(node, 6));
+    CHECK(exists(node, 9));
+    int after = unexportCalls;
+    gpio_release_unused(NULL, 0);
+    CHECK(unexportCalls == after);
+
+    /* A pin let go of and exported again later is ours again */
+    CHECK(gpio_write(5, true) == EXIT_SUCCESS);
+    gpio_release_unused(NULL, 0);
+    CHECK(!exists(node, 5));
 
     snprintf(cmd, sizeof(cmd), "rm -rf '%s'/*", root);
     CHECK(system(cmd) == 0);

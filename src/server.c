@@ -1270,7 +1270,6 @@ void respond_request(http_request_t *req) {
     if (EQUALS(req->uri, "/api/night")) {
         if (req->query) {
             char *remain;
-            short oldPins[3] = { app_config.ir_cut_pin1, app_config.ir_cut_pin2, app_config.ir_led_pin };
             while (req->query) {
                 char *value = split(&req->query, "&");
                 if (!value || !*value) continue;
@@ -1328,14 +1327,11 @@ void respond_request(http_request_t *req) {
             }
 
             night_disable();
-            /* gpio_write() leaves its pins exported: let go of the ones no
-             * longer in use (reassigned, or night mode switched off) */
-            short newPins[3] = { app_config.ir_cut_pin1, app_config.ir_cut_pin2, app_config.ir_led_pin };
-            for (int i = 0; i < 3; i++) {
-                bool inUse = app_config.night_mode_enable && (oldPins[i] == newPins[0] ||
-                    oldPins[i] == newPins[1] || oldPins[i] == newPins[2]);
-                if (oldPins[i] >= 0 && oldPins[i] != 999 && !inUse) gpio_release(oldPins[i]);
-            }
+            /* gpio_write() leaves its pins exported: let go of the ones this process exported that night mode
+             * no longer drives (a pin moved away, or night mode switched off) */
+            short keep[4];
+            int kept = app_config.night_mode_enable ? night_pins(keep) : 0;
+            gpio_release_unused(keep, kept);
             if (app_config.night_mode_enable) night_enable();
         }
         respLen = sprintf(response,
