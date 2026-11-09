@@ -148,7 +148,7 @@ int gpio_read(char pin, bool *value) {
 }
 
 int gpio_write(char pin, bool value) {
-    gpio_export(pin, true);
+    if (access(gpio_node(pin), F_OK)) gpio_export(pin, true);
     if (gpio_direction(pin, "out")) return EXIT_FAILURE;
 
     char path[48];
@@ -164,8 +164,8 @@ int gpio_write(char pin, bool value) {
     }
     close(fd);
 
-    if (gpio_export(pin, false)) return EXIT_FAILURE;
-
+    /* Stay exported: freeing the line can turn it back into an input
+     * (the pin controller does this on some kernels), dropping the level. */
     return EXIT_SUCCESS;
 }
 #endif
