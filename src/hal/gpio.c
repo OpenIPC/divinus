@@ -1,9 +1,15 @@
 #include "gpio.h"
 
+#ifndef GPIO_SYSFS
+#define GPIO_SYSFS "/sys/class/gpio"
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 8, 0)
 int fd_gpio = 0;
 
 char gpio_count = 0;
+
+void gpio_release(char pin) { (void)pin; }
 
 void gpio_deinit(void) {
     if (!fd_gpio) return;
@@ -73,15 +79,21 @@ int gpio_init(void) {
 }
 
 /* The exported line's sysfs directory is "gpio<n>" on most kernels but
- * "GPIO<n>" on Fullhan kernels; probe both and cache the format. */
+ * "GPIO<n>" on Fullhan kernels. The format is cached once a node proves it;
+ * a pin that isn't exported yet says nothing, so it is not cached then. */
 static const char *gpio_node(char pin) {
-    static char fmt[24];
+    static const char *fmt;
     static char dir[40];
-    if (!fmt[0]) {
-        char probe[40];
-        sprintf(probe, "/sys/class/gpio/GPIO%d", pin);
-        strcpy(fmt, access(probe, F_OK) == 0 ?
-            "/sys/class/gpio/GPIO%d" : "/sys/class/gpio/gpio%d");
+    if (!fmt) {
+        static const char *fmts[] = { GPIO_SYSFS "/GPIO%d", GPIO_SYSFS "/gpio%d" };
+        for (int i = 0; i < 2 && !fmt; i++) {
+            sprintf(dir, fmts[i], pin);
+            if (access(dir, F_OK) == 0) fmt = fmts[i];
+        }
+        if (!fmt) {
+            sprintf(dir, GPIO_SYSFS "/gpio%d", pin);
+            return dir;
+        }
     }
     sprintf(dir, fmt, pin);
     return dir;
@@ -104,8 +116,8 @@ static inline int gpio_direction(char pin, char *mode) {
 
 static inline int gpio_export(char pin, bool create) {
     char path[40];
-    int fd = open(create ? "/sys/class/gpio/export" :
-       "/sys/class/gpio/unexport", O_WRONLY);
+    int fd = open(create ? GPIO_SYSFS "/export" :
+       GPIO_SYSFS "/unexport", O_WRONLY);
     if (fd < 0)
         HAL_ERROR("gpio", "Unable to (un)export a GPIO pin!\n");
 
@@ -119,6 +131,11 @@ static inline int gpio_export(char pin, bool create) {
 
     close(fd);
     return EXIT_SUCCESS;
+}
+
+/* A pin left exported by gpio_write() that nothing drives any more */
+void gpio_release(char pin) {
+    if (access(gpio_node(pin), F_OK) == 0) gpio_export(pin, false);
 }
 
 int gpio_read(char pin, bool *value) {

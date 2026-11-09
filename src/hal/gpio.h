@@ -20,5 +20,6 @@
 
 void gpio_deinit(void);
 int gpio_init(void);
+void gpio_release(char pin);
 int gpio_read(char pin, bool *value);
 int gpio_write(char pin, bool value);
