@@ -71,14 +71,12 @@ static char rtsp_g711_active(void) { return EQUALS(rtsp_codec, "pcma") || EQUALS
 static void rtsp_pcma_feed(short *pcm, unsigned int samples)
 {
     static unsigned char alaw[160];
-    static unsigned int fill, phase, step;
+    static unsigned int fill, phase;
     static int acc, count;
     char ulaw = EQUALS(rtsp_codec, "pcmu");
-    if (!step) {
-        unsigned int srate = app_config.audio_srate > 0 ? app_config.audio_srate : 8000;
-        step = (srate << 16) / 8000;
-        if (!step) step = 1 << 16;
-    }
+    unsigned int srate = app_config.audio_srate > 0 ? app_config.audio_srate : 8000;
+    /* Input samples per 8 kHz output sample in Q16, i.e. (srate << 16) / 8000 */
+    unsigned int step = srate * 1024 / 125;
     for (unsigned int i = 0; i < samples; i++) {
         acc += pcm[i];
         count++;
@@ -590,39 +588,44 @@ int media_audio_enable(void) {
         pcmSamp = shine_samples_per_pass(mp3Enc);
     }
 
-    {
-        pthread_attr_t thread_attr;
-        pthread_attr_init(&thread_attr);
-        size_t stacksize;
-        pthread_attr_getstacksize(&thread_attr, &stacksize);
-        size_t new_stacksize = 16384;
-        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
-        if (pthread_create(
-                        &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL))
-            HAL_ERROR("media", "Starting the audio capture thread failed!\n");
-        if (pthread_attr_setstacksize(&thread_attr, stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
-        pthread_attr_destroy(&thread_attr);
-    }
-
-    {
-        pthread_attr_t thread_attr;
-        pthread_attr_init(&thread_attr);
-        size_t stacksize;
-        pthread_attr_getstacksize(&thread_attr, &stacksize);
-        size_t new_stacksize = 16384;
-        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
-        if (pthread_create(
-                        &aencPid, &thread_attr, (void *(*)(void *))aenc_thread, NULL))
-            HAL_ERROR("media", "Starting the audio encoding thread failed!\n");
-        if (pthread_attr_setstacksize(&thread_attr, stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
-        pthread_attr_destroy(&thread_attr);
-    }
-
+    /* The capture and encoding threads run only while audioOn is set. */
     audioOn = 1;
+
+    {
+        pthread_attr_t thread_attr;
+        pthread_attr_init(&thread_attr);
+        size_t stacksize;
+        pthread_attr_getstacksize(&thread_attr, &stacksize);
+        size_t new_stacksize = 16384;
+        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
+        if (pthread_create(
+                        &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL)) {
+            audioOn = 0;
+            HAL_ERROR("media", "Starting the audio capture thread failed!\n");
+        }
+        if (pthread_attr_setstacksize(&thread_attr, stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
+        pthread_attr_destroy(&thread_attr);
+    }
+
+    {
+        pthread_attr_t thread_attr;
+        pthread_attr_init(&thread_attr);
+        size_t stacksize;
+        pthread_attr_getstacksize(&thread_attr, &stacksize);
+        size_t new_stacksize = 16384;
+        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
+        if (pthread_create(
+                        &aencPid, &thread_attr, (void *(*)(void *))aenc_thread, NULL)) {
+            audioOn = 0;
+            HAL_ERROR("media", "Starting the audio encoding thread failed!\n");
+        }
+        if (pthread_attr_setstacksize(&thread_attr, stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
+        pthread_attr_destroy(&thread_attr);
+    }
 
     return ret;
 }
@@ -737,6 +740,14 @@ int media_mp4_disable(void) {
     return EXIT_SUCCESS;
 }
 
+void media_mp4_config(void) {
+    pthread_mutex_lock(&mp4Mtx);
+    mp4_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
+        app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC,
+        app_config.audio_bitrate, 1, app_config.audio_srate);
+    pthread_mutex_unlock(&mp4Mtx);
+}
+
 int media_mp4_enable(void) {
     int ret;
 
@@ -797,9 +808,7 @@ int media_mp4_enable(void) {
                 index, ret, errstr(ret));
         }
 
-        mp4_set_config(app_config.mp4_width, app_config.mp4_height, app_config.mp4_fps,
-            app_config.audio_enable ? HAL_AUDCODEC_MP3 : HAL_AUDCODEC_UNSPEC,
-            app_config.audio_bitrate, 1, app_config.audio_srate);
+        media_mp4_config();
     }
 
     if (ret = bind_channel(index, app_config.mp4_fps, 0))

@@ -907,6 +907,10 @@ void respond_request(http_request_t *req) {
 
             media_audio_disable();
             if (app_config.audio_enable) media_audio_enable();
+            if (app_config.mp4_enable) {
+                media_mp4_config();
+                request_idr();
+            }
         }
 
         respLen = sprintf(response,
@@ -1358,27 +1362,46 @@ void respond_request(http_request_t *req) {
         if (EQUALS(req->method, "POST")) {
             char *type = request_header("Content-Type");
             if (type && STARTS_WITH(type, "multipart/form-data")) {
-                char *bound = strstr(type, "boundary=") + strlen("boundary=");
+                char *bound = strstr(type, "boundary=");
+                char *payloadb = NULL, *payloade = NULL;
 
-                char *payloadb = strstr(req->payload, bound);
-                payloadb = memstr(payloadb, "\r\n\r\n", req->total - (payloadb - req->input), 4);
-                if (payloadb) payloadb += 4;
-
-                char *payloade = memstr(payloadb, bound,
-                    req->total - (payloadb - req->input), strlen(bound));
-                if (payloade) payloade -= 4;
+                if (bound) {
+                    bound += strlen("boundary=");
+                    /* RFC 2046 boundaries are 1 to 70 characters long */
+                    if (*bound && strlen(bound) <= 70)
+                        payloadb = strstr(req->payload, bound);
+                }
+                if (payloadb)
+                    payloadb = memstr(payloadb, "\r\n\r\n",
+                        req->total - (payloadb - req->input), 4);
+                if (payloadb) {
+                    payloadb += 4;
+                    payloade = memstr(payloadb, bound,
+                        req->total - (payloadb - req->input), strlen(bound));
+                }
+                if (!payloade || payloade - 4 < payloadb) {
+                    send_http_error(req->clntFd, 400);
+                    return;
+                }
+                payloade -= 4;
 
                 char path[32];
 
-                if (!memcmp(payloadb, "\x89\x50\x4E\x47\xD\xA\x1A\xA", 8))
+                if (payloade - payloadb >= 8 &&
+                    !memcmp(payloadb, "\x89\x50\x4E\x47\xD\xA\x1A\xA", 8))
                     sprintf(path, "/tmp/osd%d.png", id);
                 else
                     sprintf(path, "/tmp/osd%d.bmp", id);
 
                 FILE *img = fopen(path, "wb");
+                if (!img) {
+                    send_http_error(req->clntFd, 500);
+                    return;
+                }
                 fwrite(payloadb, sizeof(char), payloade - payloadb, img);
                 fclose(img);
 
+                strcpy(osds[id].img, path);
                 strcpy(osds[id].text, "");
                 osds[id].updt = 1;
             } else {

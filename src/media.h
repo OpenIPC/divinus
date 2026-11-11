@@ -45,6 +45,7 @@ void media_audio_disable(void);
 int media_audio_enable(void);
 int media_mjpeg_disable(void);
 int media_mjpeg_enable(void);
+void media_mp4_config(void);
 int media_mp4_disable(void);
 int media_mp4_enable(void);
 

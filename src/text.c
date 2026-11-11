@@ -71,26 +71,27 @@ void text_copy_rendered(SFT_Image *dest, const SFT_Image *source, int x0, int y0
     unsigned int maskg = (color & 0x3E0) >> 5;
     unsigned int maskb = color & 0x1F;
 
-    unsigned short *d = dest->pixels;
+    unsigned short *pixels = dest->pixels;
     unsigned char *s = source->pixels;
-    d += x0 + y0 * dest->width;
 
-    for (int y = 0; y < source->height; y++) {
+    for (int y = 0; y < source->height; y++, s += source->width) {
+        /* Outlines and negative bearings can reach past the canvas */
+        if (y0 + y < 0 || y0 + y >= dest->height) continue;
+        unsigned short *d = pixels + (y0 + y) * dest->width;
         for (int x = 0; x < source->width; x++) {
+            if (x0 + x < 0 || x0 + x >= dest->width) continue;
             unsigned int a = s[x];
             if (a == 0) continue;
             unsigned int inv_a = 255 - a;
-            unsigned short dst = d[x];
+            unsigned short dst = d[x0 + x];
             unsigned int r = maskr * a + ((dst & 0x7C00) >> 10) * inv_a;
             unsigned int g = maskg * a + ((dst & 0x3E0) >> 5) * inv_a;
             unsigned int b = maskb * a + (dst & 0x1F) * inv_a;
             r = (r + 1 + (r >> 8)) >> 8;
             g = (g + 1 + (g >> 8)) >> 8;
             b = (b + 1 + (b >> 8)) >> 8;
-            d[x] = (1 << 15) | (r << 10) | (g << 5) | b;
+            d[x0 + x] = (1 << 15) | (r << 10) | (g << 5) | b;
         }
-        d += dest->width;
-        s += source->width;
     }
 }
 
