@@ -17,7 +17,7 @@ jobs:
 
       - name: Build
         run: |
-          list="ak39xx fhan-v2 gm813x hisi-v1 hisi-v2 hisi-v2a hisi-v4 hisi-v4a inge-t31 rv11xx star6 star6e"
+          list="ak39xx fhan-v2 gm813x hisi-v1 hisi-v2 hisi-v2a hisi-v4 hisi-v4a inge-t31 rv11xx s3l star6 star6e"
           for lib in $list; do
             sh build.sh $lib
             zip $lib divinus*

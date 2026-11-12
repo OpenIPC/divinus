@@ -891,9 +891,9 @@ void respond_request(http_request_t *req) {
                         app_config.audio_bitrate = (unsigned int)result;
                 } else if (EQUALS(key, "enable")) {
                     if (EQUALS_CASE(value, "true") || EQUALS(value, "1"))
-                        app_config.audio_enable = 1;
+                        app_config.audio_enable = app_config.audio_requested = 1;
                     else if (EQUALS_CASE(value, "false") || EQUALS(value, "0"))
-                        app_config.audio_enable = 0;
+                        app_config.audio_enable = app_config.audio_requested = 0;
                 } else if (EQUALS(key, "gain")) {
                     long result;
                     if (parse_ranged(value, -60, 30, &result))

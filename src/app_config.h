@@ -42,6 +42,9 @@ struct AppConfig {
     bool mirror;
     bool flip;
     int antiflicker;
+    bool auto_exposure;
+    int exposure_target;
+    bool auto_white_balance;
 
     // [osd]
     bool osd_enable;
@@ -78,6 +81,8 @@ struct AppConfig {
 
     // [audio]
     bool audio_enable;
+    // audio.enable as configured: audio_enable is cleared for the run on a platform without audio
+    bool audio_requested;
     unsigned int audio_bitrate;
     int audio_gain;
     unsigned int audio_srate;
