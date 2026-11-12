@@ -327,6 +327,7 @@ void request_idr(void) {
         break;
     }
     if (index != -1) switch (plat) {
+        case HAL_PLATFORM_V4L2: v4l2_video_request_idr(index); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_video_request_idr(index); break;
         case HAL_PLATFORM_I6C: i6c_video_request_idr(index); break;
@@ -355,6 +356,7 @@ void request_idr(void) {
 void set_grayscale(bool active) {
     pthread_mutex_lock(&chnMtx);
     switch (plat) {
+        case HAL_PLATFORM_V4L2: v4l2_channel_grayscale(active); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_channel_grayscale(active); break;
         case HAL_PLATFORM_I6C: i6c_channel_grayscale(active); break;
@@ -394,6 +396,7 @@ int take_next_free_channel(bool mainLoop) {
 
 int create_channel(char index, short width, short height, char framerate, char jpeg) {
     switch (plat) {
+        case HAL_PLATFORM_V4L2: return v4l2_channel_create(index, width, height, jpeg);
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_channel_create(index, width, height, jpeg);
         case HAL_PLATFORM_I6C: return i6c_channel_create(index, width, height, jpeg);
@@ -427,6 +430,7 @@ int create_channel(char index, short width, short height, char framerate, char j
 
 int bind_channel(char index, char framerate, char jpeg) {
     switch (plat) {
+        case HAL_PLATFORM_V4L2: return v4l2_channel_bind(index);
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_channel_bind(index, framerate);
         case HAL_PLATFORM_I6C: return i6c_channel_bind(index, framerate);
@@ -453,6 +457,7 @@ int bind_channel(char index, char framerate, char jpeg) {
 
 int unbind_channel(char index, char jpeg) {
     switch (plat) {
+        case HAL_PLATFORM_V4L2: return v4l2_channel_unbind(index);
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_channel_unbind(index);
         case HAL_PLATFORM_I6C: return i6c_channel_unbind(index);
@@ -479,6 +484,7 @@ int unbind_channel(char index, char jpeg) {
 
 int media_video_disable(char index, char jpeg) {
     switch (plat) {
+        case HAL_PLATFORM_V4L2: return v4l2_video_destroy(index);
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  return i6_video_destroy(index);
         case HAL_PLATFORM_I6C: return i6c_video_destroy(index);
@@ -515,6 +521,7 @@ void media_audio_disable(void) {
     shine_close(mp3Enc);
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2: v4l2_audio_deinit(); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_audio_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_audio_deinit(); break;
@@ -548,6 +555,7 @@ int media_audio_enable(void) {
         HAL_ERROR("media", "Audio queue initialization failed!\n");
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2: ret = v4l2_audio_init(app_config.audio_srate); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  ret = i6_audio_init(app_config.audio_srate, app_config.audio_gain); break;
         case HAL_PLATFORM_I6C: ret = i6c_audio_init(app_config.audio_srate, app_config.audio_gain); break;
@@ -590,39 +598,44 @@ int media_audio_enable(void) {
         pcmSamp = shine_samples_per_pass(mp3Enc);
     }
 
-    {
-        pthread_attr_t thread_attr;
-        pthread_attr_init(&thread_attr);
-        size_t stacksize;
-        pthread_attr_getstacksize(&thread_attr, &stacksize);
-        size_t new_stacksize = 16384;
-        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
-        if (pthread_create(
-                        &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL))
-            HAL_ERROR("media", "Starting the audio capture thread failed!\n");
-        if (pthread_attr_setstacksize(&thread_attr, stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
-        pthread_attr_destroy(&thread_attr);
-    }
-
-    {
-        pthread_attr_t thread_attr;
-        pthread_attr_init(&thread_attr);
-        size_t stacksize;
-        pthread_attr_getstacksize(&thread_attr, &stacksize);
-        size_t new_stacksize = 16384;
-        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
-        if (pthread_create(
-                        &aencPid, &thread_attr, (void *(*)(void *))aenc_thread, NULL))
-            HAL_ERROR("media", "Starting the audio encoding thread failed!\n");
-        if (pthread_attr_setstacksize(&thread_attr, stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
-        pthread_attr_destroy(&thread_attr);
-    }
-
+    /* The capture and encoding threads run only while audioOn is set. */
     audioOn = 1;
+
+    {
+        pthread_attr_t thread_attr;
+        pthread_attr_init(&thread_attr);
+        size_t stacksize;
+        pthread_attr_getstacksize(&thread_attr, &stacksize);
+        size_t new_stacksize = 16384;
+        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
+        if (pthread_create(
+                        &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL)) {
+            audioOn = 0;
+            HAL_ERROR("media", "Starting the audio capture thread failed!\n");
+        }
+        if (pthread_attr_setstacksize(&thread_attr, stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
+        pthread_attr_destroy(&thread_attr);
+    }
+
+    {
+        pthread_attr_t thread_attr;
+        pthread_attr_init(&thread_attr);
+        size_t stacksize;
+        pthread_attr_getstacksize(&thread_attr, &stacksize);
+        size_t new_stacksize = 16384;
+        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
+        if (pthread_create(
+                        &aencPid, &thread_attr, (void *(*)(void *))aenc_thread, NULL)) {
+            audioOn = 0;
+            HAL_ERROR("media", "Starting the audio encoding thread failed!\n");
+        }
+        if (pthread_attr_setstacksize(&thread_attr, stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
+        pthread_attr_destroy(&thread_attr);
+    }
 
     return ret;
 }
@@ -672,6 +685,7 @@ int media_mjpeg_enable(void) {
         config.maxBitrate = app_config.mjpeg_bitrate * 5 / 4;
 
         switch (plat) {
+            case HAL_PLATFORM_V4L2: ret = v4l2_video_create(index, &config); break;
 #if defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
@@ -765,6 +779,7 @@ int media_mp4_enable(void) {
         config.maxBitrate = app_config.mp4_bitrate * 5 / 4;
 
         switch (plat) {
+            case HAL_PLATFORM_V4L2: ret = v4l2_video_create(index, &config); break;
 #if defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_I6:  ret = i6_video_create(index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(index, &config); break;
@@ -818,6 +833,7 @@ int sdk_start(void) {
     int ret;
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2: ret = v4l2_hal_init(); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I3:  ret = i3_hal_init(); break;
         case HAL_PLATFORM_I6:  ret = i6_hal_init(); break;
@@ -846,6 +862,10 @@ int sdk_start(void) {
             ret, errstr(ret));
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2:
+            v4l2_aud_cb = save_audio_stream;
+            v4l2_vid_cb = save_video_stream;
+            break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:
             i6_aud_cb = save_audio_stream;
@@ -951,6 +971,8 @@ int sdk_start(void) {
     short framerate = MAX(app_config.mp4_fps, app_config.mjpeg_fps);
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2: ret = v4l2_pipeline_create(width, height,
+            app_config.mirror, app_config.flip, framerate, app_config.antiflicker); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  ret = i6_pipeline_create(0, width,
             height, app_config.mirror, app_config.flip, framerate); break;
@@ -1064,6 +1086,7 @@ int sdk_stop(void) {
         jpeg_deinit();
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2: v4l2_video_destroy_all(); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_video_destroy_all(); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy_all(); break;
@@ -1088,6 +1111,7 @@ int sdk_stop(void) {
     }
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2: v4l2_pipeline_destroy(); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_pipeline_destroy(); break;
         case HAL_PLATFORM_I6C: i6c_pipeline_destroy(); break;
@@ -1152,6 +1176,7 @@ int sdk_stop(void) {
     }
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2: v4l2_hal_deinit(); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I3:  i3_hal_deinit(); break;
         case HAL_PLATFORM_I6:  i6_hal_deinit(); break;
