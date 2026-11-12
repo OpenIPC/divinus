@@ -15,11 +15,6 @@
 pthread_mutex_t ak_v4l2_mtx = PTHREAD_MUTEX_INITIALIZER;
 static unsigned int capGen[2];
 
-unsigned int ak_v4l2_cap_gen(int index)
-{
-    return capGen[index & 1];
-}
-
 int ak_v4l2_cap_open(int index, int width, int height)
 {
     struct v4l2_cap *c;
@@ -107,6 +102,22 @@ void ak_v4l2_cap_close(int index)
     c->streaming = 0;
     capGen[index & 1]++;
     pthread_mutex_unlock(&ak_v4l2_mtx);
+}
+
+int ak_v4l2_cap_fd(int index)
+{
+    return caps[index & 1].fd;
+}
+
+unsigned int ak_v4l2_cap_gen(int index)
+{
+    return capGen[index & 1];
+}
+
+void ak_v4l2_cap_size(int index, int *width, int *height)
+{
+    *width = caps[index & 1].width;
+    *height = caps[index & 1].height;
 }
 
 int ak_v4l2_cap_dequeue(int index, void **data, size_t *len, uint64_t *ts, int *bufIndex, int timeout_ms)

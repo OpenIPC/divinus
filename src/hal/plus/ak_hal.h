@@ -8,7 +8,6 @@
 
 #include "../globals.h"
 #include "../tools.h"
-#include "../../app_config.h"
 
 #include <dirent.h>
 #include <pthread.h>
@@ -29,9 +28,8 @@ int ak_channel_bind(char index);
 int ak_channel_grayscale(char enable);
 int ak_channel_unbind(char index);
 
-int ak_config_load(char *path);
-
-int ak_pipeline_create(short width, short height, char mirror, char flip);
+int ak_pipeline_create(short width, short height, char mirror, char flip,
+    short mjpegWidth, short mjpegHeight);
 void ak_pipeline_streamon(void);
 void ak_pipeline_streamon_sub(void);
 void ak_pipeline_destroy(void);

@@ -1,10 +1,8 @@
 #pragma once
 
-#include "../types.h"
+#include "ak_common.h"
 
 #include <pthread.h>
-#include <stdlib.h>
-#include <string.h>
 
 #define AK_OSD_MAX 10
 
@@ -15,13 +13,10 @@ typedef struct {
     unsigned char *bits;
 } ak_region_t;
 
+extern ak_region_t ak_region[AK_OSD_MAX];
+extern pthread_mutex_t ak_region_mtx;
+
 typedef unsigned int ak_word __attribute__((may_alias));
-
-static ak_region_t ak_region[AK_OSD_MAX];
-
-/* The region thread swaps or frees bitmaps while the video thread paints
-   them into the frame, so the table needs one lock for both sides. */
-static pthread_mutex_t ak_region_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 static inline __attribute__((always_inline)) int ak_region_luma(unsigned short p)
 {
@@ -145,16 +140,4 @@ static inline __attribute__((always_inline)) void ak_region_paint(
             ak_region_blend(&vrow[fx >> 1], V, op);
         }
     }
-}
-
-static void ak_region_apply(unsigned char *frame, int width, int height)
-{
-    pthread_mutex_lock(&ak_region_mtx);
-    for (int id = 0; id < AK_OSD_MAX; id++) {
-        ak_region_t *r = &ak_region[id];
-        if (!r->bits || r->opacity <= 0) continue;
-        if (r->opacity == 255) ak_region_paint(frame, width, height, r, 1);
-        else ak_region_paint(frame, width, height, r, 0);
-    }
-    pthread_mutex_unlock(&ak_region_mtx);
 }

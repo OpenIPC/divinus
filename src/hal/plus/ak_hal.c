@@ -6,6 +6,8 @@ ak_aud_impl  ak_aud;
 ak_sys_impl  ak_sys;
 
 hal_chnstate ak_state[AK_VENC_CHN_NUM] = {0};
+ak_region_t ak_region[AK_OSD_MAX];
+pthread_mutex_t ak_region_mtx = PTHREAD_MUTEX_INITIALIZER;
 int (*ak_aud_cb)(hal_audframe*);
 int (*ak_vid_cb)(char, hal_vidstream*);
 
@@ -14,13 +16,10 @@ static size_t ak_mjpeg_len;
 static pthread_mutex_t ak_mjpeg_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 static struct {
-    int width, height, maxWidth, maxHeight;
+    int width, height;
 } _ak_vi_res;
 
 void *_ak_aud_dev;
-void *_ak_vi_dev;
-void *_ak_venc_dev[AK_VENC_CHN_NUM];
-void *_ak_venc_strm[AK_VENC_CHN_NUM];
 
 void ak_hal_deinit(void)
 {
@@ -32,10 +31,14 @@ int ak_hal_init(void)
 {
     int ret;
 
+    memset(ak_state, 0, sizeof(ak_state));
+
     if (ret = ak_sys_load(&ak_sys))
         return ret;
-    if (ret = ak_aud_load(&ak_aud))
+    if (ret = ak_aud_load(&ak_aud)) {
+        ak_sys_unload(&ak_sys);
         return ret;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -56,9 +59,11 @@ int ak_audio_init(int samplerate)
         .chnNum = 1
     };
 
-    if (!(_ak_aud_dev = ak_aud.fnEnableDevice(&config)))
+    if (!(_ak_aud_dev = ak_aud.fnEnableDevice(&config))) {
+        ret = ak_sys.fnGetErrorNum();
         HAL_ERROR("ak_aud", "Opening the audio input failed with %#x!\n%s\n",
-            ret = ak_sys.fnGetErrorNum(), ak_sys.fnGetErrorStr(ret));
+            ret, ak_sys.fnGetErrorStr(ret));
+    }
 
     return EXIT_SUCCESS;
 }
@@ -96,6 +101,7 @@ void *ak_audio_thread(void)
             HAL_DANGER("ak_aud", "Releasing the audio frame failed!\n");
     }
     HAL_INFO("ak_aud", "Shutting down audio capture thread...\n");
+    return NULL;
 }
 
 int ak_channel_bind(char index)
@@ -119,7 +125,8 @@ int ak_channel_unbind(char index)
     return EXIT_SUCCESS;
 }
 
-int ak_pipeline_create(short width, short height, char mirror, char flip)
+int ak_pipeline_create(short width, short height, char mirror, char flip,
+    short mjpegWidth, short mjpegHeight)
 {
     (void)mirror;
     (void)flip;
@@ -128,18 +135,23 @@ int ak_pipeline_create(short width, short height, char mirror, char flip)
         width = 1280;
         height = 720;
     }
+    if (mjpegWidth <= 0 || mjpegHeight <= 0) {
+        mjpegWidth = 640;
+        mjpegHeight = 360;
+    }
 
     if (ak_v4l2_cap_open(0, width, height) < 0)
         HAL_ERROR("ak_vi", "Opening the main capture failed!\n");
 
-    if (ak_v4l2_cap_open(1, app_config.mjpeg_width,
-            app_config.mjpeg_height) < 0)
+    if (ak_v4l2_cap_open(1, mjpegWidth, mjpegHeight) < 0)
         HAL_WARNING("ak_vi", "Opening the sub capture failed; main only\n");
 
-    _ak_vi_res.width = width;
-    _ak_vi_res.height = height;
-    _ak_vi_res.maxWidth = width;
-    _ak_vi_res.maxHeight = height;
+    /* The driver may clamp S_FMT, so take the size it actually granted. */
+    ak_v4l2_cap_size(0, &_ak_vi_res.width, &_ak_vi_res.height);
+    if (_ak_vi_res.width <= 0 || _ak_vi_res.height <= 0) {
+        _ak_vi_res.width = width;
+        _ak_vi_res.height = height;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -162,8 +174,26 @@ void ak_pipeline_destroy(void)
     ak_v4l2_cap_close(1);
 }
 
+static unsigned int ak_video_nalstart(const unsigned char *d, unsigned int off,
+    unsigned int len)
+{
+    for (unsigned int i = off; i + 2 < len; i++)
+        if (!d[i] && !d[i + 1] &&
+            (d[i + 2] == 1 || (i + 3 < len && d[i + 2] == 0 && d[i + 3] == 1)))
+            return i;
+    return len;
+}
+
 int ak_video_create(char index, hal_vidconfig *config)
 {
+    if (index < 0 || index >= AK_VENC_CHN_NUM)
+        return EXIT_FAILURE;
+
+    if (config->codec != HAL_VIDCODEC_H264 &&
+        config->codec != HAL_VIDCODEC_MJPG &&
+        config->codec != HAL_VIDCODEC_JPG)
+        HAL_ERROR("ak_venc", "This codec is not supported by the hardware!");
+
     if (ak_v4l2_enc_open(index, config->width, config->height,
             config->codec, config->framerate, config->bitrate,
             config->gop) < 0) {
@@ -178,6 +208,12 @@ int ak_video_create(char index, hal_vidconfig *config)
 
 int ak_video_destroy(char index)
 {
+    if (index < 0 || index >= AK_VENC_CHN_NUM)
+        return EXIT_FAILURE;
+
+    ak_state[index].enable = 0;
+    ak_state[index].payload = HAL_VIDCODEC_UNSPEC;
+
     ak_v4l2_enc_close(index);
     return EXIT_SUCCESS;
 }
@@ -196,6 +232,9 @@ int ak_video_destroy_all(void)
 
 void ak_video_request_idr(char index)
 {
+    if (index < 0 || index >= AK_VENC_CHN_NUM)
+        return;
+
     ak_v4l2_enc_request_idr(index);
 }
 
@@ -227,18 +266,9 @@ int ak_video_snapshot_grab(char index, hal_jpegdata *jpeg)
     return EXIT_SUCCESS;
 }
 
-static unsigned int ak_nal_start(const unsigned char *d, unsigned int off, unsigned int len)
-{
-    for (unsigned int i = off; i + 2 < len; i++)
-        if (!d[i] && !d[i + 1] &&
-            (d[i + 2] == 1 || (i + 3 < len && d[i + 2] == 0 && d[i + 3] == 1)))
-            return i;
-    return len;
-}
-
 int ak_region_create(char handle, hal_rect rect, short opacity)
 {
-    if (handle < 0 || handle >= AK_OSD_MAX)
+    if (handle >= AK_OSD_MAX)
         return EXIT_FAILURE;
     pthread_mutex_lock(&ak_region_mtx);
     ak_region[handle].rect = rect;
@@ -249,7 +279,7 @@ int ak_region_create(char handle, hal_rect rect, short opacity)
 
 int ak_region_setbitmap(char handle, hal_bitmap *bitmap)
 {
-    if (handle < 0 || handle >= AK_OSD_MAX || !bitmap || !bitmap->data)
+    if (handle >= AK_OSD_MAX || !bitmap || !bitmap->data)
         return EXIT_FAILURE;
     if (!bitmap->dim.width || !bitmap->dim.height)
         return EXIT_FAILURE;
@@ -271,7 +301,7 @@ int ak_region_setbitmap(char handle, hal_bitmap *bitmap)
 
 void ak_region_destroy(char handle)
 {
-    if (handle < 0 || handle >= AK_OSD_MAX)
+    if (handle >= AK_OSD_MAX)
         return;
     pthread_mutex_lock(&ak_region_mtx);
     free(ak_region[handle].bits);
@@ -280,8 +310,23 @@ void ak_region_destroy(char handle)
     pthread_mutex_unlock(&ak_region_mtx);
 }
 
+static void ak_region_apply(unsigned char *frame, int width, int height)
+{
+    pthread_mutex_lock(&ak_region_mtx);
+    for (int id = 0; id < AK_OSD_MAX; id++) {
+        ak_region_t *r = &ak_region[id];
+        if (!r->bits || r->opacity <= 0) continue;
+        if (r->opacity == 255) ak_region_paint(frame, width, height, r, 1);
+        else ak_region_paint(frame, width, height, r, 0);
+    }
+    pthread_mutex_unlock(&ak_region_mtx);
+}
+
 static void ak_video_emit(char index, void *out, size_t outlen, uint64_t tstamp)
 {
+    hal_vidstream outStrm;
+    hal_vidpack outPack[1];
+
     if (!ak_vid_cb || !outlen) return;
 
     if (ak_state[index].payload == HAL_VIDCODEC_MJPG) {
@@ -295,95 +340,112 @@ static void ak_video_emit(char index, void *out, size_t outlen, uint64_t tstamp)
         pthread_mutex_unlock(&ak_mjpeg_mtx);
     }
 
-    hal_vidstream outStrm;
-    hal_vidpack outPack[1];
     memset(outPack, 0, sizeof(outPack));
     outStrm.count = 1;
     outStrm.seq = 0;
     outPack[0].data = out;
     outPack[0].length = outlen;
 
-    unsigned int n = 0, sc, scan = 0;
-    while (n < 7 && (sc = ak_nal_start(out, scan, outlen)) < outlen) {
-        unsigned int scLen = (((unsigned char *)out)[sc + 2] == 1) ? 3 : 4;
-        outPack[0].nalu[n].offset = sc;
-        outPack[0].nalu[n].type = ((unsigned char *)out)[sc + scLen] & 0x1F;
-        n++;
-        scan = sc + scLen;
+    const unsigned char *d = out;
+    hal_vidcodec codec = ak_state[index].payload;
+
+    /* JPEG has no Annex-B framing, so there is nothing to split. */
+    if (codec == HAL_VIDCODEC_H264) {
+        unsigned int n = 0, sc, scan = 0;
+
+        while (n < 7 && (sc = ak_video_nalstart(d, scan, outlen)) < outlen) {
+            unsigned int scLen = (d[sc + 2] == 1) ? 3 : 4;
+
+            /* A 3-byte start code may end the buffer exactly; the NAL
+               header byte would then be past the end. */
+            if (sc + scLen >= outlen) break;
+
+            outPack[0].nalu[n].offset = sc;
+            outPack[0].nalu[n].type = (d[sc + scLen] & 0x1F);
+            n++;
+            scan = sc + scLen;
+        }
+        if (n) {
+            outPack[0].naluCnt = n;
+            outPack[0].nalu[n].offset = outlen;
+            for (unsigned int k = 0; k < n; k++)
+                outPack[0].nalu[k].length =
+                    outPack[0].nalu[k + 1].offset - outPack[0].nalu[k].offset;
+        }
     }
-    if (n) {
-        outPack[0].naluCnt = n;
-        outPack[0].nalu[n].offset = outlen;
-        for (unsigned int k = 0; k < n; k++)
-            outPack[0].nalu[k].length =
-                outPack[0].nalu[k + 1].offset - outPack[0].nalu[k].offset;
-    } else {
+
+    if (!outPack[0].naluCnt) {
         outPack[0].naluCnt = 1;
         outPack[0].nalu[0].length = outlen;
         outPack[0].nalu[0].offset = 0;
         outPack[0].nalu[0].type = 1;
     }
+
     outPack[0].offset = 0;
     outPack[0].timestamp = tstamp;
     outStrm.pack = outPack;
     (*ak_vid_cb)(index, &outStrm);
 }
 
+static void ak_video_drain(int index)
+{
+    void *data = NULL, *out = NULL;
+    size_t len = 0, outlen = 0;
+    uint64_t tstamp = 0;
+    int frameIdx = -1;
+
+    unsigned int gen = ak_v4l2_cap_gen(index);
+
+    if (ak_v4l2_cap_dequeue(index, &data, &len, &tstamp, &frameIdx, 0) < 0)
+        return;
+
+    /* The pipeline may have been torn down while the dequeue was
+       waiting; the frame pointer would then already be unmapped. */
+    if (gen != ak_v4l2_cap_gen(index))
+        return;
+
+    pthread_mutex_lock(&ak_v4l2_mtx);
+    if (gen == ak_v4l2_cap_gen(index)) {
+        if (index == 0)
+            ak_region_apply((unsigned char *)data, _ak_vi_res.width,
+                _ak_vi_res.height);
+
+        for (char i = 0; i < AK_VENC_CHN_NUM; i++) {
+            if (!ak_state[i].enable || !ak_state[i].mainLoop) continue;
+            if (index == 0) {
+                if (ak_state[i].payload == HAL_VIDCODEC_MJPG ||
+                    ak_state[i].payload == HAL_VIDCODEC_JPG) continue;
+            } else if (ak_state[i].payload != HAL_VIDCODEC_MJPG &&
+                       ak_state[i].payload != HAL_VIDCODEC_JPG) continue;
+            if (ak_v4l2_enc_push(i, data, len, &out, &outlen, 1000) < 0) continue;
+            ak_video_emit(i, out, outlen, tstamp);
+            ak_v4l2_enc_requeue(i);
+        }
+        ak_v4l2_cap_requeue(index, frameIdx);
+    }
+    pthread_mutex_unlock(&ak_v4l2_mtx);
+}
+
 void *ak_video_thread(void)
 {
     while (keepRunning) {
-        void *data = NULL, *out = NULL;
-        size_t len = 0, outlen = 0;
-        uint64_t tstamp = 0;
-        int frameIdx = -1;
+        struct pollfd p[2];
+        int fd0 = ak_v4l2_cap_fd(0), fd1 = ak_v4l2_cap_fd(1);
 
-        unsigned int gen = ak_v4l2_cap_gen(0);
-
-        if (ak_v4l2_cap_dequeue(0, &data, &len, &tstamp, &frameIdx, 1000) < 0)
+        if (fd0 < 0 && fd1 < 0) {
+            usleep(10000);
             continue;
-
-        /* The pipeline may have been torn down while the dequeue was
-           waiting; the frame pointer would then already be unmapped. */
-        if (gen != ak_v4l2_cap_gen(0))
-            continue;
-
-        pthread_mutex_lock(&ak_v4l2_mtx);
-        if (gen == ak_v4l2_cap_gen(0)) {
-            ak_region_apply((unsigned char *)data, _ak_vi_res.width, _ak_vi_res.height);
-
-            for (char i = 0; i < AK_VENC_CHN_NUM; i++) {
-                if (!ak_state[i].enable || !ak_state[i].mainLoop) continue;
-                if (ak_state[i].payload == HAL_VIDCODEC_MJPG ||
-                    ak_state[i].payload == HAL_VIDCODEC_JPG) continue;
-                if (ak_v4l2_enc_push(i, data, len, &out, &outlen, 1000) < 0) continue;
-                ak_video_emit(i, out, outlen, tstamp);
-                ak_v4l2_enc_requeue(i);
-            }
-            ak_v4l2_cap_requeue(0, frameIdx);
         }
-        pthread_mutex_unlock(&ak_v4l2_mtx);
 
-        gen = ak_v4l2_cap_gen(1);
-
-        if (ak_v4l2_cap_dequeue(1, &data, &len, &tstamp, &frameIdx, 1000) < 0)
+        p[0].fd = fd0; p[0].events = POLLIN; p[0].revents = 0;
+        p[1].fd = fd1; p[1].events = POLLIN; p[1].revents = 0;
+        if (poll(p, 2, 1000) <= 0)
             continue;
 
-        if (gen != ak_v4l2_cap_gen(1))
-            continue;
-
-        pthread_mutex_lock(&ak_v4l2_mtx);
-        if (gen == ak_v4l2_cap_gen(1)) {
-            for (char i = 0; i < AK_VENC_CHN_NUM; i++) {
-                if (!ak_state[i].enable || !ak_state[i].mainLoop) continue;
-                if (ak_state[i].payload != HAL_VIDCODEC_MJPG &&
-                    ak_state[i].payload != HAL_VIDCODEC_JPG) continue;
-                if (ak_v4l2_enc_push(i, data, len, &out, &outlen, 1000) < 0) continue;
-                ak_video_emit(i, out, outlen, tstamp);
-                ak_v4l2_enc_requeue(i);
-            }
-            ak_v4l2_cap_requeue(1, frameIdx);
-        }
-        pthread_mutex_unlock(&ak_v4l2_mtx);
+        if (fd0 >= 0 && (p[0].revents & POLLIN))
+            ak_video_drain(0);
+        if (fd1 >= 0 && (p[1].revents & POLLIN))
+            ak_video_drain(1);
     }
 
     HAL_INFO("ak_venc", "Shutting down encoding thread...\n");
@@ -397,11 +459,12 @@ void ak_system_deinit(void)
 
 int ak_system_init(char *snrConfig)
 {
-    int val = AK_SYS_BOOT_MAGIC;
+    unsigned int val = AK_SYS_BOOT_MAGIC;
     (void)snrConfig;
 
     // Disable the watchdog timer if it isn't already
-    hal_registry(AK_SYS_BOOT_REG, &val, OP_WRITE);
+    if (!hal_registry(AK_SYS_BOOT_REG, &val, OP_WRITE))
+        HAL_WARNING("ak_sys", "Disabling the watchdog failed!\n");
 
     return EXIT_SUCCESS;
 }

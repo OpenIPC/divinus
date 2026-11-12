@@ -223,7 +223,7 @@ int t31_config_load(char *path)
     return ret;
 }
 
-int t31_pipeline_create(char mirror, char flip, char antiflicker, char framerate)
+int t31_pipeline_create(char mirror, char flip, char framerate, char antiflicker)
 {
     int ret = EXIT_FAILURE;
 
