@@ -124,6 +124,7 @@ int main(int argc, char *argv[]) {
 
     if (app_config.night_mode_enable)
         night_disable();
+    gpio_release_unused(NULL, 0);
 
     sdk_stop();
 

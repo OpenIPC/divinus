@@ -39,6 +39,18 @@ void night_irled(bool enable) {
     irled = enable;
 }
 
+/* Every pin night mode drives while it runs: what must stay exported between requests */
+int night_pins(short *pins) {
+    int count = 0;
+    if (app_config.ir_cut_pin1 != 999) pins[count++] = app_config.ir_cut_pin1;
+    if (app_config.ir_cut_pin2 != 999) pins[count++] = app_config.ir_cut_pin2;
+    if (app_config.ir_led_pin != 999) pins[count++] = app_config.ir_led_pin;
+#if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
+    if (plat == HAL_PLATFORM_F1) pins[count++] = FH_LAMP_WHITE_GPIO;
+#endif
+    return count;
+}
+
 static void night_lamp(bool enable) {
 #if defined(__arm__) && !defined(__ARM_PCS_VFP) && __ARM_ARCH == 6
     if (plat == HAL_PLATFORM_F1)

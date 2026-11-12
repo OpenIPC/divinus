@@ -1327,6 +1327,11 @@ void respond_request(http_request_t *req) {
             }
 
             night_disable();
+            /* gpio_write() leaves its pins exported: let go of the ones this process exported that night mode
+             * no longer drives (a pin moved away, or night mode switched off) */
+            short keep[4];
+            int kept = app_config.night_mode_enable ? night_pins(keep) : 0;
+            gpio_release_unused(keep, kept);
             if (app_config.night_mode_enable) night_enable();
         }
         respLen = sprintf(response,
