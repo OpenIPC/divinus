@@ -61,9 +61,14 @@ int __fgetc_unlocked(FILE *stream) { return fgetc(stream); }
 double __log_finite(double x) { return log(x); }
 
 #if defined(__arm__) || defined(__aarch64__) || defined(__mips__)
+// With GLIBC_COMPAT (infinity3 on musl) the vendor libraries' 32-bit mmap
+// calls go through the shim's mm32, which calls mmap with musl's 64-bit off_t,
+// so musl's own mmap has to stay in place there.
+#ifndef GLIBC_COMPAT
 void *mmap(void *start, size_t len, int prot, int flags, int fd, uint32_t off) {
     return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, off >> 12);
 }
+#endif
 
 void *__mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off) {
     return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, (long)(off >> 12));
