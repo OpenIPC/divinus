@@ -35,18 +35,23 @@ int stat(const char *restrict path, struct stat *restrict buf)
 
 void __assert(void) {}
 void akuio_clean_invalidate_dcache(void) {}
-#ifndef __GLIBC__
+// GLIBC_COMPAT: linked against OpenIPC's glibc-compat shim (infinity3 on
+// musl), which, with musl, has working versions of these; an empty one here
+// would be found first and break the vendor libraries that call them.
+#if !defined(__GLIBC__) && !defined(GLIBC_COMPAT)
 void backtrace(void) {}
 void backtrace_symbols(void) {}
 #endif
 void __ctype_b(void) {}
-#ifndef __GLIBC__
+#if !defined(__GLIBC__) && !defined(GLIBC_COMPAT)
 void __ctype_b_loc(void) {}
 void __ctype_tolower(void) {}
 #endif
 void _MI_PRINT_GetDebugLevel(void) {}
+#ifndef GLIBC_COMPAT
 void __pthread_register_cancel(void) {}
 void __pthread_unregister_cancel(void) {}
+#endif
 #ifndef __UCLIBC__
 void _stdlib_mb_cur_max(void) {}
 #endif
@@ -56,9 +61,14 @@ int __fgetc_unlocked(FILE *stream) { return fgetc(stream); }
 double __log_finite(double x) { return log(x); }
 
 #if defined(__arm__) || defined(__aarch64__) || defined(__mips__)
+// With GLIBC_COMPAT (infinity3 on musl) the vendor libraries' 32-bit mmap
+// calls go through the shim's mm32, which calls mmap with musl's 64-bit off_t,
+// so musl's own mmap has to stay in place there.
+#ifndef GLIBC_COMPAT
 void *mmap(void *start, size_t len, int prot, int flags, int fd, uint32_t off) {
     return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, off >> 12);
 }
+#endif
 
 void *__mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off) {
     return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, (long)(off >> 12));

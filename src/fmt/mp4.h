@@ -22,6 +22,7 @@ struct Mp4State {
     uint32_t sequence_number;
     uint64_t base_data_offset;
     uint64_t base_media_decode_time;
+    uint64_t audio_media_decode_time;
     uint32_t default_sample_duration;
 
     uint32_t nals_count;
@@ -37,6 +38,8 @@ void mp4_set_timestamp(uint64_t tstamp);
 enum BufError mp4_set_slice(const char *nal_data, const uint32_t nal_len,
     char is_iframe);
 enum BufError mp4_ingest_audio(const char *data, const uint32_t len);
+enum BufError mp4_ingest_audio_frame(const char *data, const uint32_t len,
+    const uint32_t samples);
 
 enum BufError mp4_set_state(struct Mp4State *state);
 

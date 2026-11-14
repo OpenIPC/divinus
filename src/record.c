@@ -3,6 +3,10 @@
 /* Guards the recording state: the encoder thread feeds fragments while the
  * server thread starts and stops sessions. */
 static pthread_mutex_t recordMtx = PTHREAD_MUTEX_INITIALIZER;
+/* Serializes starting and stopping with their storage remounts, which run
+ * outside recordMtx */
+static pthread_mutex_t recordModeMtx = PTHREAD_MUTEX_INITIALIZER;
+static bool recordStorageRw;
 
 static FILE *recordFile;
 static struct Mp4State recordState;
@@ -10,7 +14,137 @@ static unsigned long long recordSize;
 static time_t recordStartTime;
 static time_t recordLastFlush;
 static bool recordActive;
+static bool recordWaitKey;
+static time_t recordLastSync, recordLastRoom, recordLastTry;
 static char recordPath[RECORD_PATH_MAX];
+/* Monotonic second at which a timed recording ends, 0 for none */
+static time_t recordStopAt;
+
+#define RECORD_CARD_ROOT "/mnt/sdcard"
+#define RECORD_CARD_TOOL "/usr/sbin/sdcard"
+
+static time_t record_now(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec;
+}
+
+/* The card is kept read-only unless a recording is running; the helper
+ * (re)mounts it in the requested mode. Must not be called with recordMtx held. */
+static void record_storage_mode(const char *mode) {
+    char cmd[96];
+
+    if (strncmp(app_config.record_path, RECORD_CARD_ROOT, strlen(RECORD_CARD_ROOT))) return;
+    if (access(RECORD_CARD_TOOL, X_OK)) return;
+    snprintf(cmd, sizeof(cmd), RECORD_CARD_TOOL " mount %s >/dev/null 2>&1", mode);
+    if (system(cmd)) HAL_WARNING("record", "Storage could not be switched to '%s'\n", mode);
+    recordStorageRw = !strcmp(mode, "rw");
+}
+
+/* Recordings must land on mounted storage, never on the root filesystem:
+ * with no card in the slot the path would be a plain directory in flash. */
+static bool record_on_storage(struct statvfs *vfs) {
+    char tmp[RECORD_PATH_MAX];
+    struct stat st, root;
+    size_t len = strlen(app_config.record_path);
+
+    if (len == 0 || len >= sizeof(tmp)) return false;
+    memcpy(tmp, app_config.record_path, len + 1);
+    while (stat(tmp, &st)) {
+        char *sep = strrchr(tmp, '/');
+        if (!sep || sep == tmp) return false;
+        *sep = '\0';
+    }
+    if (stat("/", &root) || st.st_dev == root.st_dev) return false;
+    if (vfs && statvfs(tmp, vfs)) return false;
+    return true;
+}
+
+/* Splits the configured file name into "<stem>" and ".<ext>". */
+static void record_name_parts(char *stem, size_t stemSize, char *ext, size_t extSize) {
+    strncpy(ext, ".mp4", extSize - 1);
+    ext[extSize - 1] = '\0';
+    stem[0] = '\0';
+
+    if (!EMPTY(app_config.record_filename)) {
+        char *dot;
+        const char *name = strrchr(app_config.record_filename, '/');
+        name = name ? name + 1 : app_config.record_filename;
+
+        strncpy(stem, name, stemSize - 1);
+        stem[stemSize - 1] = '\0';
+
+        dot = strrchr(stem, '.');
+        if (dot && dot != stem) {
+            strncpy(ext, dot, extSize - 1);
+            ext[extSize - 1] = '\0';
+            *dot = '\0';
+        }
+    }
+    if (EMPTY(stem)) strncpy(stem, "recording", stemSize - 1);
+}
+
+/* Whether a name is "<stem>_YYYYMMDD-HHMMSS[-N]<ext>", as record_build_path
+ * makes them. */
+static bool record_own_name(const char *name, const char *stem, size_t stemLen,
+    const char *ext, size_t extLen) {
+    size_t len = strlen(name);
+    const char *p = name + stemLen + 1, *end = name + len - extLen;
+
+    if (len < stemLen + 1 + 15 + extLen || strncmp(name, stem, stemLen) ||
+        name[stemLen] != '_' || strcmp(end, ext)) return false;
+    for (int i = 0; i < 15; i++, p++)
+        if (i == 8 ? *p != '-' : (*p < '0' || *p > '9')) return false;
+    if (p == end) return true;
+    if (*p++ != '-' || p == end) return false;
+    for (; p < end; p++)
+        if (*p < '0' || *p > '9') return false;
+    return true;
+}
+
+/* Loop recording: while free space is below the reserve, removes the oldest
+ * segment. Only files this recorder named itself are ever touched. Runs
+ * without recordMtx, so the encoder thread never waits for the card. */
+static void record_make_room(const char *current) {
+    char stem[sizeof(app_config.record_filename)], ext[16];
+    size_t stemLen, extLen;
+
+    record_name_parts(stem, sizeof(stem), ext, sizeof(ext));
+    stemLen = strlen(stem);
+    extLen = strlen(ext);
+
+    for (int pass = 0; pass < 256; pass++) {
+        struct statvfs vfs;
+        struct dirent *ent;
+        char oldest[256] = "", path[RECORD_PATH_MAX];
+        DIR *dir;
+
+        if (statvfs(app_config.record_path, &vfs)) return;
+        if ((unsigned long long)vfs.f_bavail * vfs.f_frsize >=
+            (unsigned long long)app_config.record_reserve << 20) return;
+
+        if (!(dir = opendir(app_config.record_path))) return;
+        while ((ent = readdir(dir))) {
+            if (strlen(ent->d_name) >= sizeof(oldest)) continue;
+            if (!record_own_name(ent->d_name, stem, stemLen, ext, extLen)) continue;
+            if (!strcmp(ent->d_name, current)) continue;
+            /* Names carry the start time, so the smallest one is the oldest */
+            if (EMPTY(oldest) || strcmp(ent->d_name, oldest) < 0) strcpy(oldest, ent->d_name);
+        }
+        closedir(dir);
+
+        if (EMPTY(oldest)) {
+            HAL_WARNING("record", "Storage is low and there is no old segment left to remove\n");
+            return;
+        }
+        snprintf(path, sizeof(path), "%s/%s", app_config.record_path, oldest);
+        if (unlink(path)) {
+            HAL_DANGER("record", "Cannot remove '%s': %s\n", path, strerror(errno));
+            return;
+        }
+        HAL_INFO("record", "Removed oldest segment '%s' to free space\n", path);
+    }
+}
 
 static bool record_ensure_dir(const char *path) {
     char tmp[RECORD_PATH_MAX];
@@ -41,7 +175,7 @@ static bool record_ensure_dir(const char *path) {
 static bool record_build_path(char *out, size_t outSize) {
     char dir[sizeof(app_config.record_path)];
     char stem[sizeof(app_config.record_filename)];
-    char ext[16] = ".mp4";
+    char ext[16];
     char stamp[32];
     struct tm tm_buf, *tm_info;
     time_t now = recordStartTime ? recordStartTime : time(NULL);
@@ -53,24 +187,7 @@ static bool record_build_path(char *out, size_t outSize) {
         return false;
     }
 
-    if (!EMPTY(app_config.record_filename)) {
-        char *dot;
-        const char *name = strrchr(app_config.record_filename, '/');
-        name = name ? name + 1 : app_config.record_filename;
-
-        strncpy(stem, name, sizeof(stem) - 1);
-        stem[sizeof(stem) - 1] = '\0';
-
-        dot = strrchr(stem, '.');
-        if (dot && dot != stem) {
-            strncpy(ext, dot, sizeof(ext) - 1);
-            ext[sizeof(ext) - 1] = '\0';
-            *dot = '\0';
-        }
-    } else
-        strncpy(stem, "recording", sizeof(stem) - 1);
-
-    if (EMPTY(stem)) strncpy(stem, "recording", sizeof(stem) - 1);
+    record_name_parts(stem, sizeof(stem), ext, sizeof(ext));
 
     tm_info = localtime_r(&now, &tm_buf);
     if (!tm_info || !strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", tm_info))
@@ -110,6 +227,10 @@ static bool record_open_locked(void) {
         HAL_DANGER("record", "Destination path is not set!\n");
         return false;
     }
+    if (!record_on_storage(NULL)) {
+        HAL_DANGER("record", "No storage mounted for '%s'\n", app_config.record_path);
+        return false;
+    }
     if (!record_ensure_dir(app_config.record_path)) return false;
     if (!record_build_path(recordPath, sizeof(recordPath))) return false;
 
@@ -124,9 +245,11 @@ static bool record_open_locked(void) {
     recordState.sequence_number = 0;
     recordState.base_data_offset = 0;
     recordState.base_media_decode_time = 0;
+    recordState.audio_media_decode_time = 0;
     recordState.nals_count = 0;
     recordState.default_sample_duration = default_sample_size;
-    recordLastFlush = recordStartTime;
+    recordLastFlush = recordLastSync = recordLastRoom = recordStartTime;
+    recordWaitKey = true;
 
     HAL_INFO("record", "Recording to '%s'\n", recordPath);
     return true;
@@ -144,49 +267,6 @@ static bool record_write_locked(const void *data, size_t len) {
         return false;
     }
     return true;
-}
-
-/* Guards against NALU offsets and lengths that would read past the pack or
- * underflow "length - scLen". */
-static void record_feed_nalu(unsigned char *data, unsigned int len,
-    const hal_vidnalu *nalu, char isH265) {
-    unsigned int offset = nalu->offset;
-    unsigned int nalu_len = nalu->length;
-    unsigned int scLen;
-    const char *payload;
-    unsigned int payload_len;
-
-    if (offset > len || nalu_len > len - offset) return;
-    if (nalu_len <= 3 || offset + 3 > len) return;
-
-    scLen = (data[offset + 2] == 1) ? 3 : 4;
-    if (nalu_len <= scLen) return;
-
-    payload = (const char *)data + offset + scLen;
-    payload_len = nalu_len - scLen;
-
-    switch (nalu->type) {
-        case NalUnitType_SPS:
-        case NalUnitType_SPS_HEVC:
-            if (payload_len <= UINT16_MAX) mp4_set_sps(payload, payload_len, isH265);
-            break;
-        case NalUnitType_PPS:
-        case NalUnitType_PPS_HEVC:
-            if (payload_len <= UINT16_MAX) mp4_set_pps(payload, payload_len, isH265);
-            break;
-        case NalUnitType_VPS_HEVC:
-            if (payload_len <= UINT16_MAX) mp4_set_vps(payload, payload_len);
-            break;
-        case NalUnitType_CodedSliceIdr:
-        case NalUnitType_CodedSliceAux:
-            mp4_set_slice(payload, payload_len, 1);
-            break;
-        case NalUnitType_CodedSliceNonIdr:
-            mp4_set_slice(payload, payload_len, 0);
-            break;
-        default:
-            break;
-    }
 }
 
 static bool record_emit_fragment_locked(void) {
@@ -211,6 +291,7 @@ static bool record_emit_fragment_locked(void) {
         recordState.sequence_number = 0;
         recordState.base_data_offset = buf.offset;
         recordState.base_media_decode_time = 0;
+        recordState.audio_media_decode_time = 0;
         recordState.nals_count = 0;
         recordState.default_sample_duration = default_sample_size;
         recordState.header_sent = true;
@@ -270,6 +351,12 @@ static void record_flush_locked(void) {
 
     if (fflush(recordFile))
         HAL_DANGER("record", "Flushing '%s' failed: %s\n", recordPath, strerror(errno));
+
+    /* Keep what a power cut can lose down to a few seconds */
+    if (now - recordLastSync >= 10) {
+        recordLastSync = now;
+        fdatasync(fileno(recordFile));
+    }
 }
 
 /**
@@ -277,37 +364,131 @@ static void record_flush_locked(void) {
  * @return true once recording, false if the output could not be opened
  */
 bool record_start(void) {
+    bool ok = true;
+
+    if (record_active()) return true;
+
+    pthread_mutex_lock(&recordModeMtx);
+    record_storage_mode("rw");
+    if (record_on_storage(NULL)) record_make_room("");
+
     pthread_mutex_lock(&recordMtx);
+    recordLastTry = time(NULL);
 
-    if (recordActive) {
-        pthread_mutex_unlock(&recordMtx);
-        return true;
+    if (!recordActive) {
+        recordStartTime = time(NULL);
+        if (recordStartTime == (time_t)-1) recordStartTime = 0;
+        if (record_open_locked()) recordActive = true;
+        else ok = false;
     }
-
-    recordStartTime = time(NULL);
-    if (recordStartTime == (time_t)-1) recordStartTime = 0;
-
-    if (!record_open_locked()) {
-        pthread_mutex_unlock(&recordMtx);
-        return false;
-    }
-
-    recordActive = true;
     pthread_mutex_unlock(&recordMtx);
-    return true;
+
+    /* Nothing is being written: the card goes back to read-only */
+    if (!ok) record_storage_mode("ro");
+    pthread_mutex_unlock(&recordModeMtx);
+    return ok;
 }
 
 /**
  * Stops the current recording session and finalizes its file
  */
 void record_stop(void) {
+    pthread_mutex_lock(&recordModeMtx);
     pthread_mutex_lock(&recordMtx);
 
     record_close_locked();
     recordActive = false;
     recordStartTime = 0;
+    recordStopAt = 0;
 
     pthread_mutex_unlock(&recordMtx);
+
+    record_storage_mode("ro");
+    pthread_mutex_unlock(&recordModeMtx);
+}
+
+/**
+ * Ends the current recording after the given number of seconds; calling it
+ * again moves the end, 0 cancels it. Continuous recording ignores it.
+ */
+void record_stop_after(unsigned int seconds) {
+    pthread_mutex_lock(&recordMtx);
+    recordStopAt = seconds ? record_now() + seconds : 0;
+    pthread_mutex_unlock(&recordMtx);
+}
+
+/**
+ * Seconds left of a timed recording, 0 when none is set
+ */
+unsigned int record_stop_in(void) {
+    time_t left;
+
+    pthread_mutex_lock(&recordMtx);
+    left = recordStopAt ? recordStopAt - record_now() : 0;
+    pthread_mutex_unlock(&recordMtx);
+    return left > 0 ? left : 0;
+}
+
+/**
+ * Keeps continuous recording alive: retries when the card was missing at
+ * start or a write failed (card pulled). Called once a second.
+ */
+void record_tick(void) {
+    time_t now = time(NULL), stopAt;
+    bool active = record_active();
+
+    /* A write or rotation failure on the encoder thread ends the recording
+     * there; the card goes back to read-only from here. */
+    if (!active && recordStorageRw) {
+        pthread_mutex_lock(&recordModeMtx);
+        if (!record_active() && recordStorageRw) record_storage_mode("ro");
+        pthread_mutex_unlock(&recordModeMtx);
+    }
+
+    /* Free space is checked here rather than on the encoder thread */
+    if (active && now - recordLastRoom >= 30) {
+        char current[RECORD_PATH_MAX] = "";
+        const char *name;
+        recordLastRoom = now;
+        pthread_mutex_lock(&recordMtx);
+        name = strrchr(recordPath, '/');
+        if (recordFile && name) strncpy(current, name + 1, sizeof(current) - 1);
+        pthread_mutex_unlock(&recordMtx);
+        record_make_room(current);
+    }
+
+    pthread_mutex_lock(&recordMtx);
+    stopAt = recordStopAt;
+    pthread_mutex_unlock(&recordMtx);
+    if (stopAt && record_now() >= stopAt) {
+        if (app_config.record_continuous) {
+            pthread_mutex_lock(&recordMtx);
+            recordStopAt = 0;
+            pthread_mutex_unlock(&recordMtx);
+        } else record_stop();
+    }
+
+    if (!app_config.record_enable || !app_config.record_continuous) return;
+    if (record_active()) return;
+    if (now - recordLastTry < 15) return;
+    record_start();
+}
+
+/**
+ * Describes the storage behind the recording path
+ * @param out Receives a short human readable summary
+ */
+void record_storage(char *out, size_t outSize) {
+    struct statvfs vfs;
+
+    if (!record_on_storage(&vfs)) {
+        snprintf(out, outSize, "no card mounted");
+        return;
+    }
+    snprintf(out, outSize, "%.1f GB, %.1f GB free, %s",
+        (double)vfs.f_blocks * vfs.f_frsize / 1e9,
+        (double)vfs.f_bavail * vfs.f_frsize / 1e9,
+        (vfs.f_flag & ST_RDONLY) ? "read-only" : "writable");
 }
 
 /**
@@ -339,48 +520,40 @@ time_t record_start_time(void) {
 }
 
 /**
- * Ingests a video stream into the current recording
- * @param stream Pointer to the hal_vidstream carrying the NALU packs
- * @param isH265 1 if H.265 (HEVC), 0 for H.264 (AVC)
+ * Appends the fragment the muxer has just produced to the recording.
+ * Called with the muxer lock held, right after mp4_set_slice().
+ * @param isKey Whether the fragment starts with a keyframe
  */
-void record_ingest_stream(hal_vidstream *stream, char isH265) {
-    if (!stream) return;
-
+void record_fragment(char isKey) {
     pthread_mutex_lock(&recordMtx);
     if (!recordActive || !recordFile) {
         pthread_mutex_unlock(&recordMtx);
         return;
     }
 
-    for (unsigned int i = 0; i < stream->count; ++i) {
-        hal_vidpack *pack = &stream->pack[i];
-        unsigned char *pack_data;
-        unsigned int pack_len;
-
-        if (pack->length <= pack->offset) continue;
-        pack_len = pack->length - pack->offset;
-        pack_data = pack->data + pack->offset;
-
-        for (int j = 0; j < pack->naluCnt; j++)
-            record_feed_nalu(pack_data, pack_len, &pack->nalu[j], isH265);
-
-        if (!record_emit_fragment_locked()) {
-            HAL_DANGER("record", "Stopping recording after a write failure!\n");
-            record_close_locked();
-            recordActive = false;
-            recordStartTime = 0;
+    /* Segments are cut on keyframes so each file plays from its first frame. */
+    if (isKey && record_should_rotate_locked() && !record_rotate_locked()) {
+        recordActive = false;
+        recordStartTime = 0;
+        pthread_mutex_unlock(&recordMtx);
+        return;
+    }
+    if (recordWaitKey) {
+        if (!isKey) {
             pthread_mutex_unlock(&recordMtx);
             return;
         }
+        recordWaitKey = false;
+    }
 
-        /* Rotate between fragments so a segment never splits a moof from its
-         * mdat, and the next one starts with a fresh header. */
-        if (record_should_rotate_locked() && !record_rotate_locked()) {
-            recordActive = false;
-            recordStartTime = 0;
-            pthread_mutex_unlock(&recordMtx);
-            return;
-        }
+    if (!record_emit_fragment_locked()) {
+        HAL_DANGER("record", "Stopping recording after a write failure!\n");
+        record_close_locked();
+        recordActive = false;
+        recordStartTime = 0;
+        recordLastTry = time(NULL);
+        pthread_mutex_unlock(&recordMtx);
+        return;
     }
 
     record_flush_locked();

@@ -101,6 +101,8 @@ int app_config_save(void) {
     fprintf(file, "  ir_cut_pin1: %d\n", app_config.ir_cut_pin1);
     fprintf(file, "  ir_cut_pin2: %d\n", app_config.ir_cut_pin2);
     fprintf(file, "  ir_led_pin: %d\n", app_config.ir_led_pin);
+    if (app_config.white_led_pin != 999)
+        fprintf(file, "  white_led_pin: %d\n", app_config.white_led_pin);
     fprintf(file, "  pin_switch_delay_us: %d\n", app_config.pin_switch_delay_us);
     fprintf(file, "  adc_device: %s\n", app_config.adc_device);
     {
@@ -114,6 +116,8 @@ int app_config_save(void) {
         fprintf(file, "  lamp: %s\n", lamp);
     }
     fprintf(file, "  adc_threshold: %d\n", app_config.adc_threshold);
+    fprintf(file, "  exposure_night: %u\n", app_config.exposure_night);
+    fprintf(file, "  exposure_day: %u\n", app_config.exposure_day);
 
     fprintf(file, "isp:\n");
     fprintf(file, "  mirror: %s\n", app_config.mirror ? "true" : "false");
@@ -144,6 +148,7 @@ int app_config_save(void) {
     fprintf(file, "  filename: %s\n", app_config.record_filename);
     fprintf(file, "  segment_duration: %d\n", app_config.record_segment_duration);
     fprintf(file, "  segment_size: %d\n", app_config.record_segment_size);
+    fprintf(file, "  reserve: %d\n", app_config.record_reserve);
 
     fprintf(file, "stream:\n");
     fprintf(file, "  enable: %s\n", app_config.stream_enable ? "true" : "false");
@@ -164,6 +169,7 @@ int app_config_save(void) {
     fprintf(file, "mp4:\n");
     fprintf(file, "  enable: %s\n", app_config.mp4_enable ? "true" : "false");
     fprintf(file, "  codec: %s\n", app_config.mp4_codecH265 ? "H.265" : "H.264");
+    fprintf(file, "  audio: %s\n", app_config.mp4_audio ? "true" : "false");
     fprintf(file, "  mode: %d\n", app_config.mp4_mode);
     fprintf(file, "  width: %d\n", app_config.mp4_width);
     fprintf(file, "  height: %d\n", app_config.mp4_height);
@@ -171,6 +177,14 @@ int app_config_save(void) {
     fprintf(file, "  gop: %d\n", app_config.mp4_gop);
     fprintf(file, "  profile: %d\n", app_config.mp4_profile);
     fprintf(file, "  bitrate: %d\n", app_config.mp4_bitrate);
+
+    fprintf(file, "sub:\n");
+    fprintf(file, "  enable: %s\n", app_config.sub_enable ? "true" : "false");
+    fprintf(file, "  width: %d\n", app_config.sub_width);
+    fprintf(file, "  height: %d\n", app_config.sub_height);
+    fprintf(file, "  gop: %d\n", app_config.sub_gop);
+    fprintf(file, "  bitrate: %d\n", app_config.sub_bitrate);
+    fprintf(file, "  rtsp_port: %d\n", app_config.sub_rtsp_port);
 
     fprintf(file, "osd:\n");
     fprintf(file, "  enable: %s\n", app_config.osd_enable ? "true" : "false");
@@ -185,6 +199,7 @@ int app_config_save(void) {
             fprintf(file, "    reg%d_text: %s\n", i, osds[i].text);
         fprintf(file, "    reg%d_font: %s\n", i, osds[i].font);
         fprintf(file, "    reg%d_opal: %d\n", i, osds[i].opal);
+        fprintf(file, "    reg%d_anchor: %s\n", i, osd_anchors[(unsigned char)osds[i].anchor % 9]);
         fprintf(file, "    reg%d_posx: %d\n", i, osds[i].posx);
         fprintf(file, "    reg%d_posy: %d\n", i, osds[i].posy);
         fprintf(file, "    reg%d_size: %.1f\n", i, osds[i].size);
@@ -256,8 +271,9 @@ enum ConfigError app_config_parse(void) {
     app_config.record_continuous = false;
     app_config.record_filename[0] = '\0';
     strcpy(app_config.record_path, "/mnt/sdcard/recordings");
-    app_config.record_segment_duration = 0;
+    app_config.record_segment_duration = 300;
     app_config.record_segment_size = 0;
+    app_config.record_reserve = 512;
 
     app_config.stream_enable = false;
     app_config.stream_udp_srcport = 0;
@@ -269,6 +285,13 @@ enum ConfigError app_config_parse(void) {
     app_config.audio_gain = 0;
     app_config.jpeg_enable = false;
     app_config.mp4_enable = false;
+    app_config.mp4_audio = true;
+    app_config.sub_enable = false;
+    app_config.sub_width = 640;
+    app_config.sub_height = 360;
+    app_config.sub_gop = 30;
+    app_config.sub_bitrate = 512;
+    app_config.sub_rtsp_port = 555;
 
     app_config.mjpeg_enable = false;
     app_config.mjpeg_fps = 15;
@@ -286,11 +309,14 @@ enum ConfigError app_config_parse(void) {
     app_config.ir_cut_pin1 = 999;
     app_config.ir_cut_pin2 = 999;
     app_config.ir_led_pin = 999;
+    app_config.white_led_pin = 999;
     app_config.pin_switch_delay_us = 250;
     app_config.check_interval_s = 10;
     app_config.adc_device[0] = 0;
     app_config.night_lamp = HAL_LIGHT_IR;
     app_config.adc_threshold = 128;
+    app_config.exposure_night = 0;
+    app_config.exposure_day = 0;
 
     struct IniConfig ini;
     memset(&ini, 0, sizeof(struct IniConfig));
@@ -354,7 +380,7 @@ enum ConfigError app_config_parse(void) {
 
     err =
         parse_bool(&ini, "night_mode", "enable", &app_config.night_mode_enable);
-    #define PIN_MAX 95
+    #define PIN_MAX 127 /* Infinity3 has GPIOs up to 109 (IR-cut on 96/97) */
     if (app_config.night_mode_enable) {
         {
             int pin;
@@ -374,6 +400,9 @@ enum ConfigError app_config_parse(void) {
         parse_int(
             &ini, "night_mode", "ir_led_pin", 0, PIN_MAX,
             &app_config.ir_led_pin);
+        parse_int(
+            &ini, "night_mode", "white_led_pin", 0, PIN_MAX,
+            &app_config.white_led_pin);
         parse_int(
             &ini, "night_mode", "pin_switch_delay_us", 0, 1000,
             &app_config.pin_switch_delay_us);
@@ -403,6 +432,12 @@ enum ConfigError app_config_parse(void) {
         parse_int(
             &ini, "night_mode", "adc_threshold", INT_MIN, INT_MAX,
             &app_config.adc_threshold);
+        parse_int(
+            &ini, "night_mode", "exposure_night", 0, 100000,
+            &app_config.exposure_night);
+        parse_int(
+            &ini, "night_mode", "exposure_day", 0, 100000,
+            &app_config.exposure_day);
     }
 
     err = parse_bool(&ini, "isp", "mirror", &app_config.mirror);
@@ -414,6 +449,13 @@ enum ConfigError app_config_parse(void) {
     parse_int(&ini, "isp", "antiflicker", -1, 60, &app_config.antiflicker);
 
     parse_bool(&ini, "mdns", "enable", &app_config.mdns_enable);
+
+    parse_bool(&ini, "sub", "enable", &app_config.sub_enable);
+    parse_int(&ini, "sub", "width", 160, INT_MAX, &app_config.sub_width);
+    parse_int(&ini, "sub", "height", 120, INT_MAX, &app_config.sub_height);
+    parse_int(&ini, "sub", "gop", 1, INT_MAX, &app_config.sub_gop);
+    parse_int(&ini, "sub", "bitrate", 32, INT_MAX, &app_config.sub_bitrate);
+    parse_int(&ini, "sub", "rtsp_port", 1, USHRT_MAX, &app_config.sub_rtsp_port);
 
     parse_bool(&ini, "osd", "enable", &app_config.osd_enable);
     if (app_config.osd_enable) {
@@ -430,6 +472,12 @@ enum ConfigError app_config_parse(void) {
             sprintf(param, "reg%d_opal", i);
             err = parse_int(&ini, "osd", param, 0, UCHAR_MAX, &val);
             if (err == CONFIG_OK) osds[i].opal = (unsigned char)val;
+            {
+                char anchor[16] = {0};
+                sprintf(param, "reg%d_anchor", i);
+                if (parse_param_value(&ini, "osd", param, anchor) == CONFIG_OK)
+                    osds[i].anchor = region_anchor_parse(anchor);
+            }
             sprintf(param, "reg%d_posx", i);
             err = parse_int(&ini, "osd", param, 0, SHRT_MAX, &val);
             if (err == CONFIG_OK) osds[i].posx = (short)val;
@@ -467,6 +515,8 @@ enum ConfigError app_config_parse(void) {
         &app_config.record_segment_duration);
     parse_int(&ini, "record", "segment_size", 0, INT_MAX,
         &app_config.record_segment_size);
+    parse_int(&ini, "record", "reserve", 0, INT_MAX,
+        &app_config.record_reserve);
 
     parse_bool(&ini, "rtsp", "enable", &app_config.rtsp_enable);
     parse_int(&ini, "rtsp", "port", 0, USHRT_MAX, &app_config.rtsp_port);
@@ -511,6 +561,8 @@ enum ConfigError app_config_parse(void) {
 
     parse_bool(&ini, "mp4", "enable", &app_config.mp4_enable);
     if (app_config.mp4_enable) {
+        /* MP3 from the built-in encoder is rejected by strict browser decoders */
+        parse_bool(&ini, "mp4", "audio", &app_config.mp4_audio);
         {
             const char *possible_values[] = {"H.264", "H.265", "H264", "H265", "AVC", "HEVC"};
             const int count = sizeof(possible_values) / sizeof(const char *);

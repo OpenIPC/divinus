@@ -17,6 +17,32 @@ void region_defaults(osd *o, int id) {
 }
 pthread_t regionPid = 0;
 char timefmt[64];
+
+/* Where a region sits in the frame, row by row; posx/posy then count inward
+ * from that corner or edge (and shift a centred region). */
+const char *osd_anchors[9] = { "top-left", "top", "top-right", "left", "center", "right",
+    "bottom-left", "bottom", "bottom-right" };
+
+char region_anchor_parse(const char *name) {
+    for (char i = 0; i < 9; i++)
+        if (!strcasecmp(name, osd_anchors[i])) return i;
+    return 0;
+}
+
+void region_anchor_place(char id, unsigned short width, unsigned short height, hal_rect *rect) {
+    int fw = app_config.mp4_width, fh = app_config.mp4_height;
+    int col = osds[id].anchor % 3, row = osds[id].anchor / 3;
+    int x = col == 0 ? osds[id].posx : col == 1 ? (fw - width) / 2 + osds[id].posx :
+        fw - width - osds[id].posx;
+    int y = row == 0 ? osds[id].posy : row == 1 ? (fh - height) / 2 + osds[id].posy :
+        fh - height - osds[id].posy;
+    if (x > fw - width) x = fw - width;
+    if (y > fh - height) y = fh - height;
+    rect->x = x < 0 ? 0 : x;
+    rect->y = y < 0 ? 0 : y;
+    rect->width = width;
+    rect->height = height;
+}
 unsigned int rxb_l, txb_l, cpu_l[6];
 
 void region_fill_formatted(char* str) {
@@ -343,6 +369,7 @@ int region_prepare_bitmap(char *path, hal_bitmap *bitmap) {
 void *region_thread(void) {
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  i3_region_init(); break;
         case HAL_PLATFORM_I6:  i6_region_init(); break;
         case HAL_PLATFORM_I6C: i6c_region_init(); break;
         case HAL_PLATFORM_M6:  m6_region_init(); break;
@@ -390,10 +417,14 @@ void *region_thread(void) {
 found_font:;
                     hal_bitmap bitmap = text_create_rendered(font, osds[id].size, out, osds[id].color,
                         osds[id].outl, osds[id].thick);
-                    hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
-                        .x = osds[id].posx, .y = osds[id].posy };
+                    hal_rect rect;
+                    region_anchor_place(id, bitmap.dim.width, bitmap.dim.height, &rect);
                     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+                        case HAL_PLATFORM_I3:
+                            i3_region_create(id, rect, osds[id].opal);
+                            i3_region_setbitmap(id, &bitmap);
+                            break;
                         case HAL_PLATFORM_I6:
                             i6_region_create(id, rect, osds[id].opal);
                             i6_region_setbitmap(id, &bitmap);
@@ -476,10 +507,14 @@ found_font:;
                         ret = region_prepare_bitmap(img, &bitmap);
                     if (!ret)
                     {
-                        hal_rect rect = { .height = bitmap.dim.height, .width = bitmap.dim.width,
-                            .x = osds[id].posx, .y = osds[id].posy };
+                        hal_rect rect;
+                    region_anchor_place(id, bitmap.dim.width, bitmap.dim.height, &rect);
                         switch (plat) {
 #if defined(__ARM_PCS_VFP)
+                            case HAL_PLATFORM_I3:
+                                i3_region_create(id, rect, osds[id].opal);
+                                i3_region_setbitmap(id, &bitmap);
+                                break;
                             case HAL_PLATFORM_I6:
                                 i6_region_create(id, rect, osds[id].opal);
                                 i6_region_setbitmap(id, &bitmap);
@@ -549,6 +584,7 @@ found_font:;
                 else
                     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+                        case HAL_PLATFORM_I3:  i3_region_destroy(id); break;
                         case HAL_PLATFORM_I6:  i6_region_destroy(id); break;
                         case HAL_PLATFORM_I6C: i6c_region_destroy(id); break;
                         case HAL_PLATFORM_M6:  m6_region_destroy(id); break;
@@ -578,6 +614,7 @@ found_font:;
 
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
+        case HAL_PLATFORM_I3:  i3_region_deinit(); break;
         case HAL_PLATFORM_I6:  i6_region_deinit(); break;
         case HAL_PLATFORM_I6C: i6c_region_deinit(); break;
         case HAL_PLATFORM_M6:  m6_region_deinit(); break;
