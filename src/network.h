@@ -2,6 +2,8 @@
 
 #include <ifaddrs.h>
 #include <net/if.h>
+#include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <sys/utsname.h>
 
@@ -17,7 +19,10 @@ typedef struct {
     char host[65];
 } NetInfo;
 
+bool network_collect(struct ifaddrs *list, NetInfo *info);
 void network_init(void);
+void network_refresh(void);
+void network_address(char *address);
 int network_start(void);
 void network_stop(void);
 

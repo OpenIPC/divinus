@@ -762,6 +762,7 @@ int media_mjpeg_enable(void) {
         config.height = app_config.mjpeg_height;
         config.codec = HAL_VIDCODEC_MJPG;
         config.mode = app_config.mjpeg_mode;
+        config.minQual = config.maxQual = app_config.mjpeg_qfactor;
         config.framerate = app_config.mjpeg_fps;
         config.bitrate = app_config.mjpeg_bitrate;
         config.maxBitrate = app_config.mjpeg_bitrate * 5 / 4;
@@ -1130,7 +1131,8 @@ int sdk_start(void) {
         case HAL_PLATFORM_RK:  ret = rk_pipeline_create(width, height); break;
 #elif defined(__arm__) && !defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_AK:  ret = ak_pipeline_create(width, height,
-            app_config.mirror, app_config.flip); break;
+            app_config.mirror, app_config.flip,
+            app_config.mjpeg_width, app_config.mjpeg_height); break;
         case HAL_PLATFORM_GM:  ret = gm_pipeline_create(app_config.mirror,
             app_config.flip); break;
         case HAL_PLATFORM_V1:  ret = v1_pipeline_create(); break;
@@ -1138,12 +1140,14 @@ int sdk_start(void) {
         case HAL_PLATFORM_V3:  ret = v3_pipeline_create(); break;
         case HAL_PLATFORM_V4:  ret = v4_pipeline_create(); break;
         #if __ARM_ARCH == 6
-        case HAL_PLATFORM_F1:  ret = f1_pipeline_create(width, height, app_config.mirror, app_config.flip, framerate, app_config.antiflicker); break;
-        case HAL_PLATFORM_F2:  ret = f2_pipeline_create(width, height, app_config.mirror, app_config.flip, framerate, app_config.antiflicker); break;
+        case HAL_PLATFORM_F1:  ret = f1_pipeline_create(width, height,
+            app_config.mirror, app_config.flip, framerate, app_config.antiflicker); break;
+        case HAL_PLATFORM_F2:  ret = f2_pipeline_create(width, height,
+            app_config.mirror, app_config.flip, framerate, app_config.antiflicker); break;
         #endif
 #elif defined(__mips__)
         case HAL_PLATFORM_T31: ret = t31_pipeline_create(app_config.mirror,
-            app_config.flip, app_config.antiflicker, framerate); break;
+            app_config.flip, framerate, app_config.antiflicker); break;
 #elif defined(__riscv) || defined(__riscv__)
         case HAL_PLATFORM_CVI: ret = cvi_pipeline_create(); break;
 #endif

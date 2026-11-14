@@ -1,7 +1,9 @@
 #pragma once
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #define IMPORT_BIN(sect, file, sym) asm (\
     ".section " #sect "\n"                  /* Change section */\
@@ -25,32 +27,42 @@
     ".balign 4\n"                           /* Word alignment */\
     ".section \".text\"\n")                 /* Restore section */
 
+/* isatty() sets errno (ENOTTY) when stderr is not a terminal, and the colour test runs before a message's
+   arguments are evaluated: keep errno, or every strerror(errno) logged to a file or pipe reads "Not a tty" */
+static inline int hal_stderr_is_tty(void) {
+    int err = errno, tty = isatty(STDERR_FILENO);
+    errno = err;
+    return tty;
+}
+
+#define HAL_COLOR(seq) (hal_stderr_is_tty() ? (seq) : "")
+
 #define HAL_DANGER(mod, x, ...) \
     do { \
-        fprintf(stderr, "\033[0m[%s] \033[31m", (mod)); \
+        fprintf(stderr, "%s[%s] %s", HAL_COLOR("\033[0m"), (mod), HAL_COLOR("\033[31m")); \
         fprintf(stderr, (x), ##__VA_ARGS__); \
-        fprintf(stderr, "\033[0m"); \
+        fprintf(stderr, "%s", HAL_COLOR("\033[0m")); \
     } while (0)
 
 #define HAL_ERROR(mod, x, ...) \
     do { \
-        fprintf(stderr, "\033[0m[%s] \033[31m", (mod)); \
+        fprintf(stderr, "%s[%s] %s", HAL_COLOR("\033[0m"), (mod), HAL_COLOR("\033[31m")); \
         fprintf(stderr, (x), ##__VA_ARGS__); \
-        fprintf(stderr, "\033[0m"); \
+        fprintf(stderr, "%s", HAL_COLOR("\033[0m")); \
         return EXIT_FAILURE; \
     } while (0)
 
 #define HAL_INFO(mod, x, ...) \
     do { \
-        fprintf(stderr, "\033[0m[%s] ", (mod)); \
+        fprintf(stderr, "%s[%s] ", HAL_COLOR("\033[0m"), (mod)); \
         fprintf(stderr, (x), ##__VA_ARGS__); \
     } while (0)
 
 #define HAL_WARNING(mod, x, ...) \
     do { \
-        fprintf(stderr, "\033[0m[%s] \033[33m", (mod)); \
+        fprintf(stderr, "%s[%s] %s", HAL_COLOR("\033[0m"), (mod), HAL_COLOR("\033[33m")); \
         fprintf(stderr, (x), ##__VA_ARGS__); \
-        fprintf(stderr, "\033[0m"); \
+        fprintf(stderr, "%s", HAL_COLOR("\033[0m")); \
     } while (0)
 
 #ifndef ABS

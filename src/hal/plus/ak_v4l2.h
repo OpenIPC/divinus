@@ -14,29 +14,12 @@
 #include <sys/mman.h>
 #include <linux/videodev2.h>
 
+#include "../tools.h"
+
 #define CAP_BUFS 4
 #define ENC_BUFS 2
 
-int ak_v4l2_cap_open(int index, int width, int height);
-int ak_v4l2_cap_streamon(int index);
-void ak_v4l2_cap_close(int index);
-unsigned int ak_v4l2_cap_gen(int index);
 extern pthread_mutex_t ak_v4l2_mtx;
-int ak_v4l2_cap_dequeue(int index, void **data, size_t *len, uint64_t *ts, int *bufIndex, int timeout_ms);
-int ak_v4l2_cap_requeue(int index, int bufIndex);
-
-int ak_v4l2_enc_open(int index, int width, int height, int codec,
-                     int fps, int bitrate, int gop);
-void ak_v4l2_enc_close(int index);
-int ak_v4l2_enc_streamon(int index);
-int ak_v4l2_enc_streamoff(int index);
-int ak_v4l2_enc_push(int index, const void *data, size_t len,
-                     void **out, size_t *outlen, int timeout_ms);
-int ak_v4l2_enc_requeue(int index);
-int ak_v4l2_enc_request_idr(int index);
-int ak_v4l2_enc_grayscale(int index, int on);
-int ak_v4l2_snapshot(int width, int height, int quality,
-                     void **data, size_t *len);
 
 struct v4l2_buf {
     void *addr;
@@ -87,8 +70,8 @@ static int mmap_bufs(int fd, unsigned type, struct v4l2_buf *bufs, int n)
             return -1;
         }
         bufs[i].len = b.length;
-        bufs[i].addr = mmap(NULL, b.length, PROT_READ | PROT_WRITE,
-                            MAP_SHARED, fd, b.m.offset);
+        bufs[i].addr = mmap64(NULL, b.length, PROT_READ | PROT_WRITE,
+                              MAP_SHARED, fd, b.m.offset);
         if (bufs[i].addr == MAP_FAILED) {
             fprintf(stderr, "mmap_bufs: mmap fd=%d type=%u idx=%d len=%zu off=%u errno=%d\n",
                     fd, type, i, (size_t)b.length, (unsigned)b.m.offset, errno);
@@ -98,3 +81,27 @@ static int mmap_bufs(int fd, unsigned type, struct v4l2_buf *bufs, int n)
     }
     return 0;
 }
+
+int ak_v4l2_cap_open(int index, int width, int height);
+int ak_v4l2_cap_streamon(int index);
+void ak_v4l2_cap_close(int index);
+
+int ak_v4l2_cap_fd(int index);
+unsigned int ak_v4l2_cap_gen(int index);
+void ak_v4l2_cap_size(int index, int *width, int *height);
+
+int ak_v4l2_cap_dequeue(int index, void **data, size_t *len, uint64_t *ts, int *bufIndex, int timeout_ms);
+int ak_v4l2_cap_requeue(int index, int bufIndex);
+
+int ak_v4l2_enc_open(int index, int width, int height, int codec,
+                     int fps, int bitrate, int gop);
+void ak_v4l2_enc_close(int index);
+int ak_v4l2_enc_streamon(int index);
+int ak_v4l2_enc_streamoff(int index);
+int ak_v4l2_enc_push(int index, const void *data, size_t len,
+                     void **out, size_t *outlen, int timeout_ms);
+int ak_v4l2_enc_requeue(int index);
+int ak_v4l2_enc_request_idr(int index);
+int ak_v4l2_enc_grayscale(int index, int on);
+int ak_v4l2_snapshot(int width, int height, int quality,
+                     void **data, size_t *len);
