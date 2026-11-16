@@ -564,6 +564,8 @@ grant_access:
         return;
     }
 
+    /* Entries from the previous request still point into its freed buffer */
+    memset(http_headers, 0, sizeof(http_headers));
     http_header_t *h = http_headers;
     while (h < http_headers + 16) {
         char *k, *v, *e;
