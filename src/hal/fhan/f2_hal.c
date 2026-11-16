@@ -638,31 +638,35 @@ int f2_video_create(char index, hal_vidconfig *config) {
             case HAL_VIDMODE_ABR:
             case HAL_VIDMODE_AVBR:
                 rate->mode = h265 ? F2_VENC_RATEMODE_H265VBR : F2_VENC_RATEMODE_H264VBR;
-                rate->param[0] = 35;
+                rate->param[0] = 35;    /* init_qp */
                 rate->param[1] = (unsigned int)MAX(config->bitrate, config->maxBitrate) << 10;
-                rate->param[2] = (unsigned int)config->framerate | (1u << 16);
-                rate->param[3] = 120;
-                rate->param[6] = 5;
-                rate->param[7] = 1;
+                rate->param[2] = 28;    /* IminQP */
+                rate->param[3] = 50;    /* ImaxQP */
+                rate->param[4] = 35;    /* PminQP */
+                rate->param[5] = 50;    /* PmaxQP */
+                rate->param[6] = (unsigned int)config->framerate | (1u << 16);
+                rate->param[7] = 120;   /* maxrate_percent */
+                rate->param[10] = 5;    /* I_BitProp */
+                rate->param[11] = 1;    /* P_BitProp */
                 break;
             default:
 cbr:
                 rate->mode = h265 ? F2_VENC_RATEMODE_H265CBR : F2_VENC_RATEMODE_H264CBR;
-                rate->param[0] = 35;
+                rate->param[0] = 35;    /* init_qp */
                 rate->param[1] = (unsigned int)config->bitrate << 10;
-                rate->param[2] = 28;
-                rate->param[3] = 50;
-                rate->param[4] = 35;
-                rate->param[5] = 50;
-                rate->param[6] = (unsigned int)config->framerate | (1u << 16);
-                rate->param[7] = 120;
-                rate->param[10] = 5;
-                rate->param[11] = 1;
+                rate->param[2] = (unsigned int)config->framerate | (1u << 16);
+                rate->param[3] = 120;   /* maxrate_percent */
+                rate->param[6] = 5;     /* I_BitProp */
+                rate->param[7] = 1;     /* P_BitProp */
                 break;
         }
 
         if (ret = f2_venc.fnSetChannelConfig(index, &attr))
             return ret;
+        /* The encoder does not apply the rate control block of the channel
+           attributes, so set it explicitly */
+        if (ret = f2_venc.fnSetRateControl(index, &attr.rate))
+            HAL_WARNING("f2_venc", "Setting the rate control of channel %d failed with %#x!\n", index, ret);
     }
 
 
