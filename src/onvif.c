@@ -229,7 +229,7 @@ bool onvif_validate_soap_auth(const char *soap_data) {
         if (nonce_len < 0) return false;
 
         sha1_init(&ctx);
-        sha1_update(&ctx, (unsigned char *)nonce_dec, nonce_len - 1);
+        sha1_update(&ctx, (unsigned char *)nonce_dec, nonce_len);
         sha1_update(&ctx, (unsigned char *)created, strlen(created));
         sha1_update(&ctx, (unsigned char *)app_config.onvif_auth_pass, strlen(app_config.onvif_auth_pass));
         sha1_final(digest_comp, &ctx);
