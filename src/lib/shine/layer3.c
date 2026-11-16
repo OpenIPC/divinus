@@ -119,11 +119,14 @@ shine_global_config *shine_initialise(shine_config_t *pub_config) {
       shine_find_bitrate_index(config->mpeg.bitr, config->mpeg.version);
   config->mpeg.granules_per_frame = granules_per_frame[config->mpeg.version];
 
-  /* Figure average number of 'slots' per frame. */
+  /* Figure average number of 'slots' per frame. Divide last: dividing first
+     gave 215.99999999999997 instead of 216 for 16 kHz and 32 kHz at
+     48 kbit/s, which truncates to 215 slots plus a padding bit on every
+     frame. */
   avg_slots_per_frame =
-      ((double)config->mpeg.granules_per_frame * GRANULE_SIZE /
-       ((double)config->wave.samplerate)) *
-      (1000 * (double)config->mpeg.bitr / (double)config->mpeg.bits_per_slot);
+      ((double)config->mpeg.granules_per_frame * GRANULE_SIZE *
+       (1000 * (double)config->mpeg.bitr / (double)config->mpeg.bits_per_slot)) /
+      ((double)config->wave.samplerate);
 
   config->mpeg.whole_slots_per_frame = (int)avg_slots_per_frame;
 
