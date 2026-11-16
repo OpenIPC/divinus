@@ -549,14 +549,16 @@ grant_access:
         return;
     }
 
-    HAL_INFO("server", "%sNew request: (%s) %s\n"
-        "         Received from: %s%s\n", HAL_COLOR("\x1b[32m"),
-        req->method, req->uri, client_ip, HAL_COLOR("\x1b[0m"));
-
     if (req->query = strchr(req->uri, '?'))
         *req->query++ = '\0';
     else
         req->query = NULL;
+
+    /* The query can carry passwords and keys, so it is left out of the log */
+    HAL_INFO("server", "%sNew request: (%s) %s%s\n"
+        "         Received from: %s%s\n", HAL_COLOR("\x1b[32m"),
+        req->method, req->uri, req->query ? "?..." : "",
+        client_ip, HAL_COLOR("\x1b[0m"));
 
     if (req->uri && strstr(req->uri, "..")) {
         close_socket_fd(req->clntFd);
