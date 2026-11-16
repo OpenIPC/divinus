@@ -6,6 +6,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include "rtsp_server.h"
 #include "common.h"
 #include "rtsp.h"
@@ -73,6 +74,7 @@ static inline int __connection_list_add(bufpool_handle con_pool, struct list_hea
 static int __connection_reset(void *v);
 static inline int __accept_proc_sock(rtsp_handle h, int server_fd, struct sock_select_t *p_socks);
 static int __message_proc_sock(struct list_t *e, void *p);
+static int __read_full(struct connection_item_t *con, void *dst, size_t len);
 static inline int __set_select_sock(struct list_t *p, void *param);
 static inline int __find_fd_max(struct list_head_t *head);
 
@@ -360,6 +362,26 @@ static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
  *              METHOD IMPLEMENTATIONS
  ******************************************************************************/
 
+/* The client socket is non-blocking, so a read can return fewer bytes than
+   asked for when the rest of the packet is still on its way. Wait for the
+   rest instead of treating the short read as the end of the data. */
+static int __read_full(struct connection_item_t *con, void *dst, size_t len)
+{
+    size_t got = 0;
+    int retries = 0;
+
+    while (got < len) {
+        got += fread((char *)dst + got, 1, len - got, con->fp_tcp_read);
+        if (got >= len) break;
+        if (feof(con->fp_tcp_read) || ++retries > 10) return FAILURE;
+        /* a would-block error is sticky in the stream, clear it to read on */
+        clearerr(con->fp_tcp_read);
+        struct pollfd pfd = { .fd = con->client_fd, .events = POLLIN };
+        poll(&pfd, 1, 100);
+    }
+    return SUCCESS;
+}
+
 static int __message_proc_sock(struct list_t *e, void *p)
 {
     struct connection_item_t *con;
@@ -381,14 +403,22 @@ static int __message_proc_sock(struct list_t *e, void *p)
         int first_char = fgetc(con->fp_tcp_read);
         if (first_char == '$') {
             unsigned char head[3];
-            if (fread(head, 1, 3, con->fp_tcp_read) == 3) {
-                int len = (head[1] << 8) | head[2];
-                while (len > 0) {
-                    int r = fread(buf, 1, min(len, sizeof(buf)), con->fp_tcp_read);
-                    if (r <= 0) break;
-                    len -= r;
+            int len = 0, lost = (__read_full(con, head, 3) != SUCCESS);
+            if (!lost) {
+                len = (head[1] << 8) | head[2];
+                int left = len;
+                while (left > 0 && !lost) {
+                    int chunk = min(left, (int)sizeof(buf));
+                    lost = (__read_full(con, buf, chunk) != SUCCESS);
+                    left -= chunk;
                 }
-                DBG("discarded interleaved packet (%d bytes)\n", (head[1] << 8) | head[2]);
+            }
+            if (lost) {
+                /* the stream cannot be re-synchronised after a partial packet */
+                con->con_state = __CON_S_DISCONNECTED;
+                ASSERT(bufpool_detach(con->pool, con) == SUCCESS, ERR("connection detach failed\n"));
+            } else {
+                DBG("discarded interleaved packet (%d bytes)\n", len);
             }
             return SUCCESS;
         } else if (first_char != EOF) {
