@@ -74,7 +74,7 @@ static inline int __connection_list_add(bufpool_handle con_pool, struct list_hea
 static int __connection_reset(void *v);
 static inline int __accept_proc_sock(rtsp_handle h, int server_fd, struct sock_select_t *p_socks);
 static int __message_proc_sock(struct list_t *e, void *p);
-static int __read_full(struct connection_item_t *con, void *dst, size_t len);
+static int __read_full(struct connection_item_t *con, void *dst, size_t len, const struct timespec *deadline);
 static inline int __set_select_sock(struct list_t *p, void *param);
 static inline int __find_fd_max(struct list_head_t *head);
 
@@ -364,20 +364,26 @@ static int __method_teardown(struct connection_item_t *p, rtsp_handle h)
 
 /* The client socket is non-blocking, so a read can return fewer bytes than
    asked for when the rest of the packet is still on its way. Wait for the
-   rest instead of treating the short read as the end of the data. */
-static int __read_full(struct connection_item_t *con, void *dst, size_t len)
+   rest, until the deadline, instead of treating the short read as the end
+   of the data. */
+static int __read_full(struct connection_item_t *con, void *dst, size_t len, const struct timespec *deadline)
 {
     size_t got = 0;
-    int retries = 0;
 
     while (got < len) {
         got += fread((char *)dst + got, 1, len - got, con->fp_tcp_read);
         if (got >= len) break;
-        if (feof(con->fp_tcp_read) || ++retries > 10) return FAILURE;
+        if (feof(con->fp_tcp_read)) return FAILURE;
         /* a would-block error is sticky in the stream, clear it to read on */
         clearerr(con->fp_tcp_read);
+
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        long left = (long)(deadline->tv_sec - now.tv_sec) * 1000 +
+            (deadline->tv_nsec - now.tv_nsec) / 1000000;
+        if (left <= 0) return FAILURE;
         struct pollfd pfd = { .fd = con->client_fd, .events = POLLIN };
-        poll(&pfd, 1, 100);
+        poll(&pfd, 1, left > 100 ? 100 : (int)left);
     }
     return SUCCESS;
 }
@@ -403,13 +409,18 @@ static int __message_proc_sock(struct list_t *e, void *p)
         int first_char = fgetc(con->fp_tcp_read);
         if (first_char == '$') {
             unsigned char head[3];
-            int len = 0, lost = (__read_full(con, head, 3) != SUCCESS);
+            /* one second for the whole packet, so that a stalled client
+               cannot hold up the other connections for longer */
+            struct timespec deadline;
+            clock_gettime(CLOCK_MONOTONIC, &deadline);
+            deadline.tv_sec += 1;
+            int len = 0, lost = (__read_full(con, head, 3, &deadline) != SUCCESS);
             if (!lost) {
                 len = (head[1] << 8) | head[2];
                 int left = len;
                 while (left > 0 && !lost) {
                     int chunk = min(left, (int)sizeof(buf));
-                    lost = (__read_full(con, buf, chunk) != SUCCESS);
+                    lost = (__read_full(con, buf, chunk, &deadline) != SUCCESS);
                     left -= chunk;
                 }
             }
