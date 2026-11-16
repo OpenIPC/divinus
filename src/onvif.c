@@ -97,7 +97,8 @@ void *onvif_thread(void) {
         } else if (!ret) continue;
 
         clntsz = sizeof(clntaddr);
-        if ((reqLen = recvfrom(servfd, request, sizeof(request), 0, (struct sockaddr *)&clntaddr, &clntsz)) < 0)
+        /* Keep one byte for the terminating zero */
+        if ((reqLen = recvfrom(servfd, request, sizeof(request) - 1, 0, (struct sockaddr *)&clntaddr, &clntsz)) < 0)
             continue;
 
         request[reqLen] = '\0';
@@ -108,7 +109,7 @@ void *onvif_thread(void) {
         if (!CONTAINS(request, "http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe"))
             continue;
 
-        char device_name[64], device_uuid[64], device_url[128], msgid[100];
+        char device_name[64], device_uuid[64], device_url[128], msgid[100] = "";
         {
             char uuid[37];
             uuid_generate(uuid);
