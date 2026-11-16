@@ -17,7 +17,7 @@ static FILE *app_config_create(const char *conf_path, char *saved_path) {
 
 static int app_config_commit(FILE *file, const char *conf_path) {
     char bak_path[PATH_MAX + 8], new_path[PATH_MAX + 8];
-    int failed;
+    int failed, moved = 0;
 
     snprintf(bak_path, sizeof(bak_path), "%s.bak", conf_path);
     snprintf(new_path, sizeof(new_path), "%s.new", conf_path);
@@ -33,8 +33,11 @@ static int app_config_commit(FILE *file, const char *conf_path) {
        link keeps the configuration in place until the rename replaces it */
     remove(bak_path);
     if (link(conf_path, bak_path))
-        rename(conf_path, bak_path);
+        moved = !rename(conf_path, bak_path);
     if (rename(new_path, conf_path)) {
+        /* without hard links the old file was moved away: put it back */
+        if (moved)
+            rename(bak_path, conf_path);
         remove(new_path);
         return EXIT_FAILURE;
     }
