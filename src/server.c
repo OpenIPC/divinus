@@ -610,7 +610,11 @@ void respond_request(http_request_t *req) {
 
         char *action = onvif_extract_soap_action(req->payload);
         HAL_INFO("onvif", "%sAction: %s%s\n",
-            HAL_COLOR("\x1b[32m"), action, HAL_COLOR("\x1b[0m"));
+            HAL_COLOR("\x1b[32m"), action ? action : "(none)", HAL_COLOR("\x1b[0m"));
+        if (!action) {
+            send_http_error(req->clntFd, 400);
+            return;
+        }
         respLen = sizeof(response);
 
         if (app_config.onvif_enable_auth && !onvif_is_preauth_action(action) &&
