@@ -84,11 +84,22 @@ int f2_audio_init(int samplerate) {
     {
         f2_aud_cnf config = { .io = 0, .rate = samplerate, .bit = 16,
             .fmt = 0, .chnNum = 1, .frmNum = _f2_aud_frame, .volume = 85 };
-        if (ret = f2_aud.fnSetConfig(&config))
+        if (ret = f2_aud.fnSetConfig(&config)) {
+            /* A capture still running from an earlier run that did not stop
+               it makes this fail: stop it and try once more */
+            f2_aud.fnDisable();
+            ret = f2_aud.fnSetConfig(&config);
+        }
+        if (ret) {
+            f2_aud.fnDeinit();
             return ret;
+        }
     }
-    if (ret = f2_aud.fnEnable())
+    if (ret = f2_aud.fnEnable()) {
+        f2_aud.fnDisable();
+        f2_aud.fnDeinit();
         return ret;
+    }
     f2_aud.fnSetMicVolume(2);
     f2_aud.fnSetVolume(85);
 
