@@ -161,14 +161,20 @@ char* onvif_extract_soap_action(const char* soap_data) {
     if (*body_start != '<') return NULL;
     body_start++;
 
-    char *action_end = strchr(body_start, ' ');
-    if (!action_end) action_end = strchr(body_start, '>');
-    if (!action_end) return NULL;
+    /* The name ends at a space, a '>' or a '/', and may carry a namespace
+       prefix ("tds:GetCapabilities"), which is not part of the action */
+    char *action_end = action_start = body_start;
+    while (*action_end && !isspace((unsigned char)*action_end) &&
+        *action_end != '>' && *action_end != '/') {
+        if (*action_end == ':') action_start = action_end + 1;
+        action_end++;
+    }
 
-    int action_len = action_end - body_start;
+    int action_len = action_end - action_start;
+    if (action_len <= 0) return NULL;
     if (action_len >= sizeof(action)) action_len = sizeof(action) - 1;
 
-    strncpy(action, body_start, action_len);
+    strncpy(action, action_start, action_len);
     action[action_len] = '\0';
 
     return action;
