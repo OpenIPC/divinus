@@ -25,6 +25,8 @@ extern void request_idr();
  *              PRIVATE DEFINITIONS
  ******************************************************************************/
 #define __STR_OPTIONS  "OPTIONS"
+#define __STR_GETPARAM "GET_PARAMETER"
+#define __STR_SETPARAM "SET_PARAMETER"
 #define __STR_AUTH "AUTHORIZATION"
 #define __STR_CSEQ  "CSEQ"
 #define __STR_DESCRIBE  "DESCRIBE"
@@ -60,6 +62,7 @@ static inline int __bind_tcp(unsigned short port);
 
 static void __method_auth(struct connection_item_t *p, rtsp_handle h);
 static void __method_options(struct connection_item_t *p, rtsp_handle h);
+static void __method_parameter(struct connection_item_t *p, rtsp_handle h);
 static void __method_describe(struct connection_item_t *p, rtsp_handle h);
 static void __method_setup(struct connection_item_t *p, rtsp_handle h);
 static void __method_play(struct connection_item_t *p, rtsp_handle h);
@@ -161,6 +164,16 @@ static void __method_options(struct connection_item_t *p, rtsp_handle h)
     __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
             "CSeq: %d\r\n"
             "Public: OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE\r\n"
+            "\r\n", p->cseq);
+}
+
+/* Clients ping the server with a GET_PARAMETER (or SET_PARAMETER) request to
+   keep the session alive (RFC 2326, 10.8 and 10.9). There are no parameters
+   to report, so an empty 200 OK is the answer. */
+static void __method_parameter(struct connection_item_t *p, rtsp_handle h)
+{
+    __rtsp_write(p, "RTSP/1.0 200 OK\r\n"
+            "CSeq: %d\r\n"
             "\r\n", p->cseq);
 }
 
@@ -409,6 +422,8 @@ static int __message_proc_sock(struct list_t *e, void *p)
             if (header < 1) {
                 con->track_id = 0;
                 if (SCMP(__STR_OPTIONS, buf))            { con->method = __METHOD_OPTIONS;
+                } else if (SCMP(__STR_GETPARAM, buf) ||
+                           SCMP(__STR_SETPARAM, buf))    { con->method = __METHOD_PARAMETER;
                 } else if (SCMP(__STR_DESCRIBE, buf))    { con->method = __METHOD_DESCRIBE;
                 } else if (SCMP(__STR_SETUP, buf))       { con->method = __METHOD_SETUP;
                     STR_KEY_NUM(buf, "track=", con->track_id);
@@ -473,6 +488,7 @@ error:
             switch (con->method) {
                 case __METHOD_AUTH: __method_auth(con, h); break;
                 case __METHOD_OPTIONS: __method_options(con, h); break;
+                case __METHOD_PARAMETER: __method_parameter(con, h); break;
                 case __METHOD_DESCRIBE: __method_describe(con, h); break;
                 case __METHOD_SETUP: __method_setup(con, h); break;
                 case __METHOD_PLAY: __method_play(con, h); break;
