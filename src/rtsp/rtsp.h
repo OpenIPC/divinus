@@ -58,6 +58,7 @@ enum __method_e {
     __METHOD_TEARDOWN,
     __METHOD_PAUSE,
     __METHOD_RECORDING,
+    __METHOD_PARAMETER,
     __METHOD_AUTH,
     __METHOD_NONE,
     __METHOD_COUNT
