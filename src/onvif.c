@@ -191,46 +191,72 @@ bool onvif_is_preauth_action(const char *action) {
     return false;
 }
 
-bool onvif_validate_soap_auth(const char *soap_data) {
-    const char *created_tag = "Created", *digest_tag = "PasswordDigest", *nonce_tag = "<Nonce",
-        *pass_tag = "<Password", *type_attr = "Type=\"", *user_tag = "<Username>";
-    char *pos, *end, *start;
-    char digest = 0, created[64], nonce[64], pass[64], user[64];
+/* Copies the text of the first element with the given name, whatever its
+   namespace prefix is (<Username> or <wsse:Username>), and optionally the
+   attributes of its opening tag. Fails if the element is missing or if the
+   text or the attributes do not fit. */
+static bool onvif_xml_value(const char *xml, const char *name,
+    char *value, size_t valueSize, char *attrs, size_t attrsSize) {
+    size_t nameLen = strlen(name);
+    const char *tag = xml;
 
-    if (!(start = strstr(soap_data, user_tag)) ||
-        !(start += strlen(user_tag))) return false;
-    if (!(end = strstr(start, "</Username>"))) return false;
-    memcpy(user, start, end - start);
-    user[end - start] = '\0';
+    while ((tag = strchr(tag, '<'))) {
+        const char *local = ++tag, *end = tag;
+        while (*end && *end != '>' && *end != '/' && !isspace((unsigned char)*end)) {
+            if (*end == ':') local = end + 1;
+            end++;
+        }
+        if (*tag == '/' || (size_t)(end - local) != nameLen || strncmp(local, name, nameLen))
+            continue;
+
+        const char *open = strchr(end, '>');
+        if (!open || open[-1] == '/') return false;
+        const char *text = open + 1, *close = strchr(text, '<');
+        if (!close) return false;
+        if (close[1] != '/') continue;
+
+        if (attrs) {
+            size_t attrsLen = open - end;
+            if (attrsLen >= attrsSize) return false;
+            memcpy(attrs, end, attrsLen);
+            attrs[attrsLen] = '\0';
+        }
+
+        while (text < close && isspace((unsigned char)*text)) text++;
+        while (close > text && isspace((unsigned char)close[-1])) close--;
+        size_t len = close - text;
+        if (len >= valueSize) return false;
+        memcpy(value, text, len);
+        value[len] = '\0';
+        return true;
+    }
+    return false;
+}
+
+bool onvif_validate_soap_auth(const char *soap_data) {
+    char created[64], nonce[64], pass[64], pass_attrs[256], user[64];
+
+    if (!onvif_xml_value(soap_data, "Username", user, sizeof(user), NULL, 0))
+        return false;
 
     if (!EQUALS(user, app_config.onvif_auth_user)) {
         HAL_WARNING("onvif", "Invalid username: %s\n", user);
         return false;
     }
 
-    if (!(start = strstr(soap_data, pass_tag)) ||
-        !(start += strlen(pass_tag))) return false;
-    if ((pos = strstr(start, type_attr)) < (start = strchr(start, '>')) &&
-        (pos += strlen(type_attr)) && strstr(pos, digest_tag)) digest = 1;
-    if (!(end = strstr(start, "</Password>"))) return false;
-    memcpy(pass, ++start, end - start);
-    pass[end - start] = '\0';
+    if (!onvif_xml_value(soap_data, "Password", pass, sizeof(pass),
+            pass_attrs, sizeof(pass_attrs)))
+        return false;
 
-    if (digest) {
+    if (CONTAINS(pass_attrs, "PasswordDigest")) {
         char digest_comp[SHA1_DIGEST_SIZE] = {0}, nonce_dec[64], pass_dec[64];
         sha1_context ctx;
 
-        if (!(start = strstr(soap_data, nonce_tag)) ||
-            !(start = strchr(start, '>'))) return false;
-        if (!(end = strstr(++start, "</Nonce>"))) return false;
-        memcpy(nonce, start, end - start);
-        nonce[end - start] = '\0';
+        if (!onvif_xml_value(soap_data, "Nonce", nonce, sizeof(nonce), NULL, 0))
+            return false;
 
-        if (!(start = strstr(soap_data, created_tag)) ||
-            !(start = strchr(start, '>'))) return false;
-        if (!(end = strstr(++start, "</Created>"))) return false;
-        memcpy(created, start, end - start);
-        created[end - start] = '\0';
+        if (!onvif_xml_value(soap_data, "Created", created, sizeof(created), NULL, 0))
+            return false;
 
         int nonce_len = base64_decode(nonce_dec, nonce, sizeof(nonce_dec));
         if (nonce_len < 0) return false;
