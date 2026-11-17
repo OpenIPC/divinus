@@ -116,9 +116,15 @@ void *aenc_thread(void) {
         pthread_mutex_lock(&aencMtx);
         if (mp3Buf.offset >= mp3FrmSize) {
             send_mp3_to_client(mp3Buf.buf, mp3FrmSize);
-            pthread_mutex_lock(&mp4Mtx);
-            mp4_ingest_audio(mp3Buf.buf, mp3FrmSize);
-            pthread_mutex_unlock(&mp4Mtx);
+            /* Only the video path empties the MP4 audio buffer, and only while
+             * an MP4 client or the recorder is there. Fed without one (the
+             * MP3 encoder also runs for RTSP and RTMP), it grew for as long as
+             * the program ran. */
+            if (record_active() || any_http_mp4()) {
+                pthread_mutex_lock(&mp4Mtx);
+                mp4_ingest_audio(mp3Buf.buf, mp3FrmSize);
+                pthread_mutex_unlock(&mp4Mtx);
+            }
             if (app_config.rtsp_enable && !rtsp_g711_active())
                 rtp_send_mp3(rtspHandle, mp3Buf.buf, mp3FrmSize);
             rtmp_ingest_audio(mp3Buf.buf, mp3FrmSize);

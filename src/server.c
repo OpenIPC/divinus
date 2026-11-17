@@ -229,6 +229,15 @@ char any_http_audio(void) {
     return any;
 }
 
+char any_http_mp4(void) {
+    char any = 0;
+    pthread_mutex_lock(&client_fds_mutex);
+    for (unsigned int i = 0; i < HTTP_MAX_CLIENTS; ++i)
+        if (client_fds[i].sockFd >= 0 && client_fds[i].type == STREAM_MP4) { any = 1; break; }
+    pthread_mutex_unlock(&client_fds_mutex);
+    return any;
+}
+
 void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
     char anyClient = 0;
     pthread_mutex_lock(&client_fds_mutex);
