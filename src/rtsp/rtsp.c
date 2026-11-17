@@ -336,7 +336,18 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
         "\r\n" , p->cseq);
 
     for (int i = 0; i < sizeof(p->trans) / sizeof(*p->trans); i++) {
-        if (!p->trans[i].server_port_rtp) continue;
+        if (!p->trans[i].server_port_rtp) {
+            /* Interleaved (TCP) tracks have no server port but need the same
+             * report interval; left at 0 it sent a sender report with every
+             * RTP packet. The first packet still brings a report at once. */
+            if (p->trans[i].is_tcp) {
+                p->trans[i].rtcp_octet = 0;
+                p->trans[i].rtcp_packet_cnt = 0;
+                p->trans[i].rtcp_tick_org = 150;
+                p->trans[i].rtcp_tick = 0;
+            }
+            continue;
+        }
         p->track_id = i;
 
         ASSERT(__bind_rtcp(p) == SUCCESS, return);
