@@ -4,6 +4,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
+#include <errno.h>
+#include <poll.h>
+#include <stdio.h>
+#include <time.h>
 
 #include "rtsp_server.h"
 
@@ -118,9 +122,49 @@ struct connection_item_t {
      * per frame: on small SoCs a send() costs ~100 us whatever its size */
     unsigned char *tx_buf;
     unsigned int tx_len;
+    /* set when a TCP client stopped taking data; nothing more is sent to it */
+    char tx_dead;
     struct list_t list_entry;
 };
 #define RTSP_TX_BATCH (64 * 1024)
+
+/* One thread sends every frame to all clients in turn, so a TCP client that
+ * stops reading (a viewer on a stalled wireless link, a paused process) held
+ * up every other client for as long as it stalled. A client that takes no
+ * data for this long is given up: its socket is shut down, the RTSP thread
+ * sees the end of input and frees it, and the player can reconnect. */
+#define RTSP_TX_STALL_MS 1000
+
+/* Sends all of buf on a TCP client's socket. Caller holds con->write_mutex. */
+static inline int __tcp_send_all(struct connection_item_t *con, const void *buf, unsigned int len)
+{
+    unsigned int sent = 0;
+    struct timespec t0 = {0}, t;
+    char waiting = 0;
+
+    if (con->tx_dead) return FAILURE;
+    while (sent < len) {
+        int r = send(con->client_fd, (const char *)buf + sent, len - sent, 0);
+        if (r > 0) { sent += r; waiting = 0; continue; }
+        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
+            clock_gettime(CLOCK_MONOTONIC, &t);
+            if (!waiting) { t0 = t; waiting = 1; }
+            else if ((t.tv_sec - t0.tv_sec) * 1000 + (t.tv_nsec - t0.tv_nsec) / 1000000 >= RTSP_TX_STALL_MS) {
+                fprintf(stderr, "[rtsp] client %s took no data for %d ms, disconnecting it\n",
+                    inet_ntoa(con->addr.sin_addr), RTSP_TX_STALL_MS);
+                con->tx_dead = 1;
+                shutdown(con->client_fd, SHUT_RDWR);
+                return FAILURE;
+            }
+            struct pollfd p = { .fd = con->client_fd, .events = POLLOUT };
+            poll(&p, 1, 100);
+            continue;
+        }
+        con->tx_dead = 1;   /* reset or closed: the RTSP thread frees it */
+        return FAILURE;
+    }
+    return SUCCESS;
+}
 
 struct transfer_item_t {
     struct list_t list_entry;

@@ -38,23 +38,11 @@ struct __transfer_set_t {
 
 static unsigned int __frame_ts_video, __frame_ts_audio;
 
-static inline void __wait_out(int fd)
-{
-    struct pollfd p = { .fd = fd, .events = POLLOUT };
-    poll(&p, 1, 100);
-}
-
 static int __tcp_flush(struct connection_item_t *con)
 {
-    unsigned int sent = 0;
-    while (sent < con->tx_len) {
-        int r = send(con->client_fd, con->tx_buf + sent, con->tx_len - sent, 0);
-        if (r > 0) sent += r;
-        else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
-        else { con->tx_len = 0; return FAILURE; }
-    }
+    int ret = __tcp_send_all(con, con->tx_buf, con->tx_len);
     con->tx_len = 0;
-    return SUCCESS;
+    return ret;
 }
 
 static int __tcp_flush_each(struct list_t *e, void *v)
@@ -68,9 +56,10 @@ static int __tcp_flush_each(struct list_t *e, void *v)
      * Testing track 0 here never flushed a client that set up audio alone. */
     if (!con->tx_buf || !con->tx_len) return SUCCESS;
     pthread_mutex_lock(&con->write_mutex);
-    int ret = __tcp_flush(con);
+    __tcp_flush(con);
     pthread_mutex_unlock(&con->write_mutex);
-    return ret;
+    /* a client that failed is given up; the others still get their data */
+    return SUCCESS;
 }
 
 /******************************************************************************
@@ -236,51 +225,31 @@ static inline int __rtp_send_eachconnection(struct list_t *e, void *v)
         head[2] = (rtp->rtpsize >> 8) & 0xFF;
         head[3] = rtp->rtpsize & 0xFF;
 
+        /* A TCP client that failed or stalled is skipped from here on (it is
+         * being freed). Returning FAILURE would stop the frame for every
+         * client after it in the list. */
         pthread_mutex_lock(&con->write_mutex);
+        int ok = 0;
         if (con->tx_buf) {
-            int ok = 1;
+            ok = 1;
             if (con->tx_len + 4 + rtp->rtpsize > RTSP_TX_BATCH)
                 ok = __tcp_flush(con) == SUCCESS;
-            if (ok) {
+            if (ok && !con->tx_dead) {
                 memcpy(con->tx_buf + con->tx_len, head, 4);
                 memcpy(con->tx_buf + con->tx_len + 4, &(rtp->packet), rtp->rtpsize);
                 con->tx_len += 4 + rtp->rtpsize;
-            }
-            pthread_mutex_unlock(&con->write_mutex);
-            if (ok) {
-                con->trans[track_id].rtcp_packet_cnt += 1;
-                con->trans[track_id].rtcp_octet += rtp->rtpsize;
-                return SUCCESS;
-            }
-            ERR("send (staged):%s\n", strerror(errno));
-            return FAILURE;
-        }
-        int sent_h = 0;
-        while (sent_h < 4) {
-            int r = send(con->client_fd, head + sent_h, 4 - sent_h, 0);
-            if (r > 0) sent_h += r;
-            else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
-            else { sent_h = -1; break; }
-        }
-        if (sent_h == 4) {
-            int sent_b = 0;
-            while (sent_b < rtp->rtpsize) {
-                int r = send(con->client_fd, (char*)&(rtp->packet) + sent_b, rtp->rtpsize - sent_b, 0);
-                if (r > 0) sent_b += r;
-                else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) { __wait_out(con->client_fd); }
-                else { sent_b = -1; break; }
-            }
-            send_bytes = sent_b;
+            } else
+                ok = 0;
         } else {
-            send_bytes = -1;
+            ok = __tcp_send_all(con, head, 4) == SUCCESS &&
+                 __tcp_send_all(con, &(rtp->packet), rtp->rtpsize) == SUCCESS;
         }
         pthread_mutex_unlock(&con->write_mutex);
-
-        if (send_bytes == rtp->rtpsize) {
+        if (ok) {
             con->trans[track_id].rtcp_packet_cnt += 1;
             con->trans[track_id].rtcp_octet += rtp->rtpsize;
-            return SUCCESS;
         }
+        return SUCCESS;
     } else {
         char attempts = 0;
         do  {

@@ -578,6 +578,7 @@ __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd,
     ASSERT((p->fp_tcp_write = fdopen(fd, "w")), goto error);
 
     p->tx_len = 0;
+    p->tx_dead = 0;
     if (!p->tx_buf) p->tx_buf = malloc(RTSP_TX_BATCH);
     p->con_state = __CON_S_INIT;
 
