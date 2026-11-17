@@ -148,7 +148,7 @@ static bool record_write_locked(const void *data, size_t len) {
 
 /* Guards against NALU offsets and lengths that would read past the pack or
  * underflow "length - scLen". */
-static void record_feed_nalu(unsigned char *data, unsigned int len,
+static bool record_feed_nalu(unsigned char *data, unsigned int len,
     const hal_vidnalu *nalu, char isH265) {
     unsigned int offset = nalu->offset;
     unsigned int nalu_len = nalu->length;
@@ -156,11 +156,11 @@ static void record_feed_nalu(unsigned char *data, unsigned int len,
     const char *payload;
     unsigned int payload_len;
 
-    if (offset > len || nalu_len > len - offset) return;
-    if (nalu_len <= 3 || offset + 3 > len) return;
+    if (offset > len || nalu_len > len - offset) return false;
+    if (nalu_len <= 3 || offset + 3 > len) return false;
 
     scLen = (data[offset + 2] == 1) ? 3 : 4;
-    if (nalu_len <= scLen) return;
+    if (nalu_len <= scLen) return false;
 
     payload = (const char *)data + offset + scLen;
     payload_len = nalu_len - scLen;
@@ -180,13 +180,14 @@ static void record_feed_nalu(unsigned char *data, unsigned int len,
         case NalUnitType_CodedSliceIdr:
         case NalUnitType_CodedSliceAux:
             mp4_set_slice(payload, payload_len, 1);
-            break;
+            return true;
         case NalUnitType_CodedSliceNonIdr:
             mp4_set_slice(payload, payload_len, 0);
-            break;
+            return true;
         default:
             break;
     }
+    return false;
 }
 
 static bool record_emit_fragment_locked(void) {
@@ -361,8 +362,14 @@ void record_ingest_stream(hal_vidstream *stream, char isH265) {
         pack_len = pack->length - pack->offset;
         pack_data = pack->data + pack->offset;
 
+        bool gotSlice = false;
         for (int j = 0; j < pack->naluCnt; j++)
-            record_feed_nalu(pack_data, pack_len, &pack->nalu[j], isH265);
+            if (record_feed_nalu(pack_data, pack_len, &pack->nalu[j], isH265))
+                gotSlice = true;
+
+        /* A pack that carries only parameter sets makes no new fragment;
+         * writing then would repeat the previous frame and its audio. */
+        if (!gotSlice) continue;
 
         if (!record_emit_fragment_locked()) {
             HAL_DANGER("record", "Stopping recording after a write failure!\n");
