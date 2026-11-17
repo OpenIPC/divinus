@@ -516,6 +516,14 @@ int rtmp_ingest_video(hal_vidpack *packet, int is_h265) {
             }
 
             if (seq_header_sent) {
+                 /* FLV carries each NAL unit behind a 4-byte length, without
+                  * the Annex-B start code that most HALs leave in front */
+                 if (nal_len > 4 && nal_start[0] == 0 && nal_start[1] == 0) {
+                     uint32_t sc = (nal_start[2] == 1) ? 3 :
+                         ((nal_start[2] == 0 && nal_start[3] == 1) ? 4 : 0);
+                     nal_start += sc;
+                     nal_len -= sc;
+                 }
                  if (flv_set_slice((char *)nal_start, nal_len, is_idr) == BUF_OK &&
                      flv_set_state(&flv_state) == BUF_OK) {
                      struct BitBuf tags;
