@@ -252,6 +252,9 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
         if (plat == HAL_PLATFORM_AK)
             mp4_set_timestamp(pack->timestamp);
 
+        /* A pack that carries only parameter sets makes no new fragment;
+         * sending then would repeat the previous frame and its audio. */
+        char gotSlice = 0;
         for (char j = 0; j < pack->naluCnt; j++) {
             /* nalu[].offset points at the start code, which is 3 or 4
              * bytes depending on the encoder; the muxer wants the payload. */
@@ -266,12 +269,15 @@ void send_mp4_to_client(char index, hal_vidstream *stream, char isH265) {
                 mp4_set_vps(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen);
             else if (!anyClient)
                 continue;
-            else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux)
+            else if (pack->nalu[j].type == NalUnitType_CodedSliceIdr || pack->nalu[j].type == NalUnitType_CodedSliceAux) {
                 mp4_set_slice(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, 1);
-            else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr)
+                gotSlice = 1;
+            } else if (pack->nalu[j].type == NalUnitType_CodedSliceNonIdr) {
                 mp4_set_slice(pack_data + pack->nalu[j].offset + scLen, pack->nalu[j].length - scLen, 0);
+                gotSlice = 1;
+            }
         }
-        if (!anyClient) continue;
+        if (!anyClient || !gotSlice) continue;
 
         static enum BufError err;
         char len_buf[50];
