@@ -160,7 +160,10 @@ static inline int __tcp_send_all(struct connection_item_t *con, const void *buf,
             poll(&p, 1, 100);
             continue;
         }
-        con->tx_dead = 1;   /* reset or closed: the RTSP thread frees it */
+        /* reset or closed: shut it down as well, so the RTSP thread sees
+         * the end of input and frees it like any other client */
+        con->tx_dead = 1;
+        shutdown(con->client_fd, SHUT_RDWR);
         return FAILURE;
     }
     return SUCCESS;
