@@ -307,7 +307,15 @@ static int rtmp_start_sequence(const char *url) {
     bcopy((char *)he->h_addr_list[0], (char *)&serv_addr.sin_addr.s_addr, he->h_length);
     serv_addr.sin_port = htons(port);
 
+    /* This runs on the main thread before the video starts. A destination
+     * that does not answer must not hold it up: without a limit the start
+     * hung until the watchdog rebooted the camera, again and again. */
+    struct timeval tmo = { 5, 0 }, none = { 0, 0 };
+    setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &tmo, sizeof(tmo));
+    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tmo, sizeof(tmo));
+
     if (connect(socket_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        HAL_WARNING("rtmp", "Destination does not answer; continuing without it\n");
         close(socket_fd);
         socket_fd = -1;
         return -1;
@@ -325,6 +333,10 @@ static int rtmp_start_sequence(const char *url) {
     if (rtmp_connect(app, tcurl) < 0) return -1;
     if (rtmp_create_stream() < 0) return -1;
     if (rtmp_publish(stream) < 0) return -1;
+
+    /* Connected: back to the unlimited waits the running stream expects */
+    setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &none, sizeof(none));
+    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &none, sizeof(none));
 
     return 0;
 }
@@ -354,19 +366,22 @@ int rtmp_init(const char *url) {
     memset(&flv_state, 0, sizeof(flv_state));
     seq_header_sent = false;
     metadata_sent = false;
+    /* No HAL_ERROR below: it returns from the function, which would leave
+     * rtmp_mutex locked, and the next rtmp_close (every stop of the program)
+     * would then hang until the watchdog reboots the camera. */
     int ret = rtmp_start_sequence(url);
     if (ret == 0) {
         start_timestamp = millis();
         is_connected = true;
 
         if (pthread_create(&recvPid, NULL, recv_thread, NULL)) {
-            HAL_ERROR("rtmp", "Failed to create receiver thread\n");
+            HAL_DANGER("rtmp", "Failed to create receiver thread\n");
             is_connected = false;
             close(socket_fd);
             socket_fd = -1;
             ret = EXIT_FAILURE;
         } else if (pthread_create(&sndPid, NULL, send_thread, NULL)) {
-            HAL_ERROR("rtmp", "Failed to create sender thread\n");
+            HAL_DANGER("rtmp", "Failed to create sender thread\n");
             is_connected = false;
             pthread_join(recvPid, NULL);
             close(socket_fd);
@@ -378,7 +393,7 @@ int rtmp_init(const char *url) {
             ret = EXIT_SUCCESS;
         }
     } else {
-        HAL_ERROR("rtmp", "Failed to connect to %s\n", url);
+        HAL_DANGER("rtmp", "Failed to connect to %s\n", url);
         ret = EXIT_FAILURE;
     }
     pthread_mutex_unlock(&rtmp_mutex);
