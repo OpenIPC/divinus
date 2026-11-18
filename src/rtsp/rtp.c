@@ -476,6 +476,11 @@ static inline int __rtcp_poll(struct list_t *e, void *v)
     list_upcast(trans, e);
     MUST(con = trans->con, return FAILURE);
 
+    /* A client that set up only one track gets no report for the other;
+     * counting its tick from 0 to -1 fails the postcondition below. */
+    if (!con->trans[*track_id].server_port_rtp && !con->trans[*track_id].is_tcp)
+        return SUCCESS;
+
     if ((con->trans[*track_id].rtcp_tick)-- == 0) {
         ASSERT(__rtcp_send_sr(con, *track_id) == SUCCESS, return FAILURE);
 

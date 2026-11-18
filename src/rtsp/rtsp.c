@@ -6,6 +6,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include "rtsp_server.h"
 #include "common.h"
 #include "rtsp.h"
@@ -336,19 +337,18 @@ static void __method_play(struct connection_item_t *p, rtsp_handle h)
         "\r\n" , p->cseq);
 
     for (int i = 0; i < sizeof(p->trans) / sizeof(*p->trans); i++) {
-        if (!p->trans[i].server_port_rtp) continue;
+        if (!p->trans[i].server_port_rtp && !p->trans[i].is_tcp) continue;
         p->track_id = i;
 
-        ASSERT(__bind_rtcp(p) == SUCCESS, return);
-        ASSERT(__bind_rtp(p) == SUCCESS, return);
-        p->trans[p->track_id].rtp_timestamp = (millis() * 90) & UINT32_MAX;
+        if (!p->trans[p->track_id].is_tcp) {
+            ASSERT(__bind_rtcp(p) == SUCCESS, return);
+            ASSERT(__bind_rtp(p) == SUCCESS, return);
+        }
         p->trans[p->track_id].rtp_seq = rand_r(&h->ctx);
         p->trans[p->track_id].rtcp_octet = 0;
         p->trans[p->track_id].rtcp_packet_cnt = 0;
-        p->trans[p->track_id].rtcp_tick_org = 150; // TODO: must be variant
-        p->trans[p->track_id].rtcp_tick = p->trans[p->track_id].rtcp_tick_org;
-
-        ASSERT(__rtcp_send_sr(p, p->track_id) == SUCCESS, return);
+        p->trans[p->track_id].rtcp_tick_org = 250;
+        p->trans[p->track_id].rtcp_tick = 0;
     }
 
     p->con_state = __CON_S_PLAYING;
@@ -583,33 +583,45 @@ static int __connection_reset(void *v)
     static inline int
 __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd, struct sockaddr_in addr)
 {
-    DASSERT(head, return FAILURE);
+    DASSERT(head, { if (fd > 0) close(fd); return FAILURE; });
     DASSERT(fd > 0, return FAILURE);
 
     struct connection_item_t *p = NULL;
+    int rfd = -1, wfd = -1;
 
     /* Every failure from here on leaves fd closed: a full pool closes it here,
-       and a failed fdopen below through __connection_reset. The caller must
-       not close it again -- by then the number may be another thread's. */
+       and a failed dup/fdopen below through bufpool_detach / __connection_reset.
+       The caller must not close it again -- by then the number may be another thread's. */
     ASSERT(bufpool_get_free(con_pool, &p) == SUCCESS, ({ close(fd); return FAILURE; }));
 
     DASSERT(p, ({ close(fd); return FAILURE; }));
 
     DBG("previous fd=%d\n", p->client_fd);
 
-    p->addr=addr;
-    p->client_fd=fd;
+    p->addr = addr;
+    p->client_fd = fd;
+    p->fp_tcp_read = NULL;
+    p->fp_tcp_write = NULL;
 
-    ASSERT((p->fp_tcp_read = fdopen(fd, "r")), goto error);
-    ASSERT((p->fp_tcp_write = fdopen(fd, "w")), goto error);
+    ASSERT((rfd = dup(fd)) >= 0, goto error);
+    ASSERT((wfd = dup(fd)) >= 0, goto error);
+    ASSERT((p->fp_tcp_read = fdopen(rfd, "r")), goto error);
+    rfd = -1;
+    ASSERT((p->fp_tcp_write = fdopen(wfd, "w")), goto error);
+    wfd = -1;
 
     p->tx_len = 0;
     if (!p->tx_buf) p->tx_buf = malloc(RTSP_TX_BATCH);
     p->con_state = __CON_S_INIT;
 
-    return list_add(head, &(p->list_entry));
+    ASSERT(list_add(head, &(p->list_entry)) == SUCCESS, goto error);
+    return SUCCESS;
 error:
-    __connection_reset(&p->list_entry);
+    if (rfd >= 0) close(rfd);
+    if (wfd >= 0) close(wfd);
+    /* Dropping the sole reference triggers __connection_reset(), which closes
+     * fp_tcp_read, fp_tcp_write, and client_fd before returning p to the pool. */
+    ASSERT(bufpool_detach(con_pool, p) == SUCCESS, ERR("connection detach failed\n"));
     return FAILURE;
 }
 
