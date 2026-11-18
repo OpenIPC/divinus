@@ -58,9 +58,13 @@ float __expf_finite(float x) { return expf(x); }
 double __log_finite(double x) { return log(x); }
 
 #if defined(__arm__) || defined(__aarch64__) || defined(__mips__)
+/* The 32-bit offset suits vendor libraries; T23 builds link none, and
+ * ALSA passes the libc off_t. */
+#ifndef DIVINUS_T23
 void *mmap(void *start, size_t len, int prot, int flags, int fd, uint32_t off) {
     return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, off >> 12);
 }
+#endif
 
 void *__mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off) {
     return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, (long)(off >> 12));
