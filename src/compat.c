@@ -33,26 +33,28 @@ int stat(const char *restrict path, struct stat *restrict buf)
 #endif
 #endif
 
+#ifndef __UCLIBC__
 void __assert(void) {}
+#endif
 void akuio_clean_invalidate_dcache(void) {}
 #ifndef __GLIBC__
 void backtrace(void) {}
 void backtrace_symbols(void) {}
+void __ctype_b_loc(void) {}
 #endif
+#ifndef __UCLIBC__
 void __ctype_b(void) {}
 #ifndef __GLIBC__
-void __ctype_b_loc(void) {}
 void __ctype_tolower(void) {}
 #endif
-void _MI_PRINT_GetDebugLevel(void) {}
 void __pthread_register_cancel(void) {}
 void __pthread_unregister_cancel(void) {}
-#ifndef __UCLIBC__
 void _stdlib_mb_cur_max(void) {}
+int __fgetc_unlocked(FILE *stream) { return fgetc(stream); }
 #endif
+void _MI_PRINT_GetDebugLevel(void) {}
 
 float __expf_finite(float x) { return expf(x); }
-int __fgetc_unlocked(FILE *stream) { return fgetc(stream); }
 double __log_finite(double x) { return log(x); }
 
 #if defined(__arm__) || defined(__aarch64__) || defined(__mips__)
