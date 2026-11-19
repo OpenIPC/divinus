@@ -603,6 +603,35 @@ grant_access:
     req->payload = req->input + req->header_len;
 }
 
+/* Does Origin, or failing that Referer, name a host other than the one this
+   request was sent to? "null" -- a sandboxed frame, a file: page -- has no
+   "://" and counts as another host. */
+static bool names_another_host(const char *from, const char *host) {
+    const char *p = strstr(from, "://");
+    if (!p) return true;
+    p += 3;
+    size_t n = strcspn(p, "/?#");
+    return !host || strlen(host) != n || strncasecmp(p, host, n);
+}
+
+/* Was this request made by another site's page? Every setting and command is
+   a GET with parameters (/api/...?key=value, /api/cmd?save, /exit), which a
+   page anywhere can send with an <img> or a link, and a browser attaches the
+   Basic credentials it holds to it -- so a page on the internet could
+   reconfigure a camera on its visitor's LAN, or point its stream elsewhere.
+   Fetch Metadata says where the request came from when the browser sends it;
+   Origin or Referer when it does not. Clients that send none of these (curl,
+   scripts, an NVR) are unaffected. */
+static bool cross_site_request(void) {
+    const char *site = request_header("Sec-Fetch-Site");
+    if (site && strcmp(site, "same-origin") && strcmp(site, "same-site") &&
+        strcmp(site, "none"))
+        return true;
+    const char *from = request_header("Origin");
+    if (!from) from = request_header("Referer");
+    return from && names_another_host(from, request_header("Host"));
+}
+
 void respond_request(http_request_t *req) {
     char response[8192] = {0};
     int respLen = 0;
@@ -718,6 +747,12 @@ void respond_request(http_request_t *req) {
                 return;
             }
         }
+    }
+
+    if ((EQUALS(req->uri, "/exit") ||
+        (STARTS_WITH(req->uri, "/api/") && req->query)) && cross_site_request()) {
+        send_http_error(req->clntFd, 403);
+        return;
     }
 
     if (EQUALS(req->uri, "/exit")) {
@@ -1596,7 +1631,9 @@ void respond_request(http_request_t *req) {
                 char *key = split(&value, "=");
                 if (!key || !*key || !value || !*value) continue;
                 if (EQUALS(key, "fmt")) {
-                    strncpy(timefmt, value, 32);
+                    /* Terminated, and within the buffer: strncpy at 32 left a
+                       longer format unterminated over what was there before. */
+                    snprintf(timefmt, sizeof(timefmt), "%.32s", value);
                 } else if (EQUALS(key, "ts")) {
                     short result = strtol(value, &remain, 10);
                     if (remain == value) continue;
