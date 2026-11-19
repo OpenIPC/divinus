@@ -1,8 +1,10 @@
 #ifndef _RTSP_RTCP_H
 #define _RTSP_RTCP_H
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 #include "rtp.h"
 #include "rfc.h"
 #include "rtsp.h"
@@ -20,7 +22,7 @@ static inline int __rtcp_send_sr(struct connection_item_t *con, int track_id);
  ******************************************************************************/
 static inline int __rtcp_send_sr(struct connection_item_t *con, int track_id)
 {
-    struct timeval tv;
+    struct timespec ts;
     unsigned int ts_h, ts_l;
     int send_bytes;
     struct sockaddr_in to_addr;
@@ -34,10 +36,10 @@ static inline int __rtcp_send_sr(struct connection_item_t *con, int track_id)
     /* Unsetup track has no transport; fd 0 is stdin. */
     if (!t->server_port_rtp && !t->is_tcp) return SUCCESS;
 
-    ASSERT(gettimeofday(&tv,NULL) == 0, return FAILURE);
+    ASSERT(clock_gettime(CLOCK_REALTIME, &ts) == 0, return FAILURE);
 
-    ts_h = (unsigned int)tv.tv_sec + 2208988800U;
-    ts_l = (((double)tv.tv_usec) / 1e6) * 4294967296.0;
+    ts_h = (unsigned int)ts.tv_sec + 2208988800U;
+    ts_l = (unsigned int)(((uint64_t)ts.tv_nsec << 32) / 1000000000ULL);
 
     rtcp_t rtcp = { common: {version: 2, length: htons(8), p:0, count: 0, pt:RTCP_SR},
         r: { sr: { ssrc: htonl(con->ssrc),

@@ -6,7 +6,7 @@ GIT_REV := $(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD || e
 divinus: $(OBJ)
 
 $(OBJ): $(SRC:%.c=%.o)
-	$(CC) $^ -rdynamic $(OPT) -DGIT_REV=\"$(GIT_REV)\" -o $@
+	$(CC) $^ -rdynamic $(OPT) $(LDFLAGS) -DGIT_REV=\"$(GIT_REV)\" -o $@
 
 %.o: %.c Makefile
 	$(CC) -c $< $(OPT) -DGIT_REV=\"$(GIT_REV)\" -o $@

@@ -33,32 +33,38 @@ int stat(const char *restrict path, struct stat *restrict buf)
 #endif
 #endif
 
+#ifndef __UCLIBC__
 void __assert(void) {}
+#endif
 void akuio_clean_invalidate_dcache(void) {}
 #ifndef __GLIBC__
 void backtrace(void) {}
 void backtrace_symbols(void) {}
+void __ctype_b_loc(void) {}
 #endif
+#ifndef __UCLIBC__
 void __ctype_b(void) {}
 #ifndef __GLIBC__
-void __ctype_b_loc(void) {}
 void __ctype_tolower(void) {}
 #endif
-void _MI_PRINT_GetDebugLevel(void) {}
 void __pthread_register_cancel(void) {}
 void __pthread_unregister_cancel(void) {}
-#ifndef __UCLIBC__
 void _stdlib_mb_cur_max(void) {}
+int __fgetc_unlocked(FILE *stream) { return fgetc(stream); }
 #endif
+void _MI_PRINT_GetDebugLevel(void) {}
 
 float __expf_finite(float x) { return expf(x); }
-int __fgetc_unlocked(FILE *stream) { return fgetc(stream); }
 double __log_finite(double x) { return log(x); }
 
 #if defined(__arm__) || defined(__aarch64__) || defined(__mips__)
+/* The 32-bit offset suits vendor libraries; T23 builds link none, and
+ * ALSA passes the libc off_t. */
+#ifndef DIVINUS_T23
 void *mmap(void *start, size_t len, int prot, int flags, int fd, uint32_t off) {
     return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, off >> 12);
 }
+#endif
 
 void *__mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off) {
     return (void*)syscall(SYS_mmap2, start, len, prot, flags, fd, (long)(off >> 12));
