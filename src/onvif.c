@@ -367,16 +367,13 @@ void onvif_respond_snapshot(char *response, int *respLen) {
     char address[INET_ADDRSTRLEN];
     network_address(address);
 
-    if (app_config.web_enable_auth && 
-        *app_config.web_auth_user && *app_config.web_auth_pass) {
-        char user[96], pass[96];
-        escape_url(user, app_config.web_auth_user, sizeof(user));
-        escape_url(pass, app_config.web_auth_pass, sizeof(pass));
-        snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%s@%s:%d/image.jpg",
-            user, pass, address, app_config.web_port);
-    } else
-        snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%d/image.jpg",
-            address, app_config.web_port);
+    /* Never with credentials in it. /onvif answers before the web UI's own
+       auth check, and ONVIF auth is a separate setting that defaults off, so
+       the web admin's user:password in this URI went to anyone who asked --
+       and unlocked the whole /api. A client authenticates to the URI it is
+       given, as it does for every other camera. */
+    snprintf(snapshot_url, sizeof(snapshot_url), "http://%s:%d/image.jpg",
+        address, app_config.web_port);
 
     int maxLen = *respLen;
     int headerLen = strlen(onvifgood);
@@ -395,16 +392,9 @@ void onvif_respond_stream(char *response, int *respLen) {
     char address[INET_ADDRSTRLEN];
     network_address(address);
 
-    if (app_config.rtsp_enable_auth && 
-        *app_config.rtsp_auth_user && *app_config.rtsp_auth_pass) {
-        char user[96], pass[96];
-        escape_url(user, app_config.rtsp_auth_user, sizeof(user));
-        escape_url(pass, app_config.rtsp_auth_pass, sizeof(pass));
-        snprintf(stream_url, sizeof(stream_url), "rtsp://%s:%s@%s:%d/",
-            user, pass, address, app_config.rtsp_port);
-    } else
-        snprintf(stream_url, sizeof(stream_url), "rtsp://%s:%d/",
-            address, app_config.rtsp_port);
+    /* Without the RTSP credentials, for the same reason as the snapshot URI. */
+    snprintf(stream_url, sizeof(stream_url), "rtsp://%s:%d/",
+        address, app_config.rtsp_port);
 
     int maxLen = *respLen;
     int headerLen = strlen(onvifgood);
