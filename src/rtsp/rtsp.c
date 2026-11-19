@@ -415,7 +415,7 @@ static int __message_proc_sock(struct list_t *e, void *p)
         con->parser_state = __PARSER_S_INIT;
         con->method = __METHOD_NONE;
 
-        char header = 0, isAuthValid = 0, *tok, *last;
+        char header = 0, isAuthValid = 0, badTrack = 0, *tok, *last;
         unsigned long long session_id;
         /* parse line by line. hereafter parser is switched according to the finite state machine */
         while (__read_line(con, buf)) {
@@ -427,6 +427,14 @@ static int __message_proc_sock(struct list_t *e, void *p)
                 } else if (SCMP(__STR_DESCRIBE, buf))    { con->method = __METHOD_DESCRIBE;
                 } else if (SCMP(__STR_SETUP, buf))       { con->method = __METHOD_SETUP;
                     STR_KEY_NUM(buf, "track=", con->track_id);
+                    /* An index into trans[], and the Transport header below
+                       writes through it before auth is decided: an unchecked
+                       track= was a write anywhere past the connection pool. */
+                    if ((unsigned)con->track_id >=
+                        sizeof(con->trans) / sizeof(con->trans[0])) {
+                        con->track_id = 0;
+                        badTrack = 1;
+                    }
                 } else if (SCMP(__STR_PLAY, buf))        { con->method = __METHOD_PLAY;
                 } else if (SCMP(__STR_RECORDING, buf))   { con->method = __METHOD_RECORDING;
                 } else if (SCMP(__STR_PAUSE, buf))       { con->method = __METHOD_PAUSE;
@@ -478,6 +486,21 @@ static int __message_proc_sock(struct list_t *e, void *p)
             continue;
 error:
             __PARSE_ERROR(con);
+        }
+
+        /* __read_line ends the loop both at the blank line that closes a
+           request and when the peer is gone -- in which case it has already
+           detached the connection and closed its streams. Answering then
+           wrote to a NULL FILE (a request missing its last CRLF was enough),
+           and an unknown method detached it a second time. */
+        if (con->con_state == __CON_S_DISCONNECTED)
+            return SUCCESS;
+
+        /* After the loop: every header line resets parser_state, so an error
+           recorded on the request line would not survive to here. */
+        if (badTrack) {
+            ERR("track out of range in SETUP\n");
+            con->parser_state = __PARSER_S_ERROR;
         }
 
         if (con->parser_state == __PARSER_S_ERROR) {
@@ -780,9 +803,13 @@ static inline int __accept_proc_sock(rtsp_handle h, int server_fd, struct sock_s
                 setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz));
         }
 
-        /* update connection-list exclusively */
-        ASSERT(__connection_list_add(h->con_pool, &h->con_list, fd, from_addr) == SUCCESS,
-                return FAILURE);
+        /* update connection-list exclusively. A full pool turns this client
+           away; failing here used to end the RTSP thread, so the 17th idle
+           connection took RTSP down until the next restart. */
+        if (__connection_list_add(h->con_pool, &h->con_list, fd, from_addr) != SUCCESS) {
+            ERR("no free connection slot, refusing client\n");
+            close(fd);
+        }
     }
 
     return SUCCESS;
