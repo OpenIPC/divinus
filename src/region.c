@@ -19,6 +19,18 @@ pthread_t regionPid = 0;
 char timefmt[64];
 unsigned int rxb_l, txb_l, cpu_l[6];
 
+/* Appends to the expanded text without passing its end. Every placeholder
+   used to strcat into out[] unchecked: a 79-character OSD text of $t alone
+   expands to over a kilobyte of time strings, written past the buffer. */
+static void region_append(char *out, size_t size, int *opos, const char *s) {
+    size_t n = strlen(s), room = size - 1 - (size_t)*opos;
+    if ((size_t)*opos >= size - 1) return;
+    if (n > room) n = room;
+    memcpy(out + *opos, s, n);
+    *opos += n;
+    out[*opos] = '\0';
+}
+
 void region_fill_formatted(char* str) {
     char out[80] = "";
     char param = 0;
@@ -28,8 +40,8 @@ void region_fill_formatted(char* str) {
     {
         if (str[ipos] != '$')
         {
-            strncat(out, str + ipos, 1);
-            opos++;
+            char ch[2] = {str[ipos], '\0'};
+            region_append(out, sizeof(out), &opos, ch);
         }
         else if (str[ipos + 1] == 'B')
         {
@@ -46,7 +58,8 @@ void region_fill_formatted(char* str) {
                 ifname[j] = '\0';
             }
 
-            if (getifaddrs(&ifaddr) == -1) continue;
+            /* Not `continue`: that skipped the ipos++ below and spun here. */
+            if (getifaddrs(&ifaddr) == -1) { ipos++; continue; }
 
             for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
             {
@@ -59,8 +72,7 @@ void region_fill_formatted(char* str) {
                 char b[32];
                 sprintf(b, "R:%dKbps S:%dKbps",
                     (stats->rx_bytes - rxb_l) / 1024, (stats->tx_bytes - txb_l) / 1024);
-                strcat(out, b);
-                opos += strlen(b);
+                region_append(out, sizeof(out), &opos, b);
                 rxb_l = stats->rx_bytes;
                 txb_l = stats->tx_bytes;
                 break;
@@ -74,15 +86,15 @@ void region_fill_formatted(char* str) {
             char tmp[6];
             unsigned int cpu[6];
             FILE *stat = fopen("/proc/stat", "r");
+            if (!stat) { ipos++; continue; }
             fscanf(stat, "%s %u %u %u %u %u %u",
                 tmp, &cpu[0], &cpu[1], &cpu[2], &cpu[3], &cpu[4], &cpu[5]);
             fclose(stat);
 
-            char c[5];
+            char c[8];
             char avg = 100 - (cpu[3] - cpu_l[3]) / sysconf(_SC_NPROCESSORS_ONLN);
-            sprintf(c, "%d%%", avg);
-            strcat(out, c);
-            opos += strlen(c);
+            snprintf(c, sizeof(c), "%d%%", avg);
+            region_append(out, sizeof(out), &opos, c);
             for (int i = 0; i < sizeof(cpu) / sizeof(cpu[0]); i++)
                 cpu_l[i] = cpu[i];
         }
@@ -96,8 +108,7 @@ void region_fill_formatted(char* str) {
             short used = (si.freeram + si.bufferram) / 1024 / 1024;
             short total = si.totalram / 1024 / 1024;
             sprintf(m, "%d/%dMB", used, total);
-            strcat(out, m);
-            opos += strlen(m);
+            region_append(out, sizeof(out), &opos, m);
         }
         else if (str[ipos + 1] == 'T')
         {
@@ -105,8 +116,7 @@ void region_fill_formatted(char* str) {
             char s[8];
             float t = hal_temperature_read();
             sprintf(s, "%.1f", t);
-            strcat(out, s);
-            opos += strlen(s);
+            region_append(out, sizeof(out), &opos, s);
         }
         else if (str[ipos + 1] == 't')
         {
@@ -118,14 +128,12 @@ void region_fill_formatted(char* str) {
                 ipos++;
                 tm_info = gmtime(&t);
             } else tm_info = localtime_r(&t, &tm_buf);
-            strftime(s, 64, timefmt, tm_info);
-            strcat(out, s);
-            opos += strlen(s);
+            if (!strftime(s, sizeof(s), timefmt, tm_info)) s[0] = '\0';
+            region_append(out, sizeof(out), &opos, s);
         }
         else if (str[ipos + 1] == '$') {
             ipos++;
-            strcat(out, "$");
-            opos++;
+            region_append(out, sizeof(out), &opos, "$");
         }
         ipos++;
     }
@@ -361,7 +369,7 @@ void *region_thread(void) {
         for (char id = 0; id < MAX_OSD; id++) {
             if (!EMPTY(osds[id].text))
             {
-                char out[80];
+                char out[80] = "";
                 strncpy(out, osds[id].text, sizeof(out) - 1);
                 if (strstr(out, "$"))
                 {

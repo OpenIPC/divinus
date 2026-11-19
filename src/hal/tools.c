@@ -527,21 +527,43 @@ char *split(char **input, char *sep) {
     return (curr);
 }
 
+static int hex_value(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+/* Decodes a query value in place. A decoded control character (below 0x20,
+   or 0x7f) is dropped: every value this feeds is a setting, and the settings
+   are saved to divinus.yaml a line each, so a %0A in one was a line -- a whole
+   section -- of the caller's choosing in the saved configuration. A % not
+   followed by two hex digits is kept as it is. A '+' becomes a space only
+   once a '%' has been seen, as it always has here: the web UI never sends a
+   literal '+', and hand-written URLs have relied on it staying one. (The
+   decoder this replaces read *++src twice in one expression, which is
+   undefined behaviour.) */
 void unescape_uri(char *uri) {
     char *src = uri;
     char *dst = uri;
+    int escaped = 0;
 
-    while (*src && !alt_isspace((int)(*src)) && (*src != '%'))
+    while (*src && !alt_isspace((int)(*src))) {
+        unsigned char c = (unsigned char)*src;
+        if (c == '%')
+            escaped = 1;
+        if (c == '+' && escaped)
+            c = ' ';
+        else if (c == '%') {
+            int hi = hex_value(src[1]), lo = hi < 0 ? -1 : hex_value(src[2]);
+            if (hi >= 0 && lo >= 0) {
+                c = (unsigned char)(hi * 16 + lo);
+                src += 2;
+            }
+        }
         src++;
-
-    dst = src;
-    while (*src && !alt_isspace((int)(*src)))
-    {
-        *dst++ = (*src == '+') ? ' ' :
-                 ((*src == '%') && src[1] && src[2]) ?
-                 ((*++src & 0x0F) + 9 * (*src > '9')) * 16 + ((*++src & 0x0F) + 9 * (*src > '9')) :
-                 *src;
-        src++;
+        if (c < 0x20 || c == 0x7f) continue;
+        *dst++ = (char)c;
     }
     *dst = '\0';
 }
