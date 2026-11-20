@@ -53,8 +53,6 @@ int compile_regex(regex_t *r, const char *regex_text);
 
 int escape_json(char *dst, const char *src, size_t maxlen);
 
-int escape_url(char *dst, const char *src, size_t maxlen);
-
 void generate_nonce(char *nonce, size_t len);
 
 const char *get_extension(const char *path);

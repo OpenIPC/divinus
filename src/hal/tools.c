@@ -163,37 +163,6 @@ int escape_json(char *dst, const char *src, size_t maxlen)
 }
 
 
-int escape_url(char *dst, const char *src, size_t maxlen) {
-    static const char hex[] = "0123456789ABCDEF";
-    int len = 0;
-
-    if (!dst || !src || !maxlen)
-        return 0;
-
-    while (*src && len < maxlen - 1) {
-        unsigned char c = *src;
-
-        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
-            *dst++ = c;
-            len++;
-        } else {
-            if (len + 3 > maxlen - 1)
-                break;
-
-            *dst++ = '%';
-            *dst++ = hex[c >> 4];
-            *dst++ = hex[c & 0xF];
-            len += 3;
-        }
-
-        src++;
-    }
-
-    *dst = '\0';
-    return len;
-}
-
-
 void generate_nonce(char *nonce, size_t len) {
     static const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     if (len < 2) return;
@@ -527,13 +496,6 @@ char *split(char **input, char *sep) {
     return (curr);
 }
 
-static int hex_value(char c) {
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-    return -1;
-}
-
 /* Decodes a query value in place. A decoded control character (below 0x20,
    or 0x7f) is dropped: every value this feeds is a setting, and the settings
    are saved to divinus.yaml a line each, so a %0A in one was a line -- a whole
@@ -555,7 +517,7 @@ void unescape_uri(char *uri) {
         if (c == '+' && escaped)
             c = ' ';
         else if (c == '%') {
-            int hi = hex_value(src[1]), lo = hi < 0 ? -1 : hex_value(src[2]);
+            int hi = hex_to_int(src[1]), lo = hi < 0 ? -1 : hex_to_int(src[2]);
             if (hi >= 0 && lo >= 0) {
                 c = (unsigned char)(hi * 16 + lo);
                 src += 2;

@@ -4,8 +4,6 @@
 #include "region.h"
 #include "text.h"
 
-void region_fill_formatted(char *str);
-
 /* What region.c links against, and nothing it does here needs. */
 struct AppConfig app_config;
 volatile char keepRunning = 0;

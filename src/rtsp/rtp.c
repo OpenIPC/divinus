@@ -38,18 +38,16 @@ struct __transfer_set_t {
 
 static unsigned int __frame_ts_video, __frame_ts_audio;
 
+/* How long one flush may take, in ms. This runs on the encoder's path with the
+   client's write lock held, so a client that stopped reading must not hold it
+   longer than this. */
+#define __TCP_FLUSH_DEADLINE_MS 1000
+
 static inline void __wait_out(int fd)
 {
     struct pollfd p = { .fd = fd, .events = POLLOUT };
     poll(&p, 1, 100);
 }
-
-/* How long one flush may take, in ms. This runs on the encoder's path with
-   the client's write lock held: waiting for ever, as it did, let one client
-   that stopped reading (a zero TCP window) freeze video for every viewer. A
-   deadline rather than a count of idle waits, so a client that reads a few
-   bytes now and then cannot hold it either. */
-#define __TCP_FLUSH_DEADLINE_MS 1000
 
 static int __tcp_flush(struct connection_item_t *con)
 {
