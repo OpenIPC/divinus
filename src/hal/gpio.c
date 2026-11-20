@@ -1,9 +1,17 @@
 #include "gpio.h"
 
+#ifndef GPIO_SYSFS
+#define GPIO_SYSFS "/sys/class/gpio"
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 8, 0)
 int fd_gpio = 0;
 
 char gpio_count = 0;
+
+void gpio_release(char pin) { (void)pin; }
+
+void gpio_release_unused(const short *keep, int count) { (void)keep; (void)count; }
 
 void gpio_deinit(void) {
     if (!fd_gpio) return;
@@ -73,15 +81,21 @@ int gpio_init(void) {
 }
 
 /* The exported line's sysfs directory is "gpio<n>" on most kernels but
- * "GPIO<n>" on Fullhan kernels; probe both and cache the format. */
+ * "GPIO<n>" on Fullhan kernels. The format is cached once a node proves it;
+ * a pin that isn't exported yet says nothing, so it is not cached then. */
 static const char *gpio_node(char pin) {
-    static char fmt[24];
+    static const char *fmt;
     static char dir[40];
-    if (!fmt[0]) {
-        char probe[40];
-        sprintf(probe, "/sys/class/gpio/GPIO%d", pin);
-        strcpy(fmt, access(probe, F_OK) == 0 ?
-            "/sys/class/gpio/GPIO%d" : "/sys/class/gpio/gpio%d");
+    if (!fmt) {
+        static const char *fmts[] = { GPIO_SYSFS "/GPIO%d", GPIO_SYSFS "/gpio%d" };
+        for (int i = 0; i < 2 && !fmt; i++) {
+            sprintf(dir, fmts[i], pin);
+            if (access(dir, F_OK) == 0) fmt = fmts[i];
+        }
+        if (!fmt) {
+            sprintf(dir, GPIO_SYSFS "/gpio%d", pin);
+            return dir;
+        }
     }
     sprintf(dir, fmt, pin);
     return dir;
@@ -104,8 +118,8 @@ static inline int gpio_direction(char pin, char *mode) {
 
 static inline int gpio_export(char pin, bool create) {
     char path[40];
-    int fd = open(create ? "/sys/class/gpio/export" :
-       "/sys/class/gpio/unexport", O_WRONLY);
+    int fd = open(create ? GPIO_SYSFS "/export" :
+       GPIO_SYSFS "/unexport", O_WRONLY);
     if (fd < 0)
         HAL_ERROR("gpio", "Unable to (un)export a GPIO pin!\n");
 
@@ -119,6 +133,33 @@ static inline int gpio_export(char pin, bool create) {
 
     close(fd);
     return EXIT_SUCCESS;
+}
+
+/* The pins this process exported itself. gpio_write() leaves its pin exported (freeing the line can turn it back
+ * into an input and drop the level), so something has to let it go later; only pins listed here are ever
+ * unexported, never one that was already exported when we got to it, which belongs to somebody else. */
+static unsigned char gpio_owned[32];
+#define GPIO_BIT(p)      (1 << ((unsigned char)(p) & 7))
+#define GPIO_BYTE(p)     gpio_owned[(unsigned char)(p) >> 3]
+#define GPIO_OWNED(p)    (GPIO_BYTE(p) & GPIO_BIT(p))
+#define GPIO_OWN(p)      __atomic_fetch_or(&GPIO_BYTE(p), GPIO_BIT(p), __ATOMIC_RELAXED)
+#define GPIO_DISOWN(p)   __atomic_fetch_and(&GPIO_BYTE(p), ~GPIO_BIT(p), __ATOMIC_RELAXED)
+
+/* Let go of a pin gpio_write() exported. A pin this process did not export is left alone. */
+void gpio_release(char pin) {
+    if (!GPIO_OWNED(pin)) return;
+    if (access(gpio_node(pin), F_OK) == 0) gpio_export(pin, false);
+    GPIO_DISOWN(pin);
+}
+
+/* Let go of every pin this process exported, except the ones listed as still in use */
+void gpio_release_unused(const short *keep, int count) {
+    for (int pin = 0; pin < 128; pin++) {
+        if (!GPIO_OWNED(pin)) continue;
+        bool used = false;
+        for (int i = 0; i < count; i++) used |= keep[i] == pin;
+        if (!used) gpio_release((char)pin);
+    }
 }
 
 int gpio_read(char pin, bool *value) {
@@ -143,12 +184,13 @@ int gpio_read(char pin, bool *value) {
 
     if (gpio_direction(pin, "out")) return EXIT_FAILURE;
     if (gpio_export(pin, false)) return EXIT_FAILURE;
+    GPIO_DISOWN(pin);
 
     return EXIT_SUCCESS;
 }
 
 int gpio_write(char pin, bool value) {
-    gpio_export(pin, true);
+    if (access(gpio_node(pin), F_OK) && gpio_export(pin, true) == EXIT_SUCCESS) GPIO_OWN(pin);
     if (gpio_direction(pin, "out")) return EXIT_FAILURE;
 
     char path[48];
@@ -164,8 +206,8 @@ int gpio_write(char pin, bool value) {
     }
     close(fd);
 
-    if (gpio_export(pin, false)) return EXIT_FAILURE;
-
+    /* Stay exported: freeing the line can turn it back into an input
+     * (the pin controller does this on some kernels), dropping the level. */
     return EXIT_SUCCESS;
 }
 #endif
