@@ -624,8 +624,12 @@ static bool names_another_host(const char *from, const char *host) {
    scripts, an NVR) are unaffected. */
 static bool cross_site_request(void) {
     const char *site = request_header("Sec-Fetch-Site");
-    if (site && strcmp(site, "same-origin") && strcmp(site, "same-site") &&
-        strcmp(site, "none"))
+    /* same-origin and none (typed, bookmarked) are settled here. same-site is
+       not: another port on the camera's own address is the same site, so it
+       still has to name this host below. */
+    if (site && (!strcmp(site, "same-origin") || !strcmp(site, "none")))
+        return false;
+    if (site && strcmp(site, "same-site"))
         return true;
     const char *from = request_header("Origin");
     if (!from) from = request_header("Referer");
@@ -749,8 +753,11 @@ void respond_request(http_request_t *req) {
         }
     }
 
+    /* Any /api/ request that can change something: parameters in the query,
+       or a body (/api/osd/N takes an image as a multipart POST with none). */
     if ((EQUALS(req->uri, "/exit") ||
-        (STARTS_WITH(req->uri, "/api/") && req->query)) && cross_site_request()) {
+        (STARTS_WITH(req->uri, "/api/") &&
+         (req->query || !EQUALS(req->method, "GET")))) && cross_site_request()) {
         send_http_error(req->clntFd, 403);
         return;
     }
