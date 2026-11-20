@@ -588,9 +588,12 @@ __connection_list_add(bufpool_handle con_pool, struct list_head_t *head, int fd,
 
     struct connection_item_t *p = NULL;
 
-    ASSERT(bufpool_get_free(con_pool, &p) == SUCCESS, return FAILURE);
+    /* Every failure from here on leaves fd closed: a full pool closes it here,
+       and a failed fdopen below through __connection_reset. The caller must
+       not close it again -- by then the number may be another thread's. */
+    ASSERT(bufpool_get_free(con_pool, &p) == SUCCESS, ({ close(fd); return FAILURE; }));
 
-    DASSERT(p, return FAILURE);
+    DASSERT(p, ({ close(fd); return FAILURE; }));
 
     DBG("previous fd=%d\n", p->client_fd);
 
@@ -806,10 +809,8 @@ static inline int __accept_proc_sock(rtsp_handle h, int server_fd, struct sock_s
         /* update connection-list exclusively. A full pool turns this client
            away; failing here used to end the RTSP thread, so the 17th idle
            connection took RTSP down until the next restart. */
-        if (__connection_list_add(h->con_pool, &h->con_list, fd, from_addr) != SUCCESS) {
+        if (__connection_list_add(h->con_pool, &h->con_list, fd, from_addr) != SUCCESS)
             ERR("no free connection slot, refusing client\n");
-            close(fd);
-        }
     }
 
     return SUCCESS;

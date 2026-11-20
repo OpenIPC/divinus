@@ -44,24 +44,26 @@ static inline void __wait_out(int fd)
     poll(&p, 1, 100);
 }
 
-/* How long a flush waits on a client that is not reading, in __wait_out
-   steps of 100 ms. This runs on the encoder's path: waiting for ever, as it
-   did, let one client that stopped reading (a zero TCP window) freeze video
-   for every viewer. */
-#define __TCP_FLUSH_MAX_WAITS 10
+/* How long one flush may take, in ms. This runs on the encoder's path with
+   the client's write lock held: waiting for ever, as it did, let one client
+   that stopped reading (a zero TCP window) freeze video for every viewer. A
+   deadline rather than a count of idle waits, so a client that reads a few
+   bytes now and then cannot hold it either. */
+#define __TCP_FLUSH_DEADLINE_MS 1000
 
 static int __tcp_flush(struct connection_item_t *con)
 {
-    unsigned int sent = 0, waits = 0;
+    unsigned int sent = 0, start = millis();
     while (sent < con->tx_len) {
         int r = send(con->client_fd, con->tx_buf + sent, con->tx_len - sent, 0);
-        if (r > 0) { sent += r; waits = 0; }
-        else if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK) &&
-                 ++waits <= __TCP_FLUSH_MAX_WAITS) { __wait_out(con->client_fd); }
-        else {
+        int stalled = r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK);
+        if (r > 0) sent += r;
+        if ((r > 0 || stalled) && millis() - start < __TCP_FLUSH_DEADLINE_MS) {
+            if (stalled) __wait_out(con->client_fd);
+        } else {
             /* Hand it to the RTSP thread, which sees EOF and tears the
                connection down the usual way, rather than freeing it here. */
-            if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+            if (r >= 0 || stalled)
                 shutdown(con->client_fd, SHUT_RDWR);
             con->tx_len = 0;
             return FAILURE;
