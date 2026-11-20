@@ -11,6 +11,11 @@ int jpeg_init() {
     pthread_mutex_lock(&jpeg_mutex);
 
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L:
+            if (app_config.mjpeg_enable) goto active;
+            break;
+#endif
 #if defined(__arm__) && !defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_AK: goto active;
         case HAL_PLATFORM_GM: goto active;
@@ -38,6 +43,9 @@ int jpeg_init() {
         config.minQual = config.maxQual = app_config.jpeg_qfactor;
 
         switch (plat) {
+#if defined(__arm__)
+            case HAL_PLATFORM_S3L: ret = s3l_video_create(jpeg_index, &config); break;
+#endif
 #if defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_I6:  ret = i6_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(jpeg_index, &config); break;
@@ -81,6 +89,12 @@ void jpeg_deinit() {
     pthread_mutex_lock(&jpeg_mutex);
 
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L:
+            if (app_config.mjpeg_enable) goto active;
+            s3l_video_destroy(jpeg_index);
+            break;
+#endif
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy(jpeg_index); break;
@@ -134,6 +148,9 @@ int jpeg_get(short width, short height, char quality, char grayscale,
     int ret;
 
     switch (plat) {
+#if defined(__arm__)
+        case HAL_PLATFORM_S3L: ret = s3l_video_snapshot_grab(jpeg); break;
+#endif
  #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  ret = i6_video_snapshot_grab(jpeg_index, quality, jpeg); break;
         case HAL_PLATFORM_I6C: ret = i6c_video_snapshot_grab(jpeg_index, quality, jpeg); break;
