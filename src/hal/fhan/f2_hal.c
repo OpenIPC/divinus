@@ -402,8 +402,15 @@ int f2_pipeline_create(short width, short height, char mirror, char flip, char f
             HAL_WARNING("f2_isp", "Can't load the ISP config for %s\n", f2_snr.name);
     }
 
-    if (mirror || flip)
-        f2_isp.fnSetFlipMirrorEx(mirror ? 1 : 0, flip ? 1 : 0, 0);
+    if (mirror || flip) {
+        /* The last argument is the Bayer order the ISP assumes. With 0 the
+           GC4653 gives a purple picture with a fine maze pattern; 1 keeps the
+           colours of a start that does not call this function. Other sensors
+           keep 0: if one of them shows the same, try 1 to 3 with mirror and
+           flip on, and take the value that matches a start without them. */
+        unsigned int bayer = !strncmp(f2_snr.name, "gc4653", 6) ? 1 : 0;
+        f2_isp.fnSetFlipMirrorEx(mirror ? 1 : 0, flip ? 1 : 0, bayer);
+    }
 
     if (f2_isp.fnAeSendCommand) {
         unsigned int mode = antiflicker >= 60 ? 2 : antiflicker >= 50 ? 1 : 0;
