@@ -45,7 +45,25 @@ static int send_data(const void *buf, size_t len) {
     return 0;
 }
 
-static int rtmp_handshake(void) {
+/* Receives exactly len bytes before the deadline (millis()). Each wait is
+ * cut to the time that is left, so a peer that sends a byte now and then
+ * cannot stretch the whole setup beyond the deadline. */
+static int recv_until(char *buf, int len, uint32_t deadline) {
+    int received = 0;
+    while (received < len) {
+        int32_t left = (int32_t)(deadline - millis());
+        if (left <= 0) return -1;
+        struct timeval tv = { left / 1000, (left % 1000) * 1000 };
+        setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+        int r = recv(socket_fd, buf + received, len - received, 0);
+        if (r < 0 && errno == EINTR) continue;
+        if (r <= 0) return -1;
+        received += r;
+    }
+    return 0;
+}
+
+static int rtmp_handshake(uint32_t deadline) {
     char c0c1[RTMP_SIG_SIZE + 1];
     char s0s1[RTMP_SIG_SIZE + 1];
     char c2[RTMP_SIG_SIZE];
@@ -56,24 +74,14 @@ static int rtmp_handshake(void) {
 
     if (send_data(c0c1, sizeof(c0c1)) < 0) return -1;
 
-    int received = 0;
-    while (received < sizeof(s0s1)) {
-        int r = recv(socket_fd, s0s1 + received, sizeof(s0s1) - received, 0);
-        if (r <= 0) return -1;
-        received += r;
-    }
+    if (recv_until(s0s1, sizeof(s0s1), deadline) < 0) return -1;
 
     if (s0s1[0] != 0x03) return -1;
 
     memcpy(c2, s0s1 + 1, RTMP_SIG_SIZE);
     if (send_data(c2, sizeof(c2)) < 0) return -1;
 
-    received = 0;
-    while (received < sizeof(s2)) {
-        int r = recv(socket_fd, s2 + received, sizeof(s2) - received, 0);
-        if (r <= 0) return -1;
-        received += r;
-    }
+    if (recv_until(s2, sizeof(s2), deadline) < 0) return -1;
 
     return 0;
 }
@@ -307,13 +315,24 @@ static int rtmp_start_sequence(const char *url) {
     bcopy((char *)he->h_addr_list[0], (char *)&serv_addr.sin_addr.s_addr, he->h_length);
     serv_addr.sin_port = htons(port);
 
+    /* This runs on the main thread before the video starts. A destination
+     * that does not answer must not hold it up: without a limit the start
+     * hung until the watchdog rebooted the camera, again and again. One
+     * deadline covers the connect and the handshake together. */
+    uint32_t deadline = millis() + 5000;
+    struct timeval tmo = { 5, 0 }, none = { 0, 0 };
+    setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &tmo, sizeof(tmo));
+    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tmo, sizeof(tmo));
+
     if (connect(socket_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        HAL_WARNING("rtmp", "Destination does not answer; continuing without it\n");
         close(socket_fd);
         socket_fd = -1;
         return -1;
     }
 
-    if (rtmp_handshake() < 0) {
+    if (rtmp_handshake(deadline) < 0) {
+        HAL_WARNING("rtmp", "Handshake not completed in time; continuing without it\n");
         close(socket_fd);
         socket_fd = -1;
         return -1;
@@ -325,6 +344,10 @@ static int rtmp_start_sequence(const char *url) {
     if (rtmp_connect(app, tcurl) < 0) return -1;
     if (rtmp_create_stream() < 0) return -1;
     if (rtmp_publish(stream) < 0) return -1;
+
+    /* Connected: back to the unlimited waits the running stream expects */
+    setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &none, sizeof(none));
+    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &none, sizeof(none));
 
     return 0;
 }
@@ -354,20 +377,25 @@ int rtmp_init(const char *url) {
     memset(&flv_state, 0, sizeof(flv_state));
     seq_header_sent = false;
     metadata_sent = false;
+    /* No HAL_ERROR below: it returns from the function, which would leave
+     * rtmp_mutex locked, and the next rtmp_close (every stop of the program)
+     * would then hang until the watchdog reboots the camera. */
     int ret = rtmp_start_sequence(url);
     if (ret == 0) {
         start_timestamp = millis();
         is_connected = true;
 
         if (pthread_create(&recvPid, NULL, recv_thread, NULL)) {
-            HAL_ERROR("rtmp", "Failed to create receiver thread\n");
+            HAL_DANGER("rtmp", "Failed to create receiver thread\n");
             is_connected = false;
             close(socket_fd);
             socket_fd = -1;
             ret = EXIT_FAILURE;
         } else if (pthread_create(&sndPid, NULL, send_thread, NULL)) {
-            HAL_ERROR("rtmp", "Failed to create sender thread\n");
+            HAL_DANGER("rtmp", "Failed to create sender thread\n");
             is_connected = false;
+            /* wake the receiver from recv() before waiting for it */
+            shutdown(socket_fd, SHUT_RDWR);
             pthread_join(recvPid, NULL);
             close(socket_fd);
             socket_fd = -1;
@@ -378,7 +406,13 @@ int rtmp_init(const char *url) {
             ret = EXIT_SUCCESS;
         }
     } else {
-        HAL_ERROR("rtmp", "Failed to connect to %s\n", url);
+        HAL_DANGER("rtmp", "Failed to connect to %s\n", url);
+        /* the connect, stream and publish steps can fail with the socket
+         * still open; close it so a later attempt does not leak it */
+        if (socket_fd >= 0) {
+            close(socket_fd);
+            socket_fd = -1;
+        }
         ret = EXIT_FAILURE;
     }
     pthread_mutex_unlock(&rtmp_mutex);
