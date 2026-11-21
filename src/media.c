@@ -596,39 +596,51 @@ int media_audio_enable(void) {
         pcmSamp = shine_samples_per_pass(mp3Enc);
     }
 
-    {
-        pthread_attr_t thread_attr;
-        pthread_attr_init(&thread_attr);
-        size_t stacksize;
-        pthread_attr_getstacksize(&thread_attr, &stacksize);
-        size_t new_stacksize = 16384;
-        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
-        if (pthread_create(
-                        &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL))
-            HAL_ERROR("media", "Starting the audio capture thread failed!\n");
-        if (pthread_attr_setstacksize(&thread_attr, stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
-        pthread_attr_destroy(&thread_attr);
-    }
-
-    {
-        pthread_attr_t thread_attr;
-        pthread_attr_init(&thread_attr);
-        size_t stacksize;
-        pthread_attr_getstacksize(&thread_attr, &stacksize);
-        size_t new_stacksize = 16384;
-        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
-        if (pthread_create(
-                        &aencPid, &thread_attr, (void *(*)(void *))aenc_thread, NULL))
-            HAL_ERROR("media", "Starting the audio encoding thread failed!\n");
-        if (pthread_attr_setstacksize(&thread_attr, stacksize))
-            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
-        pthread_attr_destroy(&thread_attr);
-    }
-
+    /* Set before the threads start: both loop on audioOn and leave at once
+       if they see 0. Set afterwards, it raced with thread start-up, and
+       whenever a new thread ran first, audio stopped right after it started. */
     audioOn = 1;
+
+    {
+        pthread_attr_t thread_attr;
+        pthread_attr_init(&thread_attr);
+        size_t stacksize;
+        pthread_attr_getstacksize(&thread_attr, &stacksize);
+        size_t new_stacksize = 16384;
+        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
+        if (pthread_create(
+                        &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL)) {
+            audioOn = 0;
+            pthread_attr_destroy(&thread_attr);
+            HAL_ERROR("media", "Starting the audio capture thread failed!\n");
+        }
+        if (pthread_attr_setstacksize(&thread_attr, stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
+        pthread_attr_destroy(&thread_attr);
+    }
+
+    {
+        pthread_attr_t thread_attr;
+        pthread_attr_init(&thread_attr);
+        size_t stacksize;
+        pthread_attr_getstacksize(&thread_attr, &stacksize);
+        size_t new_stacksize = 16384;
+        if (pthread_attr_setstacksize(&thread_attr, new_stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", new_stacksize);
+        if (pthread_create(
+                        &aencPid, &thread_attr, (void *(*)(void *))aenc_thread, NULL)) {
+            /* Stop the capture thread again, so audioOn and the threads agree
+               (media_audio_disable() joins both threads when audioOn is set). */
+            audioOn = 0;
+            pthread_join(audPid, NULL);
+            pthread_attr_destroy(&thread_attr);
+            HAL_ERROR("media", "Starting the audio encoding thread failed!\n");
+        }
+        if (pthread_attr_setstacksize(&thread_attr, stacksize))
+            HAL_DANGER("media", "Can't set stack size %zu\n", stacksize);
+        pthread_attr_destroy(&thread_attr);
+    }
 
     return ret;
 }
