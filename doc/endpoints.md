@@ -70,9 +70,11 @@ Gets live system status information.
   "loadavg": [0.05, 0.07, 0.06],
   "memory": "62/121MB",
   "sensor": "imx335",
+  "temp": "46.5°C",
   "uptime": "7 days, 14:08:57"
 }
 ```
+`temp` is `"N/A"` when the chip has no temperature sensor that Divinus can read.
 
 #### `/api/time`
 
