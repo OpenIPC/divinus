@@ -361,12 +361,14 @@ int f2_pipeline_create(short width, short height, char mirror, char flip, char f
 
     f2_snr.fnCreate();
 
-    if (f2_isp.fnAdvInit) {
-        int ar = f2_isp.fnAdvInit();
-    }
-    if (f2_isp.fnAdvSensorInit) {
-        int sr = f2_isp.fnAdvSensorInit();
-    }
+    /* advapi: hand it the sensor table first (FHAdv_Isp_SensorInit takes the
+     * struct isp_sensor_if *), then FHAdv_Isp_Init, which reads the sensor's AE
+     * defaults through it. Called the other way round and without the argument,
+     * Init printed "sensor if is NULL" at every start and stopped early. */
+    if (f2_isp.fnAdvSensorInit)
+        f2_isp.fnAdvSensorInit(f2_snr.ops);
+    if (f2_isp.fnAdvInit)
+        f2_isp.fnAdvInit();
 
     if (ret = f2_isp.fnMemInit(_f2_snr_dim.width, _f2_snr_dim.height)) {
         HAL_DANGER("f2_isp", "Operation failed with %#x!\n", ret);
