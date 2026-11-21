@@ -18,7 +18,8 @@ typedef enum {
     HAL_PLATFORM_V1,
     HAL_PLATFORM_V2,
     HAL_PLATFORM_V3,
-    HAL_PLATFORM_V4
+    HAL_PLATFORM_V4,
+    HAL_PLATFORM_V4L2
 } hal_platform;
 
 typedef enum {

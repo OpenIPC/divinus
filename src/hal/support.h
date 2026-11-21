@@ -1,6 +1,7 @@
 #include "types.h"
 #include "globals.h"
 #include "tools.h"
+#include "v4l2_hal.h"
 
 #include <linux/version.h>
 #include <stdbool.h>

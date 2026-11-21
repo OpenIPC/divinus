@@ -38,6 +38,7 @@ int jpeg_init() {
         config.minQual = config.maxQual = app_config.jpeg_qfactor;
 
         switch (plat) {
+            case HAL_PLATFORM_V4L2: ret = v4l2_video_create(jpeg_index, &config); break;
 #if defined(__ARM_PCS_VFP)
             case HAL_PLATFORM_I6:  ret = i6_video_create(jpeg_index, &config); break;
             case HAL_PLATFORM_I6C: ret = i6c_video_create(jpeg_index, &config); break;
@@ -81,6 +82,7 @@ void jpeg_deinit() {
     pthread_mutex_lock(&jpeg_mutex);
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2: v4l2_video_destroy(jpeg_index); break;
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_video_destroy(jpeg_index); break;
         case HAL_PLATFORM_I6C: i6c_video_destroy(jpeg_index); break;
@@ -134,6 +136,7 @@ int jpeg_get(short width, short height, char quality, char grayscale,
     int ret;
 
     switch (plat) {
+        case HAL_PLATFORM_V4L2: ret = v4l2_video_snapshot_grab(jpeg_index, quality, jpeg); break;
  #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  ret = i6_video_snapshot_grab(jpeg_index, quality, jpeg); break;
         case HAL_PLATFORM_I6C: ret = i6c_video_snapshot_grab(jpeg_index, quality, jpeg); break;
