@@ -108,7 +108,7 @@ typedef struct {
     int (*fnUnregisterSensor)(unsigned int index);
 
     int (*fnAdvInit)(void);
-    int (*fnAdvSensorInit)(void);
+    int (*fnAdvSensorInit)(f2_isp_snrops *ops);   /* FHAdv_Isp_SensorInit(struct isp_sensor_if *) */
     int (*fnAdvSetColorMode)(int color);
     int (*fnGetSaturation)(void *sat);   /* record, byte 5 nonzero = colour */
     int (*fnSetSaturation)(void *sat);
@@ -204,7 +204,7 @@ static int f2_isp_load(f2_isp_impl *isp_lib) {
         hal_symbol_load("f2_isp", isp_lib->handleAdv, "FHAdv_Isp_Init")))
         return EXIT_FAILURE;
 
-    if (!(isp_lib->fnAdvSensorInit = (int(*)(void))
+    if (!(isp_lib->fnAdvSensorInit = (int(*)(f2_isp_snrops *))
         hal_symbol_load("f2_isp", isp_lib->handleAdv, "FHAdv_Isp_SensorInit")))
         return EXIT_FAILURE;
 
