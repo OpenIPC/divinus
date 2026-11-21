@@ -4,7 +4,47 @@ const char *appconf_paths[] = {"./divinus.yaml", "/etc/divinus.yaml", NULL};
 
 struct AppConfig app_config;
 
-static inline void app_config_open(FILE **file, const char *flags) {
+/* A save is written to "<file>.new" and moved over the configuration file by
+   app_config_commit(), so that a power cut or a full disk in the middle of it
+   cannot leave a truncated configuration behind. */
+static FILE *app_config_create(const char *conf_path, char *saved_path) {
+    char new_path[PATH_MAX + 8];
+
+    snprintf(saved_path, PATH_MAX, "%s", conf_path);
+    snprintf(new_path, sizeof(new_path), "%s.new", conf_path);
+    return fopen(new_path, "w");
+}
+
+static int app_config_commit(FILE *file, const char *conf_path) {
+    char bak_path[PATH_MAX + 8], new_path[PATH_MAX + 8];
+    int failed, moved = 0;
+
+    snprintf(bak_path, sizeof(bak_path), "%s.bak", conf_path);
+    snprintf(new_path, sizeof(new_path), "%s.new", conf_path);
+
+    failed = ferror(file) || fflush(file) || fsync(fileno(file));
+    failed = fclose(file) || failed;
+    if (failed) {
+        remove(new_path);
+        return EXIT_FAILURE;
+    }
+
+    /* The previous file stays available as .bak, like it always did, but the
+       link keeps the configuration in place until the rename replaces it */
+    remove(bak_path);
+    if (link(conf_path, bak_path))
+        moved = !rename(conf_path, bak_path);
+    if (rename(new_path, conf_path)) {
+        /* without hard links the old file was moved away: put it back */
+        if (moved)
+            rename(bak_path, conf_path);
+        remove(new_path);
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+static inline void app_config_open(FILE **file, const char *flags, char *saved_path) {
     const char **path = appconf_paths;
     char conf_path[PATH_MAX], exe_path[PATH_MAX];
     *file = NULL;
@@ -15,26 +55,16 @@ static inline void app_config_open(FILE **file, const char *flags) {
         exe_path[exe_len] = '\0';
         snprintf(conf_path, sizeof(conf_path), "%s/divinus.yaml", dir);
         if (!access(conf_path, F_OK)) {
-            if (*flags == 'w') {
-                char bak_path[PATH_MAX];
-                sprintf(bak_path, "%s.bak", conf_path);
-                remove(bak_path);
-                rename(conf_path, bak_path);
-            }
-            *file = fopen(conf_path, flags);
+            *file = *flags == 'w' ? app_config_create(conf_path, saved_path) :
+                fopen(conf_path, flags);
             return;
         }
     }
 
     while (*path) {
         if (access(*path++, F_OK)) continue;
-        if (*flags == 'w') {
-            char bak_path[PATH_MAX];
-            sprintf(bak_path, "%s.bak", *(path - 1));
-            remove(bak_path);
-            rename(*(path - 1), bak_path);
-        }
-        *file = fopen(*(path - 1), flags);
+        *file = *flags == 'w' ? app_config_create(*(path - 1), saved_path) :
+            fopen(*(path - 1), flags);
         break;
     }
 }
@@ -69,8 +99,9 @@ void app_config_restore(void) {
 
 int app_config_save(void) {
     FILE *file;
+    char conf_path[PATH_MAX];
 
-    app_config_open(&file, "w");
+    app_config_open(&file, "w", conf_path);
     if (!file)
         HAL_ERROR("app_config", "Can't open config file for writing\n");
 
@@ -219,8 +250,7 @@ int app_config_save(void) {
     fprintf(file, "  interval: %d\n", app_config.http_post_interval);
     fprintf(file, "  qfactor: %d\n", app_config.http_post_qfactor);
 
-    fclose(file);
-    return EXIT_SUCCESS;
+    return app_config_commit(file, conf_path);
 }
 
 enum ConfigError app_config_parse(void) {
@@ -296,7 +326,7 @@ enum ConfigError app_config_parse(void) {
     memset(&ini, 0, sizeof(struct IniConfig));
 
     FILE *file;
-    app_config_open(&file, "r");
+    app_config_open(&file, "r", NULL);
     if (!open_config(&ini, &file))  {
         printf("Can't find config divinus.yaml in:\n"
             "    ./divinus.yaml\n    /etc/divinus.yaml\n");
