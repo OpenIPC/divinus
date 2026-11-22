@@ -510,16 +510,7 @@ int media_video_disable(char index, char jpeg) {
     return 0;
 }
 
-void media_audio_disable(void) {
-    if (!audioOn) return;
-
-    audioOn = 0;
-
-    pthread_join(aencPid, NULL);
-    pthread_join(audPid, NULL);
-    ringbuf_destroy(&audRing);
-    shine_close(mp3Enc);
-
+static void media_audio_hal_deinit(void) {
     switch (plat) {
 #if defined(__ARM_PCS_VFP)
         case HAL_PLATFORM_I6:  i6_audio_deinit(); break;
@@ -543,6 +534,25 @@ void media_audio_disable(void) {
         case HAL_PLATFORM_CVI: cvi_audio_deinit(); break;
 #endif
     }
+}
+
+static void media_audio_cleanup(void) {
+    if (mp3Enc) {
+        shine_close(mp3Enc);
+        mp3Enc = NULL;
+    }
+    media_audio_hal_deinit();
+    ringbuf_destroy(&audRing);
+}
+
+void media_audio_disable(void) {
+    if (!audioOn) return;
+
+    audioOn = 0;
+
+    pthread_join(aencPid, NULL);
+    pthread_join(audPid, NULL);
+    media_audio_cleanup();
 }
 
 int media_audio_enable(void) {
@@ -576,13 +586,17 @@ int media_audio_enable(void) {
         case HAL_PLATFORM_CVI: ret = cvi_audio_init(app_config.audio_srate); break;
 #endif
     }
-    if (ret)
+    if (ret) {
+        ringbuf_destroy(&audRing);
         HAL_ERROR("media", "Audio initialization failed with %#x!\n%s\n",
             ret, errstr(ret));
+    }
 
-    if (shine_check_config(app_config.audio_srate, app_config.audio_bitrate) < 0)
+    if (shine_check_config(app_config.audio_srate, app_config.audio_bitrate) < 0) {
+        media_audio_hal_deinit();
+        ringbuf_destroy(&audRing);
         HAL_ERROR("media", "MP3 samplerate/bitrate configuration is unsupported!\n");
-    else {
+    } else {
         mp3Cnf.mpeg.mode = MONO;
         mp3Cnf.mpeg.bitr = app_config.audio_bitrate;
         mp3Cnf.mpeg.emph = NONE;
@@ -590,8 +604,11 @@ int media_audio_enable(void) {
         mp3Cnf.mpeg.original = 1;
         mp3Cnf.wave.channels = PCM_MONO;
         mp3Cnf.wave.samplerate = app_config.audio_srate;
-        if (!(mp3Enc = shine_initialise(&mp3Cnf)))
+        if (!(mp3Enc = shine_initialise(&mp3Cnf))) {
+            media_audio_hal_deinit();
+            ringbuf_destroy(&audRing);
             HAL_ERROR("media", "MP3 encoder initialization failed!\n");
+        }
 
         pcmSamp = shine_samples_per_pass(mp3Enc);
     }
@@ -613,6 +630,7 @@ int media_audio_enable(void) {
                         &audPid, &thread_attr, (void *(*)(void *))aud_thread, NULL)) {
             audioOn = 0;
             pthread_attr_destroy(&thread_attr);
+            media_audio_cleanup();
             HAL_ERROR("media", "Starting the audio capture thread failed!\n");
         }
         if (pthread_attr_setstacksize(&thread_attr, stacksize))
@@ -635,6 +653,7 @@ int media_audio_enable(void) {
             audioOn = 0;
             pthread_join(audPid, NULL);
             pthread_attr_destroy(&thread_attr);
+            media_audio_cleanup();
             HAL_ERROR("media", "Starting the audio encoding thread failed!\n");
         }
         if (pthread_attr_setstacksize(&thread_attr, stacksize))
