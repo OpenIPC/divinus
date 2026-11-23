@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#if defined(__arm__)
+#include "amba/s3l_hal.h"
+#endif
 #if defined(__ARM_PCS_VFP)
 #include "star/i3_hal.h"
 #include "star/i6_hal.h"

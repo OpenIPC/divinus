@@ -60,6 +60,10 @@ elif [ "$1" = "fhan-v1" ]; then
 elif [ "$1" = "armv6-musl" ] || [ "$1" = "fhan-v2" ]; then
 	PRE="openipc-linux-musleabi"
 	toolchain toolchain.fullhan-fh8852v200 arm
+elif [ "$1" = "armhf-vfp3" ] || [ "$1" = "s3l" ]; then
+	# Ambarella S3L: a Cortex-A9 with VFPv3. The armhf-musl toolchain targets VFPv4 with fused
+	# multiply-add, which faults (SIGILL) here.
+	toolchain toolchain.ambarella-s3l arm
 elif [ "$1" = "mips-musl" ] || [ "$1" = "inge-t31" ]; then
 	toolchain toolchain.ingenic-t31 mipsel
 elif [ "$1" = "riscv64-musl" ] || [ "$1" = "cvitek" ]; then
@@ -68,8 +72,8 @@ elif [ "$1" = "riscv64-musl" ] || [ "$1" = "cvitek" ]; then
 	toolchain riscv64-lp64d--musl--stable-2024.05-1 riscv64
 else
 	echo "Usage: $0 [arm-glibc|arm-musl3|arm-musl4|arm9-glibc|arm9-musl3|arm9-musl4|arm9-uclibc|"
-        echo "           armhf-glibc|armhf-musl|armhf-uclibc|armv6-musl|mips-musl|riscv64-musl|ak39xx|cvitek|gm813x|"
+        echo "           armhf-glibc|armhf-musl|armhf-uclibc|armhf-vfp3|armv6-musl|mips-musl|riscv64-musl|ak39xx|cvitek|gm813x|"
         echo "           hisi-v1|hisi-v2|hisi-v2a|hisi-v3|hisi-v3a|hisi-v4|hisi-v4a|fhan-v1|fhan-v2|inge-t31|rv11xx|"
-        echo "           star6|star6e] (debug)"
+        echo "           s3l|star6|star6e] (debug)"
 	rm -f .previous
 fi
