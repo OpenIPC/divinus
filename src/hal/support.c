@@ -35,6 +35,9 @@ void hal_identify(void) {
     if (v3_system_identify()) return;
     if (v4_system_identify()) return;
 #elif defined(__mips__)
+#ifdef DIVINUS_T23
+    if (t23_system_identify()) return;
+#endif
     if (t31_system_identify()) return;
 #elif defined(__riscv) || defined(__riscv__)
     if (cvi_system_identify()) return;
