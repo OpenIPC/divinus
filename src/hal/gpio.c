@@ -133,7 +133,7 @@ int gpio_read(char pin, bool *value) {
 
     char val = 0;
     lseek(fd, 0, SEEK_SET);
-    read(fd, &val, 0);
+    read(fd, &val, 1);
     if (!val) {
         close(fd);
         HAL_ERROR("gpio", "Unable to read from GPIO pin %d!\n", pin);
@@ -141,7 +141,7 @@ int gpio_read(char pin, bool *value) {
     *value = val - 0x30;
     close(fd);
 
-    if (gpio_direction(pin, "out")) return EXIT_FAILURE;
+    /* An input line must stay an input: switching it to output would drive it */
     if (gpio_export(pin, false)) return EXIT_FAILURE;
 
     return EXIT_SUCCESS;
