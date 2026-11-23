@@ -469,9 +469,20 @@ int rtmp_ingest_video(hal_vidpack *packet, int is_h265) {
         } else {
             if (type == NalUnitType_SPS) flv_set_sps((char *)nal_start, nal_len);
             if (type == NalUnitType_PPS) flv_set_pps((char *)nal_start, nal_len);
-            if (type == NalUnitType_CodedSliceIdr || type == NalUnitType_CodedSliceNonIdr) {
-                is_slice = true;
-                is_idr = (type == NalUnitType_CodedSliceIdr);
+            /* Take the slice type from the NAL header itself as well: some
+             * HALs (Fullhan V200) do not give the key-frame slice type 5 in
+             * the pack table, so no key frame was ever seen here and the
+             * video sequence header was never sent. */
+            {
+                uint32_t sc = 0;
+                if (nal_len > 4 && nal_start[0] == 0 && nal_start[1] == 0)
+                    sc = (nal_start[2] == 1) ? 3 : ((nal_start[2] == 0 && nal_start[3] == 1) ? 4 : 0);
+                int real = (nal_len > sc) ? (nal_start[sc] & 0x1F) : 0;
+                if (real == NalUnitType_CodedSliceIdr || real == NalUnitType_CodedSliceNonIdr ||
+                    type == NalUnitType_CodedSliceIdr || type == NalUnitType_CodedSliceNonIdr) {
+                    is_slice = true;
+                    is_idr = (real == NalUnitType_CodedSliceIdr || type == NalUnitType_CodedSliceIdr);
+                }
             }
         }
 
@@ -505,6 +516,14 @@ int rtmp_ingest_video(hal_vidpack *packet, int is_h265) {
             }
 
             if (seq_header_sent) {
+                 /* FLV carries each NAL unit behind a 4-byte length, without
+                  * the Annex-B start code that most HALs leave in front */
+                 if (nal_len > 4 && nal_start[0] == 0 && nal_start[1] == 0) {
+                     uint32_t sc = (nal_start[2] == 1) ? 3 :
+                         ((nal_start[2] == 0 && nal_start[3] == 1) ? 4 : 0);
+                     nal_start += sc;
+                     nal_len -= sc;
+                 }
                  if (flv_set_slice((char *)nal_start, nal_len, is_idr) == BUF_OK &&
                      flv_set_state(&flv_state) == BUF_OK) {
                      struct BitBuf tags;
