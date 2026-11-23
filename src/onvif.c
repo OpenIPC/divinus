@@ -78,6 +78,19 @@ void *onvif_thread(void) {
         if (!joined) {
             joined = !setsockopt(servfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
                 (char *)&group, sizeof(group));
+            if (!joined) {
+                /* Without a default route the kernel cannot choose the
+                   interface for INADDR_ANY (ENODEV), so name the one that
+                   holds our address */
+                char address[INET_ADDRSTRLEN];
+                network_address(address);
+                if (!EMPTY(address)) {
+                    group.imr_interface.s_addr = inet_addr(address);
+                    joined = !setsockopt(servfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+                        (char *)&group, sizeof(group));
+                    group.imr_interface.s_addr = htonl(INADDR_ANY);
+                }
+            }
             if (!joined && !joinReported) {
                 HAL_WARNING("onvif", "Failed to join the discovery group, retrying: %s\n",
                     strerror(errno));
