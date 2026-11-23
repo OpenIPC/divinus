@@ -1604,7 +1604,8 @@ void respond_request(http_request_t *req) {
     if (EQUALS(req->uri, "/api/status")) {
         struct sysinfo si;
         sysinfo(&si);
-        char memory[16], uptime[48];
+        char memory[16], temp[16], uptime[48];
+        float tempVal = hal_temperature_read();
         short free = (si.freeram + si.bufferram) / 1024 / 1024;
         short total = si.totalram / 1024 / 1024;
         sprintf(memory, "%d/%dMB", total - free, total);
@@ -1614,15 +1615,20 @@ void respond_request(http_request_t *req) {
             sprintf(uptime, "%ld:%02ld:%02ld", si.uptime / 3600, (si.uptime % 3600) / 60, si.uptime % 60);
         else
             sprintf(uptime, "%ld:%02ld", si.uptime / 60, si.uptime % 60);
+        /* NaN (the only value that differs from itself) means no sensor was found */
+        if (tempVal != tempVal)
+            strcpy(temp, "N/A");
+        else
+            snprintf(temp, sizeof(temp), "%.1f\u00B0C", tempVal);
         respLen = sprintf(response,
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json;charset=UTF-8\r\n"
             "Connection: close\r\n"
             "\r\n"
             "{\"chip\":\"%s\",\"loadavg\":[%.2f,%.2f,%.2f],\"memory\":\"%s\","
-            "\"sensor\":\"%s\",\"temp\":\"%.1f\u00B0C\",\"uptime\":\"%s\"}",
+            "\"sensor\":\"%s\",\"temp\":\"%s\",\"uptime\":\"%s\"}",
             chip, si.loads[0] / 65536.0, si.loads[1] / 65536.0, si.loads[2] / 65536.0,
-            memory, sensor, hal_temperature_read(), uptime);
+            memory, sensor, temp, uptime);
         send_and_close(req->clntFd, response, respLen);
         return;
     }
